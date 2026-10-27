@@ -48,3 +48,14 @@ Better Miacode 是操作体验改进版本，基线为 Team-MiaCode/MiaCode 的
 
 此次覆盖 Windows 和默认皮肤的合成用例；其他平台和第三方皮肤未做 GUI 验收。
 最终归档哈希由包旁的 `.sha256` 文件记录。先解压完整包，再启动根目录 `MiaCode.exe`。
+
+## 2.0.0-better.2 视觉细化
+
+- 小节参考线使用按实际帧像素计算的抗锯齿圆环，消除固定 48 段圆环的折线感；颜色、粗细和拍位语义保持原设置。
+- 时间轴高亮改为约 1 DIP 的淡黄色细外轮廓，并与音符留出少量间隙。封闭内孔不再附加高亮，密集 slide 箭头的轮廓进一步减淡，避免遮住原图。
+- 预览高亮改为约 1 屏幕像素的圆形细轮廓；Hold 切片接缝和分数缩放单独检查。
+- Release 构建及 preview_head_layer、preview_visual_aids、video_export_visual_aids 三项聚焦规格通过。小节线完成 360、540、1080、2160 像素的离屏输出检查。
+- 新版打开后由用户验收最终视觉效果。
+
+开发工具 `miacode_measure_ring_render --guide <assets/noteguide/Normal.png> --output <输出目录>`
+可输出原版 note 参考线与小节线的并排图；左侧为原版，右侧为小节线。

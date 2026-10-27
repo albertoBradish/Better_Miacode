@@ -5,7 +5,7 @@ set(MIACODE_VERSION_MINOR "0")
 set(MIACODE_VERSION_PATCH "0")
 # Single source of truth for the prerelease tag and package version. The
 # About dialog appends its compile date to this version at runtime.
-set(MIACODE_VERSION_PRERELEASE "better.1")
+set(MIACODE_VERSION_PRERELEASE "better.2")
 set(MIACODE_BUILD_LAYOUT_REVISION "2026-04-21-first-unification")
 set(MIACODE_VERSION "${MIACODE_VERSION_MAJOR}.${MIACODE_VERSION_MINOR}.${MIACODE_VERSION_PATCH}")
 set(MIACODE_VERSION_STRING "${MIACODE_VERSION}")
