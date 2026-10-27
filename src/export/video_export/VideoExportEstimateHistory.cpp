@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "export/video_export/VideoExportEstimateHistory.h"
 #include "export/video_export/VideoExportSnapshot.h"
 
@@ -160,7 +161,7 @@ ExportEstimateProfile exportEstimateProfileForSnapshot(const ::VideoExportSnapsh
 
 QString exportEstimateHistoryPath()
 {
-    const QString root = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    const QString root = miacode::runtime_paths::directory("cache");
     return QDir(root).filePath(QStringLiteral("export-performance-history.json"));
 }
 

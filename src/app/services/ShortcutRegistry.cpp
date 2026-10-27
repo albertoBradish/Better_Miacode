@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "app/services/ShortcutRegistry.h"
 #include "app/services/PreferenceVersionGuard.h"
 #include "app/services/PreferenceJsonFile.h"
@@ -18,7 +19,7 @@ namespace {
 
 QString userOverridePath()
 {
-    return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("shortcuts.json"));
+    return miacode::runtime_paths::configFile("shortcuts.json");
 }
 
 QString parseShortcutTextValue(const QJsonValue& value)
@@ -86,9 +87,9 @@ ShortcutRegistry& ShortcutRegistry::instance()
 }
 
 ShortcutRegistry::ShortcutRegistry()
-    : ShortcutRegistry(userOverridePath(), QDir(QDir::currentPath()).filePath(QStringLiteral("shortcuts.json")))
+    : ShortcutRegistry(userOverridePath())
 {
-    useCurrentCwd_ = true;
+    useCurrentCwd_ = false;
 }
 
 ShortcutRegistry::ShortcutRegistry(QString overridePath, QString cwdOverridePath)

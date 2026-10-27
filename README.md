@@ -1,3 +1,10 @@
+# Better Miacode
+
+基于 [Team-MiaCode/MiaCode](https://github.com/Team-MiaCode/MiaCode) 的独立操作体验改进版本。
+从上游 main 派生，未引入手序版或自动手序实验代码。
+新增功能的规格和验收边界见 [Better Miacode 文档](docs/BETTER_MIACODE_ZH.md)。
+下方保留上游项目介绍；其中官方下载链接指向原版 MiaCode，不是本派生版本。
+
 <p align="center">
   <img src="resources/icons/app.png" alt="MiaCode avatar" width="128">
 </p>

@@ -1,5 +1,13 @@
 # MiaCode
 
+## Better Miacode 派生版本边界
+
+- 本仓库从上游 main 派生，目标是操作体验优化；不合并手序版分支，不引入自动手序代码。
+- 上游 remote 仅拉取；提交推送到用户的 Better_Miacode 仓库，未经用户明确要求不创建上游 PR。
+- GUI、CLI、worker 必须使用独立的已标记 BETTER_MIACODE_RUNTIME_ROOT，不导入正式版偏好或恢复数据。
+- 在本地工作区开发时，源码、构建、归档、测试资料只写入所属工作区；不覆盖相邻安装或手序测试安装。
+- 运行隔离与品牌改动尽量独立于可贡献上游的功能提交；规格见 docs/BETTER_MIACODE_ZH.md。
+
 Qt 6 / C++ / QML 谱面编辑、预览和导出工具。
 
 ## 代码边界

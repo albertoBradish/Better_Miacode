@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "common/LocalizedText.h"
 
 #include "app/runtime/export/VideoExportHost.h"
@@ -121,7 +122,7 @@ QString projectLogDirectoryForSnapshot(const VideoExportSnapshot& snapshot)
 
     const QString projectDir = snapshot.projectDir.trimmed();
     if (!projectDir.isEmpty()) {
-        return QDir(QDir::cleanPath(projectDir)).filePath(QStringLiteral(".miacode/logs"));
+        return miacode::runtime_paths::directory("logs");
     }
 
     return QString();
@@ -551,12 +552,10 @@ bool miacode::runtime::VideoExportHost::startVideoExportWorkerProcess(
 
     process->setProcessChannelMode(QProcess::SeparateChannels);
     QProcessEnvironment workerEnvironment = QProcessEnvironment::systemEnvironment();
-    if (!workerEnvironment.contains(QStringLiteral("MIACODE_LOG_DIR"))) {
-        const QString projectLogDirectory = projectLogDirectoryForSnapshot(snapshot);
-        if (!projectLogDirectory.isEmpty()) {
-            workerEnvironment.insert(QStringLiteral("MIACODE_LOG_DIR"), projectLogDirectory);
-        }
-    }
+    workerEnvironment.insert(QStringLiteral("BETTER_MIACODE_RUNTIME_ROOT"), miacode::runtime_paths::root());
+    workerEnvironment.insert(QStringLiteral("MIACODE_LOG_DIR"), miacode::runtime_paths::directory("logs"));
+    for (const char* name : {"TEMP", "TMP", "TMPDIR"})
+        workerEnvironment.insert(QString::fromLatin1(name), miacode::runtime_paths::directory("temp"));
     if (forceDisableOffscreenPbo) {
         workerEnvironment.insert(QStringLiteral("MIACODE_EXPORT_DISABLE_OFFSCREEN_PBO"), QStringLiteral("1"));
     }

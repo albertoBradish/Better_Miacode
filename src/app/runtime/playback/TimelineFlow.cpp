@@ -641,7 +641,7 @@ void miacode::runtime::PlaybackCoordinator::updateWindowTitle()
     const QFontMetrics metrics(QGuiApplication::font());
     const QString elided = metrics.elidedText(titleText, Qt::ElideRight, 420);
     const bool dirty = state_.documentDirty_;
-    state_.titleText_ = QString("MiaCode - %1%2").arg(elided, dirty ? QStringLiteral("[*]") : QString());
+    state_.titleText_ = QString("Better Miacode - %1%2").arg(elided, dirty ? QStringLiteral("[*]") : QString());
 }
 
 QString miacode::runtime::PlaybackCoordinator::editorText() const

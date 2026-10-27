@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "AppVersion.h"
 #include "app/ui/Bootstrap.h"
 #include "app/services/PreferenceDocument.h"
@@ -162,6 +163,11 @@ Q_IMPORT_QML_PLUGIN(MiaCode_TimelinePlugin)
 
 int main(int argc, char* argv[])
 {
+    QString runtimeError;
+    if (!miacode::runtime_paths::initialize(&runtimeError)) {
+        std::fprintf(stderr, "Better Miacode refused startup: %s\n", runtimeError.toUtf8().constData());
+        return 78;
+    }
     // Phase 6 — startup beacon. Heap-free, pure-Win32. Lands a tiny
     // miacode_startup_beacon_<pid>.txt next to the eventual op-chain
     // shadow log (MIACODE_LOG_DIR or %TEMP%). Its presence proves the
@@ -529,7 +535,8 @@ int main(int argc, char* argv[])
 #ifdef Q_OS_WIN
     setWindowsAppUserModelId();
 #endif
-    app.setApplicationName("MiaCode");
+    app.setApplicationName("BetterMiacode");
+    app.setApplicationDisplayName("Better Miacode");
     app.setApplicationVersion(MIACODE_DISPLAY_VERSION_STRING);
     const QIcon appIcon = applicationWindowIcon();
 #ifndef Q_OS_MACOS

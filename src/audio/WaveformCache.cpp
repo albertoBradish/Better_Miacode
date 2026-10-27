@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "audio/WaveformCache.h"
 
 #include <cmath>
@@ -230,7 +231,7 @@ QString projectDataDirectoryPathForFile(const QString& filePath)
     if (projectDirectoryPath.isEmpty()) {
         return QString();
     }
-    return QDir(projectDirectoryPath).filePath(QStringLiteral(".miacode"));
+    return miacode::runtime_paths::projectDirectory(filePath);
 }
 
 QString waveformCacheDirectoryPath(const QString& projectDataDirectoryPath)

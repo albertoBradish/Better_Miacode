@@ -191,3 +191,7 @@ __pycache__/
 
 # clangd project index cache.
 /.cache/clangd/
+
+# Machine-local paths for Better Miacode development.
+/CMakeUserPresets.json
+!scripts/build/enter-better-miacode-build.ps1

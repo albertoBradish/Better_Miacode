@@ -101,22 +101,8 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         applicationServices_->jobProgress().retranslate();
         applicationServices_->setValidationLocale(miacode::uiValidationLocale());
     });
-    // 更新检查在这里组装：ApplicationServices 只链 Core 与 Gui，而偏好存储的
-    // 生产实现会把 PreferenceDocument 拖进链接闭包，所以这两个具体实现由
-    // Bootstrap 持有，装配体那边只拿到抽象端口。
-    updateStateStore_ = std::make_unique<miacode::update::PreferenceUpdateStateStore>();
-    updateFetcher_ = std::make_unique<miacode::update::NetworkUpdateFetcher>(this);
-    miacode::update::UpdateEnvironment updateEnvironment;
-    updateEnvironment.versionText = QStringLiteral(MIACODE_VERSION_STRING);
-    updateEnvironment.major = MIACODE_VERSION_MAJOR;
-    updateEnvironment.platformKey = miacode::update::currentPlatformKey();
-    updateEnvironment.languageToken = PreferenceDocument::resolvedLanguageToken();
-    updateService_ = std::make_unique<miacode::update::UpdateService>(
-        *updateFetcher_, *updateStateStore_, std::move(updateEnvironment));
-    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
-            updateService_.get(), &miacode::update::UpdateService::setLanguageToken);
-    applicationServices_->setUpdateFetcher(updateFetcher_.get());
-    applicationServices_->setUpdateService(updateService_.get());
+    // The fork has no upstream update channel. Keep update() null so the UI
+    // cannot offer or open official MiaCode release packages.
     jobRegistry_ = std::make_unique<miacode::JobRegistry>();
     netTransport_ = std::make_unique<miacode::net::NetHttpTransport>();
     netProvider_ = std::make_unique<miacode::net::NetProvider>(*netTransport_);

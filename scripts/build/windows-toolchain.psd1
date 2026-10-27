@@ -65,11 +65,11 @@
             x64   = 'third_party\ffmpeg\windows\win64'
             arm64 = 'third_party\ffmpeg\windows\winarm64'
         }
-        # x64 uses the verified compact FFmpeg 7.1 preview SDK; arm64 keeps 8.1.
+        # Better Miacode uses the pinned FFmpeg 8.1 shared SDK ABI on both architectures.
         RuntimeDllsByArch = @{
             x64 = @(
-                'avcodec-61.dll', 'avformat-61.dll', 'avutil-59.dll',
-                'swresample-5.dll', 'swscale-8.dll', 'avfilter-10.dll'
+                'avcodec-62.dll', 'avformat-62.dll', 'avutil-60.dll',
+                'swresample-6.dll', 'swscale-9.dll', 'avfilter-11.dll'
             )
             arm64 = @(
                 'avcodec-62.dll', 'avformat-62.dll', 'avutil-60.dll',
@@ -78,7 +78,7 @@
         }
         # Architectures the decode-only trim toolchain covers.
         TrimByArch = @{
-            x64   = $true
+            x64   = $false
             arm64 = $false
         }
         # Standalone export binary shipped under app\ffmpeg\.
@@ -102,7 +102,7 @@
         # {channel} expands to '_<channel>' when MIACODE_PACKAGE_CHANNEL is set.
         # Separators stay underscores except inside the version, which keeps its
         # own dots and hyphens (e.g. 2.0.0-alpha).
-        DistNamePattern = 'MiaCode_{version}{channel}_win_{arch}'
+        DistNamePattern = 'Better_Miacode_{version}{channel}_win_{arch}'
         DistArchName = @{
             x64   = 'x64'
             arm64 = 'arm64'
@@ -151,8 +151,8 @@
             'dxcompiler.dll', 'dxil.dll',
             'vc_redist.x64.exe', 'vc_redist.arm64.exe',
             'multimedia\ffmpegmediaplugin.dll',
-            'avcodec-61.dll', 'avformat-61.dll', 'avutil-59.dll',
-            'swresample-5.dll', 'swscale-8.dll', 'avfilter-10.dll'
+            'avcodec-62.dll', 'avformat-62.dll', 'avutil-60.dll',
+            'swresample-6.dll', 'swscale-9.dll', 'avfilter-11.dll'
         )
         # assets\ subtrees that are embedded in MiaCode.exe via qrc and must not
         # be shipped loose as well.
@@ -197,8 +197,8 @@
         AdditionalRequiredRelativePathsByArch = @{
             x64 = @(
                 'app\bass_aac.dll',
-                'app\avcodec-61.dll', 'app\avformat-61.dll', 'app\avutil-59.dll',
-                'app\swresample-5.dll', 'app\swscale-8.dll', 'app\avfilter-10.dll'
+                'app\avcodec-62.dll', 'app\avformat-62.dll', 'app\avutil-60.dll',
+                'app\swresample-6.dll', 'app\swscale-9.dll', 'app\avfilter-11.dll'
             )
             arm64 = @(
                 'app\avcodec-62.dll', 'app\avformat-62.dll', 'app\avutil-60.dll',

@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "common/CrashRecovery.h"
 
 #include "common/DebugLog.h"
@@ -396,8 +397,8 @@ QString crashRecoveryFilePath(const QString& chartFilePath)
     }
     // Mirrors autosaveEntryDirectoryPathForFile +
     // <chartDir>/.miacode/.autosave/<fileName>/<fileName>.crash_recovery
-    return QDir(chartDir)
-        .filePath(QStringLiteral(".miacode/.autosave/%1/%1.crash_recovery")
+    return QDir(miacode::runtime_paths::projectDirectory(chartFilePath))
+        .filePath(QStringLiteral(".autosave/%1/%1.crash_recovery")
                       .arg(fileName));
 }
 
@@ -440,7 +441,7 @@ std::atomic<bool> g_sessionMarkerEnabled{false};
 QString sessionMarkerDir()
 {
     const QString configRoot =
-        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+        miacode::runtime_paths::root();
     if (configRoot.isEmpty()) {
         return QString();
     }

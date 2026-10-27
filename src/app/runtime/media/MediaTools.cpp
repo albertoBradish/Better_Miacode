@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "common/LocalizedText.h"
 
 #include "media_tools/media/PvCompressionPolicy.h"
@@ -504,7 +505,7 @@ bool compressVideoUnder20Mb(
     const QString backupPath = videoInfo.dir().filePath(
         QStringLiteral("%1_bak.%2").arg(videoInfo.completeBaseName(), videoInfo.suffix())
     );
-    const QString tempPath = videoInfo.dir().filePath(QStringLiteral(".miacode_video_compress_tmp.mp4"));
+    const QString tempPath = miacode::runtime_paths::temporaryFile(QStringLiteral(".miacode_video_compress_tmp.mp4"));
     QFile::remove(tempPath);
     if (!copyFileReplacing(videoPath, backupPath, error)) {
         return false;
@@ -619,7 +620,7 @@ bool convertTrackTo44100Hz(
 {
     const QFileInfo trackInfo(trackPath);
     const QString backupPath = trackInfo.dir().filePath(QStringLiteral("track_bak.mp3"));
-    const QString tempPath = trackInfo.dir().filePath(QStringLiteral(".miacode_track_44100_tmp.mp3"));
+    const QString tempPath = miacode::runtime_paths::temporaryFile(QStringLiteral(".miacode_track_44100_tmp.mp3"));
     QFile::remove(tempPath);
     if (!copyFileReplacing(trackPath, backupPath, error)) {
         return false;
@@ -664,7 +665,7 @@ bool prependTrackSilence(
 {
     const QFileInfo trackInfo(trackPath);
     const QString backupPath = trackInfo.dir().filePath(QStringLiteral("%1_bak.%2").arg(trackInfo.completeBaseName(), trackInfo.suffix()));
-    const QString tempPath = trackInfo.dir().filePath(QStringLiteral(".miacode_track_prepend_tmp.%1").arg(trackInfo.suffix()));
+    const QString tempPath = miacode::runtime_paths::temporaryFile(QStringLiteral(".miacode_track_prepend_tmp.%1").arg(trackInfo.suffix()));
     QFile::remove(tempPath);
     if (!copyFileReplacing(trackPath, backupPath, error)) {
         return false;
@@ -753,7 +754,7 @@ bool prependPvBlack(
     const QString backupPath = pvInfo.dir().filePath(
         QStringLiteral("%1_bak.%2").arg(pvInfo.completeBaseName(), pvInfo.suffix())
     );
-    const QString tempPath = pvInfo.dir().filePath(QStringLiteral(".miacode_pv_prepend_tmp.mp4"));
+    const QString tempPath = miacode::runtime_paths::temporaryFile(QStringLiteral(".miacode_pv_prepend_tmp.mp4"));
     QFile::remove(tempPath);
     if (!copyFileReplacing(pvPath, backupPath, error)) {
         return false;
@@ -1069,7 +1070,7 @@ bool alignVideoStreams(
     const QFileInfo videoInfo(videoPath);
     const QString backupPath = videoInfo.dir().filePath(
         QStringLiteral("%1_bak.%2").arg(videoInfo.completeBaseName(), videoInfo.suffix()));
-    const QString tempPath = videoInfo.dir().filePath(QStringLiteral(".miacode_pv_align_tmp.mp4"));
+    const QString tempPath = miacode::runtime_paths::temporaryFile(QStringLiteral(".miacode_pv_align_tmp.mp4"));
     QFile::remove(tempPath);
     if (!copyFileReplacing(videoPath, backupPath, error)) {
         return false;

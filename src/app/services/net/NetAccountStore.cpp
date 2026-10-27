@@ -1,4 +1,5 @@
 #include "app/services/net/NetAccountStore.h"
+#include "common/RuntimePaths.h"
 #include <QCryptographicHash>
 #ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
@@ -9,7 +10,9 @@
 namespace miacode {
 namespace {
 QString target(const QString& principal) {
-    return QStringLiteral("MiaCode/Majdata/") + QString::fromLatin1(
+    const QString installation = QString::fromLatin1(QCryptographicHash::hash(
+        miacode::runtime_paths::root().toUtf8(), QCryptographicHash::Sha256).toHex());
+    return QStringLiteral("BetterMiacode/%1/Majdata/").arg(installation) + QString::fromLatin1(
         QCryptographicHash::hash(principal.toUtf8(), QCryptographicHash::Sha256).toHex());
 }
 }

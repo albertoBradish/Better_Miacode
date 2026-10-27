@@ -7,7 +7,8 @@
     [string]$BuildDir = "build",
     [string]$DistDir = "",
     [switch]$IncludeDevTools,
-    [int]$BuildJobs = [Environment]::ProcessorCount
+    [ValidateRange(1, 4)]
+    [int]$BuildJobs = 4
 )
 
 $ErrorActionPreference = "Stop"
@@ -356,6 +357,16 @@ if ([string]::IsNullOrWhiteSpace($DistDir)) {
     $DistDir = Resolve-RepoPath -RepoRoot $repoRoot -PathValue $DistDir
 }
 
+$packageBoundary = [IO.Path]::GetFullPath((Join-Path $repoRoot '../..'))
+if (-not (Test-Path (Join-Path $packageBoundary 'baseline.json'))) {
+    $packageBoundary = $repoRoot
+}
+$allowedDist = [IO.Path]::GetFullPath((Join-Path $packageBoundary 'dist')).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+$DistDir = [IO.Path]::GetFullPath($DistDir)
+if (-not $DistDir.StartsWith($allowedDist, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Package destination must be a child of $allowedDist"
+}
+
 $exePath = Ensure-PackageBuildReady `
     -RepoRoot $repoRoot `
     -BuildDir $BuildDir `
@@ -404,6 +415,7 @@ if (Test-Path $DistDir) {
     Remove-Item -Recurse -Force $DistDir
 }
 New-Item -ItemType Directory -Path $DistDir | Out-Null
+[IO.File]::WriteAllText((Join-Path $DistDir '.better-miacode-package'), 'BetterMiacode.package.v1')
 
 # All runtime DLLs and Qt plugin/QML subtrees live in app/ so the dist
 # root only exposes the user-facing entry points (launcher exe + .bat
@@ -673,7 +685,7 @@ foreach ($archiveFormat in $archiveFormats) {
                 Push-Location $archiveParentDir
                 try {
                     Invoke-NativeCommand -FilePath $sevenZip.Source -Arguments @(
-                        "a", "-t7z", "-mx=9", "-mmt=on", "-bso0", "-bsp0", $archivePath, $archiveFolderName
+                        "a", "-t7z", "-mx=9", "-mmt=4", "-bso0", "-bsp0", $archivePath, $archiveFolderName
                     ) | Out-Host
                 } finally {
                     Pop-Location

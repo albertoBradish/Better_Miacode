@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "app/services/PreferenceDocument.h"
 #include "app/services/PreferenceJsonFile.h"
 
@@ -26,7 +27,7 @@ constexpr auto kDarkThemeKey = "dark_theme";
 
 QString configFilePath(const QString& fileName)
 {
-    const QString configRoot = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    const QString configRoot = miacode::runtime_paths::directory("config");
     if (configRoot.isEmpty()) {
         return QString();
     }
@@ -42,11 +43,8 @@ QString preferencesPath()
 
 QStringList migrationSourcePaths()
 {
-    QStringList sources;
-    const QString v1 = configFilePath(QStringLiteral("preferences.json"));
-    if (!v1.isEmpty()) sources.append(v1);
-    sources.append(QDir(QCoreApplication::applicationDirPath()).filePath(".miacode_preferences.json"));
-    return sources;
+    // Better Miacode deliberately starts with a clean profile.
+    return {};
 }
 
 bool supportedPreferencesSchema(const QJsonObject& root)

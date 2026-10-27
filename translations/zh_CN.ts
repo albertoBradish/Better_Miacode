@@ -22,8 +22,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>完成设置</translation>
     </message>
     <message id="setup.welcome">
-        <source>Welcome to MiaCode</source>
-        <translation>欢迎使用 MiaCode</translation>
+        <source>Welcome to Better Miacode</source>
+        <translation>欢迎使用 Better Miacode</translation>
     </message>
     <message id="setup.configure">
         <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
@@ -390,8 +390,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>--export-video 模式需要 --chart</translation>
     </message>
     <message id="cli.video_export.description">
-        <source>MiaCode CLI video export</source>
-        <translation>MiaCode 命令行视频导出</translation>
+        <source>Better Miacode CLI video export</source>
+        <translation>Better Miacode 命令行视频导出</translation>
     </message>
     <message id="cli.video_export.difficulty">
         <source>Difficulty short name or id (ESY/BAS/ADV/EXP/MAS/REM/UTG or 1..7).</source>
@@ -526,8 +526,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>导出进程不支持此命令</translation>
     </message>
     <message id="cli.worker.description">
-        <source>MiaCode export worker</source>
-        <translation>MiaCode 导出进程</translation>
+        <source>Better Miacode export worker</source>
+        <translation>Better Miacode 导出进程</translation>
     </message>
     <message id="cli.worker.dispatch_error">
         <source>internal CLI dispatch error: --export-video-worker not set</source>
@@ -964,8 +964,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>当前难度没有可渲染的谱面音符。</translation>
     </message>
     <message id="cover.this_file_is_not_a">
-        <source>This file is not a MiaCode cover layout.</source>
-        <translation>该文件不是 MiaCode 封面布局文件。</translation>
+        <source>This file is not a Better Miacode cover layout.</source>
+        <translation>该文件不是 Better Miacode 封面布局文件。</translation>
     </message>
     <message id="cover.this_preset_needs_a_renderable">
         <source>This preset needs a renderable chart frame</source>
@@ -1642,10 +1642,10 @@ Failed: %2</source>
         <translation>画面设置</translation>
     </message>
     <message id="dialog.restore_backup.abnormal_exit_confirm">
-        <source>MiaCode did not exit normally last time.
+        <source>Better Miacode did not exit normally last time.
 
 Restore the backup from %1?</source>
-        <translation>MiaCode 上次未正常退出。
+        <translation>Better Miacode 上次未正常退出。
 
 是否恢复 %1 的备份？</translation>
     </message>
@@ -1710,8 +1710,8 @@ Restore the backup from %1?</source>
         <translation>打开下载页</translation>
     </message>
     <message id="dialog.update.message">
-        <source>MiaCode %1 has been released.</source>
-        <translation>MiaCode %1 已发布。</translation>
+        <source>Better Miacode %1 has been released.</source>
+        <translation>Better Miacode %1 已发布。</translation>
     </message>
     <message id="dialog.update.released">
         <source>Released: %1</source>
@@ -1738,8 +1738,8 @@ Restore the backup from %1?</source>
         <translation>选择片头背景</translation>
     </message>
     <message id="dialog.video_export.error.executable_missing">
-        <source>Failed to locate MiaCode executable.</source>
-        <translation>未找到 MiaCode 可执行文件。</translation>
+        <source>Failed to locate Better Miacode executable.</source>
+        <translation>未找到 Better Miacode 可执行文件。</translation>
     </message>
     <message id="dialog.video_export.error.failed">
         <source>Export failed.</source>
@@ -3068,8 +3068,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>Touch</translation>
     </message>
     <message id="pet.accessible_name">
-        <source>MiaCode desktop pet</source>
-        <translation>MiaCode 桌宠</translation>
+        <source>Better Miacode desktop pet</source>
+        <translation>Better Miacode 桌宠</translation>
     </message>
     <message id="pet.camera_mirror">
         <source>Mirror Camera</source>
@@ -3096,8 +3096,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>缩小桌宠</translation>
     </message>
     <message id="pet.window_title">
-        <source>MiaCode Desktop Pet</source>
-        <translation>MiaCode 桌宠</translation>
+        <source>Better Miacode Desktop Pet</source>
+        <translation>Better Miacode 桌宠</translation>
     </message>
     <message id="preferences.auto_completion">
         <source>Auto-completion</source>
@@ -3212,8 +3212,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>%1x</translation>
     </message>
     <message id="qml.about_miacode">
-        <source>About MiaCode</source>
-        <translation>关于 MiaCode</translation>
+        <source>About Better Miacode</source>
+        <translation>关于 Better Miacode</translation>
     </message>
     <message id="qml.add">
         <source>Add</source>

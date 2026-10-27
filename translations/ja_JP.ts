@@ -22,8 +22,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>設定を完了</translation>
     </message>
     <message id="setup.welcome">
-        <source>Welcome to MiaCode</source>
-        <translation>MiaCode へようこそ</translation>
+        <source>Welcome to Better Miacode</source>
+        <translation>Better Miacode へようこそ</translation>
     </message>
     <message id="setup.configure">
         <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
@@ -123,7 +123,7 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
     </message>
     <message id="action.about">
         <source>About</source>
-        <translation>MiaCode について</translation>
+        <translation>Better Miacode について</translation>
     </message>
     <message id="action.audio_settings">
         <source>Audio Settings</source>
@@ -390,8 +390,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>--export-video モードには --chart が必要です</translation>
     </message>
     <message id="cli.video_export.description">
-        <source>MiaCode CLI video export</source>
-        <translation>MiaCode コマンドライン動画エクスポート</translation>
+        <source>Better Miacode CLI video export</source>
+        <translation>Better Miacode コマンドライン動画エクスポート</translation>
     </message>
     <message id="cli.video_export.difficulty">
         <source>Difficulty short name or id (ESY/BAS/ADV/EXP/MAS/REM/UTG or 1..7).</source>
@@ -526,8 +526,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>エクスポートプロセスが対応していないコマンドです</translation>
     </message>
     <message id="cli.worker.description">
-        <source>MiaCode export worker</source>
-        <translation>MiaCode エクスポートプロセス</translation>
+        <source>Better Miacode export worker</source>
+        <translation>Better Miacode エクスポートプロセス</translation>
     </message>
     <message id="cli.worker.dispatch_error">
         <source>internal CLI dispatch error: --export-video-worker not set</source>
@@ -964,8 +964,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>この難易度にはレンダリングできる譜面ノーツがありません。</translation>
     </message>
     <message id="cover.this_file_is_not_a">
-        <source>This file is not a MiaCode cover layout.</source>
-        <translation>このファイルは MiaCode のカバーレイアウトファイルではありません。</translation>
+        <source>This file is not a Better Miacode cover layout.</source>
+        <translation>このファイルは Better Miacode のカバーレイアウトファイルではありません。</translation>
     </message>
     <message id="cover.this_preset_needs_a_renderable">
         <source>This preset needs a renderable chart frame</source>
@@ -1642,10 +1642,10 @@ Failed: %2</source>
         <translation>表示設定</translation>
     </message>
     <message id="dialog.restore_backup.abnormal_exit_confirm">
-        <source>MiaCode did not exit normally last time.
+        <source>Better Miacode did not exit normally last time.
 
 Restore the backup from %1?</source>
-        <translation>前回 MiaCode は正常に終了しませんでした。
+        <translation>前回 Better Miacode は正常に終了しませんでした。
 
 %1 の予備を復元しますか？</translation>
     </message>
@@ -1710,8 +1710,8 @@ Restore the backup from %1?</source>
         <translation>ダウンロードページを開く</translation>
     </message>
     <message id="dialog.update.message">
-        <source>MiaCode %1 has been released.</source>
-        <translation>MiaCode %1 がリリースされました。</translation>
+        <source>Better Miacode %1 has been released.</source>
+        <translation>Better Miacode %1 がリリースされました。</translation>
     </message>
     <message id="dialog.update.released">
         <source>Released: %1</source>
@@ -1738,8 +1738,8 @@ Restore the backup from %1?</source>
         <translation>イントロ背景を選択</translation>
     </message>
     <message id="dialog.video_export.error.executable_missing">
-        <source>Failed to locate MiaCode executable.</source>
-        <translation>MiaCode の実行ファイルが見つかりません。</translation>
+        <source>Failed to locate Better Miacode executable.</source>
+        <translation>Better Miacode の実行ファイルが見つかりません。</translation>
     </message>
     <message id="dialog.video_export.error.failed">
         <source>Export failed.</source>
@@ -3068,8 +3068,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>Touch</translation>
     </message>
     <message id="pet.accessible_name">
-        <source>MiaCode desktop pet</source>
-        <translation>MiaCode デスクトップペット</translation>
+        <source>Better Miacode desktop pet</source>
+        <translation>Better Miacode デスクトップペット</translation>
     </message>
     <message id="pet.camera_mirror">
         <source>Mirror Camera</source>
@@ -3096,8 +3096,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>デスクトップペットを縮小</translation>
     </message>
     <message id="pet.window_title">
-        <source>MiaCode Desktop Pet</source>
-        <translation>MiaCode デスクトップペット</translation>
+        <source>Better Miacode Desktop Pet</source>
+        <translation>Better Miacode デスクトップペット</translation>
     </message>
     <message id="preferences.auto_completion">
         <source>Auto-completion</source>
@@ -3212,8 +3212,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>%1倍</translation>
     </message>
     <message id="qml.about_miacode">
-        <source>About MiaCode</source>
-        <translation>MiaCode について</translation>
+        <source>About Better Miacode</source>
+        <translation>Better Miacode について</translation>
     </message>
     <message id="qml.add">
         <source>Add</source>

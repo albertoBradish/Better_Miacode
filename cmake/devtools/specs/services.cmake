@@ -1,3 +1,14 @@
+miacode_add_dev_tool(runtime_isolation_spec TEST
+    SOURCES
+        src/tools/services/RuntimeIsolationSpec.cpp
+        src/app/services/PreferenceDocument.cpp
+    LIBS miacode_base Qt6::Core
+    INCLUDES src
+)
+target_compile_definitions(runtime_isolation_spec PRIVATE
+    "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\""
+)
+
 miacode_add_dev_tool(net_api_contract_spec TEST
     SOURCES
         src/tools/services/NetApiContractSpec.cpp

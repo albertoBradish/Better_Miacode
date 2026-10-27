@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/RuntimePaths.h"
+
 #include "export/video_export/EncoderProbeCache.h"
 #include "common/DebugLog.h"
 #include <QSettings>
@@ -11,8 +13,8 @@ class SettingsEncoderProbeCache final : public miacode::video_export::EncoderPro
 public:
     QString preferredHardwareEncoder() const override
     {
-        QSettings settings(QSettings::IniFormat, QSettings::UserScope,
-                           QStringLiteral("MiaCode"), QStringLiteral("VideoExportRuntime"));
+        QSettings settings(QDir(miacode::runtime_paths::directory("cache")).filePath(
+            QStringLiteral("encoder-probe.ini")), QSettings::IniFormat);
         const QString codec = settings.value(key()).toString().trimmed();
         if (settings.status() != QSettings::NoError) {
             miacode::debug_log::appendLine(miacode::debug_log::Channel::Export,
@@ -26,8 +28,8 @@ public:
     }
     void rememberPreferredHardwareEncoder(const QString& codec) override
     {
-        QSettings settings(QSettings::IniFormat, QSettings::UserScope,
-                           QStringLiteral("MiaCode"), QStringLiteral("VideoExportRuntime"));
+        QSettings settings(QDir(miacode::runtime_paths::directory("cache")).filePath(
+            QStringLiteral("encoder-probe.ini")), QSettings::IniFormat);
         settings.setValue(key(), codec);
         settings.sync();
         if (settings.status() != QSettings::NoError) {

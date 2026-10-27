@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "media_tools/media/PvBatchCompressionWorker.h"
 
 
@@ -146,7 +147,7 @@ bool compressJob(
 
     const QString backupPath = videoInfo.dir().filePath(
         QStringLiteral("%1_bak.%2").arg(videoInfo.completeBaseName(), videoInfo.suffix()));
-    const QString tempPath = videoInfo.dir().filePath(QStringLiteral(".miacode_video_batch_compress_tmp.mp4"));
+    const QString tempPath = miacode::runtime_paths::temporaryFile(QStringLiteral(".miacode_video_batch_compress_tmp.mp4"));
     QFile::remove(tempPath);
     if (QFileInfo::exists(backupPath) && !QFile::remove(backupPath)) {
         *resultStatus = miacode::localizedText("media_tools.batch_pv_backup_failed");

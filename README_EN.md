@@ -1,3 +1,10 @@
+# Better Miacode
+
+An independent usability-focused derivative of [Team-MiaCode/MiaCode](https://github.com/Team-MiaCode/MiaCode),
+based on upstream main. It contains no hand-order annotation or automatic hand-order experiments.
+See [the feature and acceptance specification](docs/BETTER_MIACODE_ZH.md).
+The upstream introduction below is retained for attribution; official download links refer to upstream MiaCode.
+
 <p align="center">
   <img src="resources/icons/app.png" alt="MiaCode avatar" width="128">
 </p>

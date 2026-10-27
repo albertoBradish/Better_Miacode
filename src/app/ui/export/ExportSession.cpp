@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "common/LocalizedText.h"
 
 #include "app/ui/export/ExportSession.h"
@@ -622,7 +623,7 @@ void ExportSession::seedFromDifficulty(int difficultyId)
         batchSelectedDifficultyIds_.append(difficultyId);
     }
     if (batchOutputDirectory_.isEmpty()) {
-        QSettings settings(QStringLiteral("fanfaredash"), QStringLiteral("MiaCode"));
+        QSettings settings(miacode::runtime_paths::configFile("export-session.ini"), QSettings::IniFormat);
         batchOutputDirectory_ = settings.value(QStringLiteral("batch_video_export_dialog/last_output_directory")).toString();
     }
     adoptPreviewRenderSettings();
@@ -1538,7 +1539,7 @@ void ExportSession::setBatchOutputDirectory(const QString& path)
         return;
     }
     batchOutputDirectory_ = path;
-    QSettings settings(QStringLiteral("fanfaredash"), QStringLiteral("MiaCode"));
+    QSettings settings(miacode::runtime_paths::configFile("export-session.ini"), QSettings::IniFormat);
     settings.setValue(QStringLiteral("batch_video_export_dialog/last_output_directory"), path);
     emit batchChanged();
 }

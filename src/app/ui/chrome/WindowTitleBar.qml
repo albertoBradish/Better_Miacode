@@ -101,7 +101,7 @@ Rectangle {
         bottomPadding: 0
         stateColors: root.stateColors
         selected: brandMenu.active
-        Accessible.name: "MiaCode"
+        Accessible.name: "Better Miacode"
         z: 2
         visible: root.applicationMenusVisible && !root.useNativeMenu
 
@@ -125,7 +125,7 @@ Rectangle {
                 id: brandText
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.brandTextVisible
-                text: "MiaCode"
+                text: "Better Miacode"
                 color: brand.hovered || brandMenu.active
                        ? Theme.colors.text.active : Theme.colors.text.chrome
                 font.family: Theme.uiFont
@@ -136,7 +136,7 @@ Rectangle {
 
         Tooltip {
             visible: brand.hovered && !root.brandTextVisible && !brandMenu.active
-            text: "MiaCode"
+            text: "Better Miacode"
         }
 
         onClicked: {

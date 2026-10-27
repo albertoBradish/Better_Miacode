@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "media_tools/net/NetProvider.h"
 #include "media_tools/net/NetClient.h"
 
@@ -62,7 +63,7 @@ public:
             ids_ = request_.parameters.value("chartIds").toArray();
             const auto destination = request_.parameters.value("destination").toObject();
             if (destination.value("kind") == QLatin1String("managed")) {
-                root_ = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/net-downloads");
+                root_ = QDir(miacode::runtime_paths::directory("cache")).filePath(QStringLiteral("net-downloads"));
             } else {
                 const auto grant = provider_.directoryGrants_.value(destination.value("grantRef").toString());
                 if (grant.principal != request_.principal) { finish(error("permission.denied")); return; }

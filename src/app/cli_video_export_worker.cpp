@@ -1,3 +1,4 @@
+#include "common/RuntimePaths.h"
 #include "app/MainEntrypoints.h"
 #include "app/runtime/settings/PreferenceDocumentProvider.h"
 
@@ -22,20 +23,8 @@ namespace {
 
 QString videoExportWorkerProjectLogDirectory(const VideoExportSnapshot& snapshot)
 {
-    const QString chartPath = snapshot.originalChartPath.trimmed();
-    if (!chartPath.isEmpty()) {
-        const QString projectDataDirectoryPath = miacode::waveform::projectDataDirectoryPathForFile(chartPath);
-        if (!projectDataDirectoryPath.isEmpty()) {
-            return QDir(projectDataDirectoryPath).filePath(QStringLiteral("logs"));
-        }
-    }
-
-    const QString projectDir = snapshot.projectDir.trimmed();
-    if (!projectDir.isEmpty()) {
-        return QDir(QDir::cleanPath(projectDir)).filePath(QStringLiteral(".miacode/logs"));
-    }
-
-    return QString();
+    Q_UNUSED(snapshot);
+    return miacode::runtime_paths::directory("logs");
 }
 
 void writeWorkerJsonLine(const QJsonObject& object)

@@ -34,6 +34,8 @@
 #include <windows.h>
 
 #include <queue>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -42,6 +44,67 @@ namespace {
 
 constexpr const wchar_t* kAppSubdir = L"app";
 constexpr const wchar_t* kRealExeName = L"MiaCode.exe";
+
+bool markerMatches(const std::filesystem::path& file, const char* expected)
+{
+    const DWORD attributes = ::GetFileAttributesW(file.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES
+        || (attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) return false;
+    std::ifstream stream(file, std::ios::binary);
+    std::string bytes((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+    while (!bytes.empty() && (bytes.back() == '\n' || bytes.back() == '\r')) bytes.pop_back();
+    return stream.is_open() && !stream.bad() && bytes == expected;
+}
+
+bool plainDirectoryTree(const std::filesystem::path& path)
+{
+    for (auto cursor = path; !cursor.empty(); cursor = cursor.parent_path()) {
+        const DWORD attributes = ::GetFileAttributesW(cursor.c_str());
+        if (attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY)
+            || (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) return false;
+        if (cursor == cursor.parent_path()) break;
+    }
+    return true;
+}
+
+bool initializePortableRuntime(const std::wstring& packageRoot)
+{
+    namespace fs = std::filesystem;
+    if (!markerMatches(fs::path(packageRoot) / L".better-miacode-package", "BetterMiacode.package.v1"))
+        return false;
+    wchar_t supplied[32768]{};
+    const DWORD length = ::GetEnvironmentVariableW(L"BETTER_MIACODE_RUNTIME_ROOT", supplied, 32768);
+    if (length >= 32768) return false;
+    const bool explicitRoot = length > 0;
+    const fs::path runtime = explicitRoot ? fs::path(supplied) : fs::path(packageRoot) / L"runtime";
+    if (!runtime.is_absolute() || runtime == runtime.root_path()) return false;
+    std::error_code error;
+    if (!explicitRoot && !fs::exists(runtime, error)) {
+        if (!plainDirectoryTree(runtime.parent_path()) || !fs::create_directory(runtime, error)) return false;
+    }
+    if (error || !plainDirectoryTree(runtime)) return false;
+    const fs::path marker = runtime / L".better-miacode-runtime";
+    if (!explicitRoot && fs::is_empty(runtime, error) && !error) {
+        std::ofstream output(marker, std::ios::binary);
+        output << "BetterMiacode.runtime.v1\n";
+        output.close();
+        if (!output) return false;
+    }
+    if (!markerMatches(marker, "BetterMiacode.runtime.v1")) return false;
+    for (const wchar_t* child : {L"config", L"cache", L"sessions", L"projects", L"logs", L"temp"}) {
+        const fs::path directory = runtime / child;
+        if (!fs::exists(directory, error) && !fs::create_directory(directory, error)) return false;
+        if (error || !plainDirectoryTree(directory)) return false;
+    }
+    // Set before any preflight DLL load; GUI, CLI and export workers inherit it.
+    if (!::SetEnvironmentVariableW(L"BETTER_MIACODE_RUNTIME_ROOT", runtime.c_str())) return false;
+    const fs::path logs = runtime / L"logs";
+    const fs::path temp = runtime / L"temp";
+    if (!::SetEnvironmentVariableW(L"MIACODE_LOG_DIR", logs.c_str())) return false;
+    for (const wchar_t* name : {L"TEMP", L"TMP", L"TMPDIR"})
+        if (!::SetEnvironmentVariableW(name, temp.c_str())) return false;
+    return true;
+}
 
 // =============================================================
 // String helpers — Win32-only, no STL <algorithm> dependency.
@@ -229,7 +292,11 @@ wchar_t g_launcherLogPath[MAX_PATH] = {};
 
 void initLauncherLog(const std::wstring& rootDir)
 {
-    const std::wstring logDir = rootDir + L"\\logs";
+    (void)rootDir;
+    wchar_t isolatedLogs[32768]{};
+    const DWORD length = ::GetEnvironmentVariableW(L"MIACODE_LOG_DIR", isolatedLogs, 32768);
+    if (length == 0 || length >= 32768) return;
+    const std::wstring logDir(isolatedLogs);
     // Package already ships a logs\ directory; create it anyway so a
     // hand-assembled tree still logs. Failure is fine — the append
     // below just no-ops if the path is unusable.
@@ -339,7 +406,7 @@ void showBilingualError(const std::wstring& zh, const std::wstring& en, DWORD la
         zh + errZh +
         L"\n\n────────────────────────────────────\n\n" +
         en + errEn;
-    ::MessageBoxW(nullptr, body.c_str(), L"MiaCode",
+    ::MessageBoxW(nullptr, body.c_str(), L"Better Miacode",
                   MB_OK | MB_ICONERROR | MB_SETFOREGROUND | MB_TOPMOST);
 }
 
@@ -755,12 +822,12 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
     wchar_t modulePath[MAX_PATH];
     const DWORD len = ::GetModuleFileNameW(nullptr, modulePath, MAX_PATH);
     if (len == 0 || len >= MAX_PATH) {
-        ::MessageBoxW(nullptr, L"Failed to resolve launcher path.", L"MiaCode", MB_ICONERROR);
+        ::MessageBoxW(nullptr, L"Failed to resolve launcher path.", L"Better Miacode", MB_ICONERROR);
         return 1;
     }
     wchar_t* lastSep = ::wcsrchr(modulePath, L'\\');
     if (lastSep == nullptr) {
-        ::MessageBoxW(nullptr, L"Launcher path has no directory component.", L"MiaCode", MB_ICONERROR);
+        ::MessageBoxW(nullptr, L"Launcher path has no directory component.", L"Better Miacode", MB_ICONERROR);
         return 1;
     }
     *lastSep = L'\0';
@@ -768,6 +835,15 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
     const std::wstring rootDir(modulePath);
     const std::wstring appDir = rootDir + L"\\" + kAppSubdir;
     const std::wstring realExe = appDir + L"\\" + kRealExeName;
+
+    if (!initializePortableRuntime(rootDir)) {
+        ::MessageBoxW(nullptr,
+            L"Better Miacode runtime isolation failed. Use a complete Better Miacode package.\n"
+            L"BETTER_MIACODE_RUNTIME_ROOT, when supplied, must be an absolute, writable directory\n"
+            L"with a valid .better-miacode-runtime marker. Redirected directories are rejected.",
+            L"Better Miacode", MB_OK | MB_ICONERROR);
+        return 78;
+    }
 
     // Resolve the log path as soon as rootDir is known, so every failure
     // path below leaves a durable record next to the app.
@@ -783,7 +859,7 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
             L"Real MiaCode.exe not found at:\n" + realExe + L"\n\n"
             L"Solution:\n"
             L"Re-extract MiaCode-*.zip preserving the full app\\ subfolder";
-        ::MessageBoxW(nullptr, msg.c_str(), L"MiaCode",
+        ::MessageBoxW(nullptr, msg.c_str(), L"Better Miacode",
                       MB_OK | MB_ICONERROR | MB_SETFOREGROUND | MB_TOPMOST);
         return 1;
     }

@@ -46,7 +46,7 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                text: "MiaCode"
+                text: "Better Miacode"
                 color: Theme.colors.text.heading
                 font.family: Theme.uiFont
                 font.pixelSize: 36
