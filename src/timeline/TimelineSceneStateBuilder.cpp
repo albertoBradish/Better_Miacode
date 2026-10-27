@@ -1222,9 +1222,9 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         }
         if (isTouchHold) {
             if (selected) {
-                for (qreal dy : {-3.0, 3.0}) appendTrackLine(&state.selectionLines,
+                for (qreal dy : {-3.5, 3.5}) appendTrackLine(&state.selectionLines,
                     QPointF(x, rowCenterY+dy), QPointF(secondToSceneX(state, endSecond), rowCenterY+dy),
-                    QColor(255,214,0),2.0);
+                    QColor(255,220,80,204),1.0);
             }
             const QColor touchHoldColor = timelineRenderFlagSet(note, TimelineRenderFlagIsEach)
                 ? QColor(255, 214, 64, 120)

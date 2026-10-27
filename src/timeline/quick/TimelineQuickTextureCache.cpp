@@ -358,10 +358,10 @@ TimelineQuickTextureHandle TimelineQuickTextureCache::noteOutlineTexture(
     const QString key = QStringLiteral("selection|") + noteTextureKey(spriteType, targetSize, rotationDegrees, mirrorX);
     const qreal dpr = effectiveDevicePixelRatio();
     auto it = textures_.constFind(key);
-    const qreal padding = qMax(1,qRound(2*dpr))/dpr;
+    const qreal padding = miacode::preview::scene::selectionOutlinePadding(dpr)/dpr;
     const QSizeF size = QSizeF(pixmap.size()) / dpr + QSizeF(2*padding,2*padding);
     if (it != textures_.constEnd()) return {*it, size};
-    const auto image = miacode::preview::scene::selectionOutlineImage(pixmap.toImage(), qMax(1,qRound(2*dpr)));
+    const auto image = miacode::preview::scene::selectionOutlineImage(pixmap.toImage(), dpr);
     return {textureForKey(key,image), QSizeF(image.size())/dpr};
 }
 
@@ -370,14 +370,14 @@ TimelineQuickHoldTextureParts TimelineQuickTextureCache::holdOutlineTextureParts
     holdTextureParts(spriteType,scale); // seeds the same source slices as regular holds
     const auto& entry = holdPixmapParts_[holdPartsCacheKey(spriteType,scale)];
     const qreal dpr = effectiveDevicePixelRatio();
-    const int radius = qMax(1,qRound(2*dpr));
+    const int radius = miacode::preview::scene::selectionOutlinePadding(dpr);
     const auto outline = [&](const QString& part, const QImage& input, bool left, bool right) {
         const QString key = QStringLiteral("selection_hold|%1|%2").arg(holdPartsCacheKey(spriteType,scale),part);
         const qreal padding = radius/dpr;
         const QSizeF logical = QSizeF(input.size())/dpr + QSizeF((left?padding:0)+(right?padding:0),2*padding);
         if (const auto it = textures_.constFind(key); it != textures_.constEnd())
             return TimelineQuickTextureHandle{*it, logical};
-        const auto image = miacode::preview::scene::selectionOutlineImage(input,radius,left,right);
+        const auto image = miacode::preview::scene::selectionOutlineImage(input,dpr,left,right);
         return TimelineQuickTextureHandle{textureForKey(key,image), QSizeF(image.size())/dpr};
     };
     return {outline(QStringLiteral("left"),entry.parts.leftCap.toImage(),true,false),

@@ -116,7 +116,8 @@ void appendHoldSpanBatched(
         const auto plain = textures->holdTextureParts(holdSpan.spriteType, holdScale);
         const auto outline = textures->holdOutlineTextureParts(holdSpan.spriteType, holdScale);
         if (plain.isValid() && outline.isValid()) {
-            const qreal y = holdSpan.rowTop + (holdSpan.laneHeight - plain.leftCap.logicalSize.height())/2;
+            const qreal y = snapToPhysicalPixel(
+                holdSpan.rowTop + (holdSpan.laneHeight - plain.leftCap.logicalSize.height())/2, dpr);
             const qreal padY = (outline.bodySlice.logicalSize.height()-plain.bodySlice.logicalSize.height())/2;
             const qreal leftPad = outline.leftCap.logicalSize.width()-plain.leftCap.logicalSize.width();
             batch.appendQuad(outline.bodySlice.texture, QRectF(holdSpan.startX,y-padY,
@@ -286,6 +287,13 @@ QSGNode* TimelineQuickNotesLayer::updateNode(
     if (textures != nullptr) {
         // Phase 1: track sprites — reorderable.
         {
+            // Repeated arrows are secondary to heads. Keep their thin contours
+            // subdued, and emit every contour before any original arrow so a
+            // neighboring outline cannot paint over the colored track art.
+            auto* outlineRoot = new QSGOpacityNode();
+            outlineRoot->setOpacity(0.55);
+            bodyRoot->appendChildNode(outlineRoot);
+            TimelineQuickGroupedSpriteBatchBuilder outlineBatch(outlineRoot);
             TimelineQuickGroupedSpriteBatchBuilder trackBatch(bodyRoot);
             for (const auto& sprite : state.trackSprites) {
                 const QSize targetSize = textures->noteTargetSize(sprite.spriteType, sprite.scale);
@@ -296,12 +304,13 @@ QSGNode* TimelineQuickNotesLayer::updateNode(
                 if (sprite.selected) {
                     const auto outline = textures->noteOutlineTexture(sprite.spriteType,
                         targetSize, sprite.rotationDegrees, sprite.mirrorX);
-                    if (outline.isValid()) trackBatch.appendQuad(outline.texture,
+                    if (outline.isValid()) outlineBatch.appendQuad(outline.texture,
                         centeredSpriteRect(sprite.center, outline.logicalSize, dpr));
                 }
                 const QSizeF logicalSize = rotatedSpriteLogicalSize(targetSize, sprite.rotationDegrees);
                 trackBatch.appendQuad(tex, centeredSpriteRect(sprite.center, logicalSize, dpr));
             }
+            outlineBatch.flush();
             trackBatch.flush();
         }
 
@@ -324,6 +333,7 @@ QSGNode* TimelineQuickNotesLayer::updateNode(
         // Phase 4: note sprites — reorderable, same rationale as
         // Phase 1.
         {
+            TimelineQuickGroupedSpriteBatchBuilder outlineBatch(bodyRoot);
             TimelineQuickGroupedSpriteBatchBuilder noteBatch(bodyRoot);
             for (const auto& sprite : state.noteSprites) {
                 const QSize targetSize = textures->noteTargetSize(sprite.spriteType, sprite.scale);
@@ -334,12 +344,13 @@ QSGNode* TimelineQuickNotesLayer::updateNode(
                 if (sprite.selected) {
                     const auto outline = textures->noteOutlineTexture(sprite.spriteType,
                         targetSize, sprite.rotationDegrees, sprite.mirrorX);
-                    if (outline.isValid()) noteBatch.appendQuad(outline.texture,
+                    if (outline.isValid()) outlineBatch.appendQuad(outline.texture,
                         centeredSpriteRect(sprite.center, outline.logicalSize, dpr));
                 }
                 const QSizeF logicalSize = rotatedSpriteLogicalSize(targetSize, sprite.rotationDegrees);
                 noteBatch.appendQuad(tex, centeredSpriteRect(sprite.center, logicalSize, dpr));
             }
+            outlineBatch.flush();
             noteBatch.flush();
         }
     } else {

@@ -941,19 +941,40 @@ int main(int argc, char* argv[])
     }
 
     {
-        QImage original(5,5,QImage::Format_ARGB32_Premultiplied);
+        using miacode::preview::scene::selectionOutlineImage;
+        using miacode::preview::scene::selectionOutlinePadding;
+        QImage original(9,9,QImage::Format_ARGB32_Premultiplied);
         original.fill(Qt::transparent);
-        original.setPixel(2,2,qRgba(255,0,255,255));
-        const auto outline = miacode::preview::scene::selectionOutlineImage(original,1);
-        if (!require(qAlpha(outline.pixel(3,3)) == 0 && qAlpha(outline.pixel(2,3)) == 255
-                && qRed(outline.pixel(2,3)) == 255 && qGreen(outline.pixel(2,3)) == 214,
-                QStringLiteral("selection outlines add a yellow outside ring and preserve original interior pixels"),err)) return 1;
+        for (int y = 2; y <= 6; ++y)
+            for (int x = 2; x <= 6; ++x)
+                if (x == 2 || x == 6 || y == 2 || y == 6)
+                    original.setPixel(x,y,qRgba(255,0,255,255));
+        const auto outline = selectionOutlineImage(original,1);
+        const int pad = selectionOutlinePadding(1);
+        const QRgb outer = outline.pixel(pad+1,pad+4);
+        if (!require(qAlpha(outline.pixel(pad+2,pad+4)) == 0
+                && qAlpha(outline.pixel(pad+3,pad+4)) == 0
+                && qAlpha(outline.pixel(pad+4,pad+4)) == 0,
+                QStringLiteral("selection contours leave original art and enclosed tap holes clear"),err)) return 1;
+        if (!require(qAlpha(outer) > 0 && qAlpha(outer) < 204
+                && qRed(outer) == qAlpha(outer) && qGreen(outer) < qRed(outer)
+                && qAlpha(outline.pixel(pad,pad+4)) < qAlpha(outer)
+                && qAlpha(outline.pixel(pad-1,pad+4)) == 0,
+                QStringLiteral("selection contours have a subdued thin yellow antialiased edge with no broad fill"),err)) return 1;
         QImage body(1,5,QImage::Format_ARGB32_Premultiplied);
         body.fill(Qt::white);
-        const auto strip = miacode::preview::scene::selectionOutlineImage(body,1,false,false);
-        if (!require(strip.width() == 1 && qAlpha(strip.pixel(0,0)) == 255
-                && qAlpha(strip.pixel(0,3)) == 0,
+        const auto strip = selectionOutlineImage(body,1,false,false);
+        if (!require(strip.width() == 1 && qAlpha(strip.pixel(0,pad-1)) > 0
+                && qAlpha(strip.pixel(0,pad+2)) == 0,
                 QStringLiteral("hold outline body slices join caps without painting internal seam borders"),err)) return 1;
+        for (qreal dpr : {1.0, 1.25, 1.5, 2.0}) {
+            const auto scaled = selectionOutlineImage(body,dpr,false,false);
+            const int scaledPad = selectionOutlinePadding(dpr);
+            if (!require(scaled.size() == QSize(1,5+2*scaledPad)
+                    && qAlpha(scaled.pixel(0,scaledPad-qRound(dpr*1.25))) > 0
+                    && qAlpha(scaled.pixel(0,scaledPad+2)) == 0,
+                    QStringLiteral("fractional DPR keeps hold contour padding and transparent seam geometry consistent"),err)) return 1;
+        }
     }
 
     out << "preview_head_layer_spec ok" << Qt::endl;

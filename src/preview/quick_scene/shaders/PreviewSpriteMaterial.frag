@@ -36,6 +36,17 @@ float selectionAlpha(vec2 uv)
     return texture(source, uv).a;
 }
 
+float selectionDilation(vec2 uv, vec2 dx, vec2 dy, float radius)
+{
+    float alpha = selectionAlpha(uv);
+    // Circular footprint avoids the heavy square corners of a 3x3 dilation.
+    for (int i = 0; i < 8; ++i) {
+        float angle = float(i) * 0.78539816339;
+        alpha = max(alpha, selectionAlpha(uv + radius * (cos(angle) * dx + sin(angle) * dy)));
+    }
+    return alpha;
+}
+
 void main()
 {
     if (vOpacity <= 0.0) {
@@ -44,16 +55,14 @@ void main()
     }
 
     if (vEffect > 2.5) {
-        // Screen-space alpha dilation minus the original silhouette. Interiors
-        // are transparent, retaining original break/each/EX/mine skin colors.
-        vec2 dx = dFdx(vTexCoord) * 2.0;
-        vec2 dy = dFdy(vTexCoord) * 2.0;
-        float around = 0.0;
-        for (int x = -1; x <= 1; ++x)
-            for (int y = -1; y <= 1; ++y)
-                around = max(around, selectionAlpha(vTexCoord + float(x) * dx + float(y) * dy));
-        float alpha = max(0.0, around - selectionAlpha(vTexCoord)) * vOpacity;
-        fragColor = vec4(vec3(1.0, 0.84, 0.0) * alpha, alpha);
+        // One screen-pixel contour, separated slightly from the original art.
+        // Original break/each/EX/mine colors and transparent interiors survive.
+        vec2 dx = dFdx(vTexCoord);
+        vec2 dy = dFdy(vTexCoord);
+        float outer = selectionDilation(vTexCoord, dx, dy, 1.75);
+        float inner = selectionDilation(vTexCoord, dx, dy, 0.75);
+        float alpha = max(0.0, outer - inner) * vOpacity * 0.8;
+        fragColor = vec4(vec3(1.0, 0.863, 0.314) * alpha, alpha);
         return;
     }
     vec4 texel = sampleFootprintAverage(source, vTexCoord);
