@@ -33,6 +33,7 @@ struct EditorFollowState {
 class EditorSyncController final : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool canPlaySelection READ canPlaySelection NOTIFY selectionPlayableChanged)
     Q_PROPERTY(bool followActive READ followActive NOTIFY followChanged)
     Q_PROPERTY(int followDifficultyId READ followDifficultyId NOTIFY followChanged)
     Q_PROPERTY(qulonglong followRevision READ followRevision NOTIFY followChanged)
@@ -45,6 +46,9 @@ class EditorSyncController final : public QObject
 public:
     explicit EditorSyncController(QObject* parent = nullptr);
 
+    bool canPlaySelection() const { return selectionPlayable_; }
+    void setSelectionPlayable(bool playable);
+    Q_INVOKABLE bool playSelection();
     bool followActive() const;
     int followDifficultyId() const;
     qulonglong followRevision() const;
@@ -79,6 +83,8 @@ public:
 
 signals:
     void followChanged();
+    void selectionPlayableChanged();
+    void selectionPlaybackRequested(int difficultyId, qulonglong revision, int start, int end);
     void navigationRequested(qulonglong sequence, int difficultyId, qulonglong revision,
                              int start, int end, bool focus, bool reveal);
     void navigationFinished(qulonglong sequence, bool applied);
@@ -140,6 +146,7 @@ private:
     void scheduleNavigationFinished(quint64 sequence, bool applied);
     void scheduleTouchPadDelivery();
 
+    bool selectionPlayable_ = false;
     EditorFollowState follow_;
     bool followDeliveryQueued_ = false;
 

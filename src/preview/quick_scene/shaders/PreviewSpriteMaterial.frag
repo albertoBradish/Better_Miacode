@@ -30,6 +30,12 @@ vec4 sampleFootprintAverage(sampler2D tex, vec2 uv)
     return (c0 + c1 + c2 + c3) * 0.25;
 }
 
+float selectionAlpha(vec2 uv)
+{
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 0.0;
+    return texture(source, uv).a;
+}
+
 void main()
 {
     if (vOpacity <= 0.0) {
@@ -37,6 +43,19 @@ void main()
         return;
     }
 
+    if (vEffect > 2.5) {
+        // Screen-space alpha dilation minus the original silhouette. Interiors
+        // are transparent, retaining original break/each/EX/mine skin colors.
+        vec2 dx = dFdx(vTexCoord) * 2.0;
+        vec2 dy = dFdy(vTexCoord) * 2.0;
+        float around = 0.0;
+        for (int x = -1; x <= 1; ++x)
+            for (int y = -1; y <= 1; ++y)
+                around = max(around, selectionAlpha(vTexCoord + float(x) * dx + float(y) * dy));
+        float alpha = max(0.0, around - selectionAlpha(vTexCoord)) * vOpacity;
+        fragColor = vec4(vec3(1.0, 0.84, 0.0) * alpha, alpha);
+        return;
+    }
     vec4 texel = sampleFootprintAverage(source, vTexCoord);
     if (texel.a <= 0.0) {
         fragColor = vec4(0.0);

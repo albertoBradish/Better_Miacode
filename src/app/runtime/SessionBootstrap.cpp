@@ -74,6 +74,12 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
     editorSyncController_ = &applicationServices_.editorSync();
     connect(editorSyncController_, &miacode::EditorSyncController::editorContextChanged,
             this, &Session::refreshEditorAuthoringContext);
+    connect(editorSyncController_, &miacode::EditorSyncController::editorContextChanged,
+            this, [this] { if (playback_) playback_->refreshEditorNoteSelection(); });
+    connect(editorSyncController_, &miacode::EditorSyncController::selectionPlaybackRequested,
+            this, [this](int difficultyId, quint64 revision, int start, int end) {
+                if (playback_) playback_->playEditorSelection(difficultyId, revision, start, end);
+            });
     connect(editorSyncController_, &miacode::EditorSyncController::caretLocationPublished,
             this, &Session::onEditorCaretLocationPublished);
     connect(editorSyncController_, &miacode::EditorSyncController::pointerInteractionStarted,

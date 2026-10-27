@@ -327,6 +327,8 @@ void miacode::runtime::VideoExportHost::installExportPreviewAuditionScene(int di
     session_.state_.timeline_.latestTimelinePreviewRevision_ = session_.state_.timeline_.timelineRevision_;
     session_.state_.timeline_.latestTimelinePreviewSnapshotReady_ = true;
     session_.scene_->setNoteMarkers(previewState.shiftedNoteMarkers);
+    session_.scene_->setVisualAidChartTiming(session_.state_.timeline_.lastTimelineParseResult_,
+        miacode::chart_clock::clockCountFromDocument(session_.applicationServices_.workspace().document()), effectiveFirst);
     session_.lastPreviewNoteMarkerSignature_ = previewState.noteMarkerSignature;
 
     const double durationSeconds = session_.previewPlaybackEndSeconds();
@@ -413,6 +415,7 @@ void miacode::runtime::VideoExportHost::clearAudition()
     session_.lastPreviewNoteMarkerSignature_.clear();
     if (session_.scene_ != nullptr) {
         session_.scene_->setNoteMarkers({});
+        session_.scene_->setVisualAidChartTiming({}, 0, 0.0);
         session_.scene_->setMuriAnalysisReport({});
     }
     session_.clearPreviewObjectStats();
@@ -521,6 +524,10 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
         defaultOutputName, built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
+    built.showMeasureLines = requestedTask.showMeasureLines;
+    built.showJudgementSkeleton = requestedTask.showJudgementSkeleton;
+    built.measureLineMode = requestedTask.measureLineMode;
+    built.measureLineCustomBeats = requestedTask.measureLineCustomBeats;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;
     built.showChartInfoHud = requestedTask.showChartInfoHud;
     built.centerDisplayMode = requestedTask.centerDisplayMode;
@@ -727,6 +734,10 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         defaultOutputName, built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
+    built.showMeasureLines = requestedTask.showMeasureLines;
+    built.showJudgementSkeleton = requestedTask.showJudgementSkeleton;
+    built.measureLineMode = requestedTask.measureLineMode;
+    built.measureLineCustomBeats = requestedTask.measureLineCustomBeats;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;
     built.showChartInfoHud = requestedTask.showChartInfoHud;
     built.centerDisplayMode = requestedTask.centerDisplayMode;

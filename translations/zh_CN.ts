@@ -4805,6 +4805,34 @@ Error: %1</source>
         <source>The prepended PV exceeds its size budget or the 20 MB limit.</source>
         <translation>插入黑屏后的 PV 超出体积预算或 20 MB 上限。</translation>
     </message>
+    <message id="action.play_selection">
+        <source>Play Selection</source>
+        <translation>播放选区</translation>
+    </message>
+    <message id="preview.canvas.show_measure_lines">
+        <source>Show Measure Lines</source>
+        <translation>显示小节线</translation>
+    </message>
+    <message id="preview.canvas.show_judgement_skeleton">
+        <source>Show Judgement Skeleton</source>
+        <translation>显示判定骨骼</translation>
+    </message>
+    <message id="preview.canvas.measure_mode">
+        <source>Measure Line Mode</source>
+        <translation>小节线模式</translation>
+    </message>
+    <message id="preview.canvas.measure_chart_clock">
+        <source>Chart clock_count (default 4 beats)</source>
+        <translation>谱面 clock_count（默认 4 拍）</translation>
+    </message>
+    <message id="preview.canvas.measure_custom_beats">
+        <source>Custom beats per measure</source>
+        <translation>自定义每小节拍数</translation>
+    </message>
+    <message id="preview.canvas.measure_text_lines">
+        <source>Text line starts</source>
+        <translation>按文本行首</translation>
+    </message>
 </context>
 
 

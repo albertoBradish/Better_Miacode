@@ -33,7 +33,7 @@
 
 namespace {
 
-constexpr int kPreviewQuickSceneLayerSlotCount = 18;
+constexpr int kPreviewQuickSceneLayerSlotCount = 22;
 
 class PreviewQuickRootNode final : public QSGNode
 {
@@ -1152,6 +1152,14 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
+        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::VisualAidLayer)
+            && state->render.showMeasureLines,
+        "measure_lines", layerStatsForFrame,
+        [&](QSGNode* oldChild) {
+            return measureLineLayer_.updateNode(oldChild, *state, &preparedCache_, &trackCursor_, renderSize, true);
+        });
+    updateLayerSlotProfiled(
+        layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::GuideLayer),
         "guide",
         layerStatsForFrame,
@@ -1199,6 +1207,14 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         preparedCache_.slideLikeLayer().entries.size(),
         trackCursor_.activePreparedIndices.size()
     );
+    updateLayerSlotProfiled(
+        layerSlotAt(root, slotIndex++),
+        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::VisualAidLayer)
+            && state->render.showJudgementSkeleton,
+        "judgement_skeleton", layerStatsForFrame,
+        [&](QSGNode* oldChild) {
+            return judgementSkeletonLayer_.updateNode(oldChild, *state, &preparedCache_, &trackCursor_, renderSize, false);
+        });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::SlideMotionLayer),
@@ -1389,6 +1405,11 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         preparedCache_.maimuriDxJudgeLayer().entries.size(),
         maimuriDxJudgeCursor_.activePreparedIndices.size()
     );
+    // Selection is transient editor feedback. Export roots have no runtime.
+    updateLayerSlotProfiled(layerSlotAt(root, slotIndex++), runtime_ != nullptr,
+        "selection", layerStatsForFrame, [&](QSGNode* oldChild) {
+            return selectionLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
+        });
     if (miacode::debug_options::previewProfileOutputEnabled()) {
         enqueueTextureStatsForPresentation(mergedTextureStats(*textures, layerProfileStats_));
     }

@@ -7,6 +7,7 @@
 #include "core/scene/PreviewActiveMarkerView.h"
 #include "core/scene/PreviewChartReviewLayerState.h"
 #include "core/scene/PreviewHeadLayerState.h"
+#include "core/scene/SelectionOutlineImage.h"
 #include "core/scene/PreviewJudgeOverlayShared.h"
 #include "core/scene/PreviewMaimuriDxJudgeLayerState.h"
 #include "core/scene/PreviewOpacityCurves.h"
@@ -937,6 +938,22 @@ int main(int argc, char* argv[])
     }
     if (!verifyVerticalStraightSlideCpUsesMirroredSprite(err)) {
         return 1;
+    }
+
+    {
+        QImage original(5,5,QImage::Format_ARGB32_Premultiplied);
+        original.fill(Qt::transparent);
+        original.setPixel(2,2,qRgba(255,0,255,255));
+        const auto outline = miacode::preview::scene::selectionOutlineImage(original,1);
+        if (!require(qAlpha(outline.pixel(3,3)) == 0 && qAlpha(outline.pixel(2,3)) == 255
+                && qRed(outline.pixel(2,3)) == 255 && qGreen(outline.pixel(2,3)) == 214,
+                QStringLiteral("selection outlines add a yellow outside ring and preserve original interior pixels"),err)) return 1;
+        QImage body(1,5,QImage::Format_ARGB32_Premultiplied);
+        body.fill(Qt::white);
+        const auto strip = miacode::preview::scene::selectionOutlineImage(body,1,false,false);
+        if (!require(strip.width() == 1 && qAlpha(strip.pixel(0,0)) == 255
+                && qAlpha(strip.pixel(0,3)) == 0,
+                QStringLiteral("hold outline body slices join caps without painting internal seam borders"),err)) return 1;
     }
 
     out << "preview_head_layer_spec ok" << Qt::endl;

@@ -170,6 +170,7 @@ void TimelineQuickStateBridge::bumpOverlayDynamicRevision()
 
 void TimelineQuickStateBridge::clear()
 {
+    selectedNoteLocations_.clear();
     snapshot_ = TimelineRenderSnapshot();
     waveformData_.reset();
     muriMarkersByLocation_.clear();
@@ -846,5 +847,13 @@ void TimelineQuickStateBridge::restorePlayheadIndicator(bool immediate)
     }
     playheadIndicatorSuppressed_ = false;
     bumpOverlayDynamicRevision();
+    emit renderStateChanged();
+}
+
+void TimelineQuickStateBridge::setSelectedNoteLocations(const QSet<quint64>& locations)
+{
+    if (selectedNoteLocations_ == locations) return;
+    selectedNoteLocations_ = locations;
+    bumpNotesRevision();
     emit renderStateChanged();
 }

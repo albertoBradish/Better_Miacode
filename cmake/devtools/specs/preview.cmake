@@ -1,3 +1,15 @@
+miacode_add_dev_tool(video_export_visual_aids_spec TEST
+    SOURCES src/tools/video_export/VideoExportVisualAidsSpec.cpp
+    LIBS miacode_export Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(preview_visual_aids_spec TEST
+    SOURCES src/tools/preview/PreviewVisualAidsSpec.cpp
+    LIBS miacode_scene Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
 miacode_add_dev_tool(preview_asset_loader_spec TEST
     SOURCES
         src/tools/preview/PreviewSceneAssetLoaderSpec.cpp

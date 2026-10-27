@@ -656,6 +656,10 @@ if (Test-Path $ffmpegSrc) {
 }
 
 # Required package contents come from the toolchain data file.
+$betterDocs = Join-Path $DistDir 'docs'
+New-Item -ItemType Directory -Path $betterDocs -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/BETTER_MIACODE_ZH.md') -Destination $betterDocs
+
 $archiveFormats = $toolchainData.Package.ArchiveFormats
 if (!$archiveFormats -or $archiveFormats.Count -eq 0) {
     $archiveFormats = @("7z")

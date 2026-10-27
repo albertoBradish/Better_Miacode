@@ -747,6 +747,7 @@ SimaiParseResult parseInternal(
     bool eachOperandPending = false;
     int pendingSeparatorCol = -1;
     bool initializedMeasureLines = false;
+    bool visualAidChartEnded = false;
     // Strict-mode tracking for directives ({beats}, (bpm), <HS*N>) that directly
     // follow a note with no ',' in between — usually a forgotten beat separator
     // (e.g. "{16} 1,1,1,1,1\n{16},,,"). True once a note character has been read
@@ -871,8 +872,11 @@ SimaiParseResult parseInternal(
         lineSawComma = false;
         if (isTerminalMarkerText(line)) {
             warnMissingExplicitSubdivision(&state);
+            visualAidChartEnded = true;
             continue;
         }
+        if (!visualAidChartEnded)
+            appendDistinctSecond(&state.result.textLineStartSeconds, state.second);
         if (!initializedMeasureLines) {
             appendDistinctSecond(&state.result.measureLineSeconds, state.currentMeasureStartSecond);
             initializedMeasureLines = true;
@@ -1082,6 +1086,10 @@ SimaiParseResult parseInternal(
                 marker.sourceLine = qMax(1, lineNumber);
                 marker.sourceCol = qMax(1, i + 1);
                 marker.major = false;
+                marker.quarterBeat = state.quarterBeat;
+                marker.quarterBeatLength = 4.0 / qMax(1, state.beats);
+                marker.durationSeconds = noteStepSeconds(state.bpm, state.beats);
+                state.quarterBeat += marker.quarterBeatLength;
                 state.result.beatMarkers.append(marker);
                 state.result.durationSeconds = qMax(state.result.durationSeconds, state.second);
                 state.second += noteStepSeconds(state.bpm, state.beats);
@@ -1094,6 +1102,7 @@ SimaiParseResult parseInternal(
                 && lineTailIsTerminalMarker(line, i)) {
                 flushToken(lineNumber);
                 warnMissingExplicitSubdivision(&state);
+                visualAidChartEnded = true;
                 // Q2 — reset HS at chart-end so any post-terminal logic
                 // (or future re-emission) starts from a known baseline.
                 state.hs = 1.0;

@@ -18,11 +18,17 @@ using namespace miacode::runtime::shared;
 double miacode::runtime::PlaybackCoordinator::previewContentDurationSeconds() const
 {
     double chartEndSeconds = 0.0;
+    bool zeroTimeChartHasNotes = false;
     if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
         chartEndSeconds = qMax(chartEndSeconds, state_.timeline_.timelineQuickStateBridge_->durationSeconds());
+        if (chartEndSeconds <= 0.0) {
+            for (const auto& line : state_.timeline_.timelineQuickStateBridge_->renderSnapshot().lines) {
+                if (!line.notes.isEmpty()) { zeroTimeChartHasNotes = true; break; }
+            }
+        }
     }
     return miacode::content_duration::totalContentDurationSeconds(
-        chartEndSeconds, state_.previewTrackDurationSeconds_);
+        chartEndSeconds, state_.previewTrackDurationSeconds_, zeroTimeChartHasNotes);
 }
 
 double miacode::runtime::PlaybackCoordinator::previewDurationSeconds() const

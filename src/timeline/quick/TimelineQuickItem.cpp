@@ -1256,6 +1256,7 @@ miacode::timeline::TimelineSceneState TimelineQuickItem::currentSceneState() con
         request.waveformRevision = stateBridge_->waveformRevision();
         request.headerRevision = stateBridge_->headerRevision();
         request.notesRevision = stateBridge_->notesRevision();
+        request.selectedNoteLocations = stateBridge_->selectedNoteLocations();
         request.overlayRevision = stateBridge_->overlayRevision();
         request.overlayDynamicRevision = overlayDynamicRevisionForState(stateBridge_, dragActive_);
         cachedSceneState_ = miacode::timeline::TimelineSceneStateBuilder::build(request);

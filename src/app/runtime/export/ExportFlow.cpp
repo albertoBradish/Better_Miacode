@@ -238,6 +238,8 @@ void miacode::runtime::VideoExportHost::applySharedExportTaskSettings(const Vide
     session_.applyPreviewStageMediaRouteVisualSettings();
     if (session_.scene_ != nullptr) {
         session_.scene_->setShowTimestamp(session_.previewShowTimestamp_);
+        session_.scene_->setVisualAidSettings(task.showMeasureLines, task.showJudgementSkeleton,
+            task.measureLineMode, task.measureLineCustomBeats);
         session_.scene_->setShowObjectStatsHud(session_.previewShowObjectStatsHud_);
         // Chart info stays exclusive to the export audition; editor preview
         // state is left untouched.
@@ -352,6 +354,15 @@ VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTask(int 
     task.outputHeight = 1080;
     task.fps = 60;
         task.showTimestamp = session_.previewShowTimestamp_;
+    task.showMeasureLines = session_.state_.previewShowMeasureLines_;
+    task.showJudgementSkeleton = session_.state_.previewShowJudgementSkeleton_;
+    task.measureLineMode = session_.state_.previewMeasureLineMode_;
+    task.measureLineCustomBeats = session_.state_.previewMeasureLineCustomBeats_;
+    task.measureLineSeconds = miacode::preview::scene::buildPreviewMeasureLineSeconds(
+        session_.state_.timeline_.lastTimelineParseResult_,
+        miacode::chart_clock::clockCountFromDocument(session_.applicationServices_.workspace().document()),
+        miacode::preview::scene::normalizedMeasureLineMode(task.measureLineMode), task.measureLineCustomBeats,
+        session_.parsedFirstSeconds());
     task.showObjectStatsHud = session_.exportShowObjectStatsHud_;
     task.showChartInfoHud = session_.exportShowChartInfoHud_;
     task.centerDisplayMode = session_.previewCenterDisplayMode_;
@@ -434,6 +445,9 @@ void miacode::runtime::VideoExportHost::endExportPreviewSession()
     teardownExportPreviewAuditionScene();
     if (session_.scene_ != nullptr) {
         session_.scene_->setSuppressDebugInfo(false);
+        session_.scene_->setVisualAidSettings(session_.state_.previewShowMeasureLines_,
+            session_.state_.previewShowJudgementSkeleton_, session_.state_.previewMeasureLineMode_,
+            session_.state_.previewMeasureLineCustomBeats_);
         session_.scene_->setShowChartInfoHud(false);
         session_.scene_->setChartInfo(QString(), QString(), QString(), QString());
     }
@@ -732,6 +746,8 @@ bool miacode::runtime::VideoExportHost::startQmlExportAudition(int difficultyId,
         session_.scene_->setTapFlowSpeed(visualTask.tapFlowSpeed);
         session_.scene_->setTouchFlowSpeed(visualTask.touchFlowSpeed);
         session_.scene_->setShowTimestamp(visualTask.showTimestamp);
+        session_.scene_->setVisualAidSettings(visualTask.showMeasureLines, visualTask.showJudgementSkeleton,
+            visualTask.measureLineMode, visualTask.measureLineCustomBeats);
         session_.scene_->setShowObjectStatsHud(visualTask.showObjectStatsHud);
         session_.scene_->setShowChartInfoHud(visualTask.showChartInfoHud);
     }

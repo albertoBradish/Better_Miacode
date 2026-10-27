@@ -1018,6 +1018,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         const double endSecond = noteEndSecond(line, note);
         const double traceSecond = noteTraceSecond(line, note);
         const quint64 locationId = timelineRenderLocationId(line, note);
+        const bool selected = request.selectedNoteLocations.contains(locationId);
         const QVector<TimelineMuriMarkerPlacement>* noteMuriMarkers = nullptr;
         if (const auto markersIt = request.muriMarkersByLocation.constFind(locationId);
             markersIt != request.muriMarkersByLocation.constEnd()) {
@@ -1199,6 +1200,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                     trackScale,
                     angleDegrees,
                     forward);
+                if (selected) state.trackSprites.last().selected = true;
             }
             return;
         }
@@ -1215,9 +1217,15 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                 qMax<qreal>(
                     3.0,
                     static_cast<qreal>(kNoteSize) * kTimelineHoldThicknessRelativeToTap * baseIconScale),
+                selected,
             });
         }
         if (isTouchHold) {
+            if (selected) {
+                for (qreal dy : {-3.0, 3.0}) appendTrackLine(&state.selectionLines,
+                    QPointF(x, rowCenterY+dy), QPointF(secondToSceneX(state, endSecond), rowCenterY+dy),
+                    QColor(255,214,0),2.0);
+            }
             const QColor touchHoldColor = timelineRenderFlagSet(note, TimelineRenderFlagIsEach)
                 ? QColor(255, 214, 64, 120)
                 : QColor(44, 214, 255, 120);
@@ -1265,6 +1273,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                 QPointF(x, rowCenterY),
                 iconType,
                 baseIconScale);
+            if (selected) state.noteSprites.last().selected = true;
         }
 
         if (noteMuriMarkers != nullptr) {

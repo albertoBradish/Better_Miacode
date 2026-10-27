@@ -16,16 +16,18 @@ inline constexpr double kTrailingTailSeconds = 3.0;
 // i.e. whichever finishes later — the chart plus its settle tail, or the music
 // track in full. Zero-guards keep an empty chart (chartEnd <= 0) from emitting a
 // spurious tail and ignore a missing/unprobeable track (musicDuration <= 0).
+// chartHasNotes distinguishes a real note at time zero from an empty chart.
 //
 // `chartEndSeconds` is each subsystem's own notion of "last note" (the preview
 // timeline's durationSeconds; the export's richer lastMarkerEndSecond that also
 // folds in slide trace / available / shoot seconds) — only the FORMULA is shared,
 // not the input, because preview and export compute the chart end from different
 // data sources.
-inline double totalContentDurationSeconds(double chartEndSeconds, double musicDurationSeconds)
+inline double totalContentDurationSeconds(double chartEndSeconds, double musicDurationSeconds,
+    bool chartHasNotes = false)
 {
     double duration = 0.0;
-    if (chartEndSeconds > 0.0) {
+    if (chartEndSeconds > 0.0 || chartHasNotes) {
         duration = chartEndSeconds + kTrailingTailSeconds;
     }
     if (musicDurationSeconds > duration) {

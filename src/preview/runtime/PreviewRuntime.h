@@ -16,6 +16,7 @@
 #include "core/analysis/MuriTypes.h"
 #include "preview/quick_scene/PreviewTextureRepository.h"
 #include "core/scene/PreviewFrameState.h"
+#include "core/scene/PreviewVisualAidTiming.h"
 #include "preview/runtime/PreviewSceneAssetRepository.h"
 
 class QQuickWindow;
@@ -161,6 +162,13 @@ public:
     );
     void setRetainedVideoFallbackFrame(const QImage& frame);
     void setNoteMarkers(const QVector<TimelineNoteMarker>& notes);
+    void setVisualAidChartTiming(const SimaiParseResult& parsed, int clockCount, double firstSeconds);
+    void setVisualAidSettings(bool measureLines, bool skeleton, int mode, int customBeats);
+    void setSelectedNoteLocations(const QSet<quint64>& locations) {
+        if (frameState_.selectedNoteLocations == locations) return;
+        frameState_.selectedNoteLocations = locations;
+        update();
+    }
     void setProgressStatsCache(std::shared_ptr<const miacode::preview::scene::PreviewProgressStatsCache> cache);
     void setMuriAnalysisReport(const MuriAnalysisReport& report);
     void setMuriRenderOptions(const MuriRenderOptions& options);
@@ -273,6 +281,11 @@ signals:
     void touchPadAuthoringClicked(const QString& pad, QChar separator);
 
 private:
+    SimaiParseResult visualAidTiming_;
+    int visualAidClockCount_ = 0;
+    double visualAidFirstSeconds_ = 0.0;
+    int visualAidMode_ = 0;
+    int visualAidCustomBeats_ = 4;
     void publishFrameStateSnapshot();
     void handlePresentedFrame();
     void refreshAssetStateFromRepository();

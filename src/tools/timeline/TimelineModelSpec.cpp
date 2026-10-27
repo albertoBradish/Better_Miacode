@@ -1,10 +1,12 @@
 #include "timeline/TimelineQuickModel.h"
+#include "app/runtime/ContentDurationConfig.h"
 #include "timeline/TimelineQuickModelPrivate.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
 #include "core/chart/parser/SimaiParser.h"
 
 #include <QApplication>
 #include <QFile>
+#include <QRegularExpression>
 #include <QDir>
 #include <QStringList>
 #include <QTextCursor>
@@ -2361,6 +2363,83 @@ int main(int argc, char** argv)
                    QStringLiteral("2"),
                    0.0),
                QStringLiteral("incremental HS edits match a full rebuild, including downstream note state"));
+    }
+
+    {
+        TimelineQuickModel zeroTimeNote;
+        zeroTimeNote.rebuildFromText(QStringLiteral("(120){4}1\nE"),0.0);
+        const auto zeroSelection = zeroTimeNote.resolveNoteSelection(8,9);
+        const auto& zeroSnapshot = zeroTimeNote.snapshot();
+        const double zeroContentDuration = miacode::content_duration::totalContentDurationSeconds(
+            zeroSnapshot.durationSeconds,0.0,!zeroSnapshot.lines.first().notes.isEmpty());
+        expect(zeroSelection.resolved() && zeroSelection.endSecond > 0.0
+            && qBound(0.0,zeroSelection.endSecond,zeroContentDuration) == zeroSelection.endSecond
+            && miacode::content_duration::totalContentDurationSeconds(0.0,0.0) == 0.0,
+            QStringLiteral("a zero-time note retains its complete terminal effect position while an empty chart stays empty"));
+        const QString chart = QStringLiteral("(120){4}<HS*2>1/2, 34,5h[4:4]/A1h[4:2],1-5-3[4:4], || 8h[4:8]\nE");
+        TimelineQuickModel model;
+        model.rebuildFromText(chart, 5.0);
+        const auto one = [&](int at) { return model.resolveNoteSelection(at,at+1); };
+        const int first = chart.indexOf(QStringLiteral("1/2"));
+        const auto left = one(first), right = one(first+2);
+        expect(left.locations == QSet<quint64>{timelineRenderLocationId(1,first+1)}
+            && right.locations == QSet<quint64>{timelineRenderLocationId(1,first+3)},
+            QStringLiteral("selection maps 1/2 to two independent notes without selecting its sibling"));
+        expect(one(first+1).locations.isEmpty(), QStringLiteral("slash separator alone selects no note"));
+        const int packed = chart.indexOf(QStringLiteral("34"));
+        expect(one(packed).locations.size() == 1 && one(packed+1).locations.size() == 1
+            && one(packed).locations != one(packed+1).locations,
+            QStringLiteral("packed simultaneous digit notes keep independent source spans"));
+        const int hold = chart.indexOf(QStringLiteral("5h[4:4]"));
+        const auto selectedHold = one(hold);
+        for (int i=0; i<QStringLiteral("5h[4:4]").size(); ++i)
+            expect(one(hold+i).locations == selectedHold.locations,
+                QStringLiteral("every duration/modifier character selects the whole hold"));
+        const int chain = chart.indexOf(QStringLiteral("1-5-3[4:4]"));
+        const auto selectedChain = one(chain);
+        for (int i=0; i<QStringLiteral("1-5-3[4:4]").size(); ++i)
+            expect(one(chain+i).locations == selectedChain.locations,
+                QStringLiteral("a chained slide stays one selected source object"));
+        expect(model.resolveNoteSelection(0,first).locations.isEmpty()
+            && one(chart.indexOf(QStringLiteral("||"))+3).locations.isEmpty()
+            && one(chart.indexOf(QLatin1Char(' '))).locations.isEmpty()
+            && model.resolveNoteSelection(first,first).locations.isEmpty(),
+            QStringLiteral("controls comments whitespace and collapsed selections select no notes"));
+        const auto& line = model.snapshot().lines.first();
+        for (const auto& note : line.notes) {
+            if (note.sourceCol == hold+1) {
+                const double hit = timelineRenderAbsoluteSecond(line,note.secondOffset);
+                expect(selectedHold.resolved() && selectedHold.startSecond < hit
+                    && selectedHold.endSecond > timelineRenderNoteExportVisualEndSecond(line,note,true),
+                    QStringLiteral("selection audition includes visible lead-in and the complete hold/effect tail across later notes"));
+            }
+        }
+        expect(model.resolveNoteSelection(first,chain+1).locations.size() == 7,
+            QStringLiteral("selection crossing several independent notes returns only actual note objects"));
+        model.updateFromText(QStringLiteral("\n")+chart,5.0,{});
+        expect(model.resolveNoteSelection(hold+1,hold+2).locations
+            == QSet<quint64>{timelineRenderLocationId(2,hold+1)},
+            QStringLiteral("incremental line insertion resequences selected source identities"));
+    }
+
+    {
+        const QString source = qmlSource(QStringLiteral("src/preview/quick_scene/PreviewQuickSceneRoot.cpp"));
+        const QRegularExpression allocation(QStringLiteral("kPreviewQuickSceneLayerSlotCount\\s*=\\s*(\\d+)"));
+        const auto allocated = allocation.match(source);
+        const int start = source.indexOf(QStringLiteral("QSGNode* PreviewQuickSceneRoot::updatePaintNode("));
+        const int end = source.indexOf(QStringLiteral("void PreviewQuickSceneRoot::noteFirstLayerDraws()"),start);
+        expect(allocated.hasMatch() && start>=0 && end>start,
+            QStringLiteral("scene allocation and paint boundaries are identifiable"));
+        if (allocated.hasMatch() && start>=0 && end>start) {
+            const QString paint = source.mid(start,end-start);
+            const QRegularExpression consume(QStringLiteral("layerSlotAt\\(root,\\s*slotIndex\\+\\+\\)"));
+            const int calls = paint.count(consume);
+            expect(calls == allocated.captured(1).toInt(),
+                QStringLiteral("every unconditional scene layer has an allocated QSG slot; selection cannot silently fall off the end"));
+            const int selection = paint.indexOf(QStringLiteral("return selectionLayer_.updateNode("));
+            expect(selection>=0 && paint.left(selection).count(consume) == calls,
+                QStringLiteral("the terminal transient selection layer occupies the final allocated slot"));
+        }
     }
 
     if (failed > 0) {

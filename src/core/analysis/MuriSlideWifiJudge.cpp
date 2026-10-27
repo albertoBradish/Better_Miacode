@@ -15,6 +15,7 @@
 #include "core/analysis/MuriTypes.h"  // makeMarkerAnalysisKey + Muri* state types
 #include "core/analysis/MuriAnalyzerGeometry.h"     // pointDistance
 #include "core/analysis/MuriAnalyzerInternal.h"     // timing / hand-action helpers
+#include "core/chart/SlideJudgeData.h"
 #include "core/analysis/MuriDiagnosticLabels.h"     // config labels / source anchors
 #include "core/analysis/MuriSlideReferenceData.h"   // load* accessors
 
@@ -178,7 +179,7 @@ bool buildRuntimeSlideJudgeSequence(
         }
 
         QVector<QStringList> segmentSequence =
-            loadPadAreaSequence(entry.value(QStringLiteral("judge_sequence")).toArray());
+            slide_judge::slideAreas(segmentKey);
         if (segmentSequence.isEmpty()) {
             return false;
         }
@@ -239,7 +240,7 @@ bool buildRuntimeWifiJudgeSequence(
     }
 
     *laneJudgeSequence =
-        loadTriPadAreaSequence(entry.value(QStringLiteral("tri_judge_sequence")).toArray());
+        slide_judge::wifiLanes(marker.slideTrackKey);
     if (laneJudgeSequence->size() != 3) {
         return false;
     }

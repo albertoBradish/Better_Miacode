@@ -120,6 +120,8 @@ Item {
         canPaste: root.editorCommandsAvailable && splitView.canPaste
         canTransform: root.editorCommandsAvailable && splitView.canTransform
         canNormalize: root.editorCommandsAvailable && splitView.normalizationAvailable
+        canPlaySelection: root.chartEditorActive && root.editorSync.canPlaySelection
+        onPlaySelectionRequested: root.editorSync.playSelection()
         onExitRequested: root.requestClose()
         onUndoRequested: root.undo()
         onRedoRequested: root.redo()
@@ -819,6 +821,7 @@ Item {
     PreferencesDialog {
         id: preferencesDialog
         objectName: "shellPreferencesDialog"
+        previewSession: root.previewSession
         onCompletionSettingsClosed: splitView.sourceEditorItem.focusEditor()
         preferencesModel: root.preferencesModel
         shortcuts: root.shortcutModel

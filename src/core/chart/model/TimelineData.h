@@ -14,6 +14,10 @@ struct MuriPadTimeEntry {
 struct TimelineBeatMarker {
     double second = 0.0;
     bool major = false;
+    // Constant-tempo comma interval, for the independent quarter-note aid grid.
+    double quarterBeat = 0.0;
+    double quarterBeatLength = 0.0;
+    double durationSeconds = 0.0;
     int sourceLine = 1;
     int sourceCol = 1;
 };
@@ -33,6 +37,9 @@ struct TimelineNoteMarker {
     QString slideDisplayKey;
     QString slideTrackKey;
     QStringList slideSegmentKeys;
+    // Judge-pad alternatives, not artwork samples. Populated by the parser.
+    QVector<QVector<QStringList>> slideSegmentJudgeAreas;
+    QVector<QVector<QStringList>> wifiLaneJudgeAreas;
     QVector<double> slideSegmentShootSeconds;
     QVector<double> slideSegmentDurations;
     QVector<QVector<MuriPadTimeEntry>> slideSegmentPadEnterTimes;

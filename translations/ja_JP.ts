@@ -4805,6 +4805,34 @@ Error: %1</source>
         <source>The prepended PV exceeds its size budget or the 20 MB limit.</source>
         <translation>黒画面を追加した PV がサイズ予算または 20 MB の上限を超えています。</translation>
     </message>
+    <message id="action.play_selection">
+        <source>Play Selection</source>
+        <translation>選択範囲を再生</translation>
+    </message>
+    <message id="preview.canvas.show_measure_lines">
+        <source>Show Measure Lines</source>
+        <translation>小節線を表示</translation>
+    </message>
+    <message id="preview.canvas.show_judgement_skeleton">
+        <source>Show Judgement Skeleton</source>
+        <translation>判定骨格を表示</translation>
+    </message>
+    <message id="preview.canvas.measure_mode">
+        <source>Measure Line Mode</source>
+        <translation>小節線モード</translation>
+    </message>
+    <message id="preview.canvas.measure_chart_clock">
+        <source>Chart clock_count (default 4 beats)</source>
+        <translation>譜面 clock_count（既定 4 拍）</translation>
+    </message>
+    <message id="preview.canvas.measure_custom_beats">
+        <source>Custom beats per measure</source>
+        <translation>1 小節の拍数を指定</translation>
+    </message>
+    <message id="preview.canvas.measure_text_lines">
+        <source>Text line starts</source>
+        <translation>テキスト行頭</translation>
+    </message>
 </context>
 
 

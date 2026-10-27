@@ -12,6 +12,8 @@ AppDialog {
     required property var preferences
     required property var appBackground
     property var updateService: null
+    property var previewSession: null
+    readonly property var canvasSettings: root.previewSession ? root.previewSession.canvasSettings : ({})
 
     signal updateRequested()
     signal completionSettingsClosed()
@@ -484,6 +486,46 @@ AppDialog {
                                     onClicked: root.preferencesModel.previewOnLeft = true
                                 }
                                 Item { Layout.fillWidth: true }
+                            }
+                        }
+                    }
+                    PreferenceGroup {
+                        title: qsTrId("dialog.render_settings.preview_group")
+                        enabled: !!root.previewSession
+                        PreferenceCombo {
+                            objectName: "preferencesMeasureLineModeCombo"
+                            label: qsTrId("preview.canvas.measure_mode")
+                            options: [
+                                { value: 0, label: qsTrId("preview.canvas.measure_chart_clock") },
+                                { value: 1, label: qsTrId("preview.canvas.measure_custom_beats") },
+                                { value: 2, label: qsTrId("preview.canvas.measure_text_lines") }
+                            ]
+                            currentValue: root.canvasSettings.measureLineMode || 0
+                            onPicked: function(value) { root.previewSession.setCanvasSetting("measureLineMode", value) }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            visible: root.canvasSettings.measureLineMode === 1
+                            Text {
+                                Layout.preferredWidth: root.settingsLabelWidth
+                                text: qsTrId("preview.canvas.measure_custom_beats")
+                                color: Theme.colors.text.secondary
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                wrapMode: Text.WordWrap
+                            }
+                            AppTextField {
+                                objectName: "preferencesMeasureLineCustomBeatsField"
+                                Layout.fillWidth: true
+                                text: String(root.canvasSettings.measureLineCustomBeats || 4)
+                                validator: IntValidator { bottom: 1; top: 2147483647 }
+                                inputMethodHints: Qt.ImhDigitsOnly
+                                Accessible.name: qsTrId("preview.canvas.measure_custom_beats")
+                                onEditingFinished: {
+                                    if (acceptableInput && root.previewSession)
+                                        root.previewSession.setCanvasSetting("measureLineCustomBeats", Number(text))
+                                    text = Qt.binding(() => String(root.canvasSettings.measureLineCustomBeats || 4))
+                                }
                             }
                         }
                     }

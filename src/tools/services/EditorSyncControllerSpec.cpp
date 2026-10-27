@@ -276,6 +276,32 @@ bool verifySelectionExportDelivery(QTextStream& err)
     return ok;
 }
 
+bool verifySelectionPlaybackUsesLiveIdentity(QTextStream& err)
+{
+    EditorSyncController controller;
+    QSignalSpy context(&controller, &EditorSyncController::editorContextChanged);
+    QSignalSpy requested(&controller, &EditorSyncController::selectionPlaybackRequested);
+    makeReady(controller);
+    controller.setEditorContext(kDifficulty,kRevision,9,2,true,false,1,3,false);
+    controller.setSelectionPlayable(true);
+    flush();
+    context.clear();
+    controller.setEditorContext(kDifficulty,kRevision,8,2,true,false,1,3,false);
+    flush();
+    bool ok = require(context.size() == 1,
+        QStringLiteral("selection-only changes publish a fresh note-selection projection"),err);
+    ok &= require(controller.playSelection() && requested.size() == 1
+        && requested.first().at(0).toInt() == kDifficulty
+        && requested.first().at(1).toULongLong() == kRevision
+        && requested.first().at(2).toInt() == 2 && requested.first().at(3).toInt() == 8,
+        QStringLiteral("Play Selection carries current revision and ordered UTF-16 bounds"),err);
+    controller.setEditorReadiness(kDifficulty,kRevision+1,true);
+    ok &= require(!controller.playSelection(),QStringLiteral("a stale source selection cannot start playback"),err);
+    controller.setEditorContext(kDifficulty,kRevision+1,2,2,true,false,1,3,false);
+    ok &= require(!controller.playSelection(),QStringLiteral("collapsed selections cannot start playback"),err);
+    return ok;
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -283,7 +309,8 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
     QTextStream err(stderr);
     QTextStream out(stdout);
-    const bool ok = verifySelectionExportDelivery(err)
+    const bool ok = verifySelectionPlaybackUsesLiveIdentity(err)
+        && verifySelectionExportDelivery(err)
         && verifyNavigationRequiresTheReadyIdentity(err)
         && verifyIdentityIsRecheckedAtDelivery(err)
         && verifyLosingTheEditorCancelsPendingWork(err)

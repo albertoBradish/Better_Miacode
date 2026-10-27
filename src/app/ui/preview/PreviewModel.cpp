@@ -56,8 +56,20 @@ PreviewModel::PreviewModel(miacode::ShellNotifications& notifications,
     });
     connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
             this, [this](const QString&) { refreshFromBackend(true); });
+    connect(notifications_, &miacode::ShellNotifications::previewRenderSettingsChanged,
+            this, &PreviewModel::canvasSettingsChanged);
     refreshSkinDirectory();
     refreshFromBackend(/*force=*/true);
+}
+
+QVariantMap PreviewModel::canvasSettings() const
+{
+    return surface() != nullptr ? surface()->renderSettings() : QVariantMap{};
+}
+
+void PreviewModel::setCanvasSetting(const QString& key, const QVariant& value)
+{
+    if (surface() != nullptr) surface()->setRenderSetting(key, value);
 }
 
 void PreviewModel::resetV2UiProbe()

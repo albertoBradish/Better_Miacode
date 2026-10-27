@@ -1,3 +1,5 @@
+#include <cmath>
+#include <limits>
 #include "app/runtime/preview/StageMediaHost.h"
 #include "app/runtime/Shared.h"
 
@@ -480,6 +482,10 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("scaleMode"), static_cast<int>(state_.previewBackgroundScaleMode_)},
         {QStringLiteral("smoothBrightness"), state_.previewSmoothBrightness_},
         {QStringLiteral("showTimestamp"), state_.previewShowTimestamp_},
+        {QStringLiteral("showMeasureLines"), state_.previewShowMeasureLines_},
+        {QStringLiteral("showJudgementSkeleton"), state_.previewShowJudgementSkeleton_},
+        {QStringLiteral("measureLineMode"), state_.previewMeasureLineMode_},
+        {QStringLiteral("measureLineCustomBeats"), state_.previewMeasureLineCustomBeats_},
         {QStringLiteral("touchPadAuthoringShortcut"), state_.previewTouchPadAuthoringShortcutEnabled_},
         {QStringLiteral("showDebugInfo"), state_.previewShowDebugInfo_},
         {QStringLiteral("forceLabeledJudgeLineWhenPaused"), state_.previewForceLabeledJudgeLineWhenPaused_},
@@ -542,6 +548,21 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
         if (canvas != nullptr) {
             canvas->setShowTimestamp(state_.previewShowTimestamp_);
         }
+    } else if (key == QLatin1String("showMeasureLines") || key == QLatin1String("showJudgementSkeleton")
+               || key == QLatin1String("measureLineMode") || key == QLatin1String("measureLineCustomBeats")) {
+        if (key == QLatin1String("showMeasureLines")) state_.previewShowMeasureLines_ = value.toBool();
+        else if (key == QLatin1String("showJudgementSkeleton")) state_.previewShowJudgementSkeleton_ = value.toBool();
+        else if (key == QLatin1String("measureLineMode")) state_.previewMeasureLineMode_ =
+            static_cast<int>(miacode::preview::scene::normalizedMeasureLineMode(value.toInt()));
+        else {
+            bool ok = false;
+            const double beats = value.toDouble(&ok);
+            if (!ok || !qIsFinite(beats) || beats <= 0 || std::floor(beats) != beats
+                || beats > std::numeric_limits<int>::max()) return;
+            state_.previewMeasureLineCustomBeats_ = static_cast<int>(beats);
+        }
+        if (canvas != nullptr) canvas->setVisualAidSettings(state_.previewShowMeasureLines_,
+            state_.previewShowJudgementSkeleton_, state_.previewMeasureLineMode_, state_.previewMeasureLineCustomBeats_);
     } else if (key == QLatin1String("touchPadAuthoringShortcut")) {
         state_.previewTouchPadAuthoringShortcutEnabled_ = value.toBool();
         applyEffectivePreviewOutlineVariantToCanvas();

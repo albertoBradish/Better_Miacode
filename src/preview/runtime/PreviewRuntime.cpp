@@ -619,6 +619,31 @@ void PreviewRuntime::setRetainedVideoFallbackFrame(const QImage& frame)
     update();
 }
 
+void PreviewRuntime::setVisualAidChartTiming(const SimaiParseResult& parsed, int clockCount, double firstSeconds)
+{
+    if (visualAidTiming_.beatMarkers.constData() == parsed.beatMarkers.constData()
+        && visualAidTiming_.textLineStartSeconds.constData() == parsed.textLineStartSeconds.constData()
+        && visualAidClockCount_ == clockCount && visualAidFirstSeconds_ == firstSeconds) return;
+    visualAidTiming_.beatMarkers = parsed.beatMarkers;
+    visualAidTiming_.textLineStartSeconds = parsed.textLineStartSeconds;
+    visualAidClockCount_ = clockCount;
+    visualAidFirstSeconds_ = firstSeconds;
+    setVisualAidSettings(frameState_.render.showMeasureLines, frameState_.render.showJudgementSkeleton,
+        visualAidMode_, visualAidCustomBeats_);
+}
+
+void PreviewRuntime::setVisualAidSettings(bool measureLines, bool skeleton, int mode, int customBeats)
+{
+    frameState_.render.showMeasureLines = measureLines;
+    frameState_.render.showJudgementSkeleton = skeleton;
+    visualAidMode_ = static_cast<int>(miacode::preview::scene::normalizedMeasureLineMode(mode));
+    visualAidCustomBeats_ = customBeats > 0 ? customBeats : 4;
+    frameState_.measureLineSeconds = miacode::preview::scene::buildPreviewMeasureLineSeconds(
+        visualAidTiming_, visualAidClockCount_, miacode::preview::scene::normalizedMeasureLineMode(visualAidMode_),
+        visualAidCustomBeats_, visualAidFirstSeconds_);
+    update();
+}
+
 void PreviewRuntime::setNoteMarkers(const QVector<TimelineNoteMarker>& notes)
 {
     frameState_.noteMarkers = notes;
@@ -1051,6 +1076,8 @@ void PreviewRuntime::reset(bool releaseStorage)
             .arg(pointerHex(frameState_.progressStatsCache.get()))
             .arg(frameState_.chartTitle.size())
             .arg(frameState_.render.showChartInfoHud ? 1 : 0));
+    visualAidTiming_ = SimaiParseResult();
+    frameState_.measureLineSeconds.clear();
     const auto presentationMode = frameState_.media.presentationMode;
     if (releaseStorage) {
         frameState_.noteMarkers = QVector<TimelineNoteMarker>();
@@ -1058,6 +1085,7 @@ void PreviewRuntime::reset(bool releaseStorage)
     } else {
         frameState_.noteMarkers.clear();
     }
+    frameState_.selectedNoteLocations.clear();
     frameState_.progressStatsCache.reset();
     frameState_.muriAnalysisReport = MuriAnalysisReport();
     frameState_.playheadSeconds = 0.0;

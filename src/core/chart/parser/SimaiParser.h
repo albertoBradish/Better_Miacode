@@ -18,6 +18,7 @@ struct SimaiParseResult {
     QVector<SimaiMessage> errors;
     QVector<SimaiMessage> warnings;
     QVector<double> measureLineSeconds;
+    QVector<double> textLineStartSeconds;
     QVector<TimelineBeatMarker> beatMarkers;
     QVector<TimelineNoteMarker> noteMarkers;
     double durationSeconds = 0.0;

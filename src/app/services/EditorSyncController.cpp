@@ -9,6 +9,24 @@ EditorSyncController::EditorSyncController(QObject* parent)
 {
 }
 
+void EditorSyncController::setSelectionPlayable(bool playable)
+{
+    if (selectionPlayable_ == playable) return;
+    selectionPlayable_ = playable;
+    emit selectionPlayableChanged();
+}
+
+bool EditorSyncController::playSelection()
+{
+    const auto selection = editorSelection();
+    if (!selectionPlayable_ || !selection.valid || selection.anchor == selection.position) return false;
+    // Deliver synchronously with the current identity. The runtime validates
+    // against its own document revision before resolving the source selection.
+    emit selectionPlaybackRequested(selection.difficultyId, selection.revision,
+        qMin(selection.anchor, selection.position), qMax(selection.anchor, selection.position));
+    return true;
+}
+
 bool EditorSyncController::followActive() const { return follow_.active; }
 int EditorSyncController::followDifficultyId() const { return follow_.difficultyId; }
 qulonglong EditorSyncController::followRevision() const { return follow_.revision; }
@@ -162,7 +180,7 @@ void EditorSyncController::setEditorContext(
     contextPosition_ = qMax(0, position);
     editorFocused_ = focused;
     imeComposing_ = imeComposing;
-    if (activityChanged) {
+    if (activityChanged || selectionChanged) {
         scheduleEditorContextDelivery();
     }
     if ((activityChanged || selectionChanged) && !publishCaret) {

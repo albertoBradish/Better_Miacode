@@ -14,6 +14,7 @@ QtObject {
     property bool canPaste: false
     property bool canTransform: false
     property bool canNormalize: false
+    property bool canPlaySelection: false
     property bool netEnabled: false
     property bool commandsEnabled: true
 
@@ -37,6 +38,7 @@ QtObject {
     signal mediaToolRequested(string toolId)
     signal chartTransformRequested(string opId)
     signal normalizeChartRequested()
+    signal playSelectionRequested()
     signal aboutRequested()
     signal setupWizardRequested()
     signal preferencesRequested()

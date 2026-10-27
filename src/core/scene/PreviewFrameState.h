@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QImage>
+#include <QSet>
 #include <QRectF>
 #include <QVector>
 #include <QtGlobal>
@@ -229,6 +230,8 @@ struct PreviewRenderState {
     PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     PreviewJudgeEffectStyle judgeEffectStyle = PreviewJudgeEffectStyle::Standard;
     bool showDebugInfo = false;
+    bool showMeasureLines = false;
+    bool showJudgementSkeleton = false;
     bool showTimestamp = true;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;
@@ -242,6 +245,9 @@ struct PreviewRenderState {
 struct PreviewFrameState {
     PreviewHudFontSettings hudFontSettings;
     QVector<TimelineNoteMarker> noteMarkers;
+    QVector<double> measureLineSeconds;
+    // Editor-only transient projection; never written into chart/render settings.
+    QSet<quint64> selectedNoteLocations;
     std::shared_ptr<const PreviewProgressStatsCache> progressStatsCache;
     MuriAnalysisReport muriAnalysisReport;
     MuriRenderOptions muriRenderOptions;

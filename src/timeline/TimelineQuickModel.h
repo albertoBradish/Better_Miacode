@@ -3,6 +3,7 @@
 #include <limits>
 
 #include <QString>
+#include <QSet>
 #include <QVector>
 
 #include "core/chart/document/SimaiTimingMetadata.h"
@@ -71,6 +72,10 @@ public:
         const miacode::simai::SimaiTimingMetadata& timingMetadata = miacode::simai::SimaiTimingMetadata());
 
     const TimelineRenderSnapshot& snapshot() const;
+    bool matchesSource(const QString& text, double firstSeconds,
+        const miacode::simai::SimaiTimingMetadata& timingMetadata) const {
+        return sourceText_ == text && firstSeconds_ == firstSeconds && timingMetadata_ == timingMetadata;
+    }
 
     double timelineSecondForCursor(int lineNumber, int col) const;
     bool resolveTimelineSecondForCursor(int lineNumber, int col, double* second) const;
@@ -87,6 +92,17 @@ public:
         const QString& text,
         int selectionStart,
         int selectionEnd,
+        double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed,
+        double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed) const;
+    struct NoteSelection {
+        QSet<quint64> locations;
+        double startSecond = 0.0;
+        double endSecond = 0.0;
+        bool resolved() const { return !locations.isEmpty() && endSecond > startSecond; }
+    };
+    // Intersect actual independent note source spans. Separators, comments and
+    // timing directives alone never select notes; packed 12 and 1/2 stay separate.
+    NoteSelection resolveNoteSelection(int start, int end,
         double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed,
         double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed) const;
     bool resolveTimelineNavigateCursor(double second, int* line, int* col, double* cursorSecond) const;

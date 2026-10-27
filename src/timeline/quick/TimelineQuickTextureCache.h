@@ -81,9 +81,12 @@ public:
         const QSize& targetSize,
         qreal rotationDegrees = 0.0,
         bool mirrorX = false);
+    TimelineQuickTextureHandle noteOutlineTexture(const QString& spriteType,
+        const QSize& targetSize, qreal rotationDegrees = 0.0, bool mirrorX = false);
     QSize noteTargetSize(const QString& spriteType, qreal scale) const;
     qreal holdScaleForBaseIconScale(const QString& spriteType, qreal baseIconScale) const;
     TimelineQuickHoldTextureParts holdTextureParts(const QString& spriteType, qreal scale);
+    TimelineQuickHoldTextureParts holdOutlineTextureParts(const QString& spriteType, qreal scale);
 
     // beta7 leak gauge (probe 3.1) — cheap read of the three uncapped caches plus the count of
     // rotation-bearing note keys (slide-track arrows) and the cumulative texture-create total.

@@ -4,6 +4,7 @@
 
 #include "common/OperationLog.h"
 #include "core/chart/SlideReferenceData.h"
+#include "core/chart/SlideJudgeData.h"
 
 #include <QHash>
 #include <QJsonArray>
@@ -40,6 +41,7 @@ struct ParseState {
     double bpm = kDefaultBpm;
     int beats = kDefaultBeats;
     double second = 0.0;
+    double quarterBeat = 0.0;
     int nextEachGroupId = 0;
     int meterNumerator = kDefaultMeterNumerator;
     int meterDenominator = kDefaultMeterDenominator;
@@ -915,6 +917,12 @@ void populateSlideTrackLengths(TimelineNoteMarker* marker)
         return;
     }
 
+    marker->slideSegmentJudgeAreas.clear();
+    marker->wifiLaneJudgeAreas.clear();
+    for (const QString& key : marker->slideSegmentKeys)
+        marker->slideSegmentJudgeAreas.append(miacode::slide_judge::slideAreas(key));
+    if (marker->type == QLatin1String("wifi"))
+        marker->wifiLaneJudgeAreas = miacode::slide_judge::wifiLanes(marker->slideTrackKey);
     marker->slideNativeTrackLength = 0.0;
     marker->slideRuntimeTrackLength = 0.0;
     if (marker->type == QLatin1String("wifi")) {

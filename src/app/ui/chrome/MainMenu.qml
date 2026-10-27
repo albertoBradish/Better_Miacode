@@ -517,6 +517,13 @@ Item {
             // Rows, labels and grouping come from the shared transform table,
             // so this menu cannot drift from the shortcut editor or the
             // editor's context menu.
+            AppMenuAction {
+                objectName: "adjustPlaySelection"
+                text: qsTrId("action.play_selection")
+                enabled: root.commandsEnabled && root.chartCommandsEnabled && root.commands.canPlaySelection
+                onTriggered: root.commands.playSelectionRequested()
+            }
+            AppMenuSeparator {}
             readonly property var transformRows: root.documentSession.chartTransformMenu()
 
             Repeater {

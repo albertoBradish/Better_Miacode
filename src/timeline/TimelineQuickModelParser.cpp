@@ -809,7 +809,8 @@ bool TimelineQuickModel::parseNoteToken(
     }
 
     const double lineBaseSecond = lineState->render.startSecond;
-    const auto appendNote = [lineState, state, groupIndices, lineBaseSecond](TimelineRenderNote note) {
+    const auto appendNote = [lineState, state, groupIndices, lineBaseSecond, &token](TimelineRenderNote note) {
+        note.sourceLength = token.size();
         note.hsMultiplier = state->hsMultiplier;
         const int noteIndex = lineState->render.notes.size();
         lineState->render.notes.append(note);
@@ -918,6 +919,7 @@ bool TimelineQuickModel::parseNoteToken(
             const QString prefix = token.left(1) + modifierState.rawModifiers;
             const QChar startLane = token.at(0);
             const QStringList branches = core.split(QLatin1Char('*'), Qt::KeepEmptyParts);
+            const int firstBranchNote = lineState->render.notes.size();
             for (const QString& branchRaw : branches) {
                 QString branch = branchRaw;
                 if (branch.isEmpty()) {
@@ -931,6 +933,8 @@ bool TimelineQuickModel::parseNoteToken(
                     return false;
                 }
             }
+            for (int index = firstBranchNote; index < lineState->render.notes.size(); ++index)
+                lineState->render.notes[index].sourceLength = token.size();
             return true;
         }
         if (slideCoreHasDisallowedModifiers(core)) {

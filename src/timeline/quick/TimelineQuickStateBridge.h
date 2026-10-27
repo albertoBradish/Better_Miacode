@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QHash>
+#include <QSet>
 #include <QMetaObject>
 #include <QObject>
 #include <QFont>
@@ -47,6 +48,8 @@ public:
 
     void clear();
     void setTimelineData(const TimelineRenderSnapshot& snapshot);
+    const QSet<quint64>& selectedNoteLocations() const { return selectedNoteLocations_; }
+    void setSelectedNoteLocations(const QSet<quint64>& locations);
     void replaceTimelineData(const TimelineRenderSnapshot& snapshot, double second, double durationSeconds);
     const TimelineRenderSnapshot& renderSnapshot() const;
     void setWaveformData(const std::shared_ptr<const miacode::waveform::WaveformData>& waveformData);
@@ -157,6 +160,7 @@ private:
     void bumpOverlayRevision();
     void bumpOverlayDynamicRevision();
 
+    QSet<quint64> selectedNoteLocations_;
     TimelineRenderSnapshot snapshot_;
     std::shared_ptr<const miacode::waveform::WaveformData> waveformData_;
     QHash<quint64, QVector<miacode::timeline::TimelineMuriMarkerPlacement>> muriMarkersByLocation_;

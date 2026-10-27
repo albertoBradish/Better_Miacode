@@ -212,6 +212,7 @@ struct VideoExportTask {
     QString trackPath;
     QString skinDirectory;
     QVector<TimelineNoteMarker> noteMarkers;
+    QVector<double> measureLineSeconds;
     MuriAnalysisReport muriAnalysisReport;
     MuriRenderOptions muriRenderOptions;
     double staticTapOnSlideThresholdSeconds =
@@ -253,6 +254,10 @@ struct VideoExportTask {
     VideoExportSizePreset sizePreset = VideoExportSizePreset::Standard;
     bool fullRangeExport = true;
     bool showTimestamp = true;
+    bool showMeasureLines = false;
+    bool showJudgementSkeleton = false;
+    int measureLineMode = 0;
+    int measureLineCustomBeats = 4;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;
     // Pre-roll maimai track-start intro (full-range exports only). intro.enabled

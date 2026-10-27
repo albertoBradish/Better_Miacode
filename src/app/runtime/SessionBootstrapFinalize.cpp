@@ -1,4 +1,4 @@
-﻿#include "app/runtime/Session.h"
+#include "app/runtime/Session.h"
 #include "app/runtime/Shared.h"
 #include "app/runtime/editor/EditorHost.h"
 #include "app/runtime/media/MediaJobsHost.h"
@@ -275,6 +275,8 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
         scene_->setShowDebugInfo(previewShowDebugInfo_);
         scene_->setHudFontSettings(miacode::hud_preferences::load());
         scene_->setShowTimestamp(previewShowTimestamp_);
+        scene_->setVisualAidSettings(state_.previewShowMeasureLines_, state_.previewShowJudgementSkeleton_,
+            state_.previewMeasureLineMode_, state_.previewMeasureLineCustomBeats_);
         scene_->setShowObjectStatsHud(previewShowObjectStatsHud_);
         // Chart info HUD only ever activates inside the export-preview
         // dialog (gated by setSuppressDebugInfo + setChartInfo there); the

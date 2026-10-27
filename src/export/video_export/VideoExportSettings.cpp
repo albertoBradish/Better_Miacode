@@ -233,6 +233,10 @@ void copyVideoExportUserSettings(const VideoExportTask& source, VideoExportTask*
     target->tapFlowSpeed = source.tapFlowSpeed;
     target->touchFlowSpeed = source.touchFlowSpeed;
     target->showTimestamp = source.showTimestamp;
+    target->showMeasureLines = source.showMeasureLines;
+    target->showJudgementSkeleton = source.showJudgementSkeleton;
+    target->measureLineMode = source.measureLineMode;
+    target->measureLineCustomBeats = source.measureLineCustomBeats;
     target->showObjectStatsHud = source.showObjectStatsHud;
     target->showChartInfoHud = source.showChartInfoHud;
     target->clockCountEnabled = source.clockCountEnabled;

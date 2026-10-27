@@ -642,6 +642,18 @@ Rectangle {
                                 onToggled: if (root.session) root.session.showChartInfoHud = checked
                             }
                             AppSwitch {
+                                objectName: "exportShowMeasureLinesSwitch"
+                                text: qsTrId("preview.canvas.show_measure_lines")
+                                checked: root.session ? root.session.showMeasureLines : false
+                                onToggled: if (root.session) root.session.showMeasureLines = checked
+                            }
+                            AppSwitch {
+                                objectName: "exportShowJudgementSkeletonSwitch"
+                                text: qsTrId("preview.canvas.show_judgement_skeleton")
+                                checked: root.session ? root.session.showJudgementSkeleton : false
+                                onToggled: if (root.session) root.session.showJudgementSkeleton = checked
+                            }
+                            AppSwitch {
                                 text: qsTrId("qml.enable_clock_count")
                                 checked: root.session ? root.session.clockCountEnabled : false
                                 onToggled: if (root.session) root.session.clockCountEnabled = checked

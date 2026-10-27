@@ -17,6 +17,8 @@
 #include "preview/quick_scene/PreviewQuickBackdropLayer.h"
 #include "preview/quick_scene/PreviewQuickChartReviewLayer.h"
 #include "preview/quick_scene/PreviewQuickGuideLayer.h"
+#include "preview/quick_scene/PreviewQuickVisualAidLayer.h"
+#include "preview/quick_scene/PreviewQuickSelectionLayer.h"
 #include "preview/quick_scene/PreviewQuickHeadLayer.h"
 #include "preview/quick_scene/PreviewQuickJudgeEffectLayer.h"
 #include "preview/quick_scene/PreviewQuickJudgeFireworkLayer.h"
@@ -126,6 +128,9 @@ private:
     PreviewQuickMuriActionLayer muriActionLayer_;
     PreviewQuickJudgeFireworkLayer judgeFireworkLayer_;
     PreviewQuickGuideLayer guideLayer_;
+    PreviewQuickVisualAidLayer measureLineLayer_;
+    PreviewQuickVisualAidLayer judgementSkeletonLayer_;
+    PreviewQuickSelectionLayer selectionLayer_;
     PreviewQuickTouchHoverLayer touchHoverLayer_;
     PreviewQuickTrackLayer trackLayer_;
     PreviewQuickSlideMotionLayer slideMotionLayer_;

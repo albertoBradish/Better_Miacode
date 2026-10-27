@@ -229,6 +229,10 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
     state_.previewTouchPadAuthoringShortcutEnabled_ = true;
     state_.previewShowDebugInfo_ = false;
     state_.previewShowTimestamp_ = true;
+    state_.previewShowMeasureLines_ = false;
+    state_.previewShowJudgementSkeleton_ = false;
+    state_.previewMeasureLineMode_ = 0;
+    state_.previewMeasureLineCustomBeats_ = 4;
     state_.previewShowObjectStatsHud_ = false;
     state_.exportShowObjectStatsHud_ = false;
     state_.previewShowChartInfoHud_ = false;
@@ -445,6 +449,12 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     if (preview.value("show_debug_info").isBool()) {
         state_.previewShowDebugInfo_ = preview.value("show_debug_info").toBool(false);
     }
+    state_.previewShowMeasureLines_ = preview.value("show_measure_lines").toBool(false);
+    state_.previewShowJudgementSkeleton_ = preview.value("show_judgement_skeleton").toBool(false);
+    state_.previewMeasureLineMode_ = static_cast<int>(miacode::preview::scene::normalizedMeasureLineMode(
+        preview.value("measure_line_mode").toInt(0)));
+    state_.previewMeasureLineCustomBeats_ = preview.value("measure_line_custom_beats").toInt(4);
+    if (state_.previewMeasureLineCustomBeats_ <= 0) state_.previewMeasureLineCustomBeats_ = 4;
     if (preview.value("show_timestamp").isBool()) {
         state_.previewShowTimestamp_ = preview.value("show_timestamp").toBool(true);
     }
@@ -618,6 +628,10 @@ void miacode::runtime::EditorHost::savePortableState() const
     );
     preview.insert("show_debug_info", state_.previewShowDebugInfo_);
     preview.insert("show_timestamp", state_.previewShowTimestamp_);
+    preview.insert("show_measure_lines", state_.previewShowMeasureLines_);
+    preview.insert("show_judgement_skeleton", state_.previewShowJudgementSkeleton_);
+    preview.insert("measure_line_mode", state_.previewMeasureLineMode_);
+    preview.insert("measure_line_custom_beats", state_.previewMeasureLineCustomBeats_);
     preview.insert("show_object_stats_preview", state_.previewShowObjectStatsHud_);
     preview.insert("show_object_stats_export", state_.exportShowObjectStatsHud_);
     preview.insert("show_chart_info_preview", state_.previewShowChartInfoHud_);

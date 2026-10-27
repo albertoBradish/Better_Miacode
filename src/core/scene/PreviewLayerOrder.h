@@ -21,6 +21,7 @@ enum PreviewRenderLayer : quint32 {
     ChartReviewLayer = 1u << 13,
     MaimuriDxJudgeLayer = 1u << 14,
     HudLayer = 1u << 15,
+    VisualAidLayer = 1u << 16,
 };
 
 using PreviewRenderLayerFlags = quint32;
@@ -41,7 +42,8 @@ inline constexpr PreviewRenderLayerFlags kPreviewAllRenderLayers =
     | TouchHoldLayer
     | ChartReviewLayer
     | MaimuriDxJudgeLayer
-    | HudLayer;
+    | HudLayer
+    | VisualAidLayer;
 
 inline constexpr PreviewRenderLayerFlags kPreviewExportOverlayRenderLayers =
     kPreviewAllRenderLayers & ~StageBackgroundLayer;

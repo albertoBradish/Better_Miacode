@@ -49,6 +49,8 @@ miacode_add_module(miacode_chart
         src/core/chart/IntroConfig.h
         src/core/chart/SlideReferenceData.cpp
         src/core/chart/SlideReferenceData.h
+        src/core/chart/SlideJudgeData.cpp
+        src/core/chart/SlideJudgeData.h
         src/core/chart/document/ChartClockCount.h
         src/core/chart/document/SimaiDocument.cpp
         src/core/chart/document/SimaiDocument.h
@@ -194,6 +196,10 @@ miacode_add_module(miacode_scene
         src/core/scene/PreviewSkinSelectors.h
         src/core/scene/PreviewSlideMotionLayerState.cpp
         src/core/scene/PreviewSlideMotionLayerState.h
+        src/core/scene/PreviewVisualAidTiming.cpp
+        src/core/scene/PreviewVisualAidTiming.h
+        src/core/scene/PreviewVisualAidLayerState.cpp
+        src/core/scene/PreviewVisualAidLayerState.h
         src/core/scene/PreviewSpriteDescriptor.h
         src/core/scene/PreviewTouchHoldLayerState.cpp
         src/core/scene/PreviewTouchHoldLayerState.h
@@ -411,6 +417,8 @@ miacode_add_module(miacode_preview_quick
         src/preview/quick_scene/PreviewQuickSectorNodes.h
         src/preview/quick_scene/PreviewQuickSlideMotionLayer.cpp
         src/preview/quick_scene/PreviewQuickSlideMotionLayer.h
+        src/preview/quick_scene/PreviewQuickVisualAidLayer.cpp
+        src/preview/quick_scene/PreviewQuickVisualAidLayer.h
         src/preview/quick_scene/PreviewQuickSpriteBatchPolicy.h
         src/preview/quick_scene/PreviewQuickSpriteNodes.cpp
         src/preview/quick_scene/PreviewQuickSpriteNodes.h

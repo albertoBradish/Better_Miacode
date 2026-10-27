@@ -50,6 +50,7 @@ class PreviewModel final : public QObject
     Q_PROPERTY(QObject* mediaHost READ mediaHost CONSTANT)
     // Aspect of the preview canvas, used by the split view to size the pane.
     Q_PROPERTY(double canvasAspectRatio READ canvasAspectRatio NOTIFY presentationChanged)
+    Q_PROPERTY(QVariantMap canvasSettings READ canvasSettings NOTIFY canvasSettingsChanged)
 
 public:
     explicit PreviewModel(miacode::ShellNotifications& notifications,
@@ -75,6 +76,8 @@ public:
     QObject* runtime() const;
     QObject* mediaHost() const;
     double canvasAspectRatio() const;
+    QVariantMap canvasSettings() const;
+    Q_INVOKABLE void setCanvasSetting(const QString& key, const QVariant& value);
 
     void setPositionSeconds(double value);
     void setRate(double value);
@@ -104,6 +107,7 @@ signals:
     void muriParametersChanged();
     void statisticsChanged();
     void presentationChanged();
+    void canvasSettingsChanged();
 
 private:
     void refreshFromBackend(bool force = false);

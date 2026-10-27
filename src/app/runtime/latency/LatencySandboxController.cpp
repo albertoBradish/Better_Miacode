@@ -255,6 +255,7 @@ void LatencySandboxController::setupSandboxPreviewState()
     });
     if (owner_->state_.scene_ != nullptr) {
         owner_->state_.scene_->setNoteMarkers(previewState.shiftedNoteMarkers);
+        owner_->state_.scene_->setVisualAidChartTiming(parseResult, 4, offsetSeconds_);
     }
 
     // Bottom timeline — reuse the real timeline model so the test chart's notes
@@ -294,6 +295,9 @@ void LatencySandboxController::restoreOriginalTimeline()
     owner_->state_.timeline_.latestTimelineNoteMarkerSignature_ = cachedNoteMarkerSignature_;
     if (owner_->state_.scene_ != nullptr) {
         owner_->state_.scene_->setNoteMarkers(cachedNoteMarkers_);
+        owner_->state_.scene_->setVisualAidChartTiming(owner_->state_.timeline_.lastTimelineParseResult_,
+            miacode::chart_clock::clockCountFromDocument(owner_->applicationServices_.workspace().document()),
+            owner_->parsedFirstSeconds());
     }
     if (owner_->state_.timeline_.timelineQuickStateBridge_ != nullptr) {
         owner_->state_.timeline_.timelineQuickStateBridge_->setTimelineData(cachedSnapshot_);

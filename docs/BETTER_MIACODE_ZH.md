@@ -34,3 +34,17 @@ Better Miacode 是操作体验改进版本，基线为 Team-MiaCode/MiaCode 的
 - 检查直线/弧线/折线/链式/Wifi 骨骼及逐区消退。
 - 按受影响模块执行聚焦测试，再做 Release 打包、归档完整性及 SHA-256 校验。
 - 独立提交运行隔离与功能，推送用户仓库；不向上游推送或自动创建 PR。
+
+## 本次交付验证（2026-10-27）
+
+版本：`2.0.0-better.1`，Windows x64 Release；版本号沿用所选上游 main 的 2.0.0 基线。
+
+- 8 项聚焦规格全部通过：runtime_isolation、qml_scintilla_editor、editor_sync_controller、playback_coordinator、timeline_model、preview_head_layer、preview_visual_aids、video_export_visual_aids。
+- GUI 已检查行号跳至对应时间并暂停、选中 slide 在时间轴与预览同时黄色描边、右键和调整菜单的播放选区、完整尾部结束暂停、画面辅助开关及首选项三种小节线模式。
+- 便携包 worker 已导出合成谱面，抽帧确认完整灰白圆环及判定中心折线。未使用真实谱面。
+- 实际程序在无效运行根下以 78 拒绝启动；配置与日志位于 Better Miacode 独立目录。
+- GUI 验收发现并修复了预览图层数量不足导致末尾描边层未执行的问题，增加了图层分配与使用数量一致的回归检查。
+- 本机使用 FFmpeg 8.1 共享 SDK；打包清单同步到该 ABI。构建依赖的二进制文件不提交源码仓库。
+
+此次覆盖 Windows 和默认皮肤的合成用例；其他平台和第三方皮肤未做 GUI 验收。
+最终归档哈希由包旁的 `.sha256` 文件记录。先解压完整包，再启动根目录 `MiaCode.exe`。
