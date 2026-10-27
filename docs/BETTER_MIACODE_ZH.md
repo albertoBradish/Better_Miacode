@@ -59,3 +59,10 @@ Better Miacode 是操作体验改进版本，基线为 Team-MiaCode/MiaCode 的
 
 开发工具 `miacode_measure_ring_render --guide <assets/noteguide/Normal.png> --output <输出目录>`
 可输出原版 note 参考线与小节线的并排图；左侧为原版，右侧为小节线。
+
+## 2.0.0-better.3 打开文件校验
+
+- 打开文件时在读取前检查扩展名，只接受 `.txt` 和 `.simai`，不区分大小写；粘贴其他类型的文件路径会显示错误及文件路径，不再进入谱面解析。
+- 文件夹仍解析为其中的 `maidata.txt`；保留纯谱面正文、空难度和带语法错误谱面的既有打开行为。
+- 启动及会话恢复的运行时读取入口使用相同格式限制。拒绝打开时保留当前文档、未保存修改和打开代次。
+- Windows x64 Release 构建通过；chart_workspace_file_service、document_model_save、runtime_isolation 三项聚焦规格通过。打开错误经界面模型入口验证，未进行原生文件对话框的手动 GUI 验收。
