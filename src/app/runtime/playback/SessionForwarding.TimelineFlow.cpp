@@ -224,8 +224,14 @@ bool Session::seekPreviewToEditorLocation(int difficultyId, int line, int column
     if (!hasActiveDifficulty() || difficultyId != activeDifficultyId_) {
         return false;
     }
+    // A click can arrive before the deferred timeline update after an edit.
+    playback_->refreshTimelineQuickModelFromCurrentText();
     double second = 0.0;
-    if (!resolveTimelineSecondForCursor(qMax(1, line), qMax(1, column), &second)) {
+    const auto& lines = state_.timeline_.timelineQuickModel_.snapshot().lines;
+    if (column == 1 && line >= 1 && line <= lines.size()) {
+        // Empty and comment-only lines still have a parser entry time.
+        second = qMax(0.0, lines.at(line - 1).startSecond);
+    } else if (!resolveTimelineSecondForCursor(qMax(1, line), qMax(1, column), &second)) {
         return false;
     }
     // Park playback first so the seek lands on a stable clock, suppress the

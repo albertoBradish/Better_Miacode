@@ -82,9 +82,15 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
     connect(this, &ScintillaQuick_item::styleNeeded, this, [this](Scintilla::Position) { if (ready_) styler_.style(); });
     connect(QGuiApplication::clipboard(), &QClipboard::dataChanged, this, &ScintillaEditorBridge::availabilityChanged);
     connect(this, &ScintillaQuick_item::marginClicked, this, [this](Scintilla::Position position, Scintilla::KeyMod, int margin) {
-        if (margin != 1) return;
+        if (margin != 0 && margin != 1) return;
         beginUserInteraction();
         const int line = send(SCI_LINEFROMPOSITION, position) + 1;
+        if (margin == 0) {
+            if (syncController_ && documentSession_)
+                syncController_->seekPreviewToEditorLocation(
+                    documentSession_->currentDifficultyId(), documentSession_->documentRevision(), line, 1);
+            return;
+        }
         const QRectF rect = positionToRectangle(document_.utf16Position(position));
         emit bookmarkMenuRequested(line, 16, rect.y());
     });
