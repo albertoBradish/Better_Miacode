@@ -391,6 +391,8 @@ miacode_add_module(miacode_preview_quick
         src/preview/quick_scene/PreviewQuickChartReviewLayer.h
         src/preview/quick_scene/PreviewQuickCircleNodes.cpp
         src/preview/quick_scene/PreviewQuickCircleNodes.h
+        src/preview/quick_scene/PreviewQuickMeasureRingNodes.cpp
+        src/preview/quick_scene/PreviewQuickMeasureRingNodes.h
         src/preview/quick_scene/PreviewQuickGraphicsInfo.cpp
         src/preview/quick_scene/PreviewQuickGraphicsInfo.h
         src/preview/quick_scene/PreviewQuickGuideLayer.cpp
@@ -467,6 +469,8 @@ qt_add_shaders(miacode_preview_quick "preview_sprite_shaders"
         src/preview/quick_scene/shaders/PreviewSpriteMaterial.frag
         src/preview/quick_scene/shaders/PreviewStageDimMaterial.vert
         src/preview/quick_scene/shaders/PreviewStageDimMaterial.frag
+        src/preview/quick_scene/shaders/PreviewMeasureRing.vert
+        src/preview/quick_scene/shaders/PreviewMeasureRing.frag
         src/preview/quick_scene/shaders/PreviewFireworkMaterial.vert
         src/preview/quick_scene/shaders/PreviewFireworkMaterial.frag
         src/preview/quick_scene/shaders/PreviewFireworkPost.vert

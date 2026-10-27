@@ -1,5 +1,5 @@
 #include "preview/quick_scene/PreviewQuickVisualAidLayer.h"
-#include "preview/quick_scene/PreviewQuickCircleNodes.h"
+#include "preview/quick_scene/PreviewQuickMeasureRingNodes.h"
 #include "core/scene/PreviewVisualAidLayerState.h"
 #include "core/scene/PreviewSceneGeometry.h"
 #include "common/DebugLog.h"
@@ -33,7 +33,7 @@ QSGNode* PreviewQuickVisualAidLayer::updateNode(QSGNode* oldNode,
     const auto layer = buildPreviewVisualAidLayerState(state, markers,
         playfieldRectForStage(stageRectForSize(renderSize), state.render.layoutSquareScale), measuresOnly, !measuresOnly);
     QSGNode* previous = oldNode->firstChild();
-    QSGNode* circles = buildPreviewCircleNodeTree(previous, layer.circles);
+    QSGNode* circles = buildPreviewMeasureRingNodeTree(previous, layer.circles);
     if (circles != previous) {
         oldNode->removeChildNode(previous);
         delete previous;
