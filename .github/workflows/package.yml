@@ -3,7 +3,7 @@ run-name: ${{ inputs.channel || 'nightly' }} · ${{ github.ref_name }} · ${{ gi
 
 on:
   push:
-    branches: [dev, feature/qml-ui, ci/platform-package-refactor]
+    branches: [better_miacode]
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -67,6 +67,7 @@ jobs:
       SCCACHE_IDLE_TIMEOUT: "0"
       CI_PLATFORM: ${{ matrix.platform }}
       CI_BUILD_DIR: ${{ matrix.build }}
+      MIACODE_PACKAGE_JOBS: "4"
     steps:
       - name: Start timing
         run: echo "CI_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
@@ -201,18 +202,27 @@ jobs:
         id: artifact
         run: python scripts/build/package.py artifact
 
+      - name: Verify packaged CLI, video, cover and archive
+        run: python scripts/build/verify-release.py --dist dist
+
       - name: Save package
         if: steps.package-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
-          path: dist/*.7z
+          path: |
+            dist/*.7z
+            dist/*.sha256
+            dist/*verification.json
           key: ${{ steps.package-cache.outputs.cache-primary-key }}
 
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.artifact.outputs.name }}
-          path: dist/*.7z
+          path: |
+            dist/*.7z
+            dist/*.sha256
+            dist/*verification.json
           compression-level: 0
           if-no-files-found: error
           retention-days: 14

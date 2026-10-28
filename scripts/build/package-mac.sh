@@ -18,7 +18,8 @@ PACKAGE_CHANNEL="${MIACODE_PACKAGE_CHANNEL-$RELEASE_CHANNEL}"
 if [[ "$PACKAGE_CHANNEL" == "release" ]]; then
   PACKAGE_CHANNEL=""
 fi
-PACKAGE_JOBS="${MIACODE_PACKAGE_JOBS:-$(sysctl -n hw.ncpu)}"
+PACKAGE_JOBS="${MIACODE_PACKAGE_JOBS:-4}"
+[[ "$PACKAGE_JOBS" =~ ^[1-4]$ ]] || { echo "Build concurrency must be 1-4" >&2; exit 2; }
 FFMPEG_RUNTIME_LIBRARIES=(
   "libavcodec.62.dylib"
   "libavfilter.11.dylib"
@@ -73,7 +74,7 @@ VERSION="$(parse_version "$ROOT_DIR/CMakeLists.txt")"
 # Release artifact name: <name>_<version>[_<channel>]_<os>_<arch>. Separators
 # stay underscores except inside the version, which keeps its own dots and
 # hyphens (e.g. 2.0.0-alpha).
-PACKAGE_NAME="MiaCode_${VERSION}"
+PACKAGE_NAME="Better_Miacode_${VERSION}"
 if [[ -n "$PACKAGE_CHANNEL" ]]; then
   PACKAGE_NAME+="_${PACKAGE_CHANNEL}"
 fi
@@ -442,6 +443,8 @@ package_step "Staging app bundle, documentation, assets, and runtime tools"
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 cp -R "$APP_PATH" "$DIST_DIR/"
+mkdir -p "$DIST_DIR/MiaCode.app/Contents/Resources"
+printf 'BetterMiacode.package.v1\n' > "$DIST_DIR/MiaCode.app/Contents/Resources/.better-miacode-package"
 
 for release_doc in LICENSE THIRD_PARTY_NOTICES.md; do
   if [[ ! -f "$ROOT_DIR/$release_doc" ]]; then
@@ -654,7 +657,7 @@ SEVEN_ZIP="$(command -v 7z || command -v 7za || command -v 7zz || true)"
 if [[ -n "$SEVEN_ZIP" ]]; then
   (
     cd "$(dirname "$DIST_DIR")"
-    "$SEVEN_ZIP" a -t7z -mx=9 -mmt=on -bso0 -bsp0 "$ARCHIVE_PATH" "$(basename "$DIST_DIR")"
+    "$SEVEN_ZIP" a -t7z -mx=9 -mmt=4 -bso0 -bsp0 "$ARCHIVE_PATH" "$(basename "$DIST_DIR")"
   )
 else
   PYTHON_SEVEN_ZIP="${PYTHON_BIN:-python3}"

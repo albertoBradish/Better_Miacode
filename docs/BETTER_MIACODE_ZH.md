@@ -1,8 +1,10 @@
-# Better Miacode 开发与验收规格
+# Better Miacode 功能说明与验收边界
+
+better.4 新增时间轴 Alt + 鼠标滚轮缩放，保留已有快捷键配置；时间轴上的 Alt 手势不会触发预览判定区临时显示。
 
 Better Miacode 是操作体验改进版本，基线为 Team-MiaCode/MiaCode 的
 `main@7feadff91644fea4b1f8e2c1c0de71b3f35233da`。独立仓库不包含手序版提交。
-本文描述验收目标；实际验证结果另记交付报告。
+本文记录功能契约及分版本验证边界。当前目标版本为 `2.0.0-better.4`；下方 better.1～better.3 的历史验证结论不自动覆盖本次改动。better.4 的完整构建、GUI、导出和跨平台结果，以最终验收报告、Release 附件和 CI 结果为准。
 
 ## 分批功能
 
@@ -66,3 +68,159 @@ Better Miacode 是操作体验改进版本，基线为 Team-MiaCode/MiaCode 的
 - 文件夹仍解析为其中的 `maidata.txt`；保留纯谱面正文、空难度和带语法错误谱面的既有打开行为。
 - 启动及会话恢复的运行时读取入口使用相同格式限制。拒绝打开时保留当前文档、未保存修改和打开代次。
 - Windows x64 Release 构建通过；chart_workspace_file_service、document_model_save、runtime_isolation 三项聚焦规格通过。打开错误经界面模型入口验证，未进行原生文件对话框的手动 GUI 验收。
+
+
+## 2.0.0-better.4 对象编辑、工具与导出
+
+本节描述当前实现的操作和数据契约，不把局部核心测试通过等同于完整发布验收。发布说明见 [better.4](releases/better_4.md)，下载入口为 [Better_Miacode Releases](https://github.com/albertoBradish/Better_Miacode/releases)。
+
+### 对象选择和编辑
+
+源码、时间轴及预览共享解析器生成的独立音符源码范围。部分 token 的命中归属于完整音符；同拍、紧凑数字写法中的独立音符可以分别选择，链式或分支 Slide 归属于其完整源码对象。选择带难度、revision 和场景代次，源文档或场景更换后不继续应用过期结果。
+
+| 入口 | 操作 |
+| --- | --- |
+| 源码 | Ctrl/Command + 单击音符，追加对象选择；普通拖选保持文本选择 |
+| 时间轴音符 | Shift + 单击选择；Ctrl/Command + 单击追加 |
+| 预览 | Shift + 拖动框选当前可见音符；Ctrl/Command + 单击追加；Ctrl/Command + Shift + 拖动追加框选 |
+| 对象选择模式 | Delete / Backspace 删除；Esc 清除选择 |
+
+预览按当前帧实际可见的音符几何命中，包括 Hold 身体、Slide 轨迹和移动星星。启动选择时暂停，拖动期间固定参与命中的场景；场景版本变化时拒绝该次选择。预览中仅按 Ctrl/Command 拖动时，应从音符上开始。
+
+对象选择进入原有变换命令：镜像、旋转、分音和 Break / Ex / Firework 等属性操作。对象删除移除音符及相关同拍连接符，保留空拍、逗号、BPM、分音、HS 和拍号；普通文本选择仍走文本编辑，不自动改成对象删除。删除、剪切、粘贴及变换参与正常撤销/重做。
+
+| 常用默认命令 | 快捷键 |
+| --- | --- |
+| 复制 / 剪切 / 粘贴 | Ctrl+C / Ctrl+X / Ctrl+V；macOS 标准编辑命令按系统显示 |
+| 左右镜像 / 上下镜像 | Ctrl+J / Ctrl+K |
+| 旋转 180° | Ctrl+L |
+| 逆时针 / 顺时针旋转 45° | Ctrl+; / Ctrl+' |
+| 播放/暂停 / 停止或播放 | Ctrl+Shift+X / Ctrl+Shift+C |
+
+变换及播放快捷键使用现有注册表，可在首选项配置；不将这些既有键位描述为本次新增的快捷键。
+
+### 带上下文的剪贴板片段
+
+对象复制同时写入普通 simai 文本及 `application/x-better-miacode-note-fragment-v1` 数据。片段在首个选中音符前补齐生效的 BPM、分音、HS 和拍号，并保留选中范围内的时序变化及空拍；未选中的同区间音符被移除。片段不包含终止 `E`，便于粘贴到其他编辑器。
+
+Better Miacode 识别片段后只插入一次：有对象集合时先删除该集合，再在最早选中拍前插入；文本选区涉及音符时也按完整对象替换。没有替换对象时，插入点自动对齐到完整音符或拍首：音符 token 内部移到该音符前，指令内部或同拍分隔处移到拍首，注释内移到注释前；若插入位置之前已有本拍音符，则补充必要的逗号。未被替换的原 token 和分隔字符保留。片段结束后恢复目标位置原本的 BPM、分音、HS、拍号，使后续原谱继续按目标时序解释。粘贴不是按绝对秒数铺开音符，也不会把同一片段重复插入到每个选点。
+
+其他程序丢弃专用 MIME 数据后，剪贴板仍有可读文本；此时按普通文本粘贴，不承诺自动恢复目标时序。
+
+### 权威时间轨
+
+解析器提供 BPM、显式拍号标记及连续的四分音符累计拍位，HUD、BPM 导出及狐狸共用该时间轨。相同时间的赋值按源码顺序取最后值，连续相同状态合并。负时间和最后一处 BPM 之后的相位按当时 BPM 外推；显示 BPM 使用原谱值，不乘播放速率。
+
+音符和 HUD 在播放及导出中使用含 `&first` 的统一音频时轴；BPM 文本导出在需要时把谱面时间换算到音频时间。UI 不再用一套独立正则重新推断 BPM。
+
+### DX 达成率失分
+
+独立工具窗口统计 Tap / Hold / Star / Slide / Touch / TouchHold 六类基础物件，以及 Break / Ex / Firework 属性和计分 Total。属性与基础类别重叠，但不会再次加进 Total；Mine 单独列出，不进入计分分母或 CPS。同头 Slide 的头部计一次，各轨迹完成事件分别计数。
+
+普通 Tap、Star、Touch 的基础分为 500，Hold、TouchHold 为 1000，Slide 为 1500，Break 为 2500。普通物件的 Great / Good / Miss 分别损失基础分的 20% / 50% / 100%。Break 额外分母为 `100 × Break 数量`，折合总计 1 个达成率百分点。
+
+| Break 判定档 | 基础分损失 | 额外分损失 |
+| --- | ---: | ---: |
+| Critical Perfect 2600 | 0 | 0 |
+| Perfect 2550 | 0 | 25 |
+| Perfect 2500 | 0 | 50 |
+| Great 2000 | 500 | 60 |
+| Great 1500 | 1000 | 60 |
+| Great 1250 | 1250 | 60 |
+| Good 1000 | 1500 | 70 |
+| Miss | 2500 | 100 |
+
+单个判定的失分为 `100 × 基础分损失 / 基础分总额`，Break 再加 `额外分损失 / (100 × Break 数量)`，单位为达成率百分点。SSS 100% 与 SSS+ 100.5% 的最大个数假设其余全部 Critical Perfect，以精确整数比例比较边界后再显示舍入，并以实际可达物件数量为上限。
+
+EX 的容错数量不能直接等同于普通物件：EX Tap / Star 的非 Miss 头判提升到 Critical Perfect；长 EX Hold 仍可能因松手发生尾判降档，Break EX 也按具体可达档位限制。表格给出判定本身的单次失分，最大个数遵守这些约束。
+
+空谱禁算；无 Break 时实际满分为 100%，不能达到 SSS+ 100.5%。存在 Mine 等无官方 DX 计分定义的扩展时仍显示统计，禁用失分计算。HS 仅影响视觉，不因此单独禁算。
+
+### BPM 导出与宽屏 HUD
+
+BPM 窗口支持预览、复制和另存为三种格式：
+
+- 顺序：`135.00-128.00`。
+- 音频时间：`00:00:000/135.00 - 01:23:456/128.00`，时间包含 `&first`，支持负号。
+- 空 maidata：移除全部音符，保留高精度 BPM、解析器的正整数分音、显式拍号、`&first` 和源码终止拍位 `E`。
+
+前两种合并连续同值 BPM，同刻最后赋值生效；用于显示的两位小数不用于空 maidata 重建。空 maidata 重新解析后的有效 BPM 时点及终止拍位应一致。其“结束位置”指源码 `E` 的拍位；删除长 Note 后不保留已消失的尾部时长，不人为延长渲染 duration，也不添加虚假 BPM。
+
+宽屏的 BPM / CPS / Meter / Mods 四项各自开关，默认关闭，设置进入快照和 worker：
+
+| HUD | 含义 |
+| --- | --- |
+| BPM | 当前原谱 BPM，不乘速率 |
+| CPS | 过去一秒 `(t-1, t]` 内完成的计分事件数 |
+| Meter | 只有谱面显式设置拍号时才显示 |
+| Mods | 实际无理检测渲染为 `DJAUTO`，普通渲染为 `NONE` |
+
+CPS 的 Hold / TouchHold 在结束时计数，Slide / Wifi 在轨迹结束时计数；头部按自身判定事件计数，Mine 不计。`MaimuriDxStyle` 对应 `DJAUTO`，`Native` 和普通区域擦除模式对应 `NONE`。
+
+### 判定线、文字效果、同步封面与狐狸
+
+判定线新增 None / 无。选择后，暂停判定区替换、自定义判定线图片及其回退都不能恢复该图层；小节参考线、判定骨骼和其他辅助图层仍由各自开关控制。
+
+文字图层增加独立描边和阴影：描边开关、颜色、宽度；阴影开关、颜色、透明度、模糊、横纵偏移。参数进入图层复制、布局 JSON、保存和加载；旧布局缺少字段时默认关闭。效果距离以 1080 高画布像素换算，编辑预览与最终 PNG 使用同一组合场景；高 DPI、宽画布、大字和透明输出仍需像素验收。
+
+单曲视频导出可选择封面预设；预设包括内置、已保存的用户预设及布局文件。触发导出时固定当前预览时间和任务数据，同一时刻的拼贴图层复用冻结图像，避免视频完成时再读取已移动的预览。普通片头的负时间、PV 预览保留段与实际 PV 采样分别换算；批量封面使用预设保存的各图层时间。视频成功后按实际视频输出名写配套 PNG；封面写入或渲染失败应报告并保留成功视频，取消或失效任务不留下配套输出。
+
+狐狸使用权威四分音符相位产生短促下压、平滑回弹及轻微摆动，播放时与原有姿态动作平滑衔接，暂停后退回原动作。变 BPM、倍速和 seek 均重新采样播放相位，宠物窗口不另行积累节拍。
+
+### CLI 与请求协议
+
+“设置 → 关于”提供命令行集成开关，命令为 `better-miacode`。注册在用户范围内；启用或关闭只维护本安装拥有的脚本和 PATH 登记，不覆盖同名外部命令，失败时回滚可回滚的变更。启用后重新打开终端。任务执行使用同一独立 runtime，关闭开关返回 77；元信息命令不要求开关或 runtime 已配置。
+
+| 命令 | 主要参数 |
+| --- | --- |
+| `--help` / `help`、`--version` / `version`、`capabilities` | 可加 `--json` |
+| `stats` | `--chart`、`--difficulty`（默认 4）、`--json` |
+| `presets list` | 可加 `--json`；`presets` 也是有效写法 |
+| `export video` | `--chart`、`--output`、`--difficulty`、尺寸、fps、起止区间、流速和 HUD 参数 |
+| `export cover` | `--chart`、`--output`、`--difficulty`、`--preset`、`--time` |
+| `export bpm` | `--chart`、`--output`、`--difficulty`、`--format sequence|audio-time|maidata` |
+
+视频输出 `.mp4`；封面输出 `.png` / `.jpg` / `.jpeg`，默认 `builtin:card`。其他内置预设为 `builtin:card_chart_frame`、`builtin:dual_chart_frames`、`builtin:pure_chart_frame`，用户和文件预设为 `user:名称`、`file:路径`。BPM 格式默认 `sequence`。`--start`、`--duration`、`--time` 均为秒，封面 `--time` 可为片头负时间。视频宽度不能小于高度。渲染仍需要可用图形环境及媒体依赖。
+
+`better-miacode --request request.json` 接受一个 schemaVersion 1 对象：
+
+```json
+{
+  "schemaVersion": 1,
+  "command": "export",
+  "type": "video",
+  "chart": "maidata.txt",
+  "difficulty": 4,
+  "output": "out.mp4"
+}
+```
+
+JSON 属性名沿用参数名，例如 `width`、`height`、`fps`、`duration`、`json`、`overwrite`；不要使用另一套嵌套命令格式。文件请求内的路径相对该 JSON 文件目录；`--request -` 从 stdin 读取，stdin 与 flags 路径相对 cwd。flags 可覆盖请求中的相应值。
+
+`--json` / `--ndjson` 的视频、封面渲染输出是 NDJSON 事件流：`type: "progress"` 的进度行，随后一个 `type: "result"`。统计、BPM、元信息返回一个结果。结果信封使用 `schemaVersion: 1`、`ok`、`exitCode` 以及 `data` 或 `error: {code, message}`。调用方应逐行解析，并检查最终退出码。
+
+已有输出需要 `--overwrite`。任务先在临时位置完成，成功后原子替换明确指定的输出；失败保留原有文件。
+
+| 退出码 | 含义 |
+| --- | --- |
+| 0 | 成功 |
+| 1 | 任务失败 |
+| 2 | 请求或谱面无效 |
+| 3 | 输出冲突 |
+| 77 | CLI 任务未启用 |
+| 78 | runtime 隔离检查拒绝 |
+| 130 | 取消 |
+
+### 平台和本次验收边界
+
+本次目标是 Windows x64、Windows ARM64 和 Apple 芯片 macOS（13+）。Windows 使用包根目录 `MiaCode.exe` 和包内 `runtime/`；macOS 使用 `MiaCode.app`，用户数据位于 `~/Library/Application Support/BetterMiacode`，不向 `.app` 内写用户资料。macOS 走现有签名流程，尚未 notarize。Linux 仍可从源码构建，不在本次发布包目标中。
+
+以下事项不能由单个平台或部分 Spec 的通过代替：
+
+- Windows ARM64 和 macOS 的完整依赖、Release 构建、打包及原生运行。
+- 三平台的 CLI 注册/关闭/冲突回滚、路径含空格或中文、退出码及 NDJSON 消费。
+- GUI 对象选择和片段编辑、第三方皮肤、不同 DPI 与自由宽屏布局。
+- 文字描边/阴影透明 PNG、片头/PV 时间对齐、同步封面失败及取消。
+- 预览与 worker 对应帧、最终归档完整性、文件清单与 SHA-256。
+
+本节不预填“全部通过”。实际通过范围、未验证项、可下载附件与哈希由最终验收报告及平台 CI 补充。

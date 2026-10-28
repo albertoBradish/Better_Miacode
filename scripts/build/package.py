@@ -41,8 +41,8 @@ if not BUILD_DIR.is_absolute():
 def cpu_jobs() -> str:
     override = os.environ.get("MIACODE_PACKAGE_JOBS", "").strip()
     if override:
-        return override
-    return str(os.cpu_count() or 1)
+        return str(max(1, min(4, int(override))))
+    return str(min(4, os.cpu_count() or 1))
 
 
 def run(args, cwd=None, env=None):
@@ -243,16 +243,6 @@ def provision_windows_ffmpeg():
             if probe is not None:
                 shutil.copy2(probe, dest_dir / "ffprobe.exe")
             print(f"Prepared Windows ffmpeg at {binary}")
-    if arch == "x64":
-        sdk = dest_dir / "dev"
-        header = sdk / "include" / "libavcodec" / "avcodec.h"
-        dll = sdk / "bin" / "avcodec-61.dll"
-        if header.is_file() and dll.is_file():
-            print(f"Using existing FFmpeg preview SDK: {sdk}")
-            return
-        script = ROOT / "scripts" / "ffmpeg" / "trim" / "build-trimmed-ffmpeg.ps1"
-        run(["powershell", "-ExecutionPolicy", "Bypass", "-File", script, "-OutputDir", sdk, "-Jobs", cpu_jobs()])
-        return
     sdk = dest_dir / "dev"
     if (sdk / "include" / "libavcodec").is_dir() and (sdk / "bin" / "avcodec-62.dll").is_file():
         print(f"Using existing FFmpeg preview SDK: {sdk}")
@@ -261,7 +251,7 @@ def provision_windows_ffmpeg():
     with tempfile.TemporaryDirectory(prefix="miacode-ffmpeg-dev-") as temp:
         archive = Path(temp) / "sdk.zip"
         extracted = Path(temp) / "extracted"
-        print("Downloading FFmpeg dev SDK (arm64)")
+        print(f"Downloading FFmpeg dev SDK ({arch})")
         download(url, archive)
         extract_archive(archive, extracted)
         include = next(path for path in extracted.rglob("libavcodec") if path.parent.name == "include")
@@ -349,11 +339,13 @@ def build_windows():
         "-UGIT_EXECUTABLE",
         f"-DCMAKE_PREFIX_PATH={qt}",
         "-DCMAKE_TRY_COMPILE_CONFIGURATION=Release",
-        "-DMIACODE_BUILD_DEV_TOOLS=OFF",
+        "-DMIACODE_BUILD_DEV_TOOLS=ON",
+        "-DCMAKE_AUTOGEN_PARALLEL=4",
         f"-DMIACODE_RELEASE_CHANNEL={env.get('MIACODE_RELEASE_CHANNEL', 'nightly')}",
     ], env=env)
     jobs = cpu_jobs()
     run(["cmake", "--build", BUILD_DIR, "--config", "Release", "--target", "MiaCode", "MiaCodeLauncher", "--parallel", jobs], env=env)
+    verify_specs(env)
     run([
         "powershell", "-ExecutionPolicy", "Bypass", "-File", ROOT / "scripts" / "build" / "package-win.ps1",
         "-Arch", spec["arch"], "-BuildDir", BUILD_DIR, "-QtRoot", qt, "-BuildJobs", jobs,
@@ -367,9 +359,25 @@ def build_macos():
     env["QT_ROOT"] = str(qt)
     env["QT_ROOT_DIR"] = str(qt)
     env["BUILD_DIR"] = str(BUILD_DIR)
+    env["MIACODE_BUILD_DEV_TOOLS"] = "ON"
+    env["MIACODE_PACKAGE_JOBS"] = cpu_jobs()
     env["CMAKE_OSX_ARCHITECTURES"] = "arm64"
     env["CMAKE_OSX_DEPLOYMENT_TARGET"] = os.environ.get("CMAKE_OSX_DEPLOYMENT_TARGET", "13.0")
     run(["bash", ROOT / "scripts" / "build" / "package-mac.sh"], env=env)
+    verify_specs(env)
+
+
+def verify_specs(env):
+    targets = ["runtime_isolation_spec", "cli_integration_spec", "cli_request_spec", "chart_note_selection_spec",
+               "preview_note_hit_test_spec", "preview_note_selection_interaction_spec", "chart_tools_spec", "cover_layout_model_spec",
+               "editor_sync_controller_spec", "video_export_visual_aids_spec", "cover_export_session_spec",
+               "qml_export_video_page_spec", "qml_scintilla_editor_spec"]
+    run(["cmake", "--build", BUILD_DIR, "--config", "Release", "--target", *targets,
+         "--parallel", cpu_jobs()], env=env)
+    test_env = env.copy()
+    test_env["QT_QPA_PLATFORM"] = "offscreen"
+    run(["ctest", "--test-dir", BUILD_DIR, "-C", "Release", "--output-on-failure",
+         "--timeout", "120", "-R", "^(" + "|".join(targets) + ")$"], env=test_env)
 
 
 def build():
@@ -486,6 +494,7 @@ WINDOWS = {
         "ffmpeg_dir": "win64",
         "ffmpeg_url": "https://github.com/GyanD/codexffmpeg/releases/download/7.1.1/ffmpeg-7.1.1-essentials_build.7z",
         "ffmpeg_archive": "ffmpeg.7z",
+        "ffmpeg_dev_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-win64-lgpl-shared-8.1.zip",
     },
     "windows-arm64": {
         "arch": "arm64",

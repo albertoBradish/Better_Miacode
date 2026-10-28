@@ -128,6 +128,7 @@ scripts/build/*
 !scripts/build/build-macos-local.sh
 !scripts/build/build-win.ps1
 !scripts/build/package.py
+!scripts/build/verify-release.py
 !scripts/build/package-mac.sh
 !scripts/build/package-win.ps1
 !scripts/build/provision-qt.ps1
