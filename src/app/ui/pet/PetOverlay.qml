@@ -16,16 +16,16 @@ Window {
     // Supplied by the chart's authoritative transport, never integrated here.
     property real rhythmQuarterBeat: 0
     property bool rhythmPlaying: false
-    property real rhythmWeight: rhythmPlaying && visible ? 1 : 0
+    property real rhythmWeight: rhythmPlaying && visible
+        ? (animationState === "interaction" ? 0.18 : 1) : 0
     Behavior on rhythmWeight { NumberAnimation { duration: 300; easing.type: Easing.InOutSine } }
     onRhythmPlayingChanged: {
-        if (rhythmPlaying) {
-            animationState = "idle"
-            animationPhase = 0
-            stateTimer.stop()
-        } else if (visible) {
+        // An explicit click gesture owns its two-second lifetime even when
+        // playback starts or stops. Its timer returns to the current idle/dance.
+        if (animationState === "interaction")
+            return
+        if (visible)
             enterState("idle")
-        }
     }
 
     width: controller.size
@@ -68,7 +68,11 @@ Window {
         animationState = nextState
         animationPhase = 0
         stateTimer.stop()
-        if (nextState === "sleeping" || rhythmPlaying)
+        if (nextState === "sleeping" || !visible)
+            return
+        // Interaction must finish during playback too. Only the autonomous
+        // idle/sit/sleep cycle yields to the chart-driven dance.
+        if (rhythmPlaying && nextState !== "interaction")
             return
         stateTimer.interval = nextState === "interaction" ? 2000
                              : nextState === "sitting" ? 12000 : 8000

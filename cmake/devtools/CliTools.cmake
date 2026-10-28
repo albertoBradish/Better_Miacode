@@ -21,6 +21,21 @@ function(miacode_link_dev_audio NAME)
 endfunction()
 
 # ---- CLI dump / probe helpers (manual diagnostics, not CTest cases) ----
+miacode_add_dev_tool(pet_groove_preview
+    SOURCES
+        src/tools/pet/PetGroovePreview.cpp
+        src/app/ui/pet/PetScene.cpp
+        src/app/ui/pet/PetScene.h
+    LIBS Qt6::Core Qt6::Gui Qt6::GuiPrivate Qt6::Quick Qt6::Qml
+    INCLUDES src
+)
+target_compile_definitions(pet_groove_preview PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+miacode_add_qrc(pet_groove_preview src/tools/pet/PetGroovePreview.qrc)
+qt_add_shaders(pet_groove_preview "pet_preview_shaders"
+    PREFIX "/"
+    FILES src/app/ui/pet/shaders/pet.vert src/app/ui/pet/shaders/pet.frag)
+
 miacode_add_dev_tool(miacode_muri_dump
     SOURCES
         src/devtools/MuriDump.cpp

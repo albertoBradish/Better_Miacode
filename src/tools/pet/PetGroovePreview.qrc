@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/qt/qml/MiaCode/UI">
+    <file alias="pet/minecraft/fox.png">../../app/ui/resources/pet/minecraft/fox.png</file>
+  </qresource>
+</RCC>
