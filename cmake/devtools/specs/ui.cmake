@@ -147,6 +147,7 @@ miacode_add_dev_tool(cover_export_session_spec TEST
     INCLUDES src
 )
 target_compile_definitions(cover_export_session_spec PRIVATE
+    "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\""
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
 miacode_add_dev_tool(qml_export_video_page_spec TEST

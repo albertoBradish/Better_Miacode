@@ -2,6 +2,7 @@
 #include "app/services/PreferenceDocument.h"
 #include "app/services/ProjectPreferences.h"
 #include "common/DebugLog.h"
+#include "common/RuntimePaths.h"
 #include "export/cover_export/SceneFrameRenderer.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
 
@@ -42,7 +43,19 @@ int main(int argc, char** argv)
     QStandardPaths::setTestModeEnabled(true);
     QGuiApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("MiaCodeCoverExportSessionSpec"));
-    QTemporaryDir temporary;
+    QTemporaryDir temporary(QDir(QStringLiteral(MIACODE_TEST_OUTPUT_ROOT))
+        .filePath(QStringLiteral("cover-session-spec-XXXXXX")));
+    if (!temporary.isValid()) return 1;
+    QFile markerFile(temporary.filePath(QStringLiteral(".better-miacode-runtime")));
+    if (!markerFile.open(QIODevice::WriteOnly)) return 1;
+    markerFile.write("BetterMiacode.runtime.v1\n");
+    markerFile.close();
+    qputenv("BETTER_MIACODE_RUNTIME_ROOT", temporary.path().toUtf8());
+    QString runtimeError;
+    if (!miacode::runtime_paths::initialize(&runtimeError)) {
+        QTextStream(stderr) << runtimeError << Qt::endl;
+        return 1;
+    }
     miacode::debug_log::setSessionProjectLogDirectory(temporary.path());
     QTextStream err(stderr);
     bool ok = true;
