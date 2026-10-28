@@ -3,6 +3,8 @@
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "core/analysis/MuriRenderOptions.h"
+#include "core/chart/ChartTiming.h"
+#include "preview/runtime/PreviewRuntime.h"
 #include "app/ui/preferences/LocaleService.h"
 
 #include <array>
@@ -190,7 +192,11 @@ void PreviewModel::refreshFromBackend(bool force)
     const int nextMuriHandRadiusPx = surface()->muriHandRadiusPx();
     const int nextMuriTapOnSlideThresholdMs = surface()->muriTapOnSlideThresholdMs();
 
-    const bool positionChangedValue = force || nextPosition != positionSeconds_;
+    const auto* runtime = qobject_cast<PreviewRuntime*>(surface()->previewRuntimeObject());
+    const double nextQuarterBeat = runtime
+        ? miacode::chart::timingAt(runtime->timingPoints(), nextPosition).quarterBeat : 0.0;
+    const bool positionChangedValue = force || nextPosition != positionSeconds_
+        || nextQuarterBeat != quarterBeat_;
     const bool transportChangedValue = force
         || nextDuration != durationSeconds_
         || nextLowerBound != lowerBoundSeconds_
@@ -208,6 +214,7 @@ void PreviewModel::refreshFromBackend(bool force)
         || nextMuriTapOnSlideThresholdMs != muriTapOnSlideThresholdMs_;
 
     positionSeconds_ = nextPosition;
+    quarterBeat_ = nextQuarterBeat;
     durationSeconds_ = nextDuration;
     lowerBoundSeconds_ = nextLowerBound;
     rate_ = rateOk ? nextRate : 1.0;

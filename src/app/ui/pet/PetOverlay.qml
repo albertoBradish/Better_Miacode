@@ -13,6 +13,20 @@ Window {
     property string animationState: "idle"
     property real animationPhase: 0
     property real lifeTime: 0
+    // Supplied by the chart's authoritative transport, never integrated here.
+    property real rhythmQuarterBeat: 0
+    property bool rhythmPlaying: false
+    property real rhythmWeight: rhythmPlaying && visible ? 1 : 0
+    Behavior on rhythmWeight { NumberAnimation { duration: 300; easing.type: Easing.InOutSine } }
+    onRhythmPlayingChanged: {
+        if (rhythmPlaying) {
+            animationState = "idle"
+            animationPhase = 0
+            stateTimer.stop()
+        } else if (visible) {
+            enterState("idle")
+        }
+    }
 
     width: controller.size
     height: controller.size
@@ -54,7 +68,7 @@ Window {
         animationState = nextState
         animationPhase = 0
         stateTimer.stop()
-        if (nextState === "sleeping")
+        if (nextState === "sleeping" || rhythmPlaying)
             return
         stateTimer.interval = nextState === "interaction" ? 2000
                              : nextState === "sitting" ? 12000 : 8000
@@ -114,6 +128,8 @@ Window {
                           : ""
                 phase: petWindow.animationPhase
                 lifeTime: petWindow.lifeTime
+                rhythmQuarterBeat: petWindow.rhythmQuarterBeat
+                rhythmWeight: petWindow.rhythmWeight
             }
         }
 

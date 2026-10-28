@@ -212,6 +212,7 @@ struct VideoExportTask {
     QString trackPath;
     QString skinDirectory;
     QVector<TimelineNoteMarker> noteMarkers;
+    QVector<TimelineTimingPoint> timingPoints;
     QVector<double> measureLineSeconds;
     MuriAnalysisReport muriAnalysisReport;
     MuriRenderOptions muriRenderOptions;
@@ -260,6 +261,10 @@ struct VideoExportTask {
     int measureLineCustomBeats = 4;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;
+    bool showBpmHud = false;
+    bool showCpsHud = false;
+    bool showMeterHud = false;
+    bool showModsHud = false;
     // Pre-roll maimai track-start intro (full-range exports only). intro.enabled
     // is the dialog checkbox before the snapshot is built; the rest of the
     // banner payload is filled by buildVideoExportSnapshot from the chart and

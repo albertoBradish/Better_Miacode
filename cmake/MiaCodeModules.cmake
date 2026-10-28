@@ -76,6 +76,8 @@ miacode_add_module(miacode_chart
         src/core/chart/transform/ChartBatchTransform.h
         src/core/chart/transform/ChartNormalization.cpp
         src/core/chart/transform/ChartNormalization.h
+        src/core/chart/transform/ChartNoteSelection.h
+        src/core/chart/transform/ChartNoteSelection.cpp
         src/core/chart/transform/ChartNormalizationSegmentPolicy.cpp
         src/core/chart/transform/ChartNormalizationSegmentPolicy.h
         src/core/chart/transform/Non384SnapTable.cpp

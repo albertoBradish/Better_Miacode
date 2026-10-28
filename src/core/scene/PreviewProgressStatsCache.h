@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QVector>
+#include "core/chart/ChartScoringEvents.h"
 
 #include "core/scene/PreviewHudState.h"
 #include "core/chart/model/TimelineData.h"
@@ -29,6 +30,7 @@ public:
     bool isEmpty() const;
     PreviewObjectStatsSnapshot snapshotAt(double second) const;
     PreviewHudStats hudStatsAt(double second) const;
+    int cpsAt(double second) const { return miacode::chart::scoringEventsInPastSecond(scoringEvents_, second); }
 
 private:
     struct ObjectEventPrefix {
@@ -53,6 +55,7 @@ private:
         int deluxeBreakCurrent = 0;
     };
 
+    QVector<miacode::chart::ScoringEvent> scoringEvents_;
     PreviewObjectStatsSnapshot totals_;
     QVector<ObjectEventPrefix> objectEventPrefixes_;
     QVector<HudEventPrefix> hudEventPrefixes_;

@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QQueue>
 #include <QString>
+#include "core/chart/transform/ChartNoteSelection.h"
 
 namespace miacode {
 
@@ -17,6 +18,8 @@ struct EditorSelectionState {
     int position = 0;
     bool focused = false;
     bool valid = false;
+    chart_selection::NoteRanges ranges;
+    bool noteSelection = false;
 };
 
 struct EditorFollowState {
@@ -65,6 +68,11 @@ public:
     bool requestTouchPadAuthoring(const QString& pad, QChar separator);
     bool editorContextActive() const;
     EditorSelectionState editorSelection() const;
+    void setNoteCatalogue(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges);
+    const chart_selection::NoteRanges& noteCatalogue() const { return noteCatalogue_; }
+    bool requestNoteSelection(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges, bool additive = false);
+    bool requestNoteSelectionAtPosition(int difficultyId, quint64 revision, int position, bool additive);
+    void setEditorRanges(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges, bool noteSelection);
 
     Q_INVOKABLE void setEditorReadiness(int difficultyId, qulonglong revision,
                                         bool visible);
@@ -98,6 +106,7 @@ signals:
     void previewSeekPublished(int difficultyId, int line, int column);
     void selectionRangeExportRequested(int difficultyId, int selectionStart, int selectionEnd);
     void editorContextChanged();
+    void noteSelectionRequested(int difficultyId, qulonglong revision, const miacode::chart_selection::NoteRanges& ranges);
 
 private:
     struct NavigationState {
@@ -158,6 +167,11 @@ private:
     quint64 contextRevision_ = 0;
     int contextAnchor_ = 0;
     int contextPosition_ = 0;
+    chart_selection::NoteRanges contextRanges_;
+    chart_selection::NoteRanges noteCatalogue_;
+    int catalogueDifficulty_ = -1;
+    quint64 catalogueRevision_ = 0;
+    bool contextNoteSelection_ = false;
     bool editorFocused_ = false;
     bool imeComposing_ = false;
     bool editorContextDeliveryQueued_ = false;

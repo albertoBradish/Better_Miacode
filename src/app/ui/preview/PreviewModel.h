@@ -30,6 +30,7 @@ namespace miacode::ui {
 class PreviewModel final : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(double quarterBeat READ quarterBeat NOTIFY positionChanged)
     Q_PROPERTY(double positionSeconds READ positionSeconds WRITE setPositionSeconds NOTIFY positionChanged)
     Q_PROPERTY(double durationSeconds READ durationSeconds NOTIFY transportChanged)
     Q_PROPERTY(double lowerBoundSeconds READ lowerBoundSeconds NOTIFY transportChanged)
@@ -59,6 +60,7 @@ public:
                              QObject* parent = nullptr);
 
     double positionSeconds() const;
+    double quarterBeat() const { return quarterBeat_; }
     double durationSeconds() const;
     double lowerBoundSeconds() const;
     double rate() const;
@@ -136,6 +138,7 @@ private:
         return controlSlot_ != nullptr ? *controlSlot_ : nullptr;
     }
     double positionSeconds_ = 0.0;
+    double quarterBeat_ = 0.0;
     double durationSeconds_ = 0.0;
     double lowerBoundSeconds_ = 0.0;
     double rate_ = 1.0;

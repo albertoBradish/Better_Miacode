@@ -14,6 +14,7 @@
 #include "app/services/PreviewAppearanceState.h"
 #include "app/services/PreviewSurface.h"
 #include "export/video_export/VideoExportController.h"
+#include "export/cover_export/CoverCompanionJob.h"
 
 #include "app/services/ShellNotifications.h"
 
@@ -39,6 +40,8 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(bool exportRunning READ exportRunning NOTIFY exportRunningChanged)
 
     // Output
+    Q_PROPERTY(QString singleCoverPreset READ singleCoverPreset WRITE setSingleCoverPreset NOTIFY outputChanged)
+    Q_PROPERTY(QVariantList singleCoverPresetOptions READ singleCoverPresetOptions NOTIFY outputChanged)
     Q_PROPERTY(QString outputPath READ outputPath WRITE setOutputPath NOTIFY outputChanged)
     Q_PROPERTY(int outputWidth READ outputWidth NOTIFY outputChanged)
     Q_PROPERTY(int outputHeight READ outputHeight NOTIFY outputChanged)
@@ -57,6 +60,11 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
 
     Q_PROPERTY(bool showObjectStatsHud READ showObjectStatsHud WRITE setShowObjectStatsHud NOTIFY videoChanged)
     Q_PROPERTY(bool showChartInfoHud READ showChartInfoHud WRITE setShowChartInfoHud NOTIFY videoChanged)
+    Q_PROPERTY(bool showBpmHud READ showBpmHud WRITE setShowBpmHud NOTIFY videoChanged)
+    Q_PROPERTY(bool showCpsHud READ showCpsHud WRITE setShowCpsHud NOTIFY videoChanged)
+    Q_PROPERTY(bool showMeterHud READ showMeterHud WRITE setShowMeterHud NOTIFY videoChanged)
+    Q_PROPERTY(bool showModsHud READ showModsHud WRITE setShowModsHud NOTIFY videoChanged)
+
     Q_PROPERTY(bool clockCountEnabled READ clockCountEnabled WRITE setClockCountEnabled NOTIFY videoChanged)
     Q_PROPERTY(bool showMeasureLines READ showMeasureLines WRITE setShowMeasureLines NOTIFY videoChanged)
     Q_PROPERTY(bool showJudgementSkeleton READ showJudgementSkeleton WRITE setShowJudgementSkeleton NOTIFY videoChanged)
@@ -134,6 +142,9 @@ public:
     QVariantList difficulties() const { return difficulties_; }
     bool exportRunning() const { return exportRunning_; }
 
+    QString singleCoverPreset() const { return singleCoverPreset_; }
+    QVariantList singleCoverPresetOptions() const;
+    void setSingleCoverPreset(const QString& preset);
     QString outputPath() const { return task_.outputPath; }
     int outputWidth() const { return task_.outputWidth; }
     int outputHeight() const { return task_.outputHeight; }
@@ -152,6 +163,11 @@ public:
 
     bool showObjectStatsHud() const { return task_.showObjectStatsHud; }
     bool showChartInfoHud() const { return task_.showChartInfoHud; }
+    bool showBpmHud() const { return task_.showBpmHud; }
+    bool showCpsHud() const { return task_.showCpsHud; }
+    bool showMeterHud() const { return task_.showMeterHud; }
+    bool showModsHud() const { return task_.showModsHud; }
+
     bool clockCountEnabled() const { return task_.clockCountEnabled; }
     bool showMeasureLines() const { return task_.showMeasureLines; }
     bool showJudgementSkeleton() const { return task_.showJudgementSkeleton; }
@@ -248,6 +264,11 @@ public:
     void setSizePresetIndex(int index);
     void setShowObjectStatsHud(bool value);
     void setShowChartInfoHud(bool value);
+    void setShowBpmHud(bool value);
+    void setShowCpsHud(bool value);
+    void setShowMeterHud(bool value);
+    void setShowModsHud(bool value);
+
     void setClockCountEnabled(bool value);
     void setIntroEnabled(bool value);
     void setIntroBackgroundModeIndex(int index);
@@ -305,6 +326,7 @@ private:
     int resolveDefaultDifficultyId(int previousActiveDifficultyId) const;
     VideoExportTask buildRequestedTask() const;
     void applyOwnerLiveFields(VideoExportTask* task) const;
+    void invalidateSingleCoverPreparation();
     void applyIntroSoundImport(const QString& selectedPath);
     void applyFontImport(const QString& selectedPath);
     void addChartDirectory(const QString& path);
@@ -373,6 +395,10 @@ private:
     QStringList chartDirectories_;
     QList<int> batchSelectedDifficultyIds_;
     QString batchOutputDirectory_;
+    QString singleCoverPreset_;
+    miacode::cover_export::CoverCompanionJob singleCoverJob_;
+    bool singleCoverSourceChanged_ = false;
+    bool singleCoverVideoLaunched_ = false;
     QString batchCoverPreset_;
 };
 } // namespace miacode::ui

@@ -1093,18 +1093,29 @@ miacode::waveform::WaveformCacheService* miacode::runtime::PlaybackCoordinator::
 
 void miacode::runtime::PlaybackCoordinator::refreshEditorNoteSelection()
 {
+    if (previewSelectionDifficulty_ > 0 && (!identity_.active()
+        || previewSelectionDifficulty_ != activeDifficultyId()
+        || previewSelectionRevision_ != identity_.documentRevision())) {
+        previewSelectionDifficulty_ = -1;
+        if (state_.scene_) emit state_.scene_->noteSelectionInvalidated();
+    }
     if (selectionPlayback_.active() && !selectionPlayback_.matches(activeDifficultyId(), identity_.documentRevision())) {
         stopQtPreviewPlayback(true);
         cancelSelectionPlayback();
     }
     const auto selection = services_.editorSync().editorSelection();
+    const bool modelCurrent = identity_.active()
+        && state_.timeline_.timelineQuickModel_.matchesSource(activeChartText(), parsedFirstSeconds(), currentTimingMetadata());
+    services_.editorSync().setNoteCatalogue(modelCurrent ? activeDifficultyId() : -1,
+        modelCurrent ? identity_.documentRevision() : 0,
+        modelCurrent ? state_.timeline_.timelineQuickModel_.noteSourceRanges() : miacode::chart_selection::NoteRanges{});
     QSet<quint64> locations;
     if (identity_.active() && selection.valid
         && selection.difficultyId == activeDifficultyId()
         && selection.revision == identity_.documentRevision()
         && state_.timeline_.timelineQuickModel_.matchesSource(activeChartText(), parsedFirstSeconds(), currentTimingMetadata())) {
         const auto resolved = state_.timeline_.timelineQuickModel_.resolveNoteSelection(
-            qMin(selection.anchor, selection.position), qMax(selection.anchor, selection.position),
+            selection.ranges,
             state_.previewTapFlowSpeed_, state_.previewTouchFlowSpeed_);
         locations = resolved.locations;
     }
@@ -1141,6 +1152,31 @@ void miacode::runtime::PlaybackCoordinator::refreshEditorNoteSelection()
         state_.timeline_.timelineQuickStateBridge_->setSelectedNoteLocations(locations);
 }
 
+void miacode::runtime::PlaybackCoordinator::beginPreviewNoteSelection()
+{
+    previewSelectionDifficulty_ = -1;
+    const auto& parsed = services_.analysis().parsedSnapshot();
+    if (!identity_.active() || !parsed.available || parsed.revision != identity_.documentRevision()
+        || parsed.difficultyId != activeDifficultyId() || parsed.chartText != activeChartText()
+        || parsed.previewState.noteMarkerSignature != state_.lastPreviewNoteMarkerSignature_
+        || !state_.timeline_.timelineQuickModel_.matchesSource(activeChartText(), parsedFirstSeconds(), currentTimingMetadata())) return;
+    stopQtPreviewPlayback(true);
+    previewSelectionDifficulty_ = activeDifficultyId();
+    previewSelectionRevision_ = identity_.documentRevision();
+}
+
+void miacode::runtime::PlaybackCoordinator::finishPreviewNoteSelection(const QSet<quint64>& locations, bool additive)
+{
+    const int difficulty = previewSelectionDifficulty_;
+    previewSelectionDifficulty_ = -1;
+    if (!identity_.active() || difficulty != activeDifficultyId()
+        || previewSelectionRevision_ != identity_.documentRevision()
+        || !state_.timeline_.timelineQuickModel_.matchesSource(activeChartText(), parsedFirstSeconds(), currentTimingMetadata())) return;
+    refreshEditorNoteSelection();
+    services_.editorSync().requestNoteSelection(difficulty, previewSelectionRevision_,
+        state_.timeline_.timelineQuickModel_.noteSourceRanges(&locations), additive);
+}
+
 void miacode::runtime::PlaybackCoordinator::cancelSelectionPlayback()
 {
     if (!selectionPlayback_.active()) return;
@@ -1158,8 +1194,11 @@ void miacode::runtime::PlaybackCoordinator::playEditorSelection(
     if (!identity_.active() || difficultyId != activeDifficultyId()
         || revision != identity_.documentRevision()) return;
     if (!state_.timeline_.timelineQuickModel_.matchesSource(activeChartText(), parsedFirstSeconds(), currentTimingMetadata())) return;
+    const auto selection = services_.editorSync().editorSelection();
+    const auto ranges = selection.valid && selection.difficultyId == difficultyId && selection.revision == revision
+        ? selection.ranges : miacode::chart_selection::NoteRanges{{start, end}};
     const auto selected = state_.timeline_.timelineQuickModel_.resolveNoteSelection(
-        start, end, state_.previewTapFlowSpeed_, state_.previewTouchFlowSpeed_);
+        ranges, state_.previewTapFlowSpeed_, state_.previewTouchFlowSpeed_);
     if (!selected.resolved() || !beginPlaybackCommand()) return;
     stopQtPreviewPlayback(true);
     cancelExportIntroLeadIn();

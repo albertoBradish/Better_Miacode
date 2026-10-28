@@ -12,6 +12,7 @@ AppDialog {
     required property var preferences
     required property var appBackground
     property var updateService: null
+    property var cliIntegration: null
     property var previewSession: null
     readonly property var canvasSettings: root.previewSession ? root.previewSession.canvasSettings : ({})
 
@@ -1009,6 +1010,28 @@ AppDialog {
                         AboutInfoValue { text: root.aboutInfo.platform }
                         AboutInfoLabel { text: root.aboutInfo.buildTypeLabel }
                         AboutInfoValue { text: root.aboutInfo.buildType }
+                    }
+
+                    PreferenceGroup {
+                        title: qsTrId("cli.settings.title")
+                        PreferenceSwitch {
+                            objectName: "preferencesCliEnabled"
+                            text: qsTrId("cli.settings.enable")
+                            enabled: root.cliIntegration !== null
+                            checked: root.cliIntegration ? root.cliIntegration.enabled : false
+                            onToggled: {
+                                if (root.cliIntegration) root.cliIntegration.setEnabled(checked)
+                                checked = Qt.binding(() => root.cliIntegration ? root.cliIntegration.enabled : false)
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.cliIntegration ? (root.cliIntegration.status || root.cliIntegration.commandPath) : ""
+                            color: Theme.colors.text.secondary
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.secondaryFontSize
+                            wrapMode: Text.WrapAnywhere
+                        }
                     }
 
                     PreferenceGroup {

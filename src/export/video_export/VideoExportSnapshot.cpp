@@ -26,6 +26,8 @@ using miacode::timeline::offset::shiftedNoteMarkers;
 QString outlineVariantToken(PreviewOutlineVariant variant)
 {
     switch (variant) {
+    case PreviewOutlineVariant::None:
+        return QStringLiteral("none");
     case PreviewOutlineVariant::Point:
         return QStringLiteral("point");
     case PreviewOutlineVariant::JudgeArea:
@@ -41,6 +43,7 @@ QString outlineVariantToken(PreviewOutlineVariant variant)
 PreviewOutlineVariant outlineVariantFromToken(const QString& token)
 {
     const QString normalized = token.trimmed().toLower();
+    if (normalized == QLatin1String("none")) return PreviewOutlineVariant::None;
     if (normalized == QLatin1String("point")) {
         return PreviewOutlineVariant::Point;
     }
@@ -213,6 +216,11 @@ QJsonObject VideoExportSnapshot::toJson() const
     render.insert(QStringLiteral("measure_line_custom_beats"), measureLineCustomBeats);
     render.insert(QStringLiteral("show_object_stats_hud"), showObjectStatsHud);
     render.insert(QStringLiteral("show_chart_info_hud"), showChartInfoHud);
+    render.insert(QStringLiteral("show_bpm_hud"), showBpmHud);
+    render.insert(QStringLiteral("show_cps_hud"), showCpsHud);
+    render.insert(QStringLiteral("show_meter_hud"), showMeterHud);
+    render.insert(QStringLiteral("show_mods_hud"), showModsHud);
+
     render.insert(QStringLiteral("clock_count_enabled"), clockCountEnabled);
     render.insert(
         QStringLiteral("center_display_mode"),
@@ -380,6 +388,10 @@ bool VideoExportSnapshot::fromJson(
         render.value(QStringLiteral("show_object_stats_hud")).toBool(parsed.showObjectStatsHud);
     parsed.showChartInfoHud =
         render.value(QStringLiteral("show_chart_info_hud")).toBool(parsed.showChartInfoHud);
+    parsed.showBpmHud = render.value(QStringLiteral("show_bpm_hud")).toBool(false);
+    parsed.showCpsHud = render.value(QStringLiteral("show_cps_hud")).toBool(false);
+    parsed.showMeterHud = render.value(QStringLiteral("show_meter_hud")).toBool(false);
+    parsed.showModsHud = render.value(QStringLiteral("show_mods_hud")).toBool(false);
     parsed.clockCountEnabled =
         render.value(QStringLiteral("clock_count_enabled")).toBool(parsed.clockCountEnabled);
     parsed.centerDisplayMode = miacode::preview_gameplay::centerDisplayModeFromToken(
@@ -508,6 +520,8 @@ bool buildVideoExportTaskFromSnapshot(
     built.skinDirectory = snapshot.skinDirectory;
     built.noteMarkers =
         shiftedNoteMarkers(nativeResult.noteMarkers, firstSeconds, NonFiniteHandling::Propagate);
+    built.timingPoints = nativeResult.timingPoints;
+    for (auto& point : built.timingPoints) point.second += firstSeconds;
     built.audioSettings = snapshot.audioSettings;
     built.audioSettings.normalize();
     built.timingSettings = snapshot.timingSettings;
@@ -545,6 +559,11 @@ bool buildVideoExportTaskFromSnapshot(
         miacode::preview::scene::normalizedMeasureLineMode(built.measureLineMode), built.measureLineCustomBeats, firstSeconds);
     built.showObjectStatsHud = snapshot.showObjectStatsHud;
     built.showChartInfoHud = snapshot.showChartInfoHud;
+    built.showBpmHud = snapshot.showBpmHud;
+    built.showCpsHud = snapshot.showCpsHud;
+    built.showMeterHud = snapshot.showMeterHud;
+    built.showModsHud = snapshot.showModsHud;
+
     // Reconstruct chart metadata from the parsed SimaiDocument so the
     // out-of-process worker can populate the chart info HUD without
     // shipping the strings separately. Per-difficulty designer takes

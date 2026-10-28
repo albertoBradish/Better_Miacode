@@ -604,6 +604,10 @@ miacode::preview::scene::PreviewAssetState PreviewSceneAssetLoader::loadAssetSta
     PreviewOutlineImageMode outlineImageMode)
 {
     miacode::preview::scene::PreviewAssetState assets;
+    if (outlineVariant == PreviewOutlineVariant::None) {
+        assets.layoutRingDiameterRatio = miacode::layout_ring::kOutlinePlayfieldDiameterRatio;
+        return assets;
+    }
     if (outlineImageMode == PreviewOutlineImageMode::PausedJudgeAreaComposite) {
         assets.outlineImage = buildPausedJudgeAreaComposite(outlineImagePath);
         if (assets.outlineImage.isNull()) {

@@ -14,6 +14,8 @@
 #include <QEvent>
 #include <QGuiApplication>
 #include <QKeyEvent>
+#include <QWheelEvent>
+#include <QCursor>
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QString>
@@ -78,6 +80,15 @@ bool rootWindowReservesPlainSpace(QQuickWindow* window)
         || objectReservesPlainSpace(window->activeFocusItem());
 }
 
+bool pointerOverTimeline(QQuickWindow* window)
+{
+    if (!window) return false;
+    const QPointF scenePoint = window->mapFromGlobal(QCursor::pos());
+    for (auto* item : window->findChildren<QQuickItem*>(QStringLiteral("timelineQuickItem")))
+        if (item->window() == window && item->isVisible() && item->contains(item->mapFromScene(scenePoint))) return true;
+    return false;
+}
+
 }  // namespace
 
 miacode::runtime::ShellHost::ShellHost(::Session& session)
@@ -98,6 +109,7 @@ void Session::attachRootWindow(QWindow* window)
 bool Session::eventFilter(QObject*, QEvent* event)
 {
     if (event->type() == QEvent::ApplicationDeactivate) {
+        setProperty("better.altWheelActive", false);
         setPauseDisplayAltHoldActive(false);
         // Alt+Tab eats the Ctrl release, so leaving the app ends the hold too.
         if (editorSyncController_ != nullptr) {
@@ -105,11 +117,20 @@ bool Session::eventFilter(QObject*, QEvent* event)
         }
         return false;
     }
+    if (event->type() == QEvent::Wheel
+        && static_cast<QWheelEvent*>(event)->modifiers().testFlag(Qt::AltModifier)) {
+        // An Alt wheel gesture owns Alt until its release, including repeats.
+        setProperty("better.altWheelActive", true);
+        setPauseDisplayAltHoldActive(false);
+        return false;
+    }
 
     if (event->type() == QEvent::ShortcutOverride
         || event->type() == QEvent::KeyPress
         || event->type() == QEvent::KeyRelease) {
         const auto* keyEvent = static_cast<const QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key_Alt && event->type() == QEvent::KeyRelease)
+            setProperty("better.altWheelActive", false);
         auto* rootWindow = qobject_cast<QQuickWindow*>(rootWindow_.data());
         QWindow* focusWindow = QGuiApplication::focusWindow();
         // The detached preview is an independent top-level window owned by the QML tree.
@@ -153,12 +174,16 @@ bool Session::eventFilter(QObject*, QEvent* event)
         }
 
         const PauseDisplayHoldKey hold = pauseDisplayHoldKey();
+        const bool altReservedForTimeline = hold.key == Qt::Key_Alt
+            && pointerOverTimeline(qobject_cast<QQuickWindow*>(focusWindow));
         // A Ctrl pause-display hold key yields to touch authoring, which owns
         // Ctrl whenever it can author.
         if (keyEvent->key() == hold.key && !controlArmsTouchAuthoring) {
             if (event->type() == QEvent::KeyPress
                 && !keyEvent->isAutoRepeat()
-                && keyEvent->modifiers() == hold.pressModifiers) {
+                && keyEvent->modifiers() == hold.pressModifiers
+                && !altReservedForTimeline
+                && !property("better.altWheelActive").toBool()) {
                 setPauseDisplayAltHoldActive(true);
             } else if (event->type() == QEvent::KeyRelease && !keyEvent->isAutoRepeat()) {
                 setPauseDisplayAltHoldActive(false);

@@ -6,6 +6,7 @@
 #include "preview/runtime/PreviewRuntime.h"
 #include "core/scene/PreviewFrameState.h"
 #include "core/scene/PreviewHudState.h"
+#include "core/chart/ChartTiming.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/scene/PreviewSceneGeometry.h"
 
@@ -887,7 +888,9 @@ void paintPreviewHudOverlay(
     if (!state->render.showTimestamp
         && !state->render.showDebugInfo
         && !state->render.showObjectStatsHud
-        && !state->render.showChartInfoHud) {
+        && !state->render.showChartInfoHud
+        && !state->render.showBpmHud && !state->render.showCpsHud
+        && !state->render.showMeterHud && !state->render.showModsHud) {
         appendHudPaintDiag(
             QStringLiteral("overlay_skip"),
             [&] {
@@ -1102,6 +1105,44 @@ void paintPreviewHudOverlay(
     key.shadow = shadowOffset;
     key.minimumPointSize = qMax(1, qRound(6 * hudScale));
     const bool informationHudSupported = stageRect.width() >= qRound(stageRect.height() * 4.0 / 3.0);
+
+    if (informationHudSupported) {
+        const auto timing = miacode::chart::timingAt(state->timingPoints, hudPlayheadSeconds);
+        QStringList lines;
+        if (state->render.showBpmHud)
+            lines.append(QStringLiteral("BPM: %1").arg(timing.bpm, 0, 'f', 2));
+        if (state->render.showCpsHud)
+            lines.append(QStringLiteral("CPS: %1").arg(state->progressStatsCache
+                ? state->progressStatsCache->cpsAt(hudPlayheadSeconds) : 0));
+        if (state->render.showMeterHud && timing.meterExplicit)
+            lines.append(QStringLiteral("Meter: %1/%2").arg(timing.meterNumerator).arg(timing.meterDenominator));
+        if (state->render.showModsHud)
+            lines.append(QStringLiteral("Mods: %1").arg(state->muriRenderOptions.renderMode == RenderMode::MaimuriDxStyle
+                ? QStringLiteral("DJAUTO") : QStringLiteral("NONE")));
+        // The top-right corner leaves chart metadata and bottom-right totals independent.
+        for (int pointSize = qMax(1, qRound(kHudReferenceStatsFontPointSize * hudScale));
+             pointSize >= key.minimumPointSize && !lines.isEmpty(); --pointSize) {
+            const QFont font = miacode::preview::scene::previewHudTimestampFontForArea(
+                state->hudFontSettings, miacode::preview::scene::PreviewHudFontArea::ObjectStats,
+                pointSize, QFont::DemiBold);
+            const QFontMetrics metrics(font, painter.device());
+            const qreal advance = metrics.height() + shadowOffset + 4 * hudScale;
+            bool fits = true;
+            for (int index = 0; index < lines.size(); ++index) {
+                const auto rect = informationRowRect(key, stageRect.top() + hudPadding + index * advance,
+                    advance, true);
+                if (rect.width() < informationTextWidth(metrics, lines[index])) { fits = false; break; }
+            }
+            if (!fits) continue;
+            for (int index = 0; index < lines.size(); ++index)
+                drawHudText(painter, QStringLiteral("timing.line%1").arg(index),
+                    QPointF(stageRect.right() - hudPadding - shadowOffset
+                        - metrics.horizontalAdvance(lines[index]),
+                        stageRect.top() + hudPadding + metrics.ascent() + index * advance),
+                    lines[index], font, shadowOffset);
+            break;
+        }
+    }
 
     if (state->render.showChartInfoHud && informationHudSupported) {
         key.font = chartInfoFont();

@@ -282,6 +282,10 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
         // dialog (gated by setSuppressDebugInfo + setChartInfo there); the
         // editor's main preview keeps it off.
         scene_->setShowChartInfoHud(false);
+        scene_->setShowBpmHud(previewShowBpmHud_);
+        scene_->setShowCpsHud(previewShowCpsHud_);
+        scene_->setShowMeterHud(previewShowMeterHud_);
+        scene_->setShowModsHud(previewShowModsHud_);
         scene_->setCenterDisplayMode(previewCenterDisplayMode_);
     }
     applyMuriRenderOptions();

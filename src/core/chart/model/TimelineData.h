@@ -11,12 +11,23 @@ struct MuriPadTimeEntry {
     double proportion = 0.0;
 };
 
+// Authoritative parser state in chart time. Same-time directives are folded in source order.
+struct TimelineTimingPoint {
+    double second = 0.0;
+    double quarterBeat = 0.0;
+    double bpm = 120.0;
+    int meterNumerator = 4;
+    int meterDenominator = 4;
+    bool meterExplicit = false;
+};
+
 struct TimelineBeatMarker {
     double second = 0.0;
     bool major = false;
     // Constant-tempo comma interval, for the independent quarter-note aid grid.
     double quarterBeat = 0.0;
     double quarterBeatLength = 0.0;
+    int subdivision = 4;
     double durationSeconds = 0.0;
     int sourceLine = 1;
     int sourceCol = 1;

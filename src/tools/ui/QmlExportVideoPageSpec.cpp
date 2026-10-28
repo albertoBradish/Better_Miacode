@@ -90,8 +90,18 @@ ApplicationWindow {
         property int selectedDifficultyId: 5
         property string activeTab: "export"
         property string settingsTab: "intro"
+        // ExportSession::setActiveTab owns this transition in production.
+        // Preserve that model contract when the harness writes the property.
+        onActiveTabChanged: {
+            if (activeTab === "batch")
+                settingsTab = "batch"
+            else if (settingsTab === "batch")
+                settingsTab = "output"
+        }
         property string unavailableReason: ""
         property bool exportRunning: false
+        property string singleCoverPreset: ""
+        property var singleCoverPresetOptions: [{label: "None", value: ""}, {label: "Card", value: "builtin:card"}]
         property string outputPath: "out.mp4"
         property int resolutionIndex: 0
         property var resolutionOptions: [{ label: "1024x1024", width: 1024, height: 1024 }]
@@ -128,6 +138,8 @@ ApplicationWindow {
         property bool fullRangeExport: true
         property var chartDirectories: []
         property var batchDifficultyChecks: []
+        property string batchCoverPreset: ""
+        property var batchCoverPresetOptions: [{label: "None", value: ""}, {label: "Card", value: "builtin:card"}]
         property string batchOutputDirectory: ""
         property int atomicRangeWrites: 0
         property bool applyingAtomicRange: false

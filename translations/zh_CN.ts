@@ -4839,6 +4839,162 @@ Error: %1</source>
         <source>Text line starts</source>
         <translation>按文本行首</translation>
     </message>
+    <message id="dialog.render_settings.gameplay.judge_line.none">
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message id="dialog.video_export.option.show_bpm_hud">
+        <source>Show BPM (widescreen)</source>
+        <translation>显示 BPM（宽屏）</translation>
+    </message>
+    <message id="dialog.video_export.option.show_cps_hud">
+        <source>Show CPS (widescreen)</source>
+        <translation>显示 CPS（宽屏）</translation>
+    </message>
+    <message id="dialog.video_export.option.show_meter_hud">
+        <source>Show explicit meter (widescreen)</source>
+        <translation>显示显式拍号（宽屏）</translation>
+    </message>
+    <message id="dialog.video_export.option.show_mods_hud">
+        <source>Show Mods (widescreen)</source>
+        <translation>显示 Mods（宽屏）</translation>
+    </message>
+    <message id="tools.bpm.title">
+        <source>Export BPM</source>
+        <translation>导出 BPM</translation>
+    </message>
+    <message id="tools.bpm.sequence">
+        <source>BPM sequence (xx.xx-xx.xx)</source>
+        <translation>BPM 顺序（xx.xx-xx.xx）</translation>
+    </message>
+    <message id="tools.bpm.audio_time">
+        <source>Audio timestamps (mm:ss:fff)</source>
+        <translation>音频时间（mm:ss:fff）</translation>
+    </message>
+    <message id="tools.bpm.empty_maidata">
+        <source>Empty maidata with timing</source>
+        <translation>保留时间轨的空 maidata</translation>
+    </message>
+    <message id="tools.bpm.preview">
+        <source>BPM export preview</source>
+        <translation>BPM 导出预览</translation>
+    </message>
+    <message id="tools.bpm.copy">
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+    <message id="tools.bpm.save">
+        <source>Save as…</source>
+        <translation>另存为…</translation>
+    </message>
+    <message id="tools.bpm.save_error">
+        <source>Could not save BPM export: %1</source>
+        <translation>无法保存 BPM 导出：%1</translation>
+    </message>
+    <message id="tools.chart.invalid_first">
+        <source>Invalid &amp;first value</source>
+        <translation>&amp;first 数值无效</translation>
+    </message>
+    <message id="tools.chart.parse_error">
+        <source>The chart contains parse errors</source>
+        <translation>谱面含有解析错误</translation>
+    </message>
+    <message id="tools.dx_loss.title">
+        <source>DX achievement loss</source>
+        <translation>DX 达成率失分</translation>
+    </message>
+    <message id="tools.dx_loss.attributes">
+        <source>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</source>
+        <translation>Break、Ex、Firework 是附加属性，不重复计数。Total 为计分物件总数，Mine 单列。最大个数按其余全部 Critical Perfect 计算，并限制 EX 实际可达判定（长 EX Hold 可因松手降档）。</translation>
+    </message>
+    <message id="tools.dx_loss.object">
+        <source>Object</source>
+        <translation>物件</translation>
+    </message>
+    <message id="tools.dx_loss.judgment">
+        <source>Judgment</source>
+        <translation>判定</translation>
+    </message>
+    <message id="tools.dx_loss.single">
+        <source>Loss per judgment</source>
+        <translation>单个判定失分</translation>
+    </message>
+    <message id="tools.dx_loss.empty">
+        <source>The chart has no scoring objects</source>
+        <translation>谱面没有计分物件，无法计算</translation>
+    </message>
+    <message id="tools.dx_loss.extensions">
+        <source>Unofficial extensions: counts are available; DX calculation is disabled</source>
+        <translation>谱面含非官方扩展：显示统计，禁用 DX 失分计算</translation>
+    </message>
+    <message id="tools.dx_loss.maximum_break">
+        <source>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</source>
+        <translation>实际满分：101%。其余物件按 Critical Perfect 计算。</translation>
+    </message>
+    <message id="tools.dx_loss.maximum_no_break">
+        <source>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</source>
+        <translation>实际满分：100%（无 Break）。其余物件按 Critical Perfect 计算。</translation>
+    </message>
+    <message id="tools.bpm.empty_timing_note">
+        <source>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</source>
+        <translation>空 maidata 保留 BPM 变更、显式拍号、&amp;first 与原谱终止拍位。删除长音符后，其尾部时长也随之移除，不会添加虚假 BPM。</translation>
+    </message>
+    <message id="cover.text_stroke">
+        <source>Text outline</source>
+        <translation>文字描边</translation>
+    </message>
+    <message id="cover.text_stroke_color">
+        <source>Outline color</source>
+        <translation>描边颜色</translation>
+    </message>
+    <message id="cover.text_stroke_width">
+        <source>Outline width</source>
+        <translation>描边宽度</translation>
+    </message>
+    <message id="cover.text_shadow">
+        <source>Text shadow</source>
+        <translation>文字阴影</translation>
+    </message>
+    <message id="cover.text_shadow_color">
+        <source>Shadow color</source>
+        <translation>阴影颜色</translation>
+    </message>
+    <message id="cover.text_shadow_opacity">
+        <source>Shadow opacity</source>
+        <translation>阴影不透明度</translation>
+    </message>
+    <message id="cover.text_shadow_blur">
+        <source>Shadow blur</source>
+        <translation>阴影模糊</translation>
+    </message>
+    <message id="cover.text_shadow_x">
+        <source>Shadow X offset</source>
+        <translation>阴影水平偏移</translation>
+    </message>
+    <message id="cover.text_shadow_y">
+        <source>Shadow Y offset</source>
+        <translation>阴影垂直偏移</translation>
+    </message>
+    <message id="dialog.video_export.cover_preset">
+        <source>Companion cover</source>
+        <translation>同步导出封面</translation>
+    </message>
+    <message id="dialog.video_export.cover_failed_video_kept">
+        <source>Cover export failed. The video was kept.</source>
+        <translation>封面导出失败，视频已保留。</translation>
+    </message>
+    <message id="cli.settings.title">
+        <source>Command line</source>
+        <translation>命令行</translation>
+    </message>
+    <message id="cli.settings.enable">
+        <source>Enable command-line support</source>
+        <translation>开启命令行支持</translation>
+    </message>
+    <message id="dialog.video_export.cover_source_changed">
+        <source>The chart changed while preparing the cover. Export again.</source>
+        <translation>准备封面时谱面已更改，请重新导出。</translation>
+    </message>
 </context>
 
 

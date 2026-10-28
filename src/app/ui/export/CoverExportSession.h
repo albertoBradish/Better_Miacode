@@ -91,6 +91,17 @@ public:
     ~CoverExportSession() override;
 
     static QVariantList batchPresetOptions();
+    // Static, non-interactive renderer shared by single video export and CLI.
+    // task is already parsed; frameSeconds is the export preview axis (negative
+    // includes intro; NaN uses each preset frame's saved time). Returns a frozen image with no disk write.
+    static QImage renderPresetCover(
+        miacode::ExportEngine& engine, miacode::UiRequestService& requests,
+        const VideoExportTask& task, const QString& presetToken, double frameSeconds,
+        QString* errorMessage, QStringList* frameAdjustments = nullptr);
+    static miacode::cover_export::CoverExportResult exportPresetCover(
+        miacode::ExportEngine& engine, miacode::UiRequestService& requests,
+        const VideoExportTask& task, const QString& presetToken, double frameSeconds,
+        const QString& outputPath);
     static miacode::cover_export::CoverExportResult exportBatchCover(
         miacode::ExportEngine& engine, miacode::UiRequestService& requests,
         const VideoExportTask& task, const QString& presetToken, const QString& outputPath,
@@ -173,6 +184,7 @@ public:
     Q_INVOKABLE void setActiveLayerText(const QString& text);
     Q_INVOKABLE void setActiveLayerTextColor(const QString& color);
     Q_INVOKABLE void setActiveLayerTextBold(bool bold);
+    Q_INVOKABLE void setActiveLayerTextEffect(const QString& property, const QVariant& value);
     Q_INVOKABLE void setActiveLayerFrameSeconds(double seconds);
     Q_INVOKABLE void previewActiveLayerFrameSeconds(double seconds);
     Q_INVOKABLE void commitActiveLayerFrameSeconds();

@@ -5,7 +5,7 @@ set(MIACODE_VERSION_MINOR "0")
 set(MIACODE_VERSION_PATCH "0")
 # Single source of truth for the prerelease tag and package version. The
 # About dialog appends its compile date to this version at runtime.
-set(MIACODE_VERSION_PRERELEASE "better.3")
+set(MIACODE_VERSION_PRERELEASE "better.4")
 set(MIACODE_BUILD_LAYOUT_REVISION "2026-04-21-first-unification")
 set(MIACODE_VERSION "${MIACODE_VERSION_MAJOR}.${MIACODE_VERSION_MINOR}.${MIACODE_VERSION_PATCH}")
 set(MIACODE_VERSION_STRING "${MIACODE_VERSION}")
@@ -517,6 +517,13 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/UserFontLibrary.h
     src/app/services/PreferenceDocument.h
     src/app/services/PreferenceDocument.cpp
+    src/app/services/CliIntegration.h
+    src/app/services/CliIntegration.cpp
+    src/app/CliRequest.h
+    src/app/CliRequest.cpp
+    src/app/cli_tasks.cpp
+    src/app/ui/tools/ChartToolsModel.h
+    src/app/ui/tools/ChartToolsModel.cpp
     src/app/ui/preferences/LocaleService.h
     src/app/ui/preferences/LocaleService.cpp
     src/app/ui/preferences/AppBackgroundSettings.h
@@ -576,8 +583,8 @@ qt_add_shaders(MiaCode "ui_shaders"
         src/app/ui/pet/shaders/pet.frag
 )
 set_target_properties(MiaCode PROPERTIES
-    MACOSX_BUNDLE_BUNDLE_NAME "MiaCode"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "com.fanfaredash.MiaCode"
+    MACOSX_BUNDLE_BUNDLE_NAME "Better Miacode"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.albertobradish.BetterMiacode"
 )
 
 if(UNIX AND NOT APPLE)
@@ -606,6 +613,9 @@ endif()
 # Default UI (v2).
 # QTP0001 NEW embeds this module at :/qt/qml/MiaCode/UI/.
 set(MIACODE_UI_QML_FILES
+    src/app/ui/tools/DxScoreLossWindow.qml
+    src/app/ui/tools/BpmExportWindow.qml
+    src/app/ui/tools/ScoringObjectIcon.qml
     src/app/ui/net/NetDownloadPage.qml
     src/app/ui/net/NetUploadPage.qml
     src/app/ui/net/NetResultTable.qml
@@ -950,6 +960,7 @@ target_compile_definitions(MiaCode PRIVATE HAVE_QT_MULTIMEDIA=1)
 if (WIN32)
     target_link_libraries(MiaCode PRIVATE
         Advapi32     # Windows Credential Manager
+        Shell32      # Unicode command-line arguments
         winmm        # timeBeginPeriod for preview frame pacing
         d3d11        # Startup D3D11 probe (startup_diagnostics_win32.cpp)
         User32       # RegisterPowerSettingNotification

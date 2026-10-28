@@ -32,6 +32,8 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
     , pet_(this)
     , net_(services.netService(), this)
     , netUpload_(services.netService(), services.uiRequests(), this)
+    , cli_(this)
+    , chartTools_(services.uiRequests(), this)
     , lifecycle_(services.editorPageRouterSlot(), this)
 {
     net_.setHost(&document_, &services.uiRequests());
@@ -120,6 +122,15 @@ QObject* ApplicationContext::latency() { return &latency_; }
 QObject* ApplicationContext::pet() { return &pet_; }
 QObject* ApplicationContext::update() { return services_.updateService(); }
 QObject* ApplicationContext::net() { return &net_; }
+
+void ApplicationContext::refreshChartTools()
+{
+    const auto& document = services_.workspace().document();
+    const auto snapshot = services_.workspace().snapshot();
+    const auto* difficulty = document.difficulty(snapshot.activeDifficultyId);
+    chartTools_.setChart(difficulty ? difficulty->chart : QString(),
+        miacode::simai::buildTimingMetadata(document), document.first);
+}
 
 void ApplicationContext::setWindowChrome(QObject* chrome)
 {

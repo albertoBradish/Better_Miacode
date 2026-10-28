@@ -58,6 +58,10 @@ struct VideoExportSnapshot {
     int measureLineCustomBeats = 4;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;
+    bool showBpmHud = false;
+    bool showCpsHud = false;
+    bool showMeterHud = false;
+    bool showModsHud = false;
     // Count-in on/off. The clock_count VALUE is always re-derived from the chart;
     // only this gate is serialized. Default true so legacy / CLI / batch snapshots
     // keep emitting the count-in; the video dialog's checkbox toggles it.

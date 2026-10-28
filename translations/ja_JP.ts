@@ -4839,6 +4839,162 @@ Error: %1</source>
         <source>Text line starts</source>
         <translation>テキスト行頭</translation>
     </message>
+    <message id="dialog.render_settings.gameplay.judge_line.none">
+        <source>None</source>
+        <translation>なし</translation>
+    </message>
+    <message id="dialog.video_export.option.show_bpm_hud">
+        <source>Show BPM (widescreen)</source>
+        <translation>BPM を表示（ワイド画面）</translation>
+    </message>
+    <message id="dialog.video_export.option.show_cps_hud">
+        <source>Show CPS (widescreen)</source>
+        <translation>CPS を表示（ワイド画面）</translation>
+    </message>
+    <message id="dialog.video_export.option.show_meter_hud">
+        <source>Show explicit meter (widescreen)</source>
+        <translation>明示された拍子を表示（ワイド画面）</translation>
+    </message>
+    <message id="dialog.video_export.option.show_mods_hud">
+        <source>Show Mods (widescreen)</source>
+        <translation>Mods を表示（ワイド画面）</translation>
+    </message>
+    <message id="tools.bpm.title">
+        <source>Export BPM</source>
+        <translation>BPM を出力</translation>
+    </message>
+    <message id="tools.bpm.sequence">
+        <source>BPM sequence (xx.xx-xx.xx)</source>
+        <translation>BPM 順（xx.xx-xx.xx）</translation>
+    </message>
+    <message id="tools.bpm.audio_time">
+        <source>Audio timestamps (mm:ss:fff)</source>
+        <translation>音声時刻（mm:ss:fff）</translation>
+    </message>
+    <message id="tools.bpm.empty_maidata">
+        <source>Empty maidata with timing</source>
+        <translation>タイミングを保つ空の maidata</translation>
+    </message>
+    <message id="tools.bpm.preview">
+        <source>BPM export preview</source>
+        <translation>BPM 出力プレビュー</translation>
+    </message>
+    <message id="tools.bpm.copy">
+        <source>Copy</source>
+        <translation>コピー</translation>
+    </message>
+    <message id="tools.bpm.save">
+        <source>Save as…</source>
+        <translation>名前を付けて保存…</translation>
+    </message>
+    <message id="tools.bpm.save_error">
+        <source>Could not save BPM export: %1</source>
+        <translation>BPM の保存に失敗しました：%1</translation>
+    </message>
+    <message id="tools.chart.invalid_first">
+        <source>Invalid &amp;first value</source>
+        <translation>&amp;first の値が無効です</translation>
+    </message>
+    <message id="tools.chart.parse_error">
+        <source>The chart contains parse errors</source>
+        <translation>譜面に解析エラーがあります</translation>
+    </message>
+    <message id="tools.dx_loss.title">
+        <source>DX achievement loss</source>
+        <translation>DX 達成率の減点</translation>
+    </message>
+    <message id="tools.dx_loss.attributes">
+        <source>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</source>
+        <translation>Break・Ex・Firework は属性で重複加算しません。Total は得点対象数、Mine は別集計です。最大数はほかがすべて Critical Perfect で、EX が到達できる判定に限定します（長い EX Hold は離すと降格します）。</translation>
+    </message>
+    <message id="tools.dx_loss.object">
+        <source>Object</source>
+        <translation>オブジェクト</translation>
+    </message>
+    <message id="tools.dx_loss.judgment">
+        <source>Judgment</source>
+        <translation>判定</translation>
+    </message>
+    <message id="tools.dx_loss.single">
+        <source>Loss per judgment</source>
+        <translation>1判定の減点</translation>
+    </message>
+    <message id="tools.dx_loss.empty">
+        <source>The chart has no scoring objects</source>
+        <translation>得点対象のオブジェクトがありません</translation>
+    </message>
+    <message id="tools.dx_loss.extensions">
+        <source>Unofficial extensions: counts are available; DX calculation is disabled</source>
+        <translation>非公式拡張を含むため、集計のみ表示し DX 減点計算を無効にします</translation>
+    </message>
+    <message id="tools.dx_loss.maximum_break">
+        <source>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</source>
+        <translation>満点は101%。ほかのオブジェクトは Critical Perfect として計算します。</translation>
+    </message>
+    <message id="tools.dx_loss.maximum_no_break">
+        <source>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</source>
+        <translation>満点は100%（Break なし）。ほかのオブジェクトは Critical Perfect として計算します。</translation>
+    </message>
+    <message id="tools.bpm.empty_timing_note">
+        <source>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</source>
+        <translation>空の maidata は BPM 変更・明示拍子・&amp;first・元譜面の終端拍を保持します。ロングノーツを削除すると尾部の長さもなくなり、架空の BPM 変更は追加しません。</translation>
+    </message>
+    <message id="cover.text_stroke">
+        <source>Text outline</source>
+        <translation>文字の縁取り</translation>
+    </message>
+    <message id="cover.text_stroke_color">
+        <source>Outline color</source>
+        <translation>縁取りの色</translation>
+    </message>
+    <message id="cover.text_stroke_width">
+        <source>Outline width</source>
+        <translation>縁取りの幅</translation>
+    </message>
+    <message id="cover.text_shadow">
+        <source>Text shadow</source>
+        <translation>文字の影</translation>
+    </message>
+    <message id="cover.text_shadow_color">
+        <source>Shadow color</source>
+        <translation>影の色</translation>
+    </message>
+    <message id="cover.text_shadow_opacity">
+        <source>Shadow opacity</source>
+        <translation>影の不透明度</translation>
+    </message>
+    <message id="cover.text_shadow_blur">
+        <source>Shadow blur</source>
+        <translation>影のぼかし</translation>
+    </message>
+    <message id="cover.text_shadow_x">
+        <source>Shadow X offset</source>
+        <translation>影の横方向オフセット</translation>
+    </message>
+    <message id="cover.text_shadow_y">
+        <source>Shadow Y offset</source>
+        <translation>影の縦方向オフセット</translation>
+    </message>
+    <message id="dialog.video_export.cover_preset">
+        <source>Companion cover</source>
+        <translation>カバーを同時に出力</translation>
+    </message>
+    <message id="dialog.video_export.cover_failed_video_kept">
+        <source>Cover export failed. The video was kept.</source>
+        <translation>カバー出力に失敗しました。動画は保存されています。</translation>
+    </message>
+    <message id="cli.settings.title">
+        <source>Command line</source>
+        <translation>コマンドライン</translation>
+    </message>
+    <message id="cli.settings.enable">
+        <source>Enable command-line support</source>
+        <translation>コマンドラインを有効にする</translation>
+    </message>
+    <message id="dialog.video_export.cover_source_changed">
+        <source>The chart changed while preparing the cover. Export again.</source>
+        <translation>カバーの準備中に譜面が変更されました。再度出力してください。</translation>
+    </message>
 </context>
 
 

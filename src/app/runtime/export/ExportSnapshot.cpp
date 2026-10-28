@@ -530,6 +530,10 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     built.measureLineCustomBeats = requestedTask.measureLineCustomBeats;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;
     built.showChartInfoHud = requestedTask.showChartInfoHud;
+    built.showBpmHud = requestedTask.showBpmHud;
+    built.showCpsHud = requestedTask.showCpsHud;
+    built.showMeterHud = requestedTask.showMeterHud;
+    built.showModsHud = requestedTask.showModsHud;
     built.centerDisplayMode = requestedTask.centerDisplayMode;
     built.skinLoadWaitMs = requestedTask.skinLoadWaitMs;
     // Bake the dialog's count-in on/off into the snapshot (default-true elsewhere
@@ -740,6 +744,10 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.measureLineCustomBeats = requestedTask.measureLineCustomBeats;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;
     built.showChartInfoHud = requestedTask.showChartInfoHud;
+    built.showBpmHud = requestedTask.showBpmHud;
+    built.showCpsHud = requestedTask.showCpsHud;
+    built.showMeterHud = requestedTask.showMeterHud;
+    built.showModsHud = requestedTask.showModsHud;
     built.centerDisplayMode = requestedTask.centerDisplayMode;
     built.skinLoadWaitMs = requestedTask.skinLoadWaitMs;
     // Batch uses the same opt-in count-in setting as single export. The
@@ -945,6 +953,10 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     task.showTimestamp = request.showTimestamp;
     task.showObjectStatsHud = request.showObjectStatsHud;
     task.showChartInfoHud = request.showChartInfoHud;
+    task.showBpmHud = request.showBpmHud;
+    task.showCpsHud = request.showCpsHud;
+    task.showMeterHud = request.showMeterHud;
+    task.showModsHud = request.showModsHud;
     task.chartTitle = session_.applicationServices_.workspace().document().title;
     task.chartArtist = session_.applicationServices_.workspace().document().artist;
     task.chartDesigner = session_.applicationServices_.workspace().document()

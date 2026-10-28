@@ -122,6 +122,14 @@ Item {
         canNormalize: root.editorCommandsAvailable && splitView.normalizationAvailable
         canPlaySelection: root.chartEditorActive && root.editorSync.canPlaySelection
         onPlaySelectionRequested: root.editorSync.playSelection()
+        onScoreLossRequested: {
+            root.applicationContext.refreshChartTools()
+            scoreLossWindow.open()
+        }
+        onBpmExportRequested: {
+            root.applicationContext.refreshChartTools()
+            bpmExportWindow.open()
+        }
         onExitRequested: root.requestClose()
         onUndoRequested: root.undo()
         onRedoRequested: root.redo()
@@ -818,6 +826,32 @@ Item {
         previewSettings: root.applicationContext.previewSettings
     }
 
+    DxScoreLossWindow {
+        id: scoreLossWindow
+        chartTools: root.applicationContext.chartTools
+        transientParent: root.Window.window
+    }
+    BpmExportWindow {
+        id: bpmExportWindow
+        chartTools: root.applicationContext.chartTools
+        transientParent: root.Window.window
+    }
+    Timer {
+        id: chartToolsRefresh
+        interval: 150
+        onTriggered: {
+            if (scoreLossWindow.visible || bpmExportWindow.visible)
+                root.applicationContext.refreshChartTools()
+        }
+    }
+    Connections {
+        target: root.documentSession
+        function onChartTextChanged() { chartToolsRefresh.restart() }
+        function onCurrentDifficultyChanged() { chartToolsRefresh.restart() }
+        function onMetadataChanged() { chartToolsRefresh.restart() }
+        function onDocumentReplaced() { chartToolsRefresh.restart() }
+    }
+
     PreferencesDialog {
         id: preferencesDialog
         objectName: "shellPreferencesDialog"
@@ -828,6 +862,7 @@ Item {
         preferences: root.preferences
         appBackground: root.appBackground
         updateService: root.updates
+        cliIntegration: root.applicationContext.cli
         onUpdateRequested: updatePrompt.present()
     }
 

@@ -50,6 +50,8 @@ public:
     void refreshEditorNoteSelection();
     void playEditorSelection(int difficultyId, quint64 revision, int start, int end);
     void cancelSelectionPlayback();
+    void beginPreviewNoteSelection();
+    void finishPreviewNoteSelection(const QSet<quint64>& locations, bool additive);
     void invalidateSession();
 
     miacode::PlaybackSnapshot playbackSnapshot() const override;
@@ -420,6 +422,8 @@ private:
     miacode::PlaybackPreviewPort& preview_;
     PlaybackIdentityGate identity_;
     SelectionPlaybackRange selectionPlayback_;
+    int previewSelectionDifficulty_ = -1;
+    quint64 previewSelectionRevision_ = 0;
     QString lastSelectionProjectionDiagnostic_;
     double rangePlaybackStartSeconds_ = 0.0;
     double rangePlaybackEndSeconds_ = 0.0;

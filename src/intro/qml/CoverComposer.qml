@@ -20,6 +20,7 @@
 
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Shapes
 import MiaCode.Preview
 
 Item {
@@ -744,20 +745,79 @@ Item {
                     onContentWidthChanged: { if (layerItem.isText) canvas.writeTextAspect(layerItem.ld, textProbe) }
                     onContentHeightChanged: { if (layerItem.isText) canvas.writeTextAspect(layerItem.ld, textProbe) }
                 }
-                Text {
-                    anchors.fill: parent
+                // Keep effect distances in 1080-high canvas pixels. The same
+                // scene renders editor thumbnails and full-size transparent PNGs.
+                Item {
+                    id: textVisual
                     visible: layerItem.isText
-                    text: (layerItem.isText && layerItem.ld) ? layerItem.ld.text : ""
-                    color: (layerItem.ld && layerItem.ld.textColor) ? layerItem.ld.textColor : "#FFFFFF"
-                    font.family: textFont.name
-                    font.bold: (layerItem.isText && layerItem.ld) ? layerItem.ld.textBold : false
-                    font.pixelSize: Math.max(1, Math.round(parent.height))
-                    minimumPixelSize: 1
-                    fontSizeMode: Text.Fit
-                    wrapMode: Text.NoWrap
-                    maximumLineCount: 1
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                    readonly property var ld: layerItem.ld
+                    readonly property real effectScale: canvas.height / 1080
+                    readonly property real stroke: ld && ld.textStrokeEnabled ? ld.textStrokeWidth * effectScale : 0
+                    readonly property real pad: Math.ceil(stroke + 2 * (ld && ld.textShadowEnabled ? ld.textShadowBlur * effectScale : 0)
+                        + (ld && ld.textShadowEnabled ? Math.max(Math.abs(ld.textShadowOffsetX), Math.abs(ld.textShadowOffsetY)) * effectScale : 0) + 2)
+                    x: -pad
+                    y: -pad
+                    width: parent.width + pad * 2
+                    height: parent.height + pad * 2
+                    layer.enabled: visible && ld && ld.textShadowEnabled
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: textVisual.ld ? textVisual.ld.textShadowColor : "#000000"
+                        shadowOpacity: textVisual.ld ? textVisual.ld.textShadowOpacity : 0.65
+                        shadowBlur: textVisual.ld && textVisual.ld.textShadowBlur > 0 ? 1.0 : 0.0
+                        blurMax: Math.max(1, Math.ceil(textVisual.ld ? textVisual.ld.textShadowBlur * textVisual.effectScale : 0))
+                        shadowHorizontalOffset: textVisual.ld ? textVisual.ld.textShadowOffsetX * textVisual.effectScale : 0
+                        shadowVerticalOffset: textVisual.ld ? textVisual.ld.textShadowOffsetY * textVisual.effectScale : 0
+                        autoPaddingEnabled: true
+                    }
+                    // Stroke the actual glyph path, so outline thickness is
+                    // independent of font size and remains smooth at PNG size.
+                    Shape {
+                        anchors.fill: parent
+                        visible: textVisual.stroke > 0
+                        preferredRendererType: Shape.CurveRenderer
+                        ShapePath {
+                            // Text stays on top so even a thick stroke cannot
+                            // consume its foreground or expose font contours.
+                            fillColor: textVisual.ld ? textVisual.ld.textStrokeColor : "#000000"
+                            strokeColor: textVisual.ld ? textVisual.ld.textStrokeColor : "#000000"
+                            strokeWidth: textVisual.stroke * 2
+                            joinStyle: ShapePath.RoundJoin
+                            fillRule: ShapePath.WindingFill
+                            PathText {
+                                x: textFill.x + (textFill.width - textFill.contentWidth) / 2
+                                // Qt 6.11's QQuickPathText normalizes addText's
+                                // boundingRect top to y, despite the baseline
+                                // wording in the public docs. Match the visible
+                                // Text's actual ink top, not its baseline.
+                                y: textFill.y + textFill.baselineOffset
+                                    + (canvas.coverLayout ? canvas.coverLayout.textPathTop(
+                                        textFill.text, textFill.font, textFill.fontInfo.pixelSize) : 0)
+                                text: textFill.text
+                                font.family: textFill.font.family
+                                font.bold: textFill.font.bold
+                                font.pixelSize: textFill.fontInfo.pixelSize
+                            }
+                        }
+                    }
+                    Text {
+                        id: textFill
+                        x: textVisual.pad
+                        y: textVisual.pad
+                        width: parent.width - textVisual.pad * 2
+                        height: parent.height - textVisual.pad * 2
+                        text: (layerItem.isText && layerItem.ld) ? layerItem.ld.text : ""
+                        color: (layerItem.ld && layerItem.ld.textColor) ? layerItem.ld.textColor : "#FFFFFF"
+                        font.family: textFont.name
+                        font.bold: (layerItem.isText && layerItem.ld) ? layerItem.ld.textBold : false
+                        font.pixelSize: Math.max(1, Math.round(height))
+                        minimumPixelSize: 1
+                        fontSizeMode: Text.Fit
+                        wrapMode: Text.NoWrap
+                        maximumLineCount: 1
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
             }
 

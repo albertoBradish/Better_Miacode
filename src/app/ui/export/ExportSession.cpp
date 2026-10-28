@@ -28,6 +28,7 @@
 #include <QJsonObject>
 #include <QScopedValueRollback>
 #include <QSettings>
+#include <QSaveFile>
 #include <QTimer>
 #include <QUrl>
 
@@ -83,9 +84,43 @@ ExportSession::ExportSession(miacode::ShellNotifications& notifications,
         exportRunning_ = running;
         emit exportRunningChanged();
     });
+    connect(&notifications, &miacode::ShellNotifications::documentRevisionChanged, this,
+        [this](quint64) { invalidateSingleCoverPreparation(); });
+    connect(&notifications, &miacode::ShellNotifications::videoExportSucceeded, this, [this](const QString& actualOutputPath) {
+        if (!singleCoverVideoLaunched_) return;
+        singleCoverVideoLaunched_ = false;
+        auto prepared = singleCoverJob_.takeForSuccessfulVideo();
+        if (!prepared) return;
+        QImage image = std::move(prepared->image);
+        const QString path = miacode::cover_export::batchCoverOutputPath(
+            QFileInfo(actualOutputPath).absolutePath(), actualOutputPath);
+        QString error = std::move(prepared->error);
+        if (!image.isNull()) {
+            QSaveFile file(path);
+            if (!file.open(QIODevice::WriteOnly) || !image.save(&file, "PNG") || !file.commit())
+                error = file.errorString();
+        }
+        if (!error.isEmpty()) {
+            uiRequests_->postNotice(miacode::NoticeSeverity::Warning,
+                miacode::localizedText("cover.export_cover"),
+                miacode::localizedText("dialog.video_export.cover_failed_video_kept"), error);
+        }
+    });
+    connect(&notifications, &miacode::ShellNotifications::videoExportWorkerRunningChanged, this, [this](bool running) {
+        if (running || batchExportRunning_ || !singleCoverVideoLaunched_) return;
+        const quint64 generation = singleCoverJob_.generation();
+        // Success is delivered before/alongside worker teardown. Queue cleanup
+        // so either signal order works, and never clear a newer job's image.
+        QTimer::singleShot(0, this, [this, generation]() {
+            if (singleCoverJob_.generation() != generation) return;
+            singleCoverVideoLaunched_ = false;
+            singleCoverJob_.discard(generation);
+        });
+    });
     connect(&notifications, &miacode::ShellNotifications::previewRenderSettingsChanged, this, [this]() {
         if (pageSessionActive_ && !pushingSharedSettings_) {
             adoptPreviewRenderSettings();
+            emit videoChanged();
         }
     });
     // The audition ends inside the playback coordinator (music faded out,
@@ -402,6 +437,7 @@ void ExportSession::enter(int previousActiveDifficultyId)
 
 void ExportSession::leave()
 {
+    invalidateSingleCoverPreparation();
     // Idle no-op: must not tear down the v1 Widgets export audition/session.
     if (!pageSessionActive_) {
         return;
@@ -425,6 +461,7 @@ void ExportSession::leave()
 
 void ExportSession::replaceDocument(int preferredDifficultyId)
 {
+    invalidateSingleCoverPreparation();
     flushIntroPvStart();
     setRangePlaybackEnabled(false);
     ++pagePrepareGeneration_;
@@ -476,6 +513,7 @@ void ExportSession::selectDifficulty(int difficultyId)
     if (selectedDifficultyId_ == next) {
         return;
     }
+    invalidateSingleCoverPreparation();
     selectedDifficultyId_ = next;
     emit selectedDifficultyIdChanged();
     if (!pageSessionActive_) {
@@ -494,6 +532,7 @@ void ExportSession::setActiveTab(const QString& tabId)
     if (activeTab_ == next) {
         return;
     }
+    invalidateSingleCoverPreparation();
     activeTab_ = next;
     if (!rangePreviewAvailable()) {
         setRangePlaybackEnabled(false);
@@ -536,6 +575,7 @@ void ExportSession::rebuildDifficultyList()
 
 void ExportSession::refreshFromDocument()
 {
+    invalidateSingleCoverPreparation();
     if (!difficultyExists(selectedDifficultyId_)) {
         selectedDifficultyId_ = resolveDefaultDifficultyId(0);
         emit selectedDifficultyIdChanged();
@@ -558,6 +598,7 @@ void ExportSession::applyPreferences()
     task_.intro.lvRenderMode = QStringLiteral("atlas");
     miacode::video_export::applyVideoExportPreferences(settings, &task_);
     batchCoverPreset_ = settings.value(QStringLiteral("batch_cover_preset")).toString();
+    singleCoverPreset_ = settings.value(QStringLiteral("single_cover_preset")).toString();
     const int savedWidth = task_.outputWidth;
     const int savedHeight = task_.outputHeight;
     resolutionIndex_ = 3;
@@ -576,6 +617,7 @@ void ExportSession::savePreferences() const
     QJsonObject settings = miacode::app_preferences::loadDialogPreferences();
     miacode::video_export::appendVideoExportPreferences(&settings, task_);
     settings.insert(QStringLiteral("batch_cover_preset"), batchCoverPreset_);
+    settings.insert(QStringLiteral("single_cover_preset"), singleCoverPreset_);
     miacode::app_preferences::saveDialogPreferences(settings);
 }
 
@@ -694,6 +736,11 @@ void ExportSession::adoptPreviewRenderSettings()
         values.value(QStringLiteral("scaleMode"), static_cast<int>(task_.backgroundScaleMode)).toInt());
     task_.smoothBrightness = values.value(QStringLiteral("smoothBrightness"), task_.smoothBrightness).toBool();
     task_.showTimestamp = values.value(QStringLiteral("showTimestamp"), task_.showTimestamp).toBool();
+    task_.showBpmHud = values.value(QStringLiteral("showBpmHud"), task_.showBpmHud).toBool();
+    task_.showCpsHud = values.value(QStringLiteral("showCpsHud"), task_.showCpsHud).toBool();
+    task_.showMeterHud = values.value(QStringLiteral("showMeterHud"), task_.showMeterHud).toBool();
+    task_.showModsHud = values.value(QStringLiteral("showModsHud"), task_.showModsHud).toBool();
+
     task_.tapFlowSpeed = values.value(QStringLiteral("tapFlowSpeed"), task_.tapFlowSpeed).toDouble();
     task_.touchFlowSpeed = values.value(QStringLiteral("touchFlowSpeed"), task_.touchFlowSpeed).toDouble();
 }
@@ -732,9 +779,12 @@ VideoExportTask ExportSession::buildRequestedTask() const
 
 void ExportSession::startExport()
 {
-    if (engine() == nullptr) {
+    if (engine() == nullptr || exportRunning_) {
         return;
     }
+    const quint64 coverGeneration = singleCoverJob_.begin();
+    singleCoverSourceChanged_ = false;
+    singleCoverVideoLaunched_ = false;
     ++pagePrepareGeneration_;
     if (!hasSeededTask_) {
         seedFromDifficulty(selectedDifficultyId_);
@@ -857,12 +907,48 @@ void ExportSession::startExport()
     QString error;
     exportRunning_ = true;
     emit exportRunningChanged();
+    // Freeze parsed notes, presentation, preset, resources and preview time
+    // before renderCoverComposite pumps events or the worker starts.
+    const int difficultyId = selectedDifficultyId_;
+    const VideoExportTask requestedTask = buildRequestedTask();
+    const QString coverPreset = singleCoverPreset_;
+    const double previewSecond = preview() && preview()->positionSeconds() < 0
+        ? preview()->positionSeconds() : engine()->currentAudioClockSecond();
+    if (!coverPreset.isEmpty()) {
+        VideoExportTask coverTask = requestedTask;
+        coverTask.contentDurationSeconds = chartDurationSeconds_;
+        coverTask.exportStartSeconds = 0;
+        QString coverError;
+        QImage cover = CoverExportSession::renderPresetCover(
+            *engine(), *uiRequests_, coverTask, coverPreset, previewSecond, &coverError);
+        if (singleCoverJob_.generation() != coverGeneration) {
+            exportRunning_ = false;
+            emit exportRunningChanged();
+            if (singleCoverSourceChanged_) {
+                uiRequests_->postNotice(miacode::NoticeSeverity::Warning,
+                    miacode::localizedText("dialog.video_export.title"),
+                    miacode::localizedText("dialog.video_export.cover_source_changed"));
+            }
+            return;
+        }
+        singleCoverJob_.prepare(coverGeneration, std::move(cover), std::move(coverError));
+    }
+    if (singleCoverJob_.generation() != coverGeneration) {
+        exportRunning_ = false;
+        emit exportRunningChanged();
+        if (singleCoverSourceChanged_) uiRequests_->postNotice(miacode::NoticeSeverity::Warning,
+            miacode::localizedText("dialog.video_export.title"),
+            miacode::localizedText("dialog.video_export.cover_source_changed"));
+        return;
+    }
     bool launched = false;
     {
         const QScopedValueRollback pushing(pushingSharedSettings_, true);
-        launched = engine()->launchVideoExport(buildRequestedTask(), selectedDifficultyId_, &error);
+        launched = engine()->launchVideoExport(requestedTask, difficultyId, &error);
+        singleCoverVideoLaunched_ = launched;
     }
     if (!launched) {
+        singleCoverJob_.cancel();
         exportRunning_ = false;
         emit exportRunningChanged();
         uiRequests_->postNotice(
@@ -875,6 +961,11 @@ void ExportSession::startExport()
     }
 }
 
+void ExportSession::invalidateSingleCoverPreparation()
+{
+    if (singleCoverJob_.invalidatePreparation()) singleCoverSourceChanged_ = true;
+}
+
 void ExportSession::cancelExport()
 {
     if (engine() == nullptr) {
@@ -884,6 +975,8 @@ void ExportSession::cancelExport()
         batchCancellationRequested_ = true;
         return;
     }
+    singleCoverVideoLaunched_ = false;
+    singleCoverJob_.cancel();
     engine()->cancelVideoExport();
 }
 
@@ -1244,6 +1337,42 @@ void ExportSession::setShowObjectStatsHud(bool value)
     applyLivePreviewSettings();
 }
 
+void ExportSession::setShowBpmHud(bool value)
+{
+    if (task_.showBpmHud == value) return;
+    task_.showBpmHud = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showBpmHud"), value);
+    emit videoChanged();
+    applyLivePreviewSettings();
+}
+
+void ExportSession::setShowCpsHud(bool value)
+{
+    if (task_.showCpsHud == value) return;
+    task_.showCpsHud = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showCpsHud"), value);
+    emit videoChanged();
+    applyLivePreviewSettings();
+}
+
+void ExportSession::setShowMeterHud(bool value)
+{
+    if (task_.showMeterHud == value) return;
+    task_.showMeterHud = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showMeterHud"), value);
+    emit videoChanged();
+    applyLivePreviewSettings();
+}
+
+void ExportSession::setShowModsHud(bool value)
+{
+    if (task_.showModsHud == value) return;
+    task_.showModsHud = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showModsHud"), value);
+    emit videoChanged();
+    applyLivePreviewSettings();
+}
+
 void ExportSession::setShowChartInfoHud(bool value)
 {
     task_.showChartInfoHud = value;
@@ -1534,6 +1663,19 @@ void ExportSession::setExportEndSeconds(double value)
     const double start = task_.exportStartSeconds;
     const double minimumEnd = start + minimumExportRangeSeconds();
     setExportRangeSeconds(start, qBound(minimumEnd, value, chartDurationSeconds_));
+}
+
+QVariantList ExportSession::singleCoverPresetOptions() const
+{
+    return CoverExportSession::batchPresetOptions();
+}
+
+void ExportSession::setSingleCoverPreset(const QString& preset)
+{
+    if (singleCoverPreset_ == preset) return;
+    singleCoverPreset_ = preset;
+    savePreferences();
+    emit outputChanged();
 }
 
 QVariantList ExportSession::batchCoverPresetOptions() const

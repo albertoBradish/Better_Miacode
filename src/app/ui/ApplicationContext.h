@@ -22,6 +22,8 @@
 #include "app/ui/net/NetUploadModel.h"
 #include "app/services/ApplicationServices.h"
 #include "app/services/ImageResourceModel.h"
+#include "app/services/CliIntegration.h"
+#include "app/ui/tools/ChartToolsModel.h"
 
 #include <QObject>
 
@@ -62,6 +64,8 @@ class ApplicationContext final : public QObject
     Q_PROPERTY(QObject* update READ update CONSTANT)
     Q_PROPERTY(QObject* net READ net CONSTANT)
     Q_PROPERTY(QObject* netUpload READ netUpload CONSTANT)
+    Q_PROPERTY(QObject* cli READ cli CONSTANT)
+    Q_PROPERTY(QObject* chartTools READ chartTools CONSTANT)
 
 public:
     explicit ApplicationContext(miacode::ApplicationServices& services,
@@ -94,6 +98,9 @@ public:
     QObject* update();
     QObject* net();
     QObject* netUpload() { return &netUpload_; }
+    QObject* cli() { return &cli_; }
+    QObject* chartTools() { return &chartTools_; }
+    Q_INVOKABLE void refreshChartTools();
     void setWindowChrome(QObject* chrome);
     void setChartDropBridge(QObject* bridge);
 
@@ -122,6 +129,8 @@ private:
     miacode::ui::PetOverlayController pet_;
     NetModel net_;
     NetUploadModel netUpload_;
+    miacode::CliIntegration cli_;
+    ChartToolsModel chartTools_;
     miacode::ui::ShellLifecycle lifecycle_;
     QObject* windowChrome_ = nullptr;
     QObject* chartDropBridge_ = nullptr;

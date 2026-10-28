@@ -426,7 +426,15 @@
         bool previewShowObjectStatsHud_ = false;
         bool exportShowObjectStatsHud_ = false;
         bool previewShowChartInfoHud_ = false;
+        bool previewShowBpmHud_ = false;
+        bool previewShowCpsHud_ = false;
+        bool previewShowMeterHud_ = false;
+        bool previewShowModsHud_ = false;
         bool exportShowChartInfoHud_ = false;
+        bool exportShowBpmHud_ = false;
+        bool exportShowCpsHud_ = false;
+        bool exportShowMeterHud_ = false;
+        bool exportShowModsHud_ = false;
         bool previewShowValidationSummary_ = true;
         bool ignoreMuriIssuePrompts_ = false;
         bool chartNormalizeStartAtNewMeasure_ = true;
@@ -721,7 +729,15 @@
     bool& previewShowObjectStatsHud_ = state_.previewShowObjectStatsHud_;
     bool& exportShowObjectStatsHud_ = state_.exportShowObjectStatsHud_;
     bool& previewShowChartInfoHud_ = state_.previewShowChartInfoHud_;
+    bool& previewShowBpmHud_ = state_.previewShowBpmHud_;
+    bool& previewShowCpsHud_ = state_.previewShowCpsHud_;
+    bool& previewShowMeterHud_ = state_.previewShowMeterHud_;
+    bool& previewShowModsHud_ = state_.previewShowModsHud_;
     bool& exportShowChartInfoHud_ = state_.exportShowChartInfoHud_;
+    bool& exportShowBpmHud_ = state_.exportShowBpmHud_;
+    bool& exportShowCpsHud_ = state_.exportShowCpsHud_;
+    bool& exportShowMeterHud_ = state_.exportShowMeterHud_;
+    bool& exportShowModsHud_ = state_.exportShowModsHud_;
     miacode::preview_gameplay::CenterDisplayMode& previewCenterDisplayMode_ =
         previewAppearanceValues_.centerDisplayMode;
     bool& previewShowValidationSummary_ = state_.previewShowValidationSummary_;

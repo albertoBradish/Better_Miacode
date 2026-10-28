@@ -73,13 +73,13 @@ void settleEvents(bool cold)
 {
     if (cold) {
         for (int i = 0; i < 12; ++i) {
-            QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents, 20);
             QThread::msleep(3);
         }
         return;
     }
-    QCoreApplication::processEvents(QEventLoop::AllEvents, 2);
-    QCoreApplication::processEvents(QEventLoop::AllEvents, 2);
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents, 2);
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents, 2);
 }
 
 void applyComposerInputs(QQuickItem* root,

@@ -163,6 +163,7 @@ public:
     void setRetainedVideoFallbackFrame(const QImage& frame);
     void setNoteMarkers(const QVector<TimelineNoteMarker>& notes);
     void setVisualAidChartTiming(const SimaiParseResult& parsed, int clockCount, double firstSeconds);
+    const QVector<TimelineTimingPoint>& timingPoints() const { return frameState_.timingPoints; }
     void setVisualAidSettings(bool measureLines, bool skeleton, int mode, int customBeats);
     void setSelectedNoteLocations(const QSet<quint64>& locations) {
         if (frameState_.selectedNoteLocations == locations) return;
@@ -218,6 +219,15 @@ public:
     bool showTimestamp() const;
     bool showObjectStatsHud() const;
     bool showChartInfoHud() const;
+    void setShowBpmHud(bool show);
+    bool showBpmHud() const;
+    void setShowCpsHud(bool show);
+    bool showCpsHud() const;
+    void setShowMeterHud(bool show);
+    bool showMeterHud() const;
+    void setShowModsHud(bool show);
+    bool showModsHud() const;
+
     bool useMineSkin() const;
     miacode::preview_gameplay::CenterDisplayMode centerDisplayMode() const;
 
@@ -279,6 +289,9 @@ signals:
     void introOverlayDataChanged();
     void introOverlayStateChanged();
     void touchPadAuthoringClicked(const QString& pad, QChar separator);
+    void noteSelectionStarted();
+    void noteSelectionInvalidated();
+    void noteSelectionFinished(const QSet<quint64>& locations, bool additive);
 
 private:
     SimaiParseResult visualAidTiming_;

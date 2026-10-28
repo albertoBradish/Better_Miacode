@@ -291,3 +291,18 @@ miacode_add_dev_tool(media_prepend_policy_spec TEST
     LIBS miacode_media_tools Qt6::Core
     INCLUDES src
 )
+miacode_add_dev_tool(chart_note_selection_spec TEST
+    SOURCES src/tools/chart_selection/ChartNoteSelectionSpec.cpp
+    LIBS miacode_timeline Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+miacode_add_dev_tool(preview_note_hit_test_spec TEST
+    SOURCES src/tools/preview/PreviewNoteHitTestSpec.cpp
+    LIBS miacode_scene Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+miacode_add_dev_tool(chart_tools_spec TEST
+    SOURCES src/tools/chart_tools/ChartToolsSpec.cpp
+    LIBS miacode_chart Qt6::Core Qt6::Gui
+    INCLUDES src
+)

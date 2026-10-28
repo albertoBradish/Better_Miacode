@@ -171,6 +171,32 @@ bool testLineNumberMargin(QTextStream& out)
     return passed;
 }
 
+bool testNativeNoteCollectionUndo(QTextStream& out)
+{
+    ScintillaQuick_item editor;
+    const QByteArray before("(120){4}1/2,3,4,\nE");
+    const QByteArray after("(120){4}1,,4,\nE");
+    editor.sends(SCI_SETTEXT, 0, before.constData());
+    editor.send(SCI_EMPTYUNDOBUFFER);
+    editor.send(SCI_SETMULTIPLESELECTION, true);
+    editor.send(SCI_SETSELECTION, 11, 10);
+    editor.send(SCI_ADDSELECTION, 13, 12);
+    bool ok = editor.send(SCI_GETSELECTIONS) == 2;
+    editor.send(SCI_BEGINUNDOACTION);
+    editor.send(SCI_SETTARGETSTART, 0);
+    editor.send(SCI_SETTARGETEND, editor.send(SCI_GETLENGTH));
+    editor.sends(SCI_REPLACETARGET, after.size(), after.constData());
+    editor.send(SCI_SETSELECTION, 10, 10);
+    editor.send(SCI_ENDUNDOACTION);
+    ok &= editor.property("text").toString().toUtf8() == after;
+    editor.send(SCI_UNDO);
+    ok &= editor.property("text").toString().toUtf8() == before && !editor.send(SCI_CANUNDO);
+    editor.send(SCI_REDO);
+    ok &= editor.property("text").toString().toUtf8() == after;
+    out << "native_note_collection_single_undo=" << (ok ? "PASS" : "FAIL") << Qt::endl;
+    return ok;
+}
+
 bool testWindowLayout(QTextStream& out)
 {
     QFile source(QStringLiteral(MIACODE_SOURCE_ROOT "/src/app/ui/editor/SourceEditor.qml"));
@@ -245,7 +271,7 @@ int main(int argc, char** argv)
     QGuiApplication app(argc, argv);
     QTextStream out(stdout);
     const bool passed = testEditor(out, argc > 1 ? QString::fromLocal8Bit(argv[1]) : QString{})
-        && testLineNumberMargin(out) && testWindowLayout(out);
+        && testLineNumberMargin(out) && testWindowLayout(out) && testNativeNoteCollectionUndo(out);
     out << (passed ? "PASS" : "FAIL") << Qt::endl;
     return passed ? 0 : 1;
 }

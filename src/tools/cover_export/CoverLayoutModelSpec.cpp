@@ -1,4 +1,5 @@
 #include "export/cover_export/CoverBatchExportPolicy.h"
+#include "export/cover_export/CoverCompanionJob.h"
 #include "export/cover_export/CoverCompositionState.h"
 #include "export/cover_export/CoverCompositionPersistenceGuard.h"
 #include "export/cover_export/CoverLayoutModel.h"
@@ -503,6 +504,17 @@ bool testImageAndTextLayers(QTextStream& err)
     text->setFontPath(QStringLiteral("/nonexistent/font.ttf"));
     text->setTextColor(QStringLiteral("#FF8800"));
     text->setTextBold(true);
+    if (!require(!text->textStrokeEnabled() && !text->textShadowEnabled(),
+                 QStringLiteral("legacy/new text has no effects until enabled"), err)) return false;
+    text->setTextStrokeEnabled(true);
+    text->setTextStrokeColor(QStringLiteral("#123456"));
+    text->setTextStrokeWidth(7.5);
+    text->setTextShadowEnabled(true);
+    text->setTextShadowColor(QStringLiteral("#654321"));
+    text->setTextShadowOpacity(0.42);
+    text->setTextShadowBlur(17);
+    text->setTextShadowOffsetX(-13);
+    text->setTextShadowOffsetY(21);
     text->setContentAspect(3.5);
 
     CoverLayoutModel restored;
@@ -523,11 +535,37 @@ bool testImageAndTextLayers(QTextStream& err)
     if (!require(rt->textBold(), QStringLiteral("round-trip keeps text bold"), err)) return false;
     if (!require(qAbs(rt->contentAspect() - 3.5) < 0.001, QStringLiteral("round-trip keeps text aspect"), err)) return false;
 
+    const auto sameEffects = [text](const CoverLayer* other) {
+        return other && other->textStrokeEnabled() == text->textStrokeEnabled()
+            && other->textStrokeColor() == text->textStrokeColor()
+            && other->textStrokeWidth() == text->textStrokeWidth()
+            && other->textShadowEnabled() == text->textShadowEnabled()
+            && other->textShadowColor() == text->textShadowColor()
+            && other->textShadowOpacity() == text->textShadowOpacity()
+            && other->textShadowBlur() == text->textShadowBlur()
+            && other->textShadowOffsetX() == text->textShadowOffsetX()
+            && other->textShadowOffsetY() == text->textShadowOffsetY();
+    };
+    if (!require(sameEffects(rt), QStringLiteral("all text effects round-trip"), err)) return false;
     CoverLayer* dup = model.duplicateLayer(text->key());
     if (!require(dup != nullptr && dup->text() == QStringLiteral("Hello") && dup->textBold()
                      && dup->textColor() == QStringLiteral("#FF8800"),
                  QStringLiteral("duplicate copies text-layer fields"), err)) return false;
-    return true;
+    if (!require(sameEffects(dup), QStringLiteral("duplicate copies all text effects"), err)) return false;
+    auto old = model.toJson();
+    auto oldLayers = old.value(QStringLiteral("layers")).toArray();
+    for (qsizetype i = 0; i < oldLayers.size(); ++i) {
+        auto item = oldLayers[i].toObject();
+        for (const char* key : {"textStrokeEnabled", "textStrokeColor", "textStrokeWidth", "textShadowEnabled",
+             "textShadowColor", "textShadowOpacity", "textShadowBlur", "textShadowOffsetX", "textShadowOffsetY"})
+            item.remove(QString::fromLatin1(key));
+        oldLayers[i] = item;
+    }
+    old.insert(QStringLiteral("layers"), oldLayers);
+    restored.fromJson(old);
+    rt = restored.layer(text->key());
+    return require(!rt->textStrokeEnabled() && !rt->textShadowEnabled(),
+                   QStringLiteral("loading an old layout resets previously enabled effects"), err);
 }
 
 bool testExportPlanPreservesFrameTimes(QTextStream& err)
@@ -555,11 +593,53 @@ bool testExportPlanPreservesFrameTimes(QTextStream& err)
 
 namespace batch_cover {
 
+int verifyCompanionLifecycle()
+{
+    using miacode::cover_export::CoverCompanionJob;
+    CoverCompanionJob job;
+    QImage source(4, 4, QImage::Format_ARGB32);
+    source.fill(Qt::red);
+    auto first = job.begin();
+    if (!job.prepare(first, source, {})) return 1;
+    source.fill(Qt::blue);
+    auto success = job.takeForSuccessfulVideo();
+    if (!success || success->image.pixelColor(1, 1) != QColor(Qt::red)
+        || job.takeForSuccessfulVideo()) return 1;
+    auto canceled = job.begin();
+    job.prepare(canceled, source, {});
+    job.cancel();
+    if (job.takeForSuccessfulVideo() || job.prepare(canceled, source, {})) return 1;
+    auto failed = job.begin();
+    job.prepare(failed, source, {});
+    job.discard(failed);
+    if (job.takeForSuccessfulVideo()) return 1;
+    auto preparing = job.begin();
+    if (!job.invalidatePreparation() || job.prepare(preparing, source, {})) return 1;
+    auto launched = job.begin();
+    job.prepare(launched, source, {});
+    if (job.invalidatePreparation() || !job.takeForSuccessfulVideo()) return 1;
+    auto old = job.begin();
+    auto current = job.begin();
+    if (job.prepare(old, source, {})) return 1;
+    job.prepare(current, {}, QStringLiteral("cover failed; keep video"));
+    job.discard(old);
+    auto failure = job.takeForSuccessfulVideo();
+    return failure && failure->image.isNull() && !failure->error.isEmpty() ? 0 : 1;
+}
+
 int verifyBatchCoverPolicy()
 {
 
     using namespace miacode::cover_export;
-    const bool valid = boundedBatchCoverFrameSeconds(30.0, 10.0) == 10.0
+    const auto regularIntro = coverPreviewFrameTime(-2.0, true, false, 30.0);
+    const auto pvIntro = coverPreviewFrameTime(-miacode::intro::introDurationSeconds(true) + 2.0, true, true, 30.0);
+    const auto afterHold = coverPreviewFrameTime(-0.25, true, true, 30.0);
+    const auto normal = coverPreviewFrameTime(12.25, true, true, 30.0);
+    const bool valid = regularIntro.chartSeconds == -2.0 && !regularIntro.hideChart
+        && qAbs(pvIntro.pvSeconds - 32.0) < 1e-9 && pvIntro.chartSeconds < 0 && pvIntro.hideChart
+        && afterHold.chartSeconds == -0.25 && !afterHold.hideChart
+        && normal.chartSeconds == 12.25 && normal.pvSeconds == 12.25 && !normal.hideChart
+        && boundedBatchCoverFrameSeconds(30.0, 10.0) == 10.0
         && boundedBatchCoverFrameSeconds(30.0, 10.0, 8.95) == 8.95
         && boundedBatchCoverFrameSeconds(7.0, 10.0, 8.95) == 7.0
         && boundedBatchCoverFrameSeconds(-2.0, 10.0) == 0.0
@@ -580,6 +660,7 @@ int main(int argc, char** argv)
     QStandardPaths::setTestModeEnabled(true);
     QCoreApplication app(argc, argv);
     if (batch_cover::verifyBatchCoverPolicy() != 0) return 1;
+    if (batch_cover::verifyCompanionLifecycle() != 0) return 1;
     QCoreApplication::setApplicationName(QStringLiteral("MiaCodeCoverLayoutModelSpec"));
     QTextStream err(stderr);
     if (!testCompositionPersistenceLifecycle(err)) return 1;

@@ -86,6 +86,30 @@ AppTabPages {
             onToggled: root.put("showTimestamp", checked)
         }
         AppSwitch {
+            objectName: "previewShowBpmHudSwitch"
+            text: root.labels.showBpmHud || ""
+            checked: root.values.showBpmHud === true
+            onToggled: root.put("showBpmHud", checked)
+        }
+        AppSwitch {
+            objectName: "previewShowCpsHudSwitch"
+            text: root.labels.showCpsHud || ""
+            checked: root.values.showCpsHud === true
+            onToggled: root.put("showCpsHud", checked)
+        }
+        AppSwitch {
+            objectName: "previewShowMeterHudSwitch"
+            text: root.labels.showMeterHud || ""
+            checked: root.values.showMeterHud === true
+            onToggled: root.put("showMeterHud", checked)
+        }
+        AppSwitch {
+            objectName: "previewShowModsHudSwitch"
+            text: root.labels.showModsHud || ""
+            checked: root.values.showModsHud === true
+            onToggled: root.put("showModsHud", checked)
+        }
+        AppSwitch {
             objectName: "previewTouchPadAuthoringSwitch"
             text: root.labels.touchPadAuthoringShortcut || ""
             checked: root.values.touchPadAuthoringShortcut === true

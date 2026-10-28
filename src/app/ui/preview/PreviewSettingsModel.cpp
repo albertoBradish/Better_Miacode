@@ -34,11 +34,13 @@ QVariantMap option(const QVariant& value, const char* labelKey)
     };
 }
 
-constexpr int kBuiltinOutlineCount = 4;
+constexpr int kBuiltinOutlineCount = 5;
 
 int indexForOutlineVariant(PreviewOutlineVariant variant)
 {
     switch (variant) {
+    case PreviewOutlineVariant::None:
+        return 4;
     case PreviewOutlineVariant::Point:
         return 0;
     case PreviewOutlineVariant::JudgeArea:
@@ -54,6 +56,8 @@ int indexForOutlineVariant(PreviewOutlineVariant variant)
 PreviewOutlineVariant outlineVariantForIndex(int index)
 {
     switch (index) {
+    case 4:
+        return PreviewOutlineVariant::None;
     case 0:
         return PreviewOutlineVariant::Point;
     case 2:
@@ -115,6 +119,11 @@ QVariantMap PreviewSettingsModel::labels() const
         {QStringLiteral("scaleMode"), text("dialog.render_settings.video.scale_mode")},
         {QStringLiteral("smoothBrightness"), text("dialog.render_settings.video.smooth_brightness")},
         {QStringLiteral("showTimestamp"), text("dialog.video_export.option.show_timestamp")},
+        {QStringLiteral("showBpmHud"), text("dialog.video_export.option.show_bpm_hud")},
+        {QStringLiteral("showCpsHud"), text("dialog.video_export.option.show_cps_hud")},
+        {QStringLiteral("showMeterHud"), text("dialog.video_export.option.show_meter_hud")},
+        {QStringLiteral("showModsHud"), text("dialog.video_export.option.show_mods_hud")},
+
         {QStringLiteral("touchPadAuthoringShortcut"),
          text("dialog.render_settings.video.touch_pad_authoring_shortcut")},
         {QStringLiteral("showDebugInfo"), text("dialog.render_settings.preview.debug")},
@@ -279,6 +288,10 @@ QVariantList PreviewSettingsModel::outlineOptions() const
             {QStringLiteral("id"), QStringLiteral("area_labeled")},
             {QStringLiteral("label"), text("dialog.render_settings.gameplay.judge_line.area_labeled")},
         },
+        QVariantMap{
+            {QStringLiteral("id"), QStringLiteral("none")},
+            {QStringLiteral("label"), text("dialog.render_settings.gameplay.judge_line.none")},
+        },
     };
     if (surface() == nullptr) {
         return list;
@@ -297,6 +310,7 @@ int PreviewSettingsModel::outlineIndex() const
     if (surface() == nullptr) {
         return 1;
     }
+    if (appearance_->outlineVariant() == PreviewOutlineVariant::None) return 4;
     const QString custom = surface()->currentCustomOutlineFileName();
     if (!custom.isEmpty()) {
         const QStringList names = surface()->availableCustomOutlineFileNames();

@@ -1140,6 +1140,7 @@ void miacode::runtime::VideoExportHost::handleVideoExportWorkerProcessFinished(i
                     QDesktopServices::openUrl(QUrl::fromLocalFile(outputDir));
                 }
             });
+        emit session_.applicationServices_.shellNotifications().videoExportSucceeded(session_.videoExportWorkerOutputPath_);
         emit session_.applicationServices_.shellNotifications().videoExportCompleted();
     } else {
         miacode::LocalizedText details = session_.videoExportWorkerResultDetails_.trimmed();

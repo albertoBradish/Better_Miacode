@@ -22,10 +22,12 @@
 #include <QHoverEvent>
 #include <QMetaObject>
 #include <QMouseEvent>
+#include <QKeyEvent>
 #include <QPainter>
 #include <QMutexLocker>
 #include <QQuickWindow>
 #include <QSGSimpleTextureNode>
+#include <QSGSimpleRectNode>
 #include <QSGNode>
 
 #include <memory>
@@ -33,7 +35,7 @@
 
 namespace {
 
-constexpr int kPreviewQuickSceneLayerSlotCount = 22;
+constexpr int kPreviewQuickSceneLayerSlotCount = 23;
 
 class PreviewQuickRootNode final : public QSGNode
 {
@@ -448,10 +450,20 @@ void PreviewQuickSceneRoot::setRuntime(PreviewRuntime* runtime)
     if (runtimeUpdateConnection_) {
         QObject::disconnect(runtimeUpdateConnection_);
     }
+    QObject::disconnect(selectionInvalidatedConnection_);
+    selectionDragActive_ = false;
+    selectionHitShapes_.clear();
+    setKeepMouseGrab(false);
     clearPendingTextureStatsForPresentation();
     runtime_ = runtime;
     if (runtime_ != nullptr) {
         frameState_ = nullptr;
+        selectionInvalidatedConnection_ = connect(runtime_, &PreviewRuntime::noteSelectionInvalidated, this, [this] {
+            selectionDragActive_ = false;
+            selectionHitShapes_.clear();
+            setKeepMouseGrab(false);
+            ungrabMouse(); update();
+        });
         if (miacode::debug_options::runtimeDebugOutputEnabled()) {
             runtime_->noteV2UiSceneRootBound(instanceId_, isVisible());
         }
@@ -531,6 +543,32 @@ void PreviewQuickSceneRoot::hoverLeaveEvent(QHoverEvent* event)
 
 void PreviewQuickSceneRoot::mousePressEvent(QMouseEvent* event)
 {
+    if (event && runtime_ && event->button() == Qt::LeftButton) {
+        const bool shift = event->modifiers().testFlag(Qt::ShiftModifier);
+        const bool additive = bool(event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier));
+        if (shift || additive) {
+            emit runtime_->noteSelectionStarted();
+            const auto state = runtime_->frameStateSnapshot();
+            if (state) {
+                auto shapes = miacode::preview::selection::visibleNoteHitShapes(*state,
+                    miacode::pixel_geometry::coveringSize(boundingRect().size()));
+                const auto clicked = miacode::preview::selection::notesIntersecting(shapes,
+                    QRectF(event->position() - QPointF(1, 1), QSizeF(2, 2)));
+                if (shift || !clicked.isEmpty()) {
+                    runtime_->cancelTouchPadAuthoringPress();
+                    selectionDragActive_ = true;
+                    selectionAdditive_ = additive;
+                    selectionDragStart_ = selectionDragEnd_ = event->position();
+                    selectionContentRevision_ = state->sceneContentRevision;
+                    selectionStorageGeneration_ = state->sceneStorageGeneration;
+                    selectionHitShapes_ = std::move(shapes);
+                    forceActiveFocus(Qt::MouseFocusReason);
+                    setKeepMouseGrab(true);
+                    update(); event->accept(); return;
+                }
+            }
+        }
+    }
     if (event == nullptr
         || !miacode::preview::scene::touchPadAuthoringMouseButtonSupported(event->button())
         || runtime_ == nullptr) {
@@ -553,6 +591,9 @@ void PreviewQuickSceneRoot::mousePressEvent(QMouseEvent* event)
 
 void PreviewQuickSceneRoot::mouseMoveEvent(QMouseEvent* event)
 {
+    if (event && selectionDragActive_) {
+        selectionDragEnd_ = event->position(); update(); event->accept(); return;
+    }
     if (event != nullptr && runtime_ != nullptr && runtime_->touchPadAuthoringEnabled()) {
         updateHoveredTouchPadAtItemPoint(event->position());
         event->accept();
@@ -563,6 +604,21 @@ void PreviewQuickSceneRoot::mouseMoveEvent(QMouseEvent* event)
 
 void PreviewQuickSceneRoot::mouseReleaseEvent(QMouseEvent* event)
 {
+    if (event && event->button() == Qt::LeftButton && selectionDragActive_) {
+        selectionDragEnd_ = event->position();
+        const auto state = runtime_ ? runtime_->frameStateSnapshot() : nullptr;
+        selectionDragActive_ = false;
+        setKeepMouseGrab(false);
+        if (state && state->sceneContentRevision == selectionContentRevision_
+            && state->sceneStorageGeneration == selectionStorageGeneration_) {
+            QRectF area(selectionDragStart_, selectionDragEnd_);
+            area = area.normalized();
+            if (area.width() < 2 && area.height() < 2)
+                area = QRectF(selectionDragEnd_ - QPointF(1, 1), QSizeF(2, 2));
+            emit runtime_->noteSelectionFinished(miacode::preview::selection::notesIntersecting(selectionHitShapes_, area), selectionAdditive_);
+        }
+        selectionHitShapes_.clear(); update(); event->accept(); return;
+    }
     if (event != nullptr
         && miacode::preview::scene::touchPadAuthoringMouseButtonSupported(event->button())
         && event->button() == touchPadAuthoringPressedButton_
@@ -582,11 +638,26 @@ void PreviewQuickSceneRoot::mouseReleaseEvent(QMouseEvent* event)
 
 void PreviewQuickSceneRoot::mouseUngrabEvent()
 {
+    selectionDragActive_ = false;
+    selectionHitShapes_.clear();
+    setKeepMouseGrab(false);
+    update();
     if (runtime_ != nullptr) {
         runtime_->cancelTouchPadAuthoringPress();
     }
     touchPadAuthoringPressedButton_ = Qt::NoButton;
     QQuickItem::mouseUngrabEvent();
+}
+
+void PreviewQuickSceneRoot::keyPressEvent(QKeyEvent* event)
+{
+    if (event && event->key() == Qt::Key_Escape && selectionDragActive_) {
+        selectionDragActive_ = false;
+        selectionHitShapes_.clear();
+        setKeepMouseGrab(false);
+        ungrabMouse(); update(); event->accept(); return;
+    }
+    QQuickItem::keyPressEvent(event);
 }
 
 void PreviewQuickSceneRoot::setRuntimeObject(QObject* runtimeObject)
@@ -596,6 +667,10 @@ void PreviewQuickSceneRoot::setRuntimeObject(QObject* runtimeObject)
 
 void PreviewQuickSceneRoot::setFrameState(const miacode::preview::scene::PreviewFrameState* frameState)
 {
+    QObject::disconnect(selectionInvalidatedConnection_);
+    selectionDragActive_ = false;
+    selectionHitShapes_.clear();
+    setKeepMouseGrab(false);
 #ifdef Q_OS_MACOS
     QObject::disconnect(framePresentedCaptureConnection_);
     QObject::disconnect(guiFrameConnection_);
@@ -1410,6 +1485,18 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         "selection", layerStatsForFrame, [&](QSGNode* oldChild) {
             return selectionLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
         });
+    updateLayerSlotProfiled(layerSlotAt(root, slotIndex++), runtime_ != nullptr && selectionDragActive_,
+        "selection_box", layerStatsForFrame, [&](QSGNode* oldChild) -> QSGNode* {
+            delete oldChild;
+            const QRectF rect = QRectF(selectionDragStart_, selectionDragEnd_).normalized();
+            auto* band = new QSGSimpleRectNode(rect, QColor(64, 156, 255, 36));
+            const QColor edge(91, 178, 255, 230);
+            band->appendChildNode(new QSGSimpleRectNode(QRectF(rect.left(), rect.top(), rect.width(), 1), edge));
+            band->appendChildNode(new QSGSimpleRectNode(QRectF(rect.left(), rect.bottom() - 1, rect.width(), 1), edge));
+            band->appendChildNode(new QSGSimpleRectNode(QRectF(rect.left(), rect.top(), 1, rect.height()), edge));
+            band->appendChildNode(new QSGSimpleRectNode(QRectF(rect.right() - 1, rect.top(), 1, rect.height()), edge));
+            return band;
+        });
     if (miacode::debug_options::previewProfileOutputEnabled()) {
         enqueueTextureStatsForPresentation(mergedTextureStats(*textures, layerProfileStats_));
     }
@@ -1589,6 +1676,12 @@ void PreviewQuickSceneRoot::geometryChange(const QRectF& newGeometry, const QRec
 {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
     if (newGeometry.size() != oldGeometry.size()) {
+        if (selectionDragActive_) {
+            selectionDragActive_ = false;
+            selectionHitShapes_.clear();
+            setKeepMouseGrab(false);
+            ungrabMouse();
+        }
         if (runtime_ != nullptr) {
             runtime_->setFrameSize(miacode::pixel_geometry::coveringSize(newGeometry.size()));
         }

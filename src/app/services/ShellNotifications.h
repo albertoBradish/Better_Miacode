@@ -29,11 +29,13 @@ signals:
     // The document was replaced by a path outside the QML façade — startup,
     // root chart drop, native File/Open, crash recovery.
     void documentReplaced();
+    void documentRevisionChanged(quint64 revision);
 
     void editorPreferencesChanged();
     void muriPromptPreferenceChanged();
     void videoExportWorkerRunningChanged(bool running);
     void videoExportCompleted();
+    void videoExportSucceeded(const QString& outputPath);
 
     // Menu / shortcut entry points that land on the window and have to reach
     // whichever QML surface owns the action.

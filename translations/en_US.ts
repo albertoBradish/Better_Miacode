@@ -4839,6 +4839,162 @@ Error: %1</translation>
         <source>Text line starts</source>
         <translation>Text line starts</translation>
     </message>
+    <message id="dialog.render_settings.gameplay.judge_line.none">
+        <source>None</source>
+        <translation>None</translation>
+    </message>
+    <message id="dialog.video_export.option.show_bpm_hud">
+        <source>Show BPM (widescreen)</source>
+        <translation>Show BPM (widescreen)</translation>
+    </message>
+    <message id="dialog.video_export.option.show_cps_hud">
+        <source>Show CPS (widescreen)</source>
+        <translation>Show CPS (widescreen)</translation>
+    </message>
+    <message id="dialog.video_export.option.show_meter_hud">
+        <source>Show explicit meter (widescreen)</source>
+        <translation>Show explicit meter (widescreen)</translation>
+    </message>
+    <message id="dialog.video_export.option.show_mods_hud">
+        <source>Show Mods (widescreen)</source>
+        <translation>Show Mods (widescreen)</translation>
+    </message>
+    <message id="tools.bpm.title">
+        <source>Export BPM</source>
+        <translation>Export BPM</translation>
+    </message>
+    <message id="tools.bpm.sequence">
+        <source>BPM sequence (xx.xx-xx.xx)</source>
+        <translation>BPM sequence (xx.xx-xx.xx)</translation>
+    </message>
+    <message id="tools.bpm.audio_time">
+        <source>Audio timestamps (mm:ss:fff)</source>
+        <translation>Audio timestamps (mm:ss:fff)</translation>
+    </message>
+    <message id="tools.bpm.empty_maidata">
+        <source>Empty maidata with timing</source>
+        <translation>Empty maidata with timing</translation>
+    </message>
+    <message id="tools.bpm.preview">
+        <source>BPM export preview</source>
+        <translation>BPM export preview</translation>
+    </message>
+    <message id="tools.bpm.copy">
+        <source>Copy</source>
+        <translation>Copy</translation>
+    </message>
+    <message id="tools.bpm.save">
+        <source>Save as…</source>
+        <translation>Save as…</translation>
+    </message>
+    <message id="tools.bpm.save_error">
+        <source>Could not save BPM export: %1</source>
+        <translation>Could not save BPM export: %1</translation>
+    </message>
+    <message id="tools.chart.invalid_first">
+        <source>Invalid &amp;first value</source>
+        <translation>Invalid &amp;first value</translation>
+    </message>
+    <message id="tools.chart.parse_error">
+        <source>The chart contains parse errors</source>
+        <translation>The chart contains parse errors</translation>
+    </message>
+    <message id="tools.dx_loss.title">
+        <source>DX achievement loss</source>
+        <translation>DX achievement loss</translation>
+    </message>
+    <message id="tools.dx_loss.attributes">
+        <source>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</source>
+        <translation>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</translation>
+    </message>
+    <message id="tools.dx_loss.object">
+        <source>Object</source>
+        <translation>Object</translation>
+    </message>
+    <message id="tools.dx_loss.judgment">
+        <source>Judgment</source>
+        <translation>Judgment</translation>
+    </message>
+    <message id="tools.dx_loss.single">
+        <source>Loss per judgment</source>
+        <translation>Loss per judgment</translation>
+    </message>
+    <message id="tools.dx_loss.empty">
+        <source>The chart has no scoring objects</source>
+        <translation>The chart has no scoring objects</translation>
+    </message>
+    <message id="tools.dx_loss.extensions">
+        <source>Unofficial extensions: counts are available; DX calculation is disabled</source>
+        <translation>Unofficial extensions: counts are available; DX calculation is disabled</translation>
+    </message>
+    <message id="tools.dx_loss.maximum_break">
+        <source>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</source>
+        <translation>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</translation>
+    </message>
+    <message id="tools.dx_loss.maximum_no_break">
+        <source>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</source>
+        <translation>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</translation>
+    </message>
+    <message id="tools.bpm.empty_timing_note">
+        <source>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</source>
+        <translation>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</translation>
+    </message>
+    <message id="cover.text_stroke">
+        <source>Text outline</source>
+        <translation>Text outline</translation>
+    </message>
+    <message id="cover.text_stroke_color">
+        <source>Outline color</source>
+        <translation>Outline color</translation>
+    </message>
+    <message id="cover.text_stroke_width">
+        <source>Outline width</source>
+        <translation>Outline width</translation>
+    </message>
+    <message id="cover.text_shadow">
+        <source>Text shadow</source>
+        <translation>Text shadow</translation>
+    </message>
+    <message id="cover.text_shadow_color">
+        <source>Shadow color</source>
+        <translation>Shadow color</translation>
+    </message>
+    <message id="cover.text_shadow_opacity">
+        <source>Shadow opacity</source>
+        <translation>Shadow opacity</translation>
+    </message>
+    <message id="cover.text_shadow_blur">
+        <source>Shadow blur</source>
+        <translation>Shadow blur</translation>
+    </message>
+    <message id="cover.text_shadow_x">
+        <source>Shadow X offset</source>
+        <translation>Shadow X offset</translation>
+    </message>
+    <message id="cover.text_shadow_y">
+        <source>Shadow Y offset</source>
+        <translation>Shadow Y offset</translation>
+    </message>
+    <message id="dialog.video_export.cover_preset">
+        <source>Companion cover</source>
+        <translation>Companion cover</translation>
+    </message>
+    <message id="dialog.video_export.cover_failed_video_kept">
+        <source>Cover export failed. The video was kept.</source>
+        <translation>Cover export failed. The video was kept.</translation>
+    </message>
+    <message id="cli.settings.title">
+        <source>Command line</source>
+        <translation>Command line</translation>
+    </message>
+    <message id="cli.settings.enable">
+        <source>Enable command-line support</source>
+        <translation>Enable command-line support</translation>
+    </message>
+    <message id="dialog.video_export.cover_source_changed">
+        <source>The chart changed while preparing the cover. Export again.</source>
+        <translation>The chart changed while preparing the cover. Export again.</translation>
+    </message>
 </context>
 
 

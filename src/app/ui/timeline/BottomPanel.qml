@@ -141,6 +141,7 @@ Item {
 
     TimelineQuickItem {
         id: timelineItem
+        objectName: "timelineQuickItem"
 
         anchors.left: parent.left
         anchors.right: parent.right

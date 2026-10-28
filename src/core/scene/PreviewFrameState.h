@@ -235,6 +235,10 @@ struct PreviewRenderState {
     bool showTimestamp = true;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;
+    bool showBpmHud = false;
+    bool showCpsHud = false;
+    bool showMeterHud = false;
+    bool showModsHud = false;
     // Presentation-only switch exposed to extensions. Mine semantics remain
     // intact while their dedicated sprites/guides are replaced by normal art.
     bool useMineSkin = true;
@@ -245,6 +249,7 @@ struct PreviewRenderState {
 struct PreviewFrameState {
     PreviewHudFontSettings hudFontSettings;
     QVector<TimelineNoteMarker> noteMarkers;
+    QVector<TimelineTimingPoint> timingPoints;
     QVector<double> measureLineSeconds;
     // Editor-only transient projection; never written into chart/render settings.
     QSet<quint64> selectedNoteLocations;

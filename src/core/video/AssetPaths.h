@@ -127,6 +127,7 @@ inline QString customOutlinePathForFileName(const QString& fileName)
 
 inline QString outlinePathForVariant(PreviewOutlineVariant variant)
 {
+    if (variant == PreviewOutlineVariant::None) return {};
     QString preferredPath;
     switch (variant) {
     case PreviewOutlineVariant::Point:
@@ -164,6 +165,7 @@ inline QString outlinePathForVariantOrCustom(
     PreviewOutlineVariant variant,
     const QString& customOutlinePath)
 {
+    if (variant == PreviewOutlineVariant::None) return {};
     if (isSupportedCustomOutlinePath(customOutlinePath)) {
         return QDir::cleanPath(customOutlinePath);
     }

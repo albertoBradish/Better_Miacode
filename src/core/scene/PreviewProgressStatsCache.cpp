@@ -1,6 +1,6 @@
 #include "core/scene/PreviewProgressStatsCache.h"
 
-#include <QHash>
+#include "core/chart/ChartScoringEvents.h"
 
 #include <algorithm>
 
@@ -13,27 +13,6 @@ enum class StatsCategory {
     Touch,
     Break,
 };
-
-QString slideHeadEventKey(const TimelineNoteMarker& marker)
-{
-    return QStringLiteral("slide_head_star|%1|%2|%3|%4|%5")
-        .arg(marker.second, 0, 'f', 6)
-        .arg(marker.lane)
-        .arg(marker.sourceLine)
-        .arg(marker.sourceCol)
-        .arg(marker.eachGroupId);
-}
-
-double slideJudgeSecondFor(const TimelineNoteMarker& marker)
-{
-    if (marker.endSecond > marker.second) {
-        return marker.endSecond;
-    }
-    if (marker.slideTraceSecond > marker.second) {
-        return marker.slideTraceSecond;
-    }
-    return marker.second;
-}
 
 struct ObjectEventDelta {
     double judgeSecond = 0.0;
@@ -167,11 +146,6 @@ void PreviewProgressStatsCache::rebuild(const QVector<TimelineNoteMarker>& marke
     objectEvents.reserve(markers.size() * 2);
     hudEvents.reserve(markers.size() * 2);
 
-    QHash<QString, bool> objectHelperHeadSeen;
-    objectHelperHeadSeen.reserve(markers.size());
-    QHash<QString, bool> hudHelperHeadSeen;
-    hudHelperHeadSeen.reserve(markers.size());
-
     const auto addObjectEvent = [this, &objectEvents](double judgeSecond, StatsCategory category) {
         incrementObjectTotal(&totals_, category);
         objectEvents.append(ObjectEventDelta{judgeSecond, category});
@@ -207,75 +181,23 @@ void PreviewProgressStatsCache::rebuild(const QVector<TimelineNoteMarker>& marke
         });
     };
 
-    for (const TimelineNoteMarker& marker : markers) {
-        const QString type = marker.type.toLower();
-        if (type == QLatin1String("tap")) {
-            if (marker.isBreak) {
-                addObjectEvent(marker.second, StatsCategory::Break);
-                addHudBreakEvent(marker.second);
-            } else {
-                addObjectEvent(marker.second, StatsCategory::Tap);
-                addHudNormalEvent(marker.second, StatsCategory::Tap, 500, 1);
-            }
+    scoringEvents_ = miacode::chart::buildScoringEvents(markers).events;
+    for (const auto& event : scoringEvents_) {
+        if (event.isBreak) {
+            addObjectEvent(event.second, StatsCategory::Break);
+            addHudBreakEvent(event.second);
             continue;
         }
-
-        if (type == QLatin1String("touch")) {
-            if (marker.isBreak) {
-                addObjectEvent(marker.second, StatsCategory::Break);
-                addHudBreakEvent(marker.second);
-            } else {
-                addObjectEvent(marker.second, StatsCategory::Touch);
-                addHudNormalEvent(marker.second, StatsCategory::Touch, 500, 1);
-            }
-            continue;
+        StatsCategory category = StatsCategory::Tap;
+        using miacode::chart::ScoringKind;
+        switch (event.kind) {
+        case ScoringKind::Hold: case ScoringKind::TouchHold: category = StatsCategory::Hold; break;
+        case ScoringKind::Slide: category = StatsCategory::Slide; break;
+        case ScoringKind::Touch: category = StatsCategory::Touch; break;
+        default: break;
         }
-
-        if (type == QLatin1String("hold") || type == QLatin1String("touch_hold")) {
-            const double judgeSecond = marker.endSecond > marker.second ? marker.endSecond : marker.second;
-            if (marker.isBreak) {
-                addObjectEvent(judgeSecond, StatsCategory::Break);
-                addHudBreakEvent(judgeSecond);
-            } else {
-                addObjectEvent(judgeSecond, StatsCategory::Hold);
-                addHudNormalEvent(
-                    judgeSecond,
-                    StatsCategory::Hold,
-                    1000,
-                    2
-                );
-            }
-            continue;
-        }
-
-        if (type != QLatin1String("slide") && type != QLatin1String("wifi")) {
-            continue;
-        }
-
-        if (marker.hasHeadStar) {
-            const QString key = slideHeadEventKey(marker);
-            if (!objectHelperHeadSeen.contains(key)) {
-                objectHelperHeadSeen.insert(key, true);
-                addObjectEvent(marker.second, marker.headBreak ? StatsCategory::Break : StatsCategory::Tap);
-            }
-            if (!hudHelperHeadSeen.contains(key)) {
-                hudHelperHeadSeen.insert(key, true);
-                if (marker.headBreak) {
-                    addHudBreakEvent(marker.second);
-                } else {
-                    addHudNormalEvent(marker.second, StatsCategory::Tap, 500, 1);
-                }
-            }
-        }
-
-        const double judgeSecond = slideJudgeSecondFor(marker);
-        if (marker.trackBreak) {
-            addObjectEvent(judgeSecond, StatsCategory::Break);
-            addHudBreakEvent(judgeSecond);
-        } else {
-            addObjectEvent(judgeSecond, StatsCategory::Slide);
-            addHudNormalEvent(judgeSecond, StatsCategory::Slide, 1500, 3);
-        }
+        addObjectEvent(event.second, category);
+        addHudNormalEvent(event.second, category, event.baseScore(), event.baseScore() / 500);
     }
 
     auto sortByJudgeSecond = [](const auto& a, const auto& b) {

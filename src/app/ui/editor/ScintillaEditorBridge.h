@@ -178,6 +178,10 @@ private:
     void touchAuthoring(const QString& pad, QChar separator, int difficulty, qulonglong revision, int anchor, int position);
     void beginUserInteraction();
     void publishTouchUndoAnchor();
+    miacode::chart_selection::NoteRanges selectionRanges() const;
+    void selectNoteRanges(int difficulty, quint64 revision, const miacode::chart_selection::NoteRanges& ranges);
+    bool deleteNoteSelection();
+    miacode::chart_selection::NoteTimingState noteInitialTiming() const;
     ScintillaDocumentAdapter document_;
     ScintillaDslStyler styler_;
     QPointer<DocumentModel> documentSession_;
@@ -232,6 +236,9 @@ private:
     bool navigationVisible_ = false;
     int reportedAnchor_ = -1;
     int reportedCaret_ = -1;
+    miacode::chart_selection::NoteRanges reportedRanges_;
+    bool noteSelection_ = false;
+    bool notePointerPress_ = false;
     qreal wheelRemainder_ = 0;
     int blockSpacing_ = 0;
     bool autoWrap_ = true;

@@ -239,6 +239,10 @@ void copyVideoExportUserSettings(const VideoExportTask& source, VideoExportTask*
     target->measureLineCustomBeats = source.measureLineCustomBeats;
     target->showObjectStatsHud = source.showObjectStatsHud;
     target->showChartInfoHud = source.showChartInfoHud;
+    target->showBpmHud = source.showBpmHud;
+    target->showCpsHud = source.showCpsHud;
+    target->showMeterHud = source.showMeterHud;
+    target->showModsHud = source.showModsHud;
     target->clockCountEnabled = source.clockCountEnabled;
     target->intro.enabled = source.intro.enabled;
     target->intro.pvPreview = source.intro.pvPreview;

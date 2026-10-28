@@ -33,6 +33,8 @@ QtObject {
     signal selectCurrentLineRequested()
     signal metadataRequested()
     signal latencyCalibrationRequested()
+    signal scoreLossRequested()
+    signal bpmExportRequested()
     signal netRequested()
     signal netUploadRequested()
     signal mediaToolRequested(string toolId)

@@ -25,6 +25,7 @@ enum class PreviewOutlineVariant {
     Line = 1,
     JudgeArea = 2,
     JudgeAreaLabeled = 3,
+    None = 4,
 };
 
 enum class PreviewBackgroundScaleMode {

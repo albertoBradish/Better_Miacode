@@ -234,6 +234,11 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
     state_.previewMeasureLineMode_ = 0;
     state_.previewMeasureLineCustomBeats_ = 4;
     state_.previewShowObjectStatsHud_ = false;
+    state_.previewShowBpmHud_ = state_.exportShowBpmHud_ = false;
+    state_.previewShowCpsHud_ = state_.exportShowCpsHud_ = false;
+    state_.previewShowMeterHud_ = state_.exportShowMeterHud_ = false;
+    state_.previewShowModsHud_ = state_.exportShowModsHud_ = false;
+
     state_.exportShowObjectStatsHud_ = false;
     state_.previewShowChartInfoHud_ = false;
     state_.exportShowChartInfoHud_ = false;
@@ -476,6 +481,10 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     if (preview.value("show_chart_info_export").isBool()) {
         state_.exportShowChartInfoHud_ = preview.value("show_chart_info_export").toBool(false);
     }
+    state_.previewShowBpmHud_ = state_.exportShowBpmHud_ = preview.value("show_bpm_hud").toBool(false);
+    state_.previewShowCpsHud_ = state_.exportShowCpsHud_ = preview.value("show_cps_hud").toBool(false);
+    state_.previewShowMeterHud_ = state_.exportShowMeterHud_ = preview.value("show_meter_hud").toBool(false);
+    state_.previewShowModsHud_ = state_.exportShowModsHud_ = preview.value("show_mods_hud").toBool(false);
     const bool unifiedChartInfoHud = state_.previewShowChartInfoHud_ || state_.exportShowChartInfoHud_;
     state_.previewShowChartInfoHud_ = unifiedChartInfoHud;
     state_.exportShowChartInfoHud_ = unifiedChartInfoHud;
@@ -636,6 +645,11 @@ void miacode::runtime::EditorHost::savePortableState() const
     preview.insert("show_object_stats_export", state_.exportShowObjectStatsHud_);
     preview.insert("show_chart_info_preview", state_.previewShowChartInfoHud_);
     preview.insert("show_chart_info_export", state_.exportShowChartInfoHud_);
+    preview.insert("show_bpm_hud", state_.previewShowBpmHud_);
+    preview.insert("show_cps_hud", state_.previewShowCpsHud_);
+    preview.insert("show_meter_hud", state_.previewShowMeterHud_);
+    preview.insert("show_mods_hud", state_.previewShowModsHud_);
+
     preview.insert(
         "center_display_mode",
         QString::fromLatin1(miacode::preview_gameplay::centerDisplayModeToken(previewAppearanceValues_.centerDisplayMode))

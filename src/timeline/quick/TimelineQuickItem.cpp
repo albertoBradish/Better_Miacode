@@ -1711,7 +1711,20 @@ void TimelineQuickItem::mousePressEvent(QMouseEvent* event)
         QQuickItem::mousePressEvent(event);
         return;
     }
-    if (event->modifiers().testFlag(Qt::ControlModifier) || event->modifiers().testFlag(Qt::MetaModifier)) {
+    const bool additive = bool(event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier));
+    if (stateBridge_ && (additive || event->modifiers().testFlag(Qt::ShiftModifier))) {
+        QPointF point = event->position();
+        point.rx() += state.horizontalScrollValue;
+        QSet<quint64> locations;
+        for (const auto& hit : state.noteHitAreas)
+            if (hit.rect.contains(point)) locations.insert(hit.locationId);
+        if (!locations.isEmpty()) {
+            emit timelineUserInteractionStarted();
+            stateBridge_->requestNoteSelection(locations, additive);
+            event->accept(); return;
+        }
+    }
+    if (additive) {
         emit timelineUserInteractionStarted();
         emit headerNavigateRequested(clickSecond);
         event->accept();
@@ -1842,12 +1855,17 @@ void TimelineQuickItem::wheelEvent(QWheelEvent* event)
             .arg(delta)
             .arg(static_cast<int>(event->modifiers()))
             .arg(stateBridge_->horizontalScrollValue(), 0, 'f', 3));
-    const bool zoomInWheel = miacode::input_shortcut::wheelEventMatchesAnyGesture(
+    const bool shortcutZoomIn = miacode::input_shortcut::wheelEventMatchesAnyGesture(
         event,
         stateBridge_->zoomInWheelShortcuts());
-    const bool zoomOutWheel = miacode::input_shortcut::wheelEventMatchesAnyGesture(
+    const bool shortcutZoomOut = miacode::input_shortcut::wheelEventMatchesAnyGesture(
         event,
         stateBridge_->zoomOutWheelShortcuts());
+    // Keep custom direction bindings authoritative, including an intentional
+    // reversed Alt-wheel mapping; the built-in alias fills only unbound input.
+    const bool altZoom = event->modifiers() == Qt::AltModifier && !shortcutZoomIn && !shortcutZoomOut;
+    const bool zoomInWheel = shortcutZoomIn || (altZoom && delta > 0);
+    const bool zoomOutWheel = shortcutZoomOut || (altZoom && delta < 0);
     if (zoomInWheel || zoomOutWheel) {
         const miacode::timeline::TimelineSceneState state = currentSceneState();
         const int steps = qMax(1, qAbs(qRound(static_cast<double>(delta) / 120.0)))

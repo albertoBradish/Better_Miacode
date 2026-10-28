@@ -651,6 +651,7 @@ void applyInitialTimingMetadata(
     if (state == nullptr) {
         return;
     }
+    state->meterExplicit = timingMetadata.wholeTimeSignatureValid;
     state->meterNumerator = timingMetadata.wholeTimeSignatureValid
         ? timingMetadata.wholeTimeSignatureNumerator
         : kDefaultMeterNumerator;
@@ -737,6 +738,23 @@ SimaiParseResult parseInternal(
     state.strictMode = strictMode;
     applyInitialTimingMetadata(&state, timingMetadata);
 
+    const auto recordTiming = [&state]() {
+        const TimelineTimingPoint point{state.second, state.quarterBeat, state.bpm,
+            state.meterNumerator, state.meterDenominator, state.meterExplicit};
+        const auto sameState = [](const auto& left, const auto& right) {
+            return left.bpm == right.bpm && left.meterNumerator == right.meterNumerator
+                && left.meterDenominator == right.meterDenominator
+                && left.meterExplicit == right.meterExplicit;
+        };
+        auto& points = state.result.timingPoints;
+        if (!points.isEmpty() && points.last().second == state.second) {
+            points.last() = point;
+            if (points.size() > 1 && sameState(points[points.size() - 2], point)) points.removeLast();
+        } else if (points.isEmpty() || !sameState(points.last(), point)) {
+            points.append(point);
+        }
+    };
+    recordTiming();
     QString token;
     int tokenColumn = 1;
     QVector<int> currentGroup;
@@ -895,8 +913,10 @@ SimaiParseResult parseInternal(
                         &numerator,
                         &denominator,
                         nullptr)) {
+                    state.meterExplicit = true;
                     state.meterNumerator = numerator;
                     state.meterDenominator = denominator;
+                    recordTiming();
                     state.currentMeasureStartSecond = state.second;
                     appendDistinctSecond(&state.result.measureLineSeconds, state.currentMeasureStartSecond);
                 }
@@ -918,7 +938,7 @@ SimaiParseResult parseInternal(
                 warnDirectiveAfterNote(lineNumber, line, i, close);
                 bool bpmOk = false;
                 const double bpm = line.mid(i + 1, close - i - 1).trimmed().toDouble(&bpmOk);
-                if (!bpmOk || bpm <= 0.0) {
+                if (!bpmOk || !std::isfinite(bpm) || bpm <= 0.0) {
                     appendTokenError(&state, lineNumber, i + 1, ValidationMessage::kInvalidBpmValue());
                 } else {
                     warnMissingExplicitSubdivision(&state);
@@ -928,6 +948,7 @@ SimaiParseResult parseInternal(
                     state.currentMeasureStartSecond = state.second;
                     appendDistinctSecond(&state.result.measureLineSeconds, state.currentMeasureStartSecond);
                     state.bpm = bpm;
+                    recordTiming();
                     recordPendingExplicitSubdivision(&state, lineNumber, i + 1, close + 1);
                 }
                 i = close;
@@ -1088,6 +1109,7 @@ SimaiParseResult parseInternal(
                 marker.major = false;
                 marker.quarterBeat = state.quarterBeat;
                 marker.quarterBeatLength = 4.0 / qMax(1, state.beats);
+                marker.subdivision = state.beats;
                 marker.durationSeconds = noteStepSeconds(state.bpm, state.beats);
                 state.quarterBeat += marker.quarterBeatLength;
                 state.result.beatMarkers.append(marker);
@@ -1411,6 +1433,8 @@ SimaiParseResult parseInternal(
         state.result.durationSeconds,
         state.result.noteMarkers.isEmpty() ? 0.0 : state.result.noteMarkers.constLast().second
     );
+    state.result.endSecond = state.second;
+    state.result.endQuarterBeat = state.quarterBeat;
     return state.result;
 }
 

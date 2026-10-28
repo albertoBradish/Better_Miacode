@@ -469,6 +469,16 @@ Item {
         AppMenu {
             id: toolsMenu
             title: root.menuTitle(qsTrId("menu.tools"))
+            AppMenuAction {
+                text: qsTrId("tools.dx_loss.title")
+                enabled: root.commandsEnabled && root.documentAvailable
+                onTriggered: root.commands.scoreLossRequested()
+            }
+            AppMenuAction {
+                text: qsTrId("tools.bpm.title")
+                enabled: root.commandsEnabled && root.documentAvailable
+                onTriggered: root.commands.bpmExportRequested()
+            }
             Instantiator {
                 model: root.commands.netEnabled ? ["net-download", "net-upload"] : []
                 delegate: AppMenuAction {

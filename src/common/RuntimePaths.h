@@ -8,12 +8,55 @@
 #include <QSettings>
 #include <QStringList>
 #include <QUuid>
+#ifdef Q_OS_MACOS
+#include <mach-o/dyld.h>
+#endif
 
 // Better Miacode owns a marked, explicit portable data root. No fallback to
 // upstream profile directories or a caller's current working directory.
 namespace miacode::runtime_paths {
 
 inline bool initialize(QString* error = nullptr);
+
+// A packaged macOS app can be moved into Applications, so its writable data
+// lives outside the signed bundle. Unpackaged binaries still require an
+// explicitly marked runtime supplied by the developer or test harness.
+inline bool initializePackagedRuntime(QString* error = nullptr)
+{
+#ifdef Q_OS_MACOS
+    if (qEnvironmentVariableIsSet("BETTER_MIACODE_RUNTIME_ROOT")) return true;
+    uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size);
+    QByteArray buffer(static_cast<qsizetype>(size), '\0');
+    if (_NSGetExecutablePath(buffer.data(), &size) != 0) return false;
+    const QString executable = QFileInfo(QString::fromUtf8(buffer.constData())).canonicalFilePath();
+    QDir macos(QFileInfo(executable).absolutePath());
+    QFile packageMarker(macos.filePath(QStringLiteral("../Resources/.better-miacode-package")));
+    if (QFileInfo(packageMarker).isSymLink() || !packageMarker.open(QIODevice::ReadOnly)
+        || packageMarker.readAll().trimmed() != QByteArrayLiteral("BetterMiacode.package.v1")) {
+        if (error) *error = QStringLiteral("The app bundle is missing its Better Miacode package marker.");
+        return false;
+    }
+    const QString runtime = QDir::home().filePath(QStringLiteral("Library/Application Support/BetterMiacode"));
+    const QFileInfo existing(runtime);
+    if (existing.isSymLink() || (existing.exists() && !existing.isDir())) return false;
+    const bool created = !existing.exists();
+    if (!QDir().mkpath(runtime)) return false;
+    if (created) {
+        QFile marker(QDir(runtime).filePath(QStringLiteral(".better-miacode-runtime")));
+        const QByteArray identity = QByteArrayLiteral("BetterMiacode.runtime.v1\n");
+        if (!marker.open(QIODevice::WriteOnly | QIODevice::NewOnly)
+            || marker.write(identity) != identity.size()) {
+            if (error) *error = QStringLiteral("Cannot create the Better Miacode runtime marker.");
+            return false;
+        }
+    }
+    qputenv("BETTER_MIACODE_RUNTIME_ROOT", runtime.toUtf8());
+#else
+    Q_UNUSED(error);
+#endif
+    return true;
+}
 
 inline QString& validatedRoot()
 {

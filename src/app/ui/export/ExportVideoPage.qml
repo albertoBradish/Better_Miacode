@@ -403,6 +403,15 @@ Rectangle {
                             }
                         }
 
+                        LabeledCombo {
+                            Layout.fillWidth: true
+                            visible: root.session && root.session.activeTab === "export"
+                            label: qsTrId("dialog.video_export.cover_preset")
+                            options: root.session ? root.session.singleCoverPresetOptions : []
+                            currentValue: root.session ? root.session.singleCoverPreset : ""
+                            onPicked: function(value) { if (root.session) root.session.singleCoverPreset = value }
+                        }
+
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 12
@@ -640,6 +649,26 @@ Rectangle {
                                 text: qsTrId("qml.show_chart_information")
                                 checked: root.session ? root.session.showChartInfoHud : false
                                 onToggled: if (root.session) root.session.showChartInfoHud = checked
+                            }
+                            AppSwitch {
+                                text: qsTrId("dialog.video_export.option.show_bpm_hud")
+                                checked: root.session ? root.session.showBpmHud : false
+                                onToggled: if (root.session) root.session.showBpmHud = checked
+                            }
+                            AppSwitch {
+                                text: qsTrId("dialog.video_export.option.show_cps_hud")
+                                checked: root.session ? root.session.showCpsHud : false
+                                onToggled: if (root.session) root.session.showCpsHud = checked
+                            }
+                            AppSwitch {
+                                text: qsTrId("dialog.video_export.option.show_meter_hud")
+                                checked: root.session ? root.session.showMeterHud : false
+                                onToggled: if (root.session) root.session.showMeterHud = checked
+                            }
+                            AppSwitch {
+                                text: qsTrId("dialog.video_export.option.show_mods_hud")
+                                checked: root.session ? root.session.showModsHud : false
+                                onToggled: if (root.session) root.session.showModsHud = checked
                             }
                             AppSwitch {
                                 objectName: "exportShowMeasureLinesSwitch"

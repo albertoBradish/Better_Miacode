@@ -100,6 +100,7 @@ public:
     // binding; the bridge is what MainWindow already holds, so the tick is republished here
     // rather than making MainWindow reach for a QML-instantiated item pointer.
     void notifyRenderCadenceTick();
+    void requestNoteSelection(const QSet<quint64>& locations, bool additive) { emit noteSelectionRequested(locations, additive); }
     // True while preview playback is driving the timeline. The item uses this to keep the
     // render loop spinning (QQuickWindow::update) so afterAnimating keeps arriving; without
     // it the cadence would depend on whether an update() issued during afterAnimating also
@@ -129,6 +130,7 @@ public:
     quint64 overlayDynamicRevision() const { return overlayDynamicRevision_; }
 
 signals:
+    void noteSelectionRequested(const QSet<quint64>& locations, bool additive);
     void renderStateChanged();
     void playheadChanged(double second);
     void zoomScaleChanged(double scale);

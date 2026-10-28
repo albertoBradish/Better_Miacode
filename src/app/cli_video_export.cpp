@@ -3,6 +3,7 @@
 
 #include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
+#include "app/services/CliIntegration.h"
 #include "export/video_export/VideoExportSnapshot.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
@@ -15,6 +16,8 @@
 #include <QString>
 #include <QStringList>
 #include <QTextStream>
+#include <QTemporaryDir>
+#include <QSaveFile>
 
 #include <cmath>
 
@@ -68,10 +71,15 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     // HUD/render settings come from app-created task snapshots.
     miacode::runtime::installPreferenceDocumentProvider();
     try {
+    if (!miacode::CliIntegration::tasksEnabled()) {
+        if (errorMessage) *errorMessage = QStringLiteral("CLI tasks are disabled. Enable command-line integration in Settings > About.");
+        return 77;
+    }
     QCommandLineParser parser;
     parser.setApplicationDescription(qtTrId("cli.video_export.description"));
     parser.addHelpOption();
     parser.addVersionOption();
+    parser.addOption(QCommandLineOption(QStringLiteral("overwrite"), QStringLiteral("Atomically replace an existing output after successful export.")));
     addSharedCliDebugOption(parser);
     parser.addOption(QCommandLineOption(
         QStringLiteral("export-video"),
@@ -339,7 +347,29 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     Session::CliVideoExportRequest request;
     request.chartPathOrDirectory = chartInput;
     request.difficulty = parser.value(QStringLiteral("difficulty")).trimmed();
-    request.outputPath = parser.value(QStringLiteral("output")).trimmed();
+    const QString userOutput = parser.value(QStringLiteral("output")).trimmed();
+    if (userOutput.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("--output is required.");
+        return 2;
+    }
+    const QString finalOutput = QFileInfo(userOutput).absoluteFilePath();
+    const QFileInfo outputInfo(finalOutput);
+    if (outputInfo.isDir() || outputInfo.isSymLink()
+        || (outputInfo.exists() && !parser.isSet(QStringLiteral("overwrite")))) {
+        if (errorMessage) *errorMessage = QStringLiteral("Output exists or is invalid; use --overwrite for an existing regular file.");
+        return 3;
+    }
+    if (outputInfo.suffix().compare(QStringLiteral("mp4"), Qt::CaseInsensitive) != 0
+        || !QDir().mkpath(outputInfo.absolutePath())) {
+        if (errorMessage) *errorMessage = QStringLiteral("Output must be a writable .mp4 path.");
+        return 2;
+    }
+    QTemporaryDir staging(QDir(outputInfo.absolutePath()).filePath(QStringLiteral(".better-cli-XXXXXX")));
+    if (!staging.isValid()) {
+        if (errorMessage) *errorMessage = QStringLiteral("Cannot create output staging directory.");
+        return 1;
+    }
+    request.outputPath = QDir(staging.path()).filePath(outputInfo.fileName());
     request.outputWidth = outputWidth;
     request.outputHeight = outputHeight;
     request.fps = fps;
@@ -384,6 +414,27 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
         }
         return 1;
     }
+
+    QFile exported(resolvedOutputPath);
+    QSaveFile finalFile(finalOutput);
+    finalFile.setDirectWriteFallback(false);
+    if ((QFileInfo::exists(finalOutput) && !parser.isSet(QStringLiteral("overwrite")))
+        || !exported.open(QIODevice::ReadOnly) || !finalFile.open(QIODevice::WriteOnly)) {
+        if (errorMessage) *errorMessage = QStringLiteral("Cannot publish completed export at the requested output path.");
+        return 1;
+    }
+    while (!exported.atEnd()) {
+        const QByteArray bytes = exported.read(1024 * 1024);
+        if ((bytes.isEmpty() && exported.error() != QFileDevice::NoError) || finalFile.write(bytes) != bytes.size()) {
+            if (errorMessage) *errorMessage = QStringLiteral("Cannot copy completed export; original output was preserved.");
+            return 1;
+        }
+    }
+    if (!finalFile.commit()) {
+        if (errorMessage) *errorMessage = finalFile.errorString();
+        return 1;
+    }
+    resolvedOutputPath = finalOutput;
 
     QTextStream(stdout) << qtTrId("cli.export_success").arg(QDir::toNativeSeparators(resolvedOutputPath)) << "\n";
     if (!exportDetails.trimmed().isEmpty()) {

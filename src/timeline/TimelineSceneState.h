@@ -158,6 +158,7 @@ struct TimelineSceneState {
     QVector<TimelineSceneLine> selectionLines;
     QVector<TimelineSceneSprite> noteSprites;
     QVector<TimelineSceneGlyph> muriDots;
+    QVector<TimelineSceneGlyph> noteHitAreas;
     bool hasEntryMarker = false;
     TimelineSceneTriangle entryMarker;
     bool hasCursorMarker = false;

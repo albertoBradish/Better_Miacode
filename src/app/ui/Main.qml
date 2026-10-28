@@ -109,6 +109,8 @@ ApplicationWindow {
     PetOverlay {
         controller: window.applicationContext.pet
         hostWindow: window
+        rhythmQuarterBeat: window.applicationContext.preview.quarterBeat
+        rhythmPlaying: window.applicationContext.preview.playing
     }
 
     Binding {

@@ -43,6 +43,7 @@ struct ParseState {
     double second = 0.0;
     double quarterBeat = 0.0;
     int nextEachGroupId = 0;
+    bool meterExplicit = false;
     int meterNumerator = kDefaultMeterNumerator;
     int meterDenominator = kDefaultMeterDenominator;
     double currentMeasureStartSecond = 0.0;

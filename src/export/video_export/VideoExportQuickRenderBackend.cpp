@@ -58,6 +58,7 @@ bool VideoExportQuickRenderBackend::bootstrap(
     frameState_ = miacode::preview::scene::PreviewFrameState();
     frameState_.hudFontSettings = task.hudFontSettings;
     frameState_.noteMarkers = noteMarkers;
+    frameState_.timingPoints = task.timingPoints;
     frameState_.measureLineSeconds = task.measureLineSeconds;
     frameState_.render.showMeasureLines = task.showMeasureLines;
     frameState_.render.showJudgementSkeleton = task.showJudgementSkeleton;
@@ -80,6 +81,10 @@ bool VideoExportQuickRenderBackend::bootstrap(
     frameState_.render.showTimestamp = task.showTimestamp;
     frameState_.render.showObjectStatsHud = task.showObjectStatsHud;
     frameState_.render.showChartInfoHud = task.showChartInfoHud;
+    frameState_.render.showBpmHud = task.showBpmHud;
+    frameState_.render.showCpsHud = task.showCpsHud;
+    frameState_.render.showMeterHud = task.showMeterHud;
+    frameState_.render.showModsHud = task.showModsHud;
     frameState_.chartTitle = task.chartTitle;
     frameState_.chartArtist = task.chartArtist;
     frameState_.chartDifficultyLabel = task.chartDifficultyLabel;

@@ -53,5 +53,6 @@ QString currentExceptionDetail();
 // ===== CLI video export handlers =====
 int runCliVideoExport(QGuiApplication& app, QString* errorMessage);          // cli_video_export.cpp
 int runCliVideoExportWorker(QGuiApplication& app, QString* errorMessage);    // cli_video_export_worker.cpp
+int runPublicCli(int argc, char** argv, const QStringList& arguments);      // cli_tasks.cpp
 
 }  // namespace miacode::app::entry

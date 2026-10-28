@@ -203,6 +203,10 @@ public:
         bool showTimestamp = true;
         bool showObjectStatsHud = false;
         bool showChartInfoHud = false;
+        bool showBpmHud = false;
+        bool showCpsHud = false;
+        bool showMeterHud = false;
+        bool showModsHud = false;
         bool addIntro = false;
         // PV-preview intro style (IntroBannerSpec::pvPreview) and its segment.
         bool introCardShadow = false;

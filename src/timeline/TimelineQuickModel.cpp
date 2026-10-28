@@ -416,15 +416,35 @@ TimelineExportRange TimelineQuickModel::resolveExportRangeForSelection(
 TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteSelection(
     int start, int end, double tapFlowSpeed, double touchFlowSpeed) const
 {
+    return resolveNoteSelection(miacode::chart_selection::NoteRanges{{start, end}}, tapFlowSpeed, touchFlowSpeed);
+}
+
+miacode::chart_selection::NoteRanges TimelineQuickModel::noteSourceRanges(const QSet<quint64>* locations) const
+{
+    miacode::chart_selection::NoteRanges ranges;
+    for (const auto& line : lines_) for (const auto& note : line.render.notes) {
+        if (locations && !locations->contains(timelineRenderLocationId(line.lineNumber, note.sourceCol))) continue;
+        const int start = line.startPosition + note.sourceCol - 1;
+        ranges.append({start, start + note.sourceLength});
+    }
+    return miacode::chart_selection::normalizedNoteRanges(ranges, sourceText_.size());
+}
+
+TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteSelection(
+    const miacode::chart_selection::NoteRanges& inputRanges, double tapFlowSpeed, double touchFlowSpeed) const
+{
     NoteSelection result;
-    if (end <= start) return result;
+    const auto ranges = miacode::chart_selection::normalizedNoteRanges(inputRanges, sourceText_.size());
+    if (ranges.isEmpty()) return result;
     double visibleStart = std::numeric_limits<double>::infinity();
     double visualEnd = -std::numeric_limits<double>::infinity();
     for (const auto& line : lines_) {
         for (const auto& note : line.render.notes) {
             const int noteStart = line.startPosition + note.sourceCol - 1;
             const int noteEnd = noteStart + note.sourceLength;
-            if (start >= noteEnd || end <= noteStart) continue;
+            const auto range = std::lower_bound(ranges.cbegin(), ranges.cend(), noteStart,
+                [](const miacode::chart_selection::NoteRange& range, int position) { return range.end <= position; });
+            if (range == ranges.cend() || range->start >= noteEnd) continue;
             result.locations.insert(timelineRenderLocationId(line.lineNumber, note.sourceCol));
             const bool touch = note.kind == TimelineRenderNoteKind::Touch
                 || note.kind == TimelineRenderNoteKind::TouchHold;

@@ -1,3 +1,16 @@
+miacode_add_dev_tool(cli_integration_spec TEST
+    SOURCES
+        src/tools/services/CliIntegrationSpec.cpp
+        src/app/services/CliIntegration.cpp
+        src/app/services/CliIntegration.h
+        src/app/services/PreferenceDocument.cpp
+    LIBS miacode_base Qt6::Core $<$<PLATFORM_ID:Windows>:User32> $<$<PLATFORM_ID:Windows>:Advapi32>
+    INCLUDES src
+)
+target_compile_definitions(cli_integration_spec PRIVATE
+    "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\""
+)
+
 miacode_add_dev_tool(runtime_isolation_spec TEST
     SOURCES
         src/tools/services/RuntimeIsolationSpec.cpp
@@ -340,3 +353,8 @@ miacode_add_dev_tool(hud_font_preference_migration_spec TEST
 )
 target_compile_definitions(hud_font_preference_migration_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+miacode_add_dev_tool(cli_request_spec TEST
+    SOURCES src/tools/services/CliRequestSpec.cpp src/app/CliRequest.cpp
+    LIBS Qt6::Core
+    INCLUDES src
+)
