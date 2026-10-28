@@ -165,6 +165,7 @@ public:
     void setVisualAidChartTiming(const SimaiParseResult& parsed, int clockCount, double firstSeconds);
     const QVector<TimelineTimingPoint>& timingPoints() const { return frameState_.timingPoints; }
     void setVisualAidSettings(bool measureLines, bool skeleton, int mode, int customBeats);
+    void setSlideJudgementTiming(bool enabled);
     void setSelectedNoteLocations(const QSet<quint64>& locations) {
         if (frameState_.selectedNoteLocations == locations) return;
         frameState_.selectedNoteLocations = locations;

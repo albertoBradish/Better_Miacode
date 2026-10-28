@@ -7,6 +7,7 @@
 #include "core/scene/PreviewSceneMath.h"
 #include "core/scene/PreviewSkinSelectors.h"
 #include "core/scene/PreviewTrackShared.h"
+#include "core/scene/PreviewSlideTiming.h"
 
 #include <QHash>
 
@@ -246,6 +247,58 @@ PreviewTrackLayerState buildPreviewTrackLayerState(
         const TimelineNoteMarker& marker = usesPreparedDrawOrder
             ? markers.markerForPreparedIndex(preparedIndex)
             : markers.markerAt(markerViewIndex);
+        if (state.render.showSlideJudgementTiming
+            && (marker.type == QLatin1String("slide") || marker.type == QLatin1String("wifi"))) {
+            if (!state.muriRenderOptions.showSlideTracks) continue;
+            const auto timing = markerTrackTiming(marker.hsMultiplier);
+            if (state.playheadSeconds < marker.second - timing.appearLeadInSeconds
+                || state.playheadSeconds >= marker.endSecond) continue;
+            PreviewSlideTimingGeometry uncached;
+            const auto* entry = markers.preparedEntry(preparedIndex);
+            const PreviewSlideTimingGeometry* geometry = entry && entry->slideTimingGeometry
+                ? entry->slideTimingGeometry.get() : nullptr;
+            if (geometry == nullptr) {
+                uncached = buildPreviewSlideTimingGeometry(marker);
+                geometry = &uncached;
+            }
+            if (!geometry->isValid()) {
+                ++layerState.missingSlideTimingCount;
+                continue;
+            }
+            const qreal opacity = state.playheadSeconds < marker.slideTraceSecond
+                ? sampleSlideTrackPreTraceOpacity(marker.second, state.playheadSeconds,
+                    timing.appearLeadInSeconds, timing.fullBrightLeadInSeconds) : 1.0;
+            if (opacity <= 0.0) continue;
+            const auto appendTimingSprite = [&](const QImage* image, const QPointF& point,
+                                               qreal rotation, const PreviewSlideArrowDistance& arrow) {
+                const auto oldSize = layerState.sprites.size();
+                appendSprite(image, point, -rotation, opacity, breakFlashEffect(marker), true);
+                if (layerState.sprites.size() != oldSize)
+                    applyPreviewSlideTimingBrightness(&layerState.sprites.last(), *geometry, arrow,
+                        state.playheadSeconds, canvasScale);
+            };
+            if (marker.type == QLatin1String("slide")) {
+                const QImage* image = selectSlideTrackImage(state.skin, marker, state.render.useMineSkin);
+                for (int segment = marker.slideTrackAreaPoints.size()-1; segment >= 0; --segment) {
+                    const auto& areas = marker.slideTrackAreaPoints[segment];
+                    for (int area = areas.size()-1; area >= 0; --area) {
+                        const auto rotations = marker.slideTrackAreaRotations.value(segment).value(area);
+                        for (int i = 0; i < areas[area].size(); ++i)
+                            appendTimingSprite(image, areas[area][i], rotations.value(i), geometry->slideArrows[segment][area][i]);
+                    }
+                }
+            } else {
+                for (int area = marker.wifiTrackAreaPoints.size()-1; area >= 0; --area) {
+                    const auto rotations = marker.wifiTrackAreaRotations.value(area);
+                    const auto images = marker.wifiTrackAreaImageIndices.value(area);
+                    for (int i = 0; i < marker.wifiTrackAreaPoints[area].size(); ++i) {
+                        const QImage* image = selectWifiTrackImage(state.skin, marker, images.value(i, i), 0, state.render.useMineSkin);
+                        appendTimingSprite(image, marker.wifiTrackAreaPoints[area][i], rotations.value(i), geometry->wifiArrows[area][i]);
+                    }
+                }
+            }
+            continue;
+        }
         if (marker.type == QLatin1String("slide")) {
             if (!state.muriRenderOptions.showSlideTracks) {
                 continue;

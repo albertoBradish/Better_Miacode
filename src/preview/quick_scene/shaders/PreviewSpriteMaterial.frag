@@ -5,6 +5,7 @@ layout(location = 1) in float vOpacity;
 layout(location = 2) in float vWave;
 layout(location = 3) in float vAbsWave;
 layout(location = 4) in float vEffect;
+layout(location = 5) in vec3 vBrightness;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -84,5 +85,12 @@ void main()
     }
 
     color = clamp(color, 0.0, 1.0);
+    // Preserve the original color path (and avoid derivative work) for all
+    // native sprites and fully restored tracks.
+    if (vBrightness.x < 1.0 || vBrightness.y < 1.0) {
+        float edgeWidth = max(fwidth(vBrightness.z), 0.0000001);
+        float unrevealed = smoothstep(-edgeWidth, edgeWidth, vBrightness.z);
+        color *= vBrightness.x * mix(1.0, vBrightness.y, unrevealed);
+    }
     fragColor = vec4(color * texel.a, texel.a) * vOpacity;
 }

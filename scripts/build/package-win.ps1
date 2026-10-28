@@ -659,6 +659,12 @@ if (Test-Path $ffmpegSrc) {
 $betterDocs = Join-Path $DistDir 'docs'
 New-Item -ItemType Directory -Path $betterDocs -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/BETTER_MIACODE_ZH.md') -Destination $betterDocs
+$slideTimingDocs = Join-Path $betterDocs 'specs/preview'
+New-Item -ItemType Directory -Path $slideTimingDocs -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/specs/preview/SLIDE_JUDGEMENT_TIMING_ZH.md') -Destination $slideTimingDocs
+$betterReleaseDocs = Join-Path $betterDocs 'releases'
+New-Item -ItemType Directory -Path $betterReleaseDocs -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_5.md') -Destination $betterReleaseDocs
 
 $archiveFormats = $toolchainData.Package.ArchiveFormats
 if (!$archiveFormats -or $archiveFormats.Count -eq 0) {

@@ -97,3 +97,11 @@ miacode_add_dev_tool(miacode_measure_ring_render
     INCLUDES src
 )
 miacode_link_dev_audio(miacode_measure_ring_render)
+
+miacode_add_dev_tool(miacode_slide_timing_render
+    SOURCES src/devtools/SlideTimingRender.cpp
+    LIBS miacode_export miacode_preview_quick miacode_preview_quickplugin
+        Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick
+    INCLUDES src
+)
+miacode_link_dev_audio(miacode_slide_timing_render)

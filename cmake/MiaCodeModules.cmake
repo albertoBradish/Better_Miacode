@@ -51,6 +51,8 @@ miacode_add_module(miacode_chart
         src/core/chart/SlideReferenceData.h
         src/core/chart/SlideJudgeData.cpp
         src/core/chart/SlideJudgeData.h
+        src/core/chart/SlideJudgementTiming.cpp
+        src/core/chart/SlideJudgementTiming.h
         src/core/chart/document/ChartClockCount.h
         src/core/chart/document/SimaiDocument.cpp
         src/core/chart/document/SimaiDocument.h
@@ -211,6 +213,8 @@ miacode_add_module(miacode_scene
         src/core/scene/PreviewTouchLayerState.h
         src/core/scene/PreviewTrackLayerState.cpp
         src/core/scene/PreviewTrackLayerState.h
+        src/core/scene/PreviewSlideTiming.cpp
+        src/core/scene/PreviewSlideTiming.h
         src/core/scene/PreviewTrackShared.cpp
         src/core/scene/PreviewTrackShared.h
         src/core/scene/TouchPadAuthoringState.h

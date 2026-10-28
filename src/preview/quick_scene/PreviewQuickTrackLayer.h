@@ -22,4 +22,6 @@ public:
         QQuickWindow* window,
         PreviewTextureRepository* textures
     ) const;
+private:
+    mutable quint64 lastDiagnosedRevision_ = ~quint64(0);
 };

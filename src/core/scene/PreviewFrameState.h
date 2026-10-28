@@ -232,6 +232,7 @@ struct PreviewRenderState {
     bool showDebugInfo = false;
     bool showMeasureLines = false;
     bool showJudgementSkeleton = false;
+    bool showSlideJudgementTiming = false;
     bool showTimestamp = true;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;

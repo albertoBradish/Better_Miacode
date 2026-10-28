@@ -1389,6 +1389,14 @@ void ExportSession::setShowMeasureLines(bool value)
     applyLivePreviewSettings();
 }
 
+void ExportSession::setShowSlideJudgementTiming(bool value)
+{
+    if (task_.showSlideJudgementTiming == value) return;
+    task_.showSlideJudgementTiming = value;
+    emit videoChanged();
+    applyLivePreviewSettings();
+}
+
 void ExportSession::setShowJudgementSkeleton(bool value)
 {
     if (task_.showJudgementSkeleton == value) return;

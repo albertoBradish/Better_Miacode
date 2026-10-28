@@ -4823,6 +4823,10 @@ Error: %1</source>
         <source>Show Judgement Skeleton</source>
         <translation>显示判定骨骼</translation>
     </message>
+    <message id="preview.canvas.show_slide_judgement_timing">
+        <source>Show Slide Judgement Timing</source>
+        <translation>显示 Slide 判定时值</translation>
+    </message>
     <message id="preview.canvas.measure_mode">
         <source>Measure Line Mode</source>
         <translation>小节线模式</translation>

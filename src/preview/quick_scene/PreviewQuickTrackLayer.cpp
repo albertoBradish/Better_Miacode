@@ -5,6 +5,7 @@
 #include "core/scene/PreviewPreparedSceneCache.h"
 #include "core/scene/PreviewSceneGeometry.h"
 #include "core/scene/PreviewTrackLayerState.h"
+#include "common/DebugLog.h"
 
 QSGNode* PreviewQuickTrackLayer::updateNode(
     QSGNode* oldNode,
@@ -28,5 +29,11 @@ QSGNode* PreviewQuickTrackLayer::updateNode(
             state.render.layoutSquareScale
         )
     );
+    if (layerState.missingSlideTimingCount > 0 && lastDiagnosedRevision_ != state.sceneContentRevision) {
+        lastDiagnosedRevision_ = state.sceneContentRevision;
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("preview/slide_timing"), QStringLiteral("action=skip_invalid_reference count=%1")
+                .arg(layerState.missingSlideTimingCount));
+    }
     return buildPreviewSpriteNodeTree(oldNode, layerState.sprites, window, textures, state.playheadSeconds, "track");
 }

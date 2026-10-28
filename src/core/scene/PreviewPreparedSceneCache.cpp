@@ -130,6 +130,7 @@ bool PreviewPreparedSceneCache::sync(const PreviewFrameState& state)
     nextKey.touchFlowSpeed = state.render.touchFlowSpeed;
     nextKey.renderMode = state.muriRenderOptions.renderMode;
     nextKey.showSlideTracks = state.muriRenderOptions.showSlideTracks;
+    nextKey.showSlideJudgementTiming = state.render.showSlideJudgementTiming;
     nextKey.slideEarlierSecondAndTextOnTop = state.render.slideEarlierSecondAndTextOnTop;
     nextKey.tapJudgeTextDistance = state.render.tapJudgeTextDistance;
     nextKey.showChartReviewSlideJudgeOverlay = state.muriRenderOptions.showChartReviewSlideJudgeOverlay;
@@ -307,6 +308,10 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
                     marker.second - trackTiming.appearLeadInSeconds,
                     qMax(marker.second, qMax(marker.endSecond, marker.slideTraceSecond))
                 );
+                if (state.render.showSlideJudgementTiming) {
+                    slideLikeLayer_.entries.last().slideTimingGeometry =
+                        std::make_shared<const PreviewSlideTimingGeometry>(buildPreviewSlideTimingGeometry(marker));
+                }
                 appendPreparedMarkerEntry(
                     &judgeEffectLayer_,
                     markerIndex,

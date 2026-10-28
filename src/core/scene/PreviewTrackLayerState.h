@@ -12,6 +12,7 @@ namespace miacode::preview::scene {
 struct PreviewTrackLayerState {
     PreviewSpriteDescriptors sprites;
     QVector<QSharedPointer<QImage>> ownedImages;
+    int missingSlideTimingCount = 0;
 };
 
 PreviewTrackLayerState buildPreviewTrackLayerState(

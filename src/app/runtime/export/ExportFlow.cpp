@@ -246,6 +246,7 @@ void miacode::runtime::VideoExportHost::applySharedExportTaskSettings(const Vide
     session_.applyPreviewStageMediaRouteVisualSettings();
     if (session_.scene_ != nullptr) {
         session_.scene_->setShowTimestamp(session_.previewShowTimestamp_);
+        session_.scene_->setSlideJudgementTiming(task.showSlideJudgementTiming);
         session_.scene_->setVisualAidSettings(task.showMeasureLines, task.showJudgementSkeleton,
             task.measureLineMode, task.measureLineCustomBeats);
         session_.scene_->setShowObjectStatsHud(session_.previewShowObjectStatsHud_);
@@ -368,6 +369,7 @@ VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTask(int 
         task.showTimestamp = session_.previewShowTimestamp_;
     task.showMeasureLines = session_.state_.previewShowMeasureLines_;
     task.showJudgementSkeleton = session_.state_.previewShowJudgementSkeleton_;
+    task.showSlideJudgementTiming = session_.state_.previewShowSlideJudgementTiming_;
     task.measureLineMode = session_.state_.previewMeasureLineMode_;
     task.measureLineCustomBeats = session_.state_.previewMeasureLineCustomBeats_;
     task.measureLineSeconds = miacode::preview::scene::buildPreviewMeasureLineSeconds(
@@ -467,6 +469,7 @@ void miacode::runtime::VideoExportHost::endExportPreviewSession()
     teardownExportPreviewAuditionScene();
     if (session_.scene_ != nullptr) {
         session_.scene_->setSuppressDebugInfo(false);
+        session_.scene_->setSlideJudgementTiming(session_.state_.previewShowSlideJudgementTiming_);
         session_.scene_->setVisualAidSettings(session_.state_.previewShowMeasureLines_,
             session_.state_.previewShowJudgementSkeleton_, session_.state_.previewMeasureLineMode_,
             session_.state_.previewMeasureLineCustomBeats_);
@@ -773,6 +776,7 @@ bool miacode::runtime::VideoExportHost::startQmlExportAudition(int difficultyId,
         session_.scene_->setTapFlowSpeed(visualTask.tapFlowSpeed);
         session_.scene_->setTouchFlowSpeed(visualTask.touchFlowSpeed);
         session_.scene_->setShowTimestamp(visualTask.showTimestamp);
+        session_.scene_->setSlideJudgementTiming(visualTask.showSlideJudgementTiming);
         session_.scene_->setVisualAidSettings(visualTask.showMeasureLines, visualTask.showJudgementSkeleton,
             visualTask.measureLineMode, visualTask.measureLineCustomBeats);
         session_.scene_->setShowObjectStatsHud(visualTask.showObjectStatsHud);

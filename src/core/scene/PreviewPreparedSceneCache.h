@@ -6,6 +6,7 @@
 #include "core/analysis/MuriTypes.h"
 #include "core/scene/PreviewChartReviewLayerState.h"
 #include "core/scene/PreviewFrameState.h"
+#include "core/scene/PreviewSlideTiming.h"
 
 #include <algorithm>
 
@@ -18,6 +19,7 @@ struct PreviewPreparedSceneCacheKey {
     double touchFlowSpeed = 0.0;
     RenderMode renderMode = RenderMode::Native;
     bool showSlideTracks = true;
+    bool showSlideJudgementTiming = false;
     bool slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     bool showChartReviewSlideJudgeOverlay = false;
@@ -33,6 +35,7 @@ struct PreviewPreparedSceneCacheKey {
             && qFuzzyCompare(touchFlowSpeed + 1.0, other.touchFlowSpeed + 1.0)
             && renderMode == other.renderMode
             && showSlideTracks == other.showSlideTracks
+            && showSlideJudgementTiming == other.showSlideJudgementTiming
             && slideEarlierSecondAndTextOnTop == other.slideEarlierSecondAndTextOnTop
             && tapJudgeTextDistance == other.tapJudgeTextDistance
             && showChartReviewSlideJudgeOverlay == other.showChartReviewSlideJudgeOverlay
@@ -47,6 +50,7 @@ struct PreviewPreparedMarkerEntry {
     double activeStart = 0.0;
     double activeEnd = 0.0;
     int headRepresentativeMarkerIndex = -1;
+    std::shared_ptr<const PreviewSlideTimingGeometry> slideTimingGeometry;
 };
 
 struct PreviewPreparedChartReviewEntry {

@@ -636,6 +636,13 @@ void PreviewRuntime::setVisualAidChartTiming(const SimaiParseResult& parsed, int
         visualAidMode_, visualAidCustomBeats_);
 }
 
+void PreviewRuntime::setSlideJudgementTiming(bool enabled)
+{
+    if (frameState_.render.showSlideJudgementTiming == enabled) return;
+    frameState_.render.showSlideJudgementTiming = enabled;
+    update();
+}
+
 void PreviewRuntime::setVisualAidSettings(bool measureLines, bool skeleton, int mode, int customBeats)
 {
     frameState_.render.showMeasureLines = measureLines;

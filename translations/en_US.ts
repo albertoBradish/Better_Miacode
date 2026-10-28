@@ -4823,6 +4823,10 @@ Error: %1</translation>
         <source>Show Judgement Skeleton</source>
         <translation>Show Judgement Skeleton</translation>
     </message>
+    <message id="preview.canvas.show_slide_judgement_timing">
+        <source>Show Slide Judgement Timing</source>
+        <translation>Show Slide Judgement Timing</translation>
+    </message>
     <message id="preview.canvas.measure_mode">
         <source>Measure Line Mode</source>
         <translation>Measure Line Mode</translation>

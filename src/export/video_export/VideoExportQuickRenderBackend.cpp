@@ -62,6 +62,7 @@ bool VideoExportQuickRenderBackend::bootstrap(
     frameState_.measureLineSeconds = task.measureLineSeconds;
     frameState_.render.showMeasureLines = task.showMeasureLines;
     frameState_.render.showJudgementSkeleton = task.showJudgementSkeleton;
+    frameState_.render.showSlideJudgementTiming = task.showSlideJudgementTiming;
     frameState_.progressStatsCache = buildProgressStatsCache(noteMarkers);
     frameState_.muriAnalysisReport = muriAnalysisReport;
     frameState_.muriRenderOptions = task.muriRenderOptions;

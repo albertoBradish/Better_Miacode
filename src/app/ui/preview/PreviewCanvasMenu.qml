@@ -104,5 +104,16 @@ AppStickyPopup {
                 checked = Qt.binding(() => root.aidSettings.showJudgementSkeleton === true)
             }
         }
+        AppMenuItem {
+            objectName: "previewShowSlideJudgementTimingItem"
+            width: parent.width
+            text: qsTrId("preview.canvas.show_slide_judgement_timing")
+            checkable: true
+            checked: root.aidSettings.showSlideJudgementTiming === true
+            onTriggered: {
+                root.putAid("showSlideJudgementTiming", !root.aidSettings.showSlideJudgementTiming)
+                checked = Qt.binding(() => root.aidSettings.showSlideJudgementTiming === true)
+            }
+        }
     }
 }

@@ -1,5 +1,13 @@
 # 更新日志
 
+## Better Miacode 2.0.0-better.5
+
+- 新增 Slide 判定时值显示：从头拍立即开始，沿路径按弧长匀速将低亮轨迹恢复正常亮度，尾判正解时刻完成。预览和视频导出可独立开关。
+- 支持 fes 整链最终尾判与原生 Each、BREAK、WiFi 材质；预览和离线导出共用显式时间与路径计算。
+- CLI 支持 `--slide-judgement-timing`，用于视频导出及逐条正解时刻、Perfect 参考窗口的 JSON 统计。
+
+本版本验证范围见 `docs/releases/better_5.md`。
+
 ## 1.1.0-beta.14
 
 本版本修复导出音效与实时预览不一致的问题。

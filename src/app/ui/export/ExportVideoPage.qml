@@ -683,6 +683,12 @@ Rectangle {
                                 onToggled: if (root.session) root.session.showJudgementSkeleton = checked
                             }
                             AppSwitch {
+                                objectName: "exportShowSlideJudgementTimingSwitch"
+                                text: qsTrId("preview.canvas.show_slide_judgement_timing")
+                                checked: root.session ? root.session.showSlideJudgementTiming : false
+                                onToggled: if (root.session) root.session.showSlideJudgementTiming = checked
+                            }
+                            AppSwitch {
                                 text: qsTrId("qml.enable_clock_count")
                                 checked: root.session ? root.session.clockCountEnabled : false
                                 onToggled: if (root.session) root.session.clockCountEnabled = checked

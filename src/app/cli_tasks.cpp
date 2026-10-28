@@ -23,6 +23,7 @@
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QJsonArray>
+#include "core/chart/SlideJudgementTiming.h"
 #include <QJsonDocument>
 #include <QSaveFile>
 #include <QScopeGuard>
@@ -132,7 +133,7 @@ bool readChart(const CliRequest& request, ChartInput* chart, QString* error)
     return true;
 }
 
-QJsonObject chartStats(const ChartInput& chart)
+QJsonObject chartStats(const ChartInput& chart, bool includeSlideTiming)
 {
     const auto events = miacode::chart::buildScoringEvents(chart.parsed.noteMarkers);
     const auto score = miacode::chart::calculateScoreLoss(events);
@@ -144,11 +145,34 @@ QJsonObject chartStats(const ChartInput& chart)
     for (const auto& row : score.rows) rows.append(QJsonObject{{QStringLiteral("object"), row.object}, {QStringLiteral("judgment"), row.judgment},
         {QStringLiteral("quantity"), row.quantity}, {QStringLiteral("baseLoss"), row.baseLoss}, {QStringLiteral("extraLoss"), row.extraLoss},
         {QStringLiteral("lossPercent"), row.lossPercent}, {QStringLiteral("maximumSss"), row.maximumSss}, {QStringLiteral("maximumSssPlus"), row.maximumSssPlus}});
-    return {{QStringLiteral("chart"), chart.path}, {QStringLiteral("difficulty"), chart.difficulty}, {QStringLiteral("title"), chart.document.title},
+    QJsonObject result{{QStringLiteral("chart"), chart.path}, {QStringLiteral("difficulty"), chart.difficulty}, {QStringLiteral("title"), chart.document.title},
         {QStringLiteral("counts"), counts}, {QStringLiteral("total"), score.total}, {QStringLiteral("baseTotal"), double(score.baseTotal)},
         {QStringLiteral("calculable"), score.calculable}, {QStringLiteral("hasUnofficialExtensions"), score.hasUnofficialExtensions},
         {QStringLiteral("scoreLoss"), rows}, {QStringLiteral("durationSeconds"), chart.parsed.durationSeconds},
         {QStringLiteral("firstSeconds"), chart.first}, {QStringLiteral("bpmSequence"), miacode::chart::exportChartBpm(chart.parsed, chart.first, miacode::chart::BpmExportFormat::Sequence)}};
+    if (includeSlideTiming) {
+        QJsonArray timings;
+        for (const auto& note : chart.parsed.noteMarkers) {
+            if (note.type != QLatin1String("slide") && note.type != QLatin1String("wifi")) continue;
+            const auto timing = miacode::slide_judge::timingForMarker(note);
+            QJsonObject item{{QStringLiteral("line"), note.sourceLine}, {QStringLiteral("column"), note.sourceCol},
+                {QStringLiteral("shape"), note.slideDisplayKey}, {QStringLiteral("valid"), timing.valid}};
+            if (timing.valid) {
+                item.insert(QStringLiteral("referenceModel"), timing.wifiReference ? QStringLiteral("wifi-symmetric-reference") : QStringLiteral("dx-slide-reference"));
+                item.insert(QStringLiteral("headSecond"), timing.headSecond + chart.first);
+                item.insert(QStringLiteral("traceSecond"), timing.traceSecond + chart.first);
+                item.insert(QStringLiteral("endSecond"), timing.endSecond + chart.first);
+                item.insert(QStringLiteral("judgementSecond"), timing.judgementSecond + chart.first);
+                item.insert(QStringLiteral("headToJudgementSeconds"), timing.judgementSecond - timing.headSecond);
+                item.insert(QStringLiteral("lastAreaDurationSeconds"), timing.lastAreaDuration);
+                item.insert(QStringLiteral("perfectStartSecond"), timing.perfectStartSecond + chart.first);
+                item.insert(QStringLiteral("perfectEndSecond"), timing.perfectEndSecond + chart.first);
+            }
+            timings.append(item);
+        }
+        result.insert(QStringLiteral("slideJudgementTimings"), timings);
+    }
+    return result;
 }
 
 bool checkOutput(const CliRequest& request, const ChartInput& chart, QString* output, QString* error)
@@ -251,6 +275,7 @@ bool prepareTask(const CliRequest& request, const ChartInput& chart, const QStri
     snapshot.showCpsHud = request.values.value(QStringLiteral("show-cps")).toBool();
     snapshot.showMeterHud = request.values.value(QStringLiteral("show-meter")).toBool();
     snapshot.showModsHud = request.values.value(QStringLiteral("show-mods")).toBool();
+    snapshot.showSlideJudgementTiming = request.values.value(QStringLiteral("slide-judgement-timing")).toBool();
     snapshot.intro = miacode::chart_banner::forDifficulty(chart.document, chart.difficulty);
     snapshot.intro.jacketPath = miacode::chart_assets::resolveDisplayBackgroundImagePath(chart.path);
     snapshot.intro.enabled = request.values.value(QStringLiteral("intro")).toBool() && snapshot.fullRangeExport;
@@ -288,9 +313,9 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
     if (command == QLatin1String("help")) return result(request, 0, {{QStringLiteral("text"), QStringLiteral(
         "Better Miacode CLI\n"
         "  better-miacode help | version | capabilities [--json]\n"
-        "  better-miacode stats --chart PATH [--difficulty 4] [--json]\n"
+        "  better-miacode stats --chart PATH [--difficulty 4] [--slide-judgement-timing] [--json]\n"
         "  better-miacode presets [--json]\n"
-        "  better-miacode export video --chart PATH --output FILE.mp4 [--width 1080 --height 1080 --fps 60 --start 0 --duration SECONDS]\n"
+        "  better-miacode export video --chart PATH --output FILE.mp4 [--width 1080 --height 1080 --fps 60 --start 0 --duration SECONDS] [--slide-judgement-timing]\n"
         "  better-miacode export cover --chart PATH --output FILE.png [--preset builtin:card --time SECONDS]\n"
         "  better-miacode export bpm --chart PATH --output FILE.txt [--format sequence|audio-time|maidata]\n"
         "  better-miacode --request FILE|- [--json]\n"
@@ -310,7 +335,8 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
     ChartInput chart;
     QString error;
     if (!readChart(request, &chart, &error)) return result(request, 2, {}, error, QStringLiteral("invalid_chart"));
-    if (command == QLatin1String("stats")) return result(request, 0, chartStats(chart));
+    if (command == QLatin1String("stats")) return result(request, 0,
+        chartStats(chart, request.values.value(QStringLiteral("slide-judgement-timing")).toBool()));
     QString output;
     if (!checkOutput(request, chart, &output, &error)) return result(request, 3, {}, error, QStringLiteral("output_conflict"));
     const QString type = request.values.value(QStringLiteral("type")).toString();
