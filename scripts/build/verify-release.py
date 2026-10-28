@@ -114,7 +114,9 @@ def verify_archive(archive: Path):
         report['sha256'] + '  ' + archive.name + '\n', encoding='utf-8')
     archive.with_name(archive.stem + '-verification.json').write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    print(json.dumps(report, ensure_ascii=False))
+    # Hosted Windows shells may use cp1252. The artifact is UTF-8, while the
+    # console envelope escapes Unicode so a successful verification stays so.
+    print(json.dumps(report, ensure_ascii=True))
 
 
 if __name__ == '__main__':
