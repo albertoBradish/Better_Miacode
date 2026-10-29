@@ -12,6 +12,7 @@
 #include <QHash>
 
 #include <algorithm>
+#include <optional>
 
 namespace {
 
@@ -175,6 +176,7 @@ PreviewTrackLayerState buildPreviewTrackLayerState(
     // Brightness decorates the native visible sprites. All existing erasure,
     // runtime completion and tail handling stay in the original draw walk.
     const PreviewSlideTimingGeometry* timingGeometry = nullptr;
+    std::optional<miacode::slide_judge::LaunchBeatIndex> fallbackLaunchBeats;
 
     const auto appendSlideArea = [&](const TimelineNoteMarker& marker,
                                      int segmentIndex,
@@ -270,7 +272,13 @@ PreviewTrackLayerState buildPreviewTrackLayerState(
             timingGeometry = entry && entry->slideTimingGeometry
                 ? entry->slideTimingGeometry.get() : nullptr;
             if (timingGeometry == nullptr) {
-                uncachedTiming = buildPreviewSlideTimingGeometry(marker);
+                const auto* launchIndex=state.render.slideTimingFromLaunchBeat
+                    ? state.slideTimingLaunchBeats.get() : nullptr;
+                if (state.render.slideTimingFromLaunchBeat && launchIndex==nullptr) {
+                    if (!fallbackLaunchBeats) fallbackLaunchBeats.emplace(state.noteMarkers);
+                    launchIndex=&*fallbackLaunchBeats;
+                }
+                uncachedTiming = buildPreviewSlideTimingGeometry(marker,launchIndex);
                 timingGeometry = &uncachedTiming;
             }
             if (!timingGeometry->isValid()) {

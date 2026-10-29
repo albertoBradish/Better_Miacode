@@ -4823,6 +4823,10 @@ Error: %1</source>
         <source>Show Judgement Skeleton</source>
         <translation>判定骨格を表示</translation>
     </message>
+    <message id="preview.canvas.slide_timing_from_launch_beat">
+        <source>Start on a matching launch beat</source>
+        <translation>始動拍から補間を開始</translation>
+    </message>
     <message id="preview.canvas.show_slide_judgement_timing">
         <source>Show Slide Judgement Timing</source>
         <translation>スライド判定タイミングを表示</translation>

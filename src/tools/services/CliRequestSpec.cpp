@@ -45,10 +45,11 @@ int main(int argc, char** argv)
         "unknown structured properties are diagnosed rather than ignored");
     const auto video = parse({QStringLiteral("export"), QStringLiteral("video"), QStringLiteral("--chart"), QStringLiteral("song"),
         QStringLiteral("--output=movie.mp4"), QStringLiteral("--width"), QStringLiteral("640"), QStringLiteral("--height"), QStringLiteral("360"),
-        QStringLiteral("--fps"), QStringLiteral("30"), QStringLiteral("--duration"), QStringLiteral("1"), QStringLiteral("--overwrite"), QStringLiteral("--json"), QStringLiteral("--slide-judgement-timing")});
+        QStringLiteral("--fps"), QStringLiteral("30"), QStringLiteral("--duration"), QStringLiteral("1"), QStringLiteral("--overwrite"), QStringLiteral("--json"), QStringLiteral("--slide-judgement-timing"), QStringLiteral("--slide-timing-from-launch-beat")});
     expect(video.error.isEmpty() && video.needsGui() && video.json && video.values.value(QStringLiteral("overwrite")).toBool()
         && video.values.value(QStringLiteral("width")).toInt() == 640
-        && video.values.value(QStringLiteral("slide-judgement-timing")).toBool(), "video arguments preserve explicit geometry/output/overwrite and slide timing");
+        && video.values.value(QStringLiteral("slide-judgement-timing")).toBool()
+        && video.values.value(QStringLiteral("slide-timing-from-launch-beat")).toBool(), "video arguments preserve explicit geometry/output/overwrite and slide timing");
     expect(!parse({QStringLiteral("export"), QStringLiteral("video"), QStringLiteral("--chart"), QStringLiteral("song")}).error.isEmpty(),
         "export requires an explicit output path");
     for (const QString& number : {QStringLiteral("0"), QStringLiteral("3.5"), QStringLiteral("NaN"), QStringLiteral("90000")})

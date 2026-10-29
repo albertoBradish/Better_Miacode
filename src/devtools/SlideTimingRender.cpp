@@ -62,13 +62,15 @@ int main(int argc, char** argv)
     for (const auto& token : {QStringLiteral("1-5[4:1]"),QStringLiteral("1>1[2:1]"),
              QStringLiteral("1pp5[4:1]"),QStringLiteral("1v1[4:1]"),QStringLiteral("1-6-4[2:1]"),
              QStringLiteral("1-5[0##0.125]"),QStringLiteral("1-5b[4:1]"),
-             QStringLiteral("1s5[4:1]"),QStringLiteral("1V35[4:1]"),QStringLiteral("1w5[4:1]")}) {
+             QStringLiteral("1s5[4:1]"),QStringLiteral("1V35[4:1]"),QStringLiteral("1w5[4:1]"),
+             QStringLiteral("1pp4[4:1]"),QStringLiteral("1qq6[4:1]"),
+             QStringLiteral("5pp8[4:1]"),QStringLiteral("5qq2[4:1]")}) {
         const auto parsed = SimaiParser::parseForTimeline(QStringLiteral("(120){8}")+token+QStringLiteral(",\nE"));
         state.noteMarkers.clear();
         for (const auto& marker : parsed.noteMarkers)
             if (marker.type==QLatin1String("slide") || marker.type==QLatin1String("wifi")) state.noteMarkers.append(marker);
         if (state.noteMarkers.size()!=1) return 1;
-        if (index==7) state.noteMarkers[0].slideEach=true;
+        if (index==7 || index>=10) state.noteMarkers[0].slideEach=true;
         const auto timing=miacode::slide_judge::timingForMarker(state.noteMarkers[0]);
         if (!timing.valid) return 1;
         ++state.sceneContentRevision;
@@ -126,6 +128,52 @@ int main(int argc, char** argv)
         const QImage empty=render(timing.endSecond,judgedState);
         const bool runtimeErased=beforeJudge!=empty && atJudge==empty;
         if(!runtimeErased) {QTextStream(stderr)<<"runtime erasure failed: "<<token<<Qt::endl;return 1;}
+        PreviewFrameState launchState=state;
+        launchState.render.slideTimingFromLaunchBeat=true;
+        TimelineNoteMarker cue;
+        cue.type=QStringLiteral("tap");
+        cue.lane=state.noteMarkers[0].lane;
+        cue.second=timing.traceSecond;
+        launchState.noteMarkers.append(cue);
+        launchState.slideTimingLaunchBeats=std::make_shared<const miacode::slide_judge::LaunchBeatIndex>(launchState.noteMarkers);
+        ++launchState.sceneContentRevision;
+        const miacode::slide_judge::LaunchBeatIndex launchIndex(launchState.noteMarkers);
+        const auto launchTiming=miacode::slide_judge::timingForMarker(launchState.noteMarkers[0],&launchIndex);
+        const QImage launchFrame=render(launchTiming.brightnessCompleteSecond,launchState);
+        PreviewFrameState launchControl=launchState;
+        launchControl.render.showSlideJudgementTiming=false;
+        const bool launchComplete=launchFrame==render(launchTiming.brightnessCompleteSecond,launchControl);
+        if(!launchComplete) {QTextStream(stderr)<<"launch completion failed: "<<token<<Qt::endl;return 1;}
+        bool launchWaitDim=true, croppedCueMatches=true;
+        if(launchTiming.brightnessStartSecond>timing.headSecond+1e-6) {
+            const double waiting=(timing.headSecond+launchTiming.brightnessStartSecond)*.5;
+            const QImage dim=render(waiting,launchState);
+            const QImage normal=render(waiting,launchControl);
+            int visible=0;
+            double dimEnergy=0.0, normalEnergy=0.0;
+            for(int y=0;y<dim.height();++y) for(int x=0;x<dim.width();++x) {
+                const QColor a=dim.pixelColor(x,y), b=normal.pixelColor(x,y);
+                launchWaitDim &= a.alpha()==b.alpha();
+                if(b.alpha()>0) ++visible;
+                // WiFi art is translucent (its maximum alpha is below 255),
+                // so cover it with alpha-weighted RGB as well as opaque pixels.
+                dimEnergy+=(a.red()+a.green()+a.blue())*a.alpha();
+                normalEnergy+=(b.red()+b.green()+b.blue())*b.alpha();
+                if(a.alpha()!=255 || b.alpha()!=255) continue;
+                launchWaitDim &= std::abs(a.red()-qRound(b.red()*.25))<=2
+                    && std::abs(a.green()-qRound(b.green()*.25))<=2
+                    && std::abs(a.blue()-qRound(b.blue()*.25))<=2;
+            }
+            launchWaitDim &= visible>100 && normalEnergy>0.0
+                && std::abs(dimEnergy/normalEnergy-.25)<.01;
+            PreviewFrameState cropped=launchState;
+            cropped.noteMarkers.removeLast();
+            ++cropped.sceneContentRevision;
+            croppedCueMatches=dim==render(waiting,cropped);
+            dim.save(QDir(output).filePath(QStringLiteral("%1-launch-wait.png").arg(index)));
+        }
+        if(!launchWaitDim) {QTextStream(stderr)<<"launch wait brightness failed: "<<token<<Qt::endl;return 1;}
+        if(!croppedCueMatches) {QTextStream(stderr)<<"cropped launch cue failed: "<<token<<Qt::endl;return 1;}
         QImage strip(540*4,570,QImage::Format_RGB32);strip.fill(QColor(24,26,30));
         QPainter painter(&strip);
         painter.setPen(Qt::white);
@@ -135,7 +183,9 @@ int main(int argc, char** argv)
             {"brightnessCompleteSecond",completionTime},
             {"perfectStartSecond",timing.perfectStartSecond},{"perfectEndSecond",timing.perfectEndSecond},
             {"completeMatchesNativePixels",completion},{"seekIdentical",seek},
-            {"nativeErasureMatches",erased},{"runtimeJudgementErased",runtimeErased}});
+            {"nativeErasureMatches",erased},{"runtimeJudgementErased",runtimeErased},
+            {"launchStartSecond",launchTiming.brightnessStartSecond},{"launchCompleteMatches",launchComplete},
+            {"launchWaitFullyDim",launchWaitDim},{"croppedCueMatches",croppedCueMatches}});
         ++index;
     }
     QFile report(QDir(output).filePath(QStringLiteral("report.json")));

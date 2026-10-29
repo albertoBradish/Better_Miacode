@@ -7,7 +7,9 @@
 
 #include <QCoreApplication>
 #include <QJsonObject>
+#include <QLineF>
 #include <QTextStream>
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -103,6 +105,31 @@ bool shapes()
                         ok &= require(std::isfinite(arrow.distance) && arrow.distance >= 0
                             && arrow.distance <= geometry.totalLength + 1e-6,
                             "arrow projection stays on its own path");
+            double previous=-1.0;
+            for (const auto& segment:geometry.slideArrows)
+                for (const auto& area:segment)
+                    for (int i=area.size()-1;i>=0;--i) {
+                        ok &= require(area[i].distance+1e-5>=previous,
+                            "arrow arc coordinates never jump backwards between coincident laps");
+                        previous=area[i].distance;
+                    }
+            double offset=0.0;
+            for (int segment=0;segment<geometry.slideArrows.size();++segment) {
+                const auto& path=marker.slideSegmentPoints[segment];
+                QVector<double> length(path.size(),0.0);
+                for(int i=1;i<path.size();++i) length[i]=length[i-1]+QLineF(path[i-1],path[i]).length();
+                for(int area=0;area<geometry.slideArrows[segment].size();++area)
+                    for(int i=0;i<geometry.slideArrows[segment][area].size();++i) {
+                        const double distance=geometry.slideArrows[segment][area][i].distance-offset;
+                        const auto upper=std::upper_bound(length.cbegin(),length.cend(),distance);
+                        const int end=std::clamp(static_cast<int>(upper-length.cbegin()),1,static_cast<int>(path.size())-1);
+                        const double u=(distance-length[end-1])/std::max(1e-9,length[end]-length[end-1]);
+                        const QPointF mapped=path[end-1]+u*(path[end]-path[end-1]);
+                        ok &= require(QLineF(mapped,marker.slideTrackAreaPoints[segment][area][i]).length()<3.0,
+                            "ordered arc projection remains on the original artwork centreline");
+                    }
+                offset+=length.constLast();
+            }
             ++count;
         }
     }
@@ -113,6 +140,80 @@ bool shapes()
     ok &= require(first.distance < backtrack.totalLength/2 && last.distance > backtrack.totalLength/2
         && QPointF::dotProduct(first.tangent,last.tangent) < -.9,
         "out-and-back arrows use orientation to distinguish coincident geometry");
+    return ok;
+}
+bool launchBeats()
+{
+    bool ok=true;
+    const auto check=[&](const QString& chart,bool expected) {
+        const auto parsed=SimaiParser::parseForTimeline(chart+QStringLiteral("\nE"));
+        if (!parsed.ok) return require(false,"launch fixture parses successfully");
+        const auto it=std::find_if(parsed.noteMarkers.cbegin(),parsed.noteMarkers.cend(),[](const auto& m) {
+            return m.type==QLatin1String("slide") && m.second<.01;
+        });
+        if(it==parsed.noteMarkers.cend()) return require(false,"launch fixture contains an initial slide");
+        const miacode::slide_judge::LaunchBeatIndex index(parsed.noteMarkers);
+        const auto native=miacode::slide_judge::timingForMarker(*it);
+        const auto enabled=miacode::slide_judge::timingForMarker(*it,&index);
+        bool valid=enabled.valid && enabled.usesLaunchBeat==expected;
+        valid &= near(enabled.brightnessStartSecond,expected ? .5 : 0.0);
+        valid &= near(native.brightnessStartSecond,0.0);
+        valid &= near(native.perfectStartSecond,enabled.perfectStartSecond);
+        if(expected) valid &= near(miacode::slide_judge::brightnessProgress(enabled,.25),0.0);
+        return require(valid,"launch option matches only a playable same-lane head at trace time");
+    };
+    for(const auto& cue:{QStringLiteral("1"),QStringLiteral("1h[4:1]"),QStringLiteral("1-5[4:1]"),QStringLiteral("A1")})
+        ok &= check(QStringLiteral("(120){4}1pp4[2:1],")+cue+QStringLiteral(","),true);
+    for(const auto& cue:{QStringLiteral("2"),QStringLiteral("B1"),QStringLiteral("C"),QStringLiteral("1m"),QStringLiteral("1?-5[4:1]")})
+        ok &= check(QStringLiteral("(120){4}1pp4[2:1],")+cue+QStringLiteral(","),false);
+    ok &= check(QStringLiteral("(120){4}1pp4[2:1],,1,"),false);
+    ok &= check(QStringLiteral("(120){4}1pp4[2:1]/1h[4:1],,"),false);
+    ok &= check(QStringLiteral("(120){4}1pp4[2:1]/1h[2:1],,"),false);
+    const auto quick=SimaiParser::parseForTimeline(QStringLiteral("(120){4}1-5[16:1],1,\nE"));
+    const miacode::slide_judge::LaunchBeatIndex index(quick.noteMarkers);
+    const auto timing=miacode::slide_judge::timingForMarker(quick.noteMarkers[0],&index);
+    ok &= require(timing.usesLaunchBeat && near(timing.brightnessCompleteSecond,.5)
+        && near(miacode::slide_judge::brightnessProgress(timing,.499),0)
+        && near(miacode::slide_judge::brightnessProgress(timing,.5),1),
+        "a launch beat already inside Perfect lights immediately at that beat");
+    const auto shifted=miacode::timeline::offset::shiftedNoteMarkers(quick.noteMarkers,-2.5,
+        miacode::timeline::offset::NonFiniteHandling::PassThrough);
+    const miacode::slide_judge::LaunchBeatIndex shiftedIndex(shifted);
+    const auto shiftedTiming=miacode::slide_judge::timingForMarker(shifted[0],&shiftedIndex);
+    ok &= require(shiftedTiming.usesLaunchBeat && near(shiftedTiming.brightnessStartSecond,-2.0),
+        "launch matching preserves negative chart offsets without applying them twice");
+    PreviewFrameState state;
+    const auto parsed=SimaiParser::parseForTimeline(QStringLiteral("(120){4}1pp4[2:1],1,\nE"));
+    state.noteMarkers=parsed.noteMarkers;
+    state.sceneContentRevision=1;
+    state.render.showSlideJudgementTiming=true;
+    PreviewPreparedSceneCache cache;
+    cache.sync(state);
+    ok &= require(near(cache.slideLikeLayer().entries[0].slideTimingGeometry->timing.brightnessStartSecond,0),
+        "disabled launch option preserves original head timing");
+    state.render.slideTimingFromLaunchBeat=true;
+    ok &= require(cache.sync(state)
+        && near(cache.slideLikeLayer().entries[0].slideTimingGeometry->timing.brightnessStartSecond,.5),
+        "launch option invalidates the prepared timing cache");
+    state.skin.slideTrackImage=QImage(30,18,QImage::Format_ARGB32_Premultiplied);
+    state.skin.slideTrackImage.fill(Qt::cyan);
+    state.playheadSeconds=.25;
+    const auto beforeCue=buildPreviewTrackLayerState(state,PreviewActiveMarkerView(state.noteMarkers),QRectF(0,0,540,540));
+    bool dim=!beforeCue.sprites.isEmpty();
+    for(const auto& sprite:beforeCue.sprites) dim &= near(sprite.brightness,.25);
+    ok &= require(dim,"launch option keeps all visible track artwork low before the matching beat");
+    state.slideTimingLaunchBeats=std::make_shared<const miacode::slide_judge::LaunchBeatIndex>(state.noteMarkers);
+    state.noteMarkers={state.noteMarkers[0]};
+    ++state.sceneContentRevision;
+    ok &= require(cache.sync(state)
+        && near(cache.slideLikeLayer().entries[0].slideTimingGeometry->timing.brightnessStartSecond,.5),
+        "a launch cue beyond the cropped render range remains available from the complete chart");
+    state.noteMarkers=parsed.noteMarkers;
+    auto shiftedCue=parsed.noteMarkers;
+    shiftedCue[1].second+=.001;
+    const miacode::slide_judge::LaunchBeatIndex nearIndex(shiftedCue);
+    ok &= require(!miacode::slide_judge::timingForMarker(shiftedCue[0],&nearIndex).usesLaunchBeat,
+        "a nearby but differently timed note is not a launch beat");
     return ok;
 }
 bool rendering()
@@ -201,7 +302,7 @@ bool rendering()
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc,argv);
-    const bool ok = timing() & shapes() & rendering();
+    const bool ok = timing() & shapes() & launchBeats() & rendering();
     if (ok) QTextStream(stdout) << "preview_slide_timing_spec ok" << Qt::endl;
     return ok ? 0 : 1;
 }

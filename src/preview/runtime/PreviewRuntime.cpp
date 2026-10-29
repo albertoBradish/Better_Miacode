@@ -636,6 +636,13 @@ void PreviewRuntime::setVisualAidChartTiming(const SimaiParseResult& parsed, int
         visualAidMode_, visualAidCustomBeats_);
 }
 
+void PreviewRuntime::setSlideTimingFromLaunchBeat(bool enabled)
+{
+    if (frameState_.render.slideTimingFromLaunchBeat == enabled) return;
+    frameState_.render.slideTimingFromLaunchBeat = enabled;
+    update();
+}
+
 void PreviewRuntime::setSlideJudgementTiming(bool enabled)
 {
     if (frameState_.render.showSlideJudgementTiming == enabled) return;

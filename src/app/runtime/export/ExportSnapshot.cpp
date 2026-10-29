@@ -527,6 +527,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     built.showMeasureLines = requestedTask.showMeasureLines;
     built.showJudgementSkeleton = requestedTask.showJudgementSkeleton;
     built.showSlideJudgementTiming = requestedTask.showSlideJudgementTiming;
+    built.slideTimingFromLaunchBeat = requestedTask.slideTimingFromLaunchBeat;
     built.measureLineMode = requestedTask.measureLineMode;
     built.measureLineCustomBeats = requestedTask.measureLineCustomBeats;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;
@@ -742,6 +743,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.showMeasureLines = requestedTask.showMeasureLines;
     built.showJudgementSkeleton = requestedTask.showJudgementSkeleton;
     built.showSlideJudgementTiming = requestedTask.showSlideJudgementTiming;
+    built.slideTimingFromLaunchBeat = requestedTask.slideTimingFromLaunchBeat;
     built.measureLineMode = requestedTask.measureLineMode;
     built.measureLineCustomBeats = requestedTask.measureLineCustomBeats;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;

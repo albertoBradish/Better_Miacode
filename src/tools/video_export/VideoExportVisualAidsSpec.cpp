@@ -34,13 +34,14 @@ int main(int argc, char** argv)
     source.showMeasureLines = true;
     source.showJudgementSkeleton = true;
     source.showSlideJudgementTiming = true;
+    source.slideTimingFromLaunchBeat = true;
     source.measureLineMode = 0;
     source.measureLineCustomBeats = 9;
     source.clockCountEnabled = false;
     VideoExportSnapshot restored;
     QString error;
     ok &= require(VideoExportSnapshot::fromJson(source.toJson(), &restored, &error), "snapshot restores");
-    ok &= require(restored.showMeasureLines && restored.showJudgementSkeleton && restored.showSlideJudgementTiming
+    ok &= require(restored.showMeasureLines && restored.showJudgementSkeleton && restored.showSlideJudgementTiming && restored.slideTimingFromLaunchBeat
         && restored.measureLineMode == 0 && restored.measureLineCustomBeats == 9,
         "both independent visibility flags and measure settings survive snapshot transport");
     VideoExportTask task;
@@ -54,17 +55,17 @@ int main(int argc, char** argv)
     other.showMeasureLines = false;
     other.showJudgementSkeleton = false;
     miacode::video_export::copyVideoExportUserSettings(task, &other);
-    ok &= require(other.showMeasureLines && other.showJudgementSkeleton && other.showSlideJudgementTiming && other.measureLineCustomBeats == 9,
+    ok &= require(other.showMeasureLines && other.showJudgementSkeleton && other.showSlideJudgementTiming && other.slideTimingFromLaunchBeat && other.measureLineCustomBeats == 9,
         "difficulty reseeding retains explicit export toggles");
 
     QJsonObject legacyJson = source.toJson();
     QJsonObject render = legacyJson.value(QStringLiteral("render")).toObject();
-    for (const char* key : {"show_measure_lines", "show_judgement_skeleton", "show_slide_judgement_timing", "measure_line_mode", "measure_line_custom_beats"})
+    for (const char* key : {"show_measure_lines", "show_judgement_skeleton", "show_slide_judgement_timing", "slide_timing_from_launch_beat", "measure_line_mode", "measure_line_custom_beats"})
         render.remove(QLatin1String(key));
     legacyJson.insert(QStringLiteral("render"), render);
     VideoExportSnapshot legacy;
     ok &= require(VideoExportSnapshot::fromJson(legacyJson, &legacy, &error)
-        && !legacy.showMeasureLines && !legacy.showJudgementSkeleton && !legacy.showSlideJudgementTiming && legacy.measureLineCustomBeats == 4,
+        && !legacy.showMeasureLines && !legacy.showJudgementSkeleton && !legacy.showSlideJudgementTiming && !legacy.slideTimingFromLaunchBeat && legacy.measureLineCustomBeats == 4,
         "legacy snapshots default visual aids off and custom X to four");
     render.insert(QStringLiteral("measure_line_custom_beats"), -8);
     render.insert(QStringLiteral("measure_line_mode"), 85);
@@ -78,6 +79,7 @@ int main(int argc, char** argv)
     frame.render.showMeasureLines = task.showMeasureLines;
     frame.render.showJudgementSkeleton = task.showJudgementSkeleton;
     frame.render.showSlideJudgementTiming = task.showSlideJudgementTiming;
+    frame.render.slideTimingFromLaunchBeat = task.slideTimingFromLaunchBeat;
     PreviewQuickExportSession gl;
     PreviewQuickD3D11ExportSession d3d;
     gl.setFrameState(frame);
@@ -86,12 +88,13 @@ int main(int argc, char** argv)
     frame.render.showMeasureLines = false;
     frame.render.showJudgementSkeleton = false;
     frame.render.showSlideJudgementTiming = false;
+    frame.render.slideTimingFromLaunchBeat = false;
     frame.measureLineSeconds.clear();
     for (double second : {2.2, 2.375, 2.4, 2.2}) {
         gl.applyExportFrameTick(second, false, false, false, 0, 60);
         d3d.applyExportFrameTick(second, false, false, false, 0, 60);
         for (const auto* captured : {&gl.frameState(), &d3d.frameState()}) {
-            ok &= require(captured->render.showMeasureLines && captured->render.showJudgementSkeleton && captured->render.showSlideJudgementTiming
+            ok &= require(captured->render.showMeasureLines && captured->render.showJudgementSkeleton && captured->render.showSlideJudgementTiming && captured->render.slideTimingFromLaunchBeat
                 && captured->measureLineSeconds == task.measureLineSeconds && near(captured->playheadSeconds, second),
                 "both explicit-frame export sessions retain captured aid settings through ticks and backward seeks");
         }

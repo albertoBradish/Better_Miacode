@@ -20,7 +20,8 @@ struct PreviewSlideTimingGeometry {
     bool isValid() const { return timing.valid && totalLength > 0.0; }
 };
 
-PreviewSlideTimingGeometry buildPreviewSlideTimingGeometry(const TimelineNoteMarker& marker);
+PreviewSlideTimingGeometry buildPreviewSlideTimingGeometry(const TimelineNoteMarker& marker,
+    const miacode::slide_judge::LaunchBeatIndex* launchBeats = nullptr);
 void applyPreviewSlideTimingBrightness(PreviewSpriteDescriptor* sprite,
     const PreviewSlideTimingGeometry& geometry, const PreviewSlideArrowDistance& arrow,
     double chartSecond, double canvasScale);

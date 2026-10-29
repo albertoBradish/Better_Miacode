@@ -1,5 +1,8 @@
 #pragma once
 
+#include <QVector>
+#include <array>
+
 struct TimelineNoteMarker;
 
 namespace miacode::slide_judge {
@@ -17,11 +20,23 @@ struct Timing {
     double perfectStartSecond = 0.0;
     double perfectEndSecond = 0.0;
     double brightnessCompleteSecond = 0.0;
+    double brightnessStartSecond = 0.0;
+    bool usesLaunchBeat = false;
 };
 
-Timing timingForMarker(const TimelineNoteMarker& marker);
-// Head-to-earliest-Perfect progress, including the guiding star's initial wait.
-// When the Perfect window has already begun at the head, light immediately.
+// Only playable note heads at the same A-pad and chart instant count as a
+// launch beat. Hold tails, held bodies, inner touches and mines do not.
+class LaunchBeatIndex {
+public:
+    explicit LaunchBeatIndex(const QVector<TimelineNoteMarker>& markers);
+    double startSecondFor(const TimelineNoteMarker& marker) const;
+private:
+    std::array<QVector<double>,8> moments_;
+};
+
+Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats = nullptr);
+// Selected-start-to-earliest-Perfect progress. If Perfect has already begun
+// at the selected start (star head or matching launch beat), light immediately.
 double brightnessProgress(const Timing& timing, double chartSecond);
 
 } // namespace miacode::slide_judge

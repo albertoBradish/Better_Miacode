@@ -213,6 +213,7 @@ QJsonObject VideoExportSnapshot::toJson() const
     render.insert(QStringLiteral("show_measure_lines"), showMeasureLines);
     render.insert(QStringLiteral("show_judgement_skeleton"), showJudgementSkeleton);
     render.insert(QStringLiteral("show_slide_judgement_timing"), showSlideJudgementTiming);
+    render.insert(QStringLiteral("slide_timing_from_launch_beat"), slideTimingFromLaunchBeat);
     render.insert(QStringLiteral("measure_line_mode"), measureLineMode);
     render.insert(QStringLiteral("measure_line_custom_beats"), measureLineCustomBeats);
     render.insert(QStringLiteral("show_object_stats_hud"), showObjectStatsHud);
@@ -380,6 +381,7 @@ bool VideoExportSnapshot::fromJson(
     parsed.showMeasureLines = render.value(QStringLiteral("show_measure_lines")).toBool(false);
     parsed.showJudgementSkeleton = render.value(QStringLiteral("show_judgement_skeleton")).toBool(false);
     parsed.showSlideJudgementTiming = render.value(QStringLiteral("show_slide_judgement_timing")).toBool(false);
+    parsed.slideTimingFromLaunchBeat = render.value(QStringLiteral("slide_timing_from_launch_beat")).toBool(false);
     parsed.measureLineMode = static_cast<int>(miacode::preview::scene::normalizedMeasureLineMode(
         render.value(QStringLiteral("measure_line_mode")).toInt(0)));
     parsed.measureLineCustomBeats = render.value(QStringLiteral("measure_line_custom_beats")).toInt(4);
@@ -555,6 +557,7 @@ bool buildVideoExportTaskFromSnapshot(
     built.showMeasureLines = snapshot.showMeasureLines;
     built.showJudgementSkeleton = snapshot.showJudgementSkeleton;
     built.showSlideJudgementTiming = snapshot.showSlideJudgementTiming;
+    built.slideTimingFromLaunchBeat = snapshot.slideTimingFromLaunchBeat;
     built.measureLineMode = snapshot.measureLineMode;
     built.measureLineCustomBeats = snapshot.measureLineCustomBeats;
     built.measureLineSeconds = miacode::preview::scene::buildPreviewMeasureLineSeconds(nativeResult,

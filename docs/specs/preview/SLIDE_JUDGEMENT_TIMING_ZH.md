@@ -2,11 +2,15 @@
 
 ## 功能
 
-画面选项中的“显示 Slide 判定时值”默认关闭。打开后，从谱面 star 头拍立即开始，将低亮轨迹沿真实美术路径按弧长匀速恢复为正常亮度。尚未判定消失的轨迹在最早可获得 Perfect 的时刻恰好恢复正常亮度。初始等待计入动画时长，原引导星星仍按谱面时序移动。
+画面选项中的“显示 Slide 判定时值”默认关闭。打开后，从谱面 star 头拍立即开始，将低亮轨迹沿真实美术路径按弧长匀速恢复为正常亮度。尚未判定消失的轨迹在最早可获得 Perfect 的时刻恰好恢复正常亮度。默认从 star 头拍开始时，初始等待计入动画时长；原引导星星仍按谱面时序移动。
 
 普通、Each、BREAK 及第三方皮肤保留原材质和透明轮廓；低亮为正常 RGB 的 25%，不降低轨迹 alpha。亮度补间附加在当前渲染模式保留下来的轨迹上，照常复用常规擦除、逐区消失以及无理检测的实际判定完成时间。已消失区域不因补间重新出现。关闭开关恢复原渲染。新功能不改变音符判定、正解音、SFX 或无理检测策略。
 
 视频导出提供独立开关，默认取预览值，导出试听结束后恢复预览值。设置通过导出快照传给 worker。缺少新字段的旧快照默认关闭。
+
+额外开关“有启动拍时从启动拍开始”默认关闭，只在亮度辅助开启时可操作。开启后，以正式起滑时刻、同一起点 A 区上的 star、tap、hold 头、A 区 touch（含可解析的 A 区 touch hold）作为启动拍。没有匹配时仍从原 star 头拍开始。隐藏头、mine、hold 尾或已经按住的 hold 本体不作为启动拍。时间匹配只容忍浮点计算误差（1 微秒），不采用无理检测的宽松碰撞窗口。
+
+片段导出的启动拍索引来自完整谱面，与范围内实际绘制的音符列表分开保存；范围之外的候选不会因画面裁剪而丢失。
 
 ## 计算
 
@@ -15,8 +19,9 @@
 ```text
 T = D_last × (1-p_last)
 c = e-T
-b = max(h, PerfectStart)
-u(t) = clamp((t-h)/(b-h), 0, 1)  （b>h）
+a = 匹配的启动拍时刻（额外开关开启时），否则为 h
+b = max(a, PerfectStart)
+u(t) = clamp((t-a)/(b-a), 0, 1)  （b>a）
 恢复正常亮度的路径长度 = 整条路径弧长 × u(t)
 ```
 
@@ -30,13 +35,13 @@ PerfectStart = c-max(17F,H)
 PerfectEnd = c+H
 ```
 
-`c` 保留为尾判正解基准，补间终点改用 Perfect 窗口起点 `PerfectStart`。如果该时刻不晚于头拍，则按用户确认的规则在头拍直接全亮，头拍前保持低亮；不计算零或负时长除法。计算不依赖 Muri 的放宽窗口、24 小时过期或自身收束兜底。WiFi 保留当前资料的独立对称参考窗口 `c±H`；其额外 Fast 区间尚待机台核实，不宣称为所有版本机台规范。BREAK 不设特殊细分区间。
+`c` 保留为尾判正解基准，补间终点改用 Perfect 窗口起点 `PerfectStart`。如果该时刻不晚于所选起点 a，则在 a 直接全亮，a 之前保持低亮；不计算零或负时长除法。计算不依赖 Muri 的放宽窗口、24 小时过期或自身收束兜底。WiFi 保留当前资料的独立对称参考窗口 `c±H`；其额外 Fast 区间尚待机台核实，不宣称为所有版本机台规范。BREAK 不设特殊细分区间。
 
 形状系数沿用内嵌 `slide_data.json`，不是按屏幕 A 区碰撞重算。系数与几何入 A 边界有偏差时，以尾判系数为准。系数缺失、非有限时间、无有效弧长或 `c≤h` 时跳过辅助轨迹，并通过 Runtime 调试日志报告，不生成瞬间补间。
 
 ## 渲染与缓存
 
-`core/chart/SlideJudgementTiming` 提供纯时间模型。`core/scene/PreviewSlideTiming` 在 prepared scene cache 中保存箭头的累计弧长投影与切线。箭头方向用于区分自交和同路折返；不能按数组顺序或采样下标代替弧长。
+`core/chart/SlideJudgementTiming` 提供纯时间模型。`core/scene/PreviewSlideTiming` 在 prepared scene cache 中保存箭头的累计弧长投影与切线。方向用于区分同路折返；对位置及方向均重合的多圈路径，按完整箭头先后顺序做单调弧长匹配，避免最近点落在另一圈。匹配结果保留真实几何弧长，不用箭头下标代替距离。启动拍候选索引在场景缓存重建时一次生成。
 
 GPU 在每个原皮肤图元内按弧长前沿连续调节亮度，使用屏幕导数抗锯齿。到达 `b` 时，当前仍可见的所有图元（包括美术外伸部分）全部恢复正常亮度。轨迹是否可见由原判定擦除链路决定，补间不另建轨迹生命周期。正常和低亮图元共享纹理与批次，不逐帧生成染色图片。
 
@@ -45,11 +50,11 @@ GPU 在每个原皮肤图元内按弧长前沿连续调节亮度，使用屏幕�
 ## CLI
 
 ```text
-better-miacode stats --chart maidata.txt --slide-judgement-timing --json
-better-miacode export video --chart maidata.txt --output movie.mp4 --slide-judgement-timing
+better-miacode stats --chart maidata.txt --slide-judgement-timing --slide-timing-from-launch-beat --json
+better-miacode export video --chart maidata.txt --output movie.mp4 --slide-judgement-timing --slide-timing-from-launch-beat
 ```
 
-`stats` 的 `slideJudgementTimings` 提供逐条 shape、源码行列、`h/s/e/c`、头拍至正解时长、末区时长、Perfect 起止时刻和实际全亮时刻 `brightnessCompleteSecond=b`。绝对时刻统一应用 `&first` 一次。WiFi 返回 `wifi-symmetric-reference` 模型标识。默认 stats 输出保持原字段集。
+`stats` 的 `slideJudgementTimings` 提供逐条 shape、源码行列、`h/s/e/c`、头拍至正解时长、末区时长、Perfect 起止时刻和实际全亮时刻 `brightnessCompleteSecond=b`、补间起点 `brightnessStartSecond=a` 及 `usesLaunchBeat` 标识。绝对时刻统一应用 `&first` 一次。WiFi 返回 `wifi-symmetric-reference` 模型标识。默认 stats 输出保持原字段集。
 
 ## 验证入口
 

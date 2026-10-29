@@ -69,6 +69,7 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(bool showMeasureLines READ showMeasureLines WRITE setShowMeasureLines NOTIFY videoChanged)
     Q_PROPERTY(bool showJudgementSkeleton READ showJudgementSkeleton WRITE setShowJudgementSkeleton NOTIFY videoChanged)
     Q_PROPERTY(bool showSlideJudgementTiming READ showSlideJudgementTiming WRITE setShowSlideJudgementTiming NOTIFY videoChanged)
+    Q_PROPERTY(bool slideTimingFromLaunchBeat READ slideTimingFromLaunchBeat WRITE setSlideTimingFromLaunchBeat NOTIFY videoChanged)
 
     // Shared portable font library for the intro difficulty card. File selection
     // remains QML-native through UiRequestService; no Widgets surface is used.
@@ -173,9 +174,11 @@ public:
     bool showMeasureLines() const { return task_.showMeasureLines; }
     bool showJudgementSkeleton() const { return task_.showJudgementSkeleton; }
     bool showSlideJudgementTiming() const { return task_.showSlideJudgementTiming; }
+    bool slideTimingFromLaunchBeat() const { return task_.slideTimingFromLaunchBeat; }
     void setShowMeasureLines(bool value);
     void setShowJudgementSkeleton(bool value);
     void setShowSlideJudgementTiming(bool value);
+    void setSlideTimingFromLaunchBeat(bool value);
 
     QVariantList fontLibraryOptions() const;
 

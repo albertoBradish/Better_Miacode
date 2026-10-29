@@ -1389,6 +1389,15 @@ void ExportSession::setShowMeasureLines(bool value)
     applyLivePreviewSettings();
 }
 
+void ExportSession::setSlideTimingFromLaunchBeat(bool value)
+{
+    if (task_.slideTimingFromLaunchBeat == value) return;
+    task_.slideTimingFromLaunchBeat = value;
+    emit videoChanged();
+    applyLivePreviewSettings();
+}
+
+
 void ExportSession::setShowSlideJudgementTiming(bool value)
 {
     if (task_.showSlideJudgementTiming == value) return;

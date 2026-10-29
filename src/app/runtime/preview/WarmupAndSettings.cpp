@@ -494,6 +494,7 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("showMeasureLines"), state_.previewShowMeasureLines_},
         {QStringLiteral("showJudgementSkeleton"), state_.previewShowJudgementSkeleton_},
         {QStringLiteral("showSlideJudgementTiming"), state_.previewShowSlideJudgementTiming_},
+        {QStringLiteral("slideTimingFromLaunchBeat"), state_.previewSlideTimingFromLaunchBeat_},
         {QStringLiteral("measureLineMode"), state_.previewMeasureLineMode_},
         {QStringLiteral("measureLineCustomBeats"), state_.previewMeasureLineCustomBeats_},
         {QStringLiteral("touchPadAuthoringShortcut"), state_.previewTouchPadAuthoringShortcutEnabled_},
@@ -570,6 +571,9 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
         if (canvas != nullptr) {
             canvas->setShowTimestamp(state_.previewShowTimestamp_);
         }
+    } else if (key == QLatin1String("slideTimingFromLaunchBeat")) {
+        state_.previewSlideTimingFromLaunchBeat_ = value.toBool();
+        if (canvas != nullptr) canvas->setSlideTimingFromLaunchBeat(state_.previewSlideTimingFromLaunchBeat_);
     } else if (key == QLatin1String("showSlideJudgementTiming")) {
         state_.previewShowSlideJudgementTiming_ = value.toBool();
         if (canvas != nullptr) canvas->setSlideJudgementTiming(state_.previewShowSlideJudgementTiming_);

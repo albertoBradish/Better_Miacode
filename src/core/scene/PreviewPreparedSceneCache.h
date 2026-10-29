@@ -20,6 +20,8 @@ struct PreviewPreparedSceneCacheKey {
     RenderMode renderMode = RenderMode::Native;
     bool showSlideTracks = true;
     bool showSlideJudgementTiming = false;
+    bool slideTimingFromLaunchBeat = false;
+    quintptr slideTimingLaunchBeatIdentity = 0;
     bool slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     bool showChartReviewSlideJudgeOverlay = false;
@@ -36,6 +38,8 @@ struct PreviewPreparedSceneCacheKey {
             && renderMode == other.renderMode
             && showSlideTracks == other.showSlideTracks
             && showSlideJudgementTiming == other.showSlideJudgementTiming
+            && slideTimingFromLaunchBeat == other.slideTimingFromLaunchBeat
+            && slideTimingLaunchBeatIdentity == other.slideTimingLaunchBeatIdentity
             && slideEarlierSecondAndTextOnTop == other.slideEarlierSecondAndTextOnTop
             && tapJudgeTextDistance == other.tapJudgeTextDistance
             && showChartReviewSlideJudgeOverlay == other.showChartReviewSlideJudgeOverlay

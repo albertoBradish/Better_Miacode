@@ -4823,6 +4823,10 @@ Error: %1</translation>
         <source>Show Judgement Skeleton</source>
         <translation>Show Judgement Skeleton</translation>
     </message>
+    <message id="preview.canvas.slide_timing_from_launch_beat">
+        <source>Start on a matching launch beat</source>
+        <translation>Start on a matching launch beat</translation>
+    </message>
     <message id="preview.canvas.show_slide_judgement_timing">
         <source>Show Slide Judgement Timing</source>
         <translation>Show Slide Judgement Timing</translation>
