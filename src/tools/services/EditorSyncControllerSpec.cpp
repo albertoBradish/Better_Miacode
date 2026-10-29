@@ -321,6 +321,15 @@ bool verifyNoteCollectionsAreRevisionBound(QTextStream& err)
     ok &= require(controller.requestNoteSelectionAtPosition(kDifficulty, kRevision, 8, true)
         && controller.editorSelection().ranges == NoteRanges{{8,9},{14,27}},
         QStringLiteral("additive clicks preserve a noncontiguous collection without its intervening note"), err);
+    ok &= require(controller.requestNoteSelectionAtPosition(kDifficulty, kRevision, 8, true)
+        && controller.editorSelection().ranges == NoteRanges{{14,27}},
+        QStringLiteral("Shift on an already selected note removes only that note"), err);
+    ok &= require(controller.requestNoteSelection(kDifficulty, kRevision, {{8,9},{14,27}}, true)
+        && controller.editorSelection().ranges == NoteRanges{{8,9}},
+        QStringLiteral("one rectangle toggles selected and unselected notes atomically"), err);
+    ok &= require(controller.requestNoteSelection(kDifficulty, kRevision, {}, true)
+        && controller.editorSelection().ranges == NoteRanges{{8,9}},
+        QStringLiteral("an empty Shift rectangle leaves the collection intact"), err);
     ok &= require(controller.requestNoteSelection(kDifficulty, kRevision, {}, false)
         && controller.editorSelection().ranges.isEmpty(),
         QStringLiteral("an empty replacement selection clears the collection"), err);

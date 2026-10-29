@@ -721,7 +721,11 @@ void ScintillaEditorBridge::selectNoteRanges(int difficulty, quint64 revision,
     }
     refreshSelection(false);
     publishContext(false);
-    if (!ranges.isEmpty()) revealPosition(ranges.first().start, false);
+    if (!ranges.isEmpty()) {
+        revealPosition(ranges.first().start, false);
+        // Route subsequent editing shortcuts through the visible source editor.
+        forceActiveFocus(Qt::OtherFocusReason);
+    }
     emit selectionChanged();
 }
 void ScintillaEditorBridge::refreshSelection(bool userCaret)
@@ -1072,15 +1076,6 @@ void ScintillaEditorBridge::keyPressEvent(QKeyEvent* event)
 }
 void ScintillaEditorBridge::mousePressEvent(QMouseEvent* event)
 {
-    if (event->button() == Qt::LeftButton && syncController_ && documentSession_
-        && (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier))) {
-        const int position = positionAt(event->position().x(), event->position().y());
-        if (syncController_->requestNoteSelectionAtPosition(documentSession_->currentDifficultyId(),
-            documentSession_->documentRevision(), position, true)) {
-            notePointerPress_ = true;
-            forceActiveFocus(); event->accept(); return;
-        }
-    }
     if (event->button() == Qt::LeftButton) noteSelection_ = false;
     beginUserInteraction();
     if (event->button() == Qt::RightButton) {
@@ -1106,9 +1101,6 @@ void ScintillaEditorBridge::mousePressEvent(QMouseEvent* event)
 }
 void ScintillaEditorBridge::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (notePointerPress_ && event->button() == Qt::LeftButton) {
-        notePointerPress_ = false; event->accept(); return;
-    }
     ScintillaQuick_item::mouseReleaseEvent(event);
     refreshSelection(!programmatic_);
     if (event->button() == Qt::LeftButton && (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier))) seekPreviewToCaret();

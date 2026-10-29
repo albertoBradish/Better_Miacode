@@ -154,22 +154,22 @@ bool verifyWindowInteraction(QTextStream& out, QTextStream& err)
     require(root.keepMouseGrab() && window.activeFocusItem() == &root, "Shift press owns the mouse grab and Escape focus");
     QTest::mouseMove(&window, inWindow(firstBox.bottomRight()), 1);
     release(firstBox.bottomRight(), Qt::ShiftModifier);
-    require(finishes.count() == 1 && lastIs({location(1, 1)}, false) && !root.keepMouseGrab(),
-        "Shift drag through the real window emits exactly the intersecting note as a replacement collection");
+    require(finishes.count() == 1 && lastIs({location(1, 1)}, true) && !root.keepMouseGrab(),
+        "Shift drag through the real window emits exactly the intersecting note with the toggle contract");
 
     drag(firstBox.bottomRight(), firstBox.topLeft(), Qt::ShiftModifier);
-    require(finishes.count() == 2 && lastIs({location(1, 1)}, false),
+    require(finishes.count() == 2 && lastIs({location(1, 1)}, true),
         "reversing both drag axes selects the same geometry");
 
     press(secondPoint, Qt::ControlModifier);
     release(secondPoint, Qt::ControlModifier);
-    require(finishes.count() == 3 && lastIs({location(1, 3)}, true), "Ctrl click requests additive selection of the actual hit note");
+    require(finishes.count() == 2, "Ctrl click does not select a note");
     press(firstPoint, Qt::MetaModifier);
     release(firstPoint, Qt::MetaModifier);
-    require(finishes.count() == 4 && lastIs({location(1, 1)}, true), "Command/Meta click uses the same additive selection contract");
+    require(finishes.count() == 2, "Meta click does not select a note");
 
     drag({1, 1}, {598, 598}, Qt::ControlModifier | Qt::ShiftModifier);
-    require(finishes.count() == 5 && lastIs({location(1, 1), location(1, 3)}, true),
+    require(finishes.count() == 3 && lastIs({location(1, 1), location(1, 3)}, true),
         "Ctrl+Shift drag requests a union of visible geometry and excludes future notes");
 
     const int beforeCancel = finishes.count();
@@ -203,7 +203,7 @@ bool verifyWindowInteraction(QTextStream& out, QTextStream& err)
     require(finishes.count() == beforeCancel, "a host-invalidated gesture never publishes stale locations");
 
     drag({2, 2}, {20, 20}, Qt::ShiftModifier);
-    require(finishes.count() == beforeCancel + 1 && lastIs({}, false), "a Shift rectangle over empty space explicitly clears the collection");
+    require(finishes.count() == beforeCancel + 1 && lastIs({}, true), "a Shift rectangle over empty space has no hit to toggle");
     const int beforePlain = finishes.count(), startsBeforePlain = starts.count();
     press(firstPoint, Qt::NoModifier);
     release(firstPoint, Qt::NoModifier);

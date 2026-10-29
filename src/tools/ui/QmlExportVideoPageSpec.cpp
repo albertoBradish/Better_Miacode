@@ -581,6 +581,15 @@ bool verifyBatchInputsOwnASettingsTab(QTextStream& err)
     ok &= require(!batchPage->isVisible(),
                   QStringLiteral("another settings tab hides the batch inputs"), err);
 
+    session->setProperty("settingsTab",QStringLiteral("output"));
+    QCoreApplication::processEvents();
+    auto* moreDisplay = findVisualItem(contentItem,QStringLiteral("exportMoreDisplayButton"));
+    auto* moreOptions = findVisualItem(contentItem,QStringLiteral("exportMoreDisplayOptions"));
+    ok &= require(moreDisplay && moreOptions && !moreDisplay->property("checked").toBool()
+        && !moreOptions->isVisible(),QStringLiteral("additional export display settings default collapsed"),err);
+    if (moreDisplay) moreDisplay->setProperty("checked",true);
+    QCoreApplication::processEvents();
+    ok &= require(moreOptions && moreOptions->isVisible(),QStringLiteral("More Display reveals existing export options"),err);
     auto* earlySwitch=findVisualItem(contentItem,QStringLiteral("exportSlideTimingEarlyPerfectFromHeadSwitch"));
     ok &= require(earlySwitch!=nullptr,QStringLiteral("video options expose the launch child switch"),err);
     if(earlySwitch) {
@@ -605,6 +614,11 @@ bool verifyBatchInputsOwnASettingsTab(QTextStream& err)
         QCoreApplication::processEvents();
         ok &= require(!earlySwitch->isEnabled(),QStringLiteral("disabling visibility also disables the child"),err);
     }
+
+    if (moreDisplay) moreDisplay->setProperty("checked",false);
+    QCoreApplication::processEvents();
+    ok &= require(moreOptions && !moreOptions->isVisible() && earlySwitch && earlySwitch->property("checked").toBool(),
+        QStringLiteral("collapsing More Display retains the enabled child preference"),err);
 
     session->setProperty("settingsTab", QStringLiteral("batch"));
     session->setProperty("activeTab", QStringLiteral("export"));

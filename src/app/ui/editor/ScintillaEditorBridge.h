@@ -238,7 +238,6 @@ private:
     int reportedCaret_ = -1;
     miacode::chart_selection::NoteRanges reportedRanges_;
     bool noteSelection_ = false;
-    bool notePointerPress_ = false;
     qreal wheelRemainder_ = 0;
     int blockSpacing_ = 0;
     bool autoWrap_ = true;

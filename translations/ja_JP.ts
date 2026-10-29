@@ -3369,6 +3369,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Enable application background</source>
         <translation>アプリ背景を有効にする</translation>
     </message>
+    <message id="dialog.video_export.more_display">
+        <source>More Display Options</source>
+        <translation>その他の表示</translation>
+    </message>
     <message id="qml.enable_clock_count">
         <source>Enable clock_count</source>
         <translation>clock_count を有効化</translation>

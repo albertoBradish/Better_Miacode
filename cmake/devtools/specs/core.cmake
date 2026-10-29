@@ -306,3 +306,9 @@ miacode_add_dev_tool(chart_tools_spec TEST
     LIBS miacode_chart Qt6::Core Qt6::Gui
     INCLUDES src
 )
+
+miacode_add_dev_tool(timeline_note_selection_interaction_spec TEST
+    SOURCES src/tools/timeline/TimelineNoteSelectionInteractionSpec.cpp
+    LIBS miacode_timeline_quick Qt6::Core Qt6::Gui Qt6::Quick Qt6::Test
+    INCLUDES src)
+set_tests_properties(timeline_note_selection_interaction_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

@@ -1,6 +1,7 @@
 #include "app/services/EditorSyncController.h"
 
 #include <QMetaObject>
+#include <algorithm>
 
 namespace miacode {
 
@@ -146,17 +147,19 @@ bool EditorSyncController::requestNoteSelection(int difficultyId, quint64 revisi
         scheduleNavigationFinished(deliveredNavigationSequence_, false);
         deliveredNavigationSequence_ = 0;
     }
-    chart_selection::NoteRanges selected = ranges;
-    if (additive) {
-        const auto current = editorSelection();
-        if (current.valid) selected += current.ranges;
-    }
-    // Snap all inputs to the current parser's independent note spans.
+    const auto current = editorSelection();
+    const auto intersects = [](const auto& note, const auto& selected) {
+        return std::any_of(selected.cbegin(), selected.cend(), [&](const auto& range) {
+            return range.start < note.end && note.start < range.end;
+        });
+    };
+    // Shift gestures toggle complete note objects, including an existing text selection.
     chart_selection::NoteRanges normalized;
-    for (const auto& note : noteCatalogue_)
-        for (const auto& range : selected) if (range.start < note.end && note.start < range.end) {
-            normalized.append(note); break;
-        }
+    for (const auto& note : noteCatalogue_) {
+        const bool hit = intersects(note, ranges);
+        const bool wasSelected = additive && current.valid && intersects(note, current.ranges);
+        if (hit != wasSelected) normalized.append(note);
+    }
     contextRanges_ = normalized; // Catalogue is already ordered and deduplicated.
     contextNoteSelection_ = true;
     emit noteSelectionRequested(difficultyId, revision, contextRanges_);

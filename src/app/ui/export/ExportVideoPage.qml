@@ -650,58 +650,73 @@ Rectangle {
                                 checked: root.session ? root.session.showChartInfoHud : false
                                 onToggled: if (root.session) root.session.showChartInfoHud = checked
                             }
-                            AppSwitch {
-                                text: qsTrId("dialog.video_export.option.show_bpm_hud")
-                                checked: root.session ? root.session.showBpmHud : false
-                                onToggled: if (root.session) root.session.showBpmHud = checked
+                            AppButton {
+                                id: moreDisplayButton
+                                objectName: "exportMoreDisplayButton"
+                                text: qsTrId("dialog.video_export.more_display")
+                                checkable: true
+                                checked: false
+                                selected: checked
+                                Layout.fillWidth: true
                             }
-                            AppSwitch {
-                                text: qsTrId("dialog.video_export.option.show_cps_hud")
-                                checked: root.session ? root.session.showCpsHud : false
-                                onToggled: if (root.session) root.session.showCpsHud = checked
-                            }
-                            AppSwitch {
-                                text: qsTrId("dialog.video_export.option.show_meter_hud")
-                                checked: root.session ? root.session.showMeterHud : false
-                                onToggled: if (root.session) root.session.showMeterHud = checked
-                            }
-                            AppSwitch {
-                                text: qsTrId("dialog.video_export.option.show_mods_hud")
-                                checked: root.session ? root.session.showModsHud : false
-                                onToggled: if (root.session) root.session.showModsHud = checked
-                            }
-                            AppSwitch {
-                                objectName: "exportShowMeasureLinesSwitch"
-                                text: qsTrId("preview.canvas.show_measure_lines")
-                                checked: root.session ? root.session.showMeasureLines : false
-                                onToggled: if (root.session) root.session.showMeasureLines = checked
-                            }
-                            AppSwitch {
-                                objectName: "exportShowJudgementSkeletonSwitch"
-                                text: qsTrId("preview.canvas.show_judgement_skeleton")
-                                checked: root.session ? root.session.showJudgementSkeleton : false
-                                onToggled: if (root.session) root.session.showJudgementSkeleton = checked
-                            }
-                            AppSwitch {
-                                objectName: "exportShowSlideJudgementTimingSwitch"
-                                text: qsTrId("preview.canvas.show_slide_judgement_timing")
-                                checked: root.session ? root.session.showSlideJudgementTiming : false
-                                onToggled: if (root.session) root.session.showSlideJudgementTiming = checked
-                            }
-                            AppSwitch {
-                                objectName: "exportSlideTimingFromLaunchBeatSwitch"
-                                text: qsTrId("preview.canvas.slide_timing_from_launch_beat")
-                                enabled: root.session ? root.session.showSlideJudgementTiming : false
-                                checked: root.session ? root.session.slideTimingFromLaunchBeat : false
-                                onToggled: if (root.session) root.session.slideTimingFromLaunchBeat = checked
-                            }
-                            AppSwitch {
-                                objectName: "exportSlideTimingEarlyPerfectFromHeadSwitch"
-                                Layout.leftMargin: 16
-                                text: qsTrId("preview.canvas.slide_timing_early_perfect_from_head")
-                                enabled: root.session ? root.session.showSlideJudgementTiming && root.session.slideTimingFromLaunchBeat : false
-                                checked: root.session ? root.session.slideTimingEarlyPerfectFromHead : false
-                                onToggled: if (root.session) root.session.slideTimingEarlyPerfectFromHead = checked
+                            ColumnLayout {
+                                objectName: "exportMoreDisplayOptions"
+                                visible: moreDisplayButton.checked
+                                Layout.fillWidth: true
+                                spacing: Theme.settingsRowSpacing
+                                AppSwitch {
+                                    text: qsTrId("dialog.video_export.option.show_bpm_hud")
+                                    checked: root.session ? root.session.showBpmHud : false
+                                    onToggled: if (root.session) root.session.showBpmHud = checked
+                                }
+                                AppSwitch {
+                                    text: qsTrId("dialog.video_export.option.show_cps_hud")
+                                    checked: root.session ? root.session.showCpsHud : false
+                                    onToggled: if (root.session) root.session.showCpsHud = checked
+                                }
+                                AppSwitch {
+                                    text: qsTrId("dialog.video_export.option.show_meter_hud")
+                                    checked: root.session ? root.session.showMeterHud : false
+                                    onToggled: if (root.session) root.session.showMeterHud = checked
+                                }
+                                AppSwitch {
+                                    text: qsTrId("dialog.video_export.option.show_mods_hud")
+                                    checked: root.session ? root.session.showModsHud : false
+                                    onToggled: if (root.session) root.session.showModsHud = checked
+                                }
+                                AppSwitch {
+                                    objectName: "exportShowMeasureLinesSwitch"
+                                    text: qsTrId("preview.canvas.show_measure_lines")
+                                    checked: root.session ? root.session.showMeasureLines : false
+                                    onToggled: if (root.session) root.session.showMeasureLines = checked
+                                }
+                                AppSwitch {
+                                    objectName: "exportShowJudgementSkeletonSwitch"
+                                    text: qsTrId("preview.canvas.show_judgement_skeleton")
+                                    checked: root.session ? root.session.showJudgementSkeleton : false
+                                    onToggled: if (root.session) root.session.showJudgementSkeleton = checked
+                                }
+                                AppSwitch {
+                                    objectName: "exportShowSlideJudgementTimingSwitch"
+                                    text: qsTrId("preview.canvas.show_slide_judgement_timing")
+                                    checked: root.session ? root.session.showSlideJudgementTiming : false
+                                    onToggled: if (root.session) root.session.showSlideJudgementTiming = checked
+                                }
+                                AppSwitch {
+                                    objectName: "exportSlideTimingFromLaunchBeatSwitch"
+                                    text: qsTrId("preview.canvas.slide_timing_from_launch_beat")
+                                    enabled: root.session ? root.session.showSlideJudgementTiming : false
+                                    checked: root.session ? root.session.slideTimingFromLaunchBeat : false
+                                    onToggled: if (root.session) root.session.slideTimingFromLaunchBeat = checked
+                                }
+                                AppSwitch {
+                                    objectName: "exportSlideTimingEarlyPerfectFromHeadSwitch"
+                                    Layout.leftMargin: 16
+                                    text: qsTrId("preview.canvas.slide_timing_early_perfect_from_head")
+                                    enabled: root.session ? root.session.showSlideJudgementTiming && root.session.slideTimingFromLaunchBeat : false
+                                    checked: root.session ? root.session.slideTimingEarlyPerfectFromHead : false
+                                    onToggled: if (root.session) root.session.slideTimingEarlyPerfectFromHead = checked
+                                }
                             }
                             AppSwitch {
                                 text: qsTrId("qml.enable_clock_count")

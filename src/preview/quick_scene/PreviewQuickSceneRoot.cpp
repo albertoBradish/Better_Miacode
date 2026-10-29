@@ -545,27 +545,22 @@ void PreviewQuickSceneRoot::mousePressEvent(QMouseEvent* event)
 {
     if (event && runtime_ && event->button() == Qt::LeftButton) {
         const bool shift = event->modifiers().testFlag(Qt::ShiftModifier);
-        const bool additive = bool(event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier));
-        if (shift || additive) {
+        if (shift) {
             emit runtime_->noteSelectionStarted();
             const auto state = runtime_->frameStateSnapshot();
             if (state) {
                 auto shapes = miacode::preview::selection::visibleNoteHitShapes(*state,
                     miacode::pixel_geometry::coveringSize(boundingRect().size()));
-                const auto clicked = miacode::preview::selection::notesIntersecting(shapes,
-                    QRectF(event->position() - QPointF(1, 1), QSizeF(2, 2)));
-                if (shift || !clicked.isEmpty()) {
-                    runtime_->cancelTouchPadAuthoringPress();
-                    selectionDragActive_ = true;
-                    selectionAdditive_ = additive;
-                    selectionDragStart_ = selectionDragEnd_ = event->position();
-                    selectionContentRevision_ = state->sceneContentRevision;
-                    selectionStorageGeneration_ = state->sceneStorageGeneration;
-                    selectionHitShapes_ = std::move(shapes);
-                    forceActiveFocus(Qt::MouseFocusReason);
-                    setKeepMouseGrab(true);
-                    update(); event->accept(); return;
-                }
+                runtime_->cancelTouchPadAuthoringPress();
+                selectionDragActive_ = true;
+                selectionAdditive_ = true;
+                selectionDragStart_ = selectionDragEnd_ = event->position();
+                selectionContentRevision_ = state->sceneContentRevision;
+                selectionStorageGeneration_ = state->sceneStorageGeneration;
+                selectionHitShapes_ = std::move(shapes);
+                forceActiveFocus(Qt::MouseFocusReason);
+                setKeepMouseGrab(true);
+                update(); event->accept(); return;
             }
         }
     }
