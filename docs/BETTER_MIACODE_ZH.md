@@ -1,12 +1,14 @@
 # Better Miacode 功能说明与验收边界
 
-better.5 新增“显示 Slide 判定时值”：头拍起按路径弧长匀速将低亮轨迹恢复正常亮度，尾判正解时刻全亮；预览和视频导出可分别开关，默认关闭。CLI 的 `--slide-judgement-timing` 可用于视频导出和逐条时值统计。规则与参考模型边界见 [Slide 判定时值规格](specs/preview/SLIDE_JUDGEMENT_TIMING_ZH.md)。
+better.6 修正 Slide 补间的判定消失，并将全亮终点设为最早 Perfect 时刻；头拍时已经进入 Perfect 范围的情况直接全亮。
+
+better.5 新增“显示 Slide 判定时值”：头拍起按路径弧长匀速将低亮轨迹恢复正常亮度，最早 Perfect 时刻全亮，已判定区域照常消失；预览和视频导出可分别开关，默认关闭。CLI 的 `--slide-judgement-timing` 可用于视频导出和逐条时值统计。规则与参考模型边界见 [Slide 判定时值规格](specs/preview/SLIDE_JUDGEMENT_TIMING_ZH.md)。
 
 better.4 新增时间轴 Alt + 鼠标滚轮缩放，保留已有快捷键配置；时间轴上的 Alt 手势不会触发预览判定区临时显示。
 
 Better Miacode 是操作体验改进版本，基线为 Team-MiaCode/MiaCode 的
 `main@7feadff91644fea4b1f8e2c1c0de71b3f35233da`。独立仓库不包含手序版提交。
-本文记录功能契约及分版本验证边界。当前目标版本为 `2.0.0-better.5`；下方 better.1～better.4 的历史验证结论不自动覆盖本次改动。better.5 的验证边界见 `docs/releases/better_5.md`；跨平台结果以对应平台 CI 和实际验收为准。
+本文记录功能契约及分版本验证边界。当前目标版本为 `2.0.0-better.6`；下方 better.1～better.4 的历史验证结论不自动覆盖本次改动。better.6 的验证边界见 `docs/releases/better_6.md`；跨平台结果以对应平台 CI 和实际验收为准。
 
 ## 分批功能
 

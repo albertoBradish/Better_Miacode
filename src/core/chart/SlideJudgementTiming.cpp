@@ -46,15 +46,17 @@ Timing timingForMarker(const TimelineNoteMarker& marker)
     // establishes whether the normal slide's extra fast interval applies.
     result.perfectStartSecond = judgement - (wifi ? halfWidth : std::max(17.0 * frame, halfWidth));
     result.perfectEndSecond = judgement + halfWidth;
+    result.brightnessCompleteSecond = std::max(head, result.perfectStartSecond);
     return result;
 }
 
 double brightnessProgress(const Timing& timing, double chartSecond)
 {
     if (!timing.valid || !std::isfinite(chartSecond)
-        || !std::isfinite(timing.headSecond) || !std::isfinite(timing.judgementSecond)
-        || timing.judgementSecond <= timing.headSecond) return 0.0;
-    return std::clamp((chartSecond - timing.headSecond) / (timing.judgementSecond - timing.headSecond), 0.0, 1.0);
+        || !std::isfinite(timing.headSecond) || !std::isfinite(timing.brightnessCompleteSecond)) return 0.0;
+    if (chartSecond < timing.headSecond) return 0.0;
+    if (timing.brightnessCompleteSecond <= timing.headSecond) return 1.0;
+    return std::clamp((chartSecond - timing.headSecond) / (timing.brightnessCompleteSecond - timing.headSecond), 0.0, 1.0);
 }
 
 } // namespace miacode::slide_judge

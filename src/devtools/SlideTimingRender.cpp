@@ -84,33 +84,58 @@ int main(int argc, char** argv)
             gl.setFrameState(frame);gl.applyExportFrameTick(time,false,false,true,0,60);return gl.renderFrame(&error);
         };
         QVector<QImage> frames;
-        const QVector<double> times{timing.headSecond, timing.headSecond+(timing.judgementSecond-timing.headSecond)*.25,
-            timing.headSecond+(timing.judgementSecond-timing.headSecond)*.5,timing.judgementSecond,
-            timing.headSecond+(timing.judgementSecond-timing.headSecond)*.25};
+        const double completionTime=timing.brightnessCompleteSecond;
+        const QVector<double> times{timing.headSecond, timing.headSecond+(completionTime-timing.headSecond)*.25,
+            timing.headSecond+(completionTime-timing.headSecond)*.5,completionTime,
+            timing.headSecond+(completionTime-timing.headSecond)*.25,
+            timing.traceSecond+(timing.endSecond-timing.traceSecond)*.85,timing.endSecond};
         for(int i=0;i<times.size();++i) {
             const auto frame=render(times[i],state);
             if(frame.isNull()) {QTextStream(stderr)<<error<<Qt::endl;return 1;}
             frame.save(QDir(output).filePath(QStringLiteral("%1-%2.png").arg(index).arg(i)));
             frames.append(frame.copy());
         }
-        // Native full-track control at the same explicit instant. Delaying the
-        // guide suppresses only native trimming; colors/flash/alpha stay equal.
+        // Native control at the same instant preserves the exact consumed
+        // silhouette. Only the still-visible artwork should become full-bright.
         PreviewFrameState control=state;
         control.render.showSlideJudgementTiming=false;
-        control.noteMarkers[0].slideTraceSecond=timing.endSecond+1;
         ++control.sceneContentRevision;
-        const QImage full=render(timing.judgementSecond,control);
+        const QImage full=render(completionTime,control);
         const bool completion=frames[3]==full;
         const bool seek=frames[1]==frames[4];
-        if(!completion || !seek) {QTextStream(stderr)<<"pixel contract failed: "<<token<<" completion="<<completion<<" seek="<<seek<<Qt::endl;return 1;}
+        const bool erased=frames[5]==render(times[5],control) && frames[6]==render(times[6],control);
+        if(!completion || !seek || !erased) {QTextStream(stderr)<<"pixel contract failed: "<<token<<" completion="<<completion<<" seek="<<seek<<" erased="<<erased<<Qt::endl;return 1;}
+        PreviewFrameState judgedState=state;
+        judgedState.muriRenderOptions.renderMode=RenderMode::MaimuriDxStyle;
+        judgedState.muriRenderOptions.wifiNeedC=false;
+        MarkerMuriState runtime;
+        runtime.markerKey=makeMarkerAnalysisKey(state.noteMarkers[0]);
+        runtime.markerType=state.noteMarkers[0].type;
+        const double finish=timing.traceSecond+(timing.endSecond-timing.traceSecond)*.5;
+        if(runtime.markerType==QLatin1String("wifi")) {
+            runtime.wifiLaneProgressSeconds=QVector<QVector<double>>(3,QVector<double>(1,-1.0));
+            runtime.wifiCompletedSecond=finish;
+        } else {
+            runtime.slideSegments.resize(state.noteMarkers[0].slideSegmentKeys.size());
+            for(auto& segment:runtime.slideSegments) segment.completedSecond=finish;
+        }
+        judgedState.muriAnalysisReport.markerStates.insert(runtime.markerKey,runtime);
+        ++judgedState.sceneContentRevision;
+        const QImage beforeJudge=render(finish-1e-5,judgedState);
+        const QImage atJudge=render(finish,judgedState);
+        const QImage empty=render(timing.endSecond,judgedState);
+        const bool runtimeErased=beforeJudge!=empty && atJudge==empty;
+        if(!runtimeErased) {QTextStream(stderr)<<"runtime erasure failed: "<<token<<Qt::endl;return 1;}
         QImage strip(540*4,570,QImage::Format_RGB32);strip.fill(QColor(24,26,30));
         QPainter painter(&strip);
         painter.setPen(Qt::white);
         for(int i=0;i<4;++i) {painter.drawImage(i*540,30,frames[i]);painter.drawText(i*540+8,20,QStringLiteral("%1 | %2 ms").arg(token).arg(times[i]*1000,0,'f',1));}
         painter.end();strip.save(QDir(output).filePath(QStringLiteral("%1-strip.png").arg(index)));
         results.append(QJsonObject{{"shape",token},{"judgementSecond",timing.judgementSecond},
+            {"brightnessCompleteSecond",completionTime},
             {"perfectStartSecond",timing.perfectStartSecond},{"perfectEndSecond",timing.perfectEndSecond},
-            {"completeMatchesNativePixels",completion},{"seekIdentical",seek}});
+            {"completeMatchesNativePixels",completion},{"seekIdentical",seek},
+            {"nativeErasureMatches",erased},{"runtimeJudgementErased",runtimeErased}});
         ++index;
     }
     QFile report(QDir(output).filePath(QStringLiteral("report.json")));

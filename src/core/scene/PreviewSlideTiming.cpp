@@ -111,8 +111,8 @@ void applyPreviewSlideTimingBrightness(PreviewSpriteDescriptor* sprite,
         sprite->revealOffset = arrow.distance / geometry.totalLength - progress;
         sprite->revealDirection = arrow.tangent / (geometry.totalLength * canvasScale);
     }
-    // At the reference instant all pixels, including the final arrow's
-    // overhanging artwork, are normal. No frame-dependent fade tail.
+    // At the earliest Perfect instant every still-visible pixel is normal,
+    // including artwork overhang. Native judgement erasure controls visibility.
 }
 
 } // namespace miacode::preview::scene

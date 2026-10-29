@@ -16,10 +16,12 @@ struct Timing {
     double lastAreaDuration = 0.0;
     double perfectStartSecond = 0.0;
     double perfectEndSecond = 0.0;
+    double brightnessCompleteSecond = 0.0;
 };
 
 Timing timingForMarker(const TimelineNoteMarker& marker);
-// Head-to-judgement progress, including the wait before the guiding star moves.
+// Head-to-earliest-Perfect progress, including the guiding star's initial wait.
+// When the Perfect window has already begun at the head, light immediately.
 double brightnessProgress(const Timing& timing, double chartSecond);
 
 } // namespace miacode::slide_judge

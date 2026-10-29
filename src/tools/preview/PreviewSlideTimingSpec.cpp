@@ -37,17 +37,28 @@ bool timing()
         && near(value.perfectEndSecond, 1.6709180741045077),
         "fes tail uses only the final segment duration and one final judgement");
     ok &= require(near(miacode::slide_judge::brightnessProgress(value, value.headSecond), 0)
-        && near(miacode::slide_judge::brightnessProgress(value, value.judgementSecond/2), .5)
-        && near(miacode::slide_judge::brightnessProgress(value, value.judgementSecond), 1)
+        && near(value.brightnessCompleteSecond, value.perfectStartSecond)
+        && near(miacode::slide_judge::brightnessProgress(value, value.perfectStartSecond/2), .5)
+        && miacode::slide_judge::brightnessProgress(value, value.perfectStartSecond-1e-6) < 1.0
+        && near(miacode::slide_judge::brightnessProgress(value, value.perfectStartSecond), 1)
         && miacode::slide_judge::brightnessProgress(value, .25) > 0,
-        "linear brightness includes the initial waiting time and finishes at reference, not earliest Perfect");
+        "linear brightness includes the initial wait and completes exactly at earliest Perfect");
     auto zeroWait = parse(QStringLiteral("1-5[0##0.125]"));
     const auto fast = miacode::slide_judge::timingForMarker(zeroWait);
     ok &= require(fast.valid && near(fast.headSecond, fast.traceSecond)
         && near(fast.judgementSecond, .10464120177141166)
         && near(fast.judgementSecond-fast.perfectStartSecond, 17.0/60.0)
         && fast.perfectEndSecond-fast.judgementSecond < 17.0/60.0,
-        "zero-wait fast slide has continuous progress and an asymmetric Perfect window");
+        "zero-wait fast slide retains its asymmetric Perfect window");
+    ok &= require(near(fast.brightnessCompleteSecond, fast.headSecond)
+        && near(miacode::slide_judge::brightnessProgress(fast, fast.headSecond-.001),0)
+        && near(miacode::slide_judge::brightnessProgress(fast, fast.headSecond),1),
+        "already-Perfect zero-wait slide lights immediately at the head, never before it");
+    const auto quick = miacode::slide_judge::timingForMarker(parse(QStringLiteral("1-5[16:1]")));
+    ok &= require(quick.brightnessCompleteSecond > quick.headSecond
+        && quick.brightnessCompleteSecond < quick.traceSecond
+        && near(miacode::slide_judge::brightnessProgress(quick,quick.brightnessCompleteSecond),1),
+        "fast slide can complete brightness before guide launch while preserving the head start");
     const auto slow = miacode::slide_judge::timingForMarker(parse(QStringLiteral("1-5[0##20]")));
     ok &= require(slow.valid && near(slow.judgementSecond-slow.perfectStartSecond, .6)
         && near(slow.perfectEndSecond-slow.judgementSecond, .6), "long slide Perfect window saturates at 36 frames");
@@ -126,15 +137,41 @@ bool rendering()
     for (const auto& sprite : wait.sprites) reveal |= sprite.unrevealedBrightness < 1 && !sprite.revealDirection.isNull();
     ok &= require(reveal && wait.sprites.size() == head.sprites.size(), "pixel reveal starts while guide star is waiting, without erasing arrows");
     const auto reference = miacode::slide_judge::timingForMarker(state.noteMarkers[0]);
-    const auto end = sample(reference.judgementSecond);
-    bool bright = end.sprites.size() == head.sprites.size();
+    const auto end = sample(reference.brightnessCompleteSecond);
+    bool bright = !end.sprites.isEmpty() && end.sprites.size() < head.sprites.size();
     for (const auto& sprite : end.sprites) bright &= near(sprite.brightness,1) && near(sprite.unrevealedBrightness,1);
-    ok &= require(bright, "entire native material is normal at exact reference instant");
+    ok &= require(bright, "remaining material is fully bright at earliest Perfect while consumed arrows are gone");
+    for (auto mode : {RenderMode::Native,RenderMode::EraseByArea,RenderMode::MaimuriDxStyle}) {
+        state.muriRenderOptions.renderMode = mode;
+        for (double second : {.25,.65,.9,reference.brightnessCompleteSecond,1.4}) {
+            state.render.showSlideJudgementTiming = false;
+            const auto plain = sample(second);
+            state.render.showSlideJudgementTiming = true;
+            const auto decorated = sample(second);
+            bool same = plain.sprites.size() == decorated.sprites.size();
+            for (int i=0; same && i<plain.sprites.size(); ++i)
+                same &= plain.sprites[i].center == decorated.sprites[i].center
+                    && near(plain.sprites[i].opacity,decorated.sprites[i].opacity);
+            ok &= require(same,"brightness uses exactly the original erasure silhouette in each render mode");
+        }
+    }
+    state.muriRenderOptions.renderMode = RenderMode::Native;
     const auto replay = sample(.25);
     ok &= require(replay.sprites.size() == wait.sprites.size()
         && near(replay.sprites[0].revealOffset,wait.sprites[0].revealOffset)
         && state.skin.slideTrackImage.cacheKey() == imageKey, "backward seek is deterministic and never mutates skin images");
     ok &= require(sample(state.noteMarkers[0].endSecond).sprites.isEmpty(), "track retires at existing geometric end");
+    MarkerMuriState judged;
+    judged.markerKey = makeMarkerAnalysisKey(state.noteMarkers[0]);
+    judged.markerType = QStringLiteral("slide");
+    judged.slideSegments.resize(2);
+    for (auto& segment : judged.slideSegments) segment.completedSecond=.8;
+    state.muriAnalysisReport.markerStates.insert(judged.markerKey,judged);
+    state.muriRenderOptions.renderMode=RenderMode::MaimuriDxStyle;
+    ok &= require(!sample(.79).sprites.isEmpty() && sample(.8).sprites.isEmpty(),
+        "runtime judgement removes the whole connected track even before brightness completion");
+    state.muriAnalysisReport.markerStates.clear();
+    state.muriRenderOptions.renderMode=RenderMode::Native;
     PreviewPreparedSceneCache cache;
     ok &= require(cache.sync(state), "timing prepared cache builds");
     const auto* stored = cache.slideLikeLayer().entries[0].slideTimingGeometry.get();
@@ -146,6 +183,18 @@ bool rendering()
     state.noteMarkers[0].slideSegmentCriticalProportions.clear();
     const auto invalid = sample(.25);
     ok &= require(invalid.sprites.isEmpty() && invalid.missingSlideTimingCount == 1, "invalid timing is skipped with a diagnostic count");
+    state.noteMarkers={parse(QStringLiteral("1w5[4:1]"))};
+    state.skin.wifiImages=QVector<QImage>(11,state.skin.slideTrackImage);
+    MarkerMuriState wifiJudged;
+    wifiJudged.markerKey=makeMarkerAnalysisKey(state.noteMarkers[0]);
+    wifiJudged.markerType=QStringLiteral("wifi");
+    wifiJudged.wifiLaneProgressSeconds=QVector<QVector<double>>(3,QVector<double>(1,-1.0));
+    wifiJudged.wifiCompletedSecond=.8;
+    state.muriAnalysisReport.markerStates.insert(wifiJudged.markerKey,wifiJudged);
+    state.muriRenderOptions.renderMode=RenderMode::MaimuriDxStyle;
+    state.muriRenderOptions.wifiNeedC=false;
+    ok &= require(!sample(.79).sprites.isEmpty() && sample(.8).sprites.isEmpty(),
+        "WiFi runtime completion erases the track while brightness mode is enabled");
     return ok;
 }
 }

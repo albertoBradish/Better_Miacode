@@ -1,5 +1,11 @@
 # 更新日志
 
+## Better Miacode 2.0.0-better.6
+
+- 修复 Slide 亮度补间绕过原有轨迹擦除的问题，已判定区域按当前渲染模式照常消失。
+- 将全亮终点提前到最早 Perfect 时刻；头拍时已经进入 Perfect 范围的极短或零等待 slide 直接全亮。
+- 预览和视频导出共用修正后的时间与擦除规则；CLI 统计增加实际全亮时刻 `brightnessCompleteSecond`。
+
 ## Better Miacode 2.0.0-better.5
 
 - 新增 Slide 判定时值显示：从头拍立即开始，沿路径按弧长匀速将低亮轨迹恢复正常亮度，尾判正解时刻完成。预览和视频导出可独立开关。

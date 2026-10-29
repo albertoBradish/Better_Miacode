@@ -163,6 +163,7 @@ QJsonObject chartStats(const ChartInput& chart, bool includeSlideTiming)
                 item.insert(QStringLiteral("traceSecond"), timing.traceSecond + chart.first);
                 item.insert(QStringLiteral("endSecond"), timing.endSecond + chart.first);
                 item.insert(QStringLiteral("judgementSecond"), timing.judgementSecond + chart.first);
+                item.insert(QStringLiteral("brightnessCompleteSecond"), timing.brightnessCompleteSecond + chart.first);
                 item.insert(QStringLiteral("headToJudgementSeconds"), timing.judgementSecond - timing.headSecond);
                 item.insert(QStringLiteral("lastAreaDurationSeconds"), timing.lastAreaDuration);
                 item.insert(QStringLiteral("perfectStartSecond"), timing.perfectStartSecond + chart.first);

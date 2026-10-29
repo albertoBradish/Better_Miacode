@@ -665,6 +665,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/specs/preview/SLIDE_JUDGEMENT_
 $betterReleaseDocs = Join-Path $betterDocs 'releases'
 New-Item -ItemType Directory -Path $betterReleaseDocs -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_5.md') -Destination $betterReleaseDocs
+Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_6.md') -Destination $betterReleaseDocs
 
 $archiveFormats = $toolchainData.Package.ArchiveFormats
 if (!$archiveFormats -or $archiveFormats.Count -eq 0) {
