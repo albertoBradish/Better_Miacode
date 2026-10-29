@@ -3,6 +3,10 @@
 An independent usability-focused derivative of [Team-MiaCode/MiaCode](https://github.com/Team-MiaCode/MiaCode),
 based on upstream main. It contains no hand-order annotation or automatic hand-order experiments.
 See [the feature and acceptance specification](docs/BETTER_MIACODE_ZH.md).
+
+**Download Better Miacode 2.0.0-better.8:** [GitHub Releases](https://github.com/albertoBradish/Better_Miacode/releases).
+This update adds Slide timing visualization that reaches full brightness at the earliest Perfect instant, preserves native track erasure, fixes overlapping pp/qq paths, and adds optional launch-beat timing with an early-Perfect bypass. Preview, video export and CLI share the same rules. See [the release notes](docs/releases/better_8.md) for platform verification details.
+
 The upstream introduction below is retained for attribution; official download links refer to upstream MiaCode.
 
 <p align="center">

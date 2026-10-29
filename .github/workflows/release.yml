@@ -38,5 +38,9 @@ jobs:
         shell: bash
         run: |
           python scripts/build/verify-release.py --verify-reports release-artifacts
+          notes_version="${RELEASE_TAG##*-better.}"
+          [[ "$notes_version" =~ ^[0-9]+$ ]] || { echo "Invalid Better release tag: $RELEASE_TAG" >&2; exit 1; }
+          notes_file="docs/releases/better_${notes_version}.md"
+          test -s "$notes_file"
           gh release create "$RELEASE_TAG" release-artifacts/*.7z release-artifacts/*.sha256 release-artifacts/*verification.json \
-            --verify-tag --title "Better Miacode ${RELEASE_TAG#v}" --notes-file docs/releases/better_4.md
+            --verify-tag --title "Better Miacode ${RELEASE_TAG#v}" --notes-file "$notes_file"

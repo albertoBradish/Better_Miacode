@@ -13,7 +13,8 @@
 12. 补充了“无判定线”皮肤
 13. 在预览/时间轴中高亮被选中的note
 14. 允许通过CLI调用部分功能，例如渲染对应规格的谱面
-15. 🦊会跟着谱面播放摇头！！！！
+15. 显示 Slide 判定时值，按最早 Perfect 时刻完成路径亮度补间；支持启动拍及提前 Perfect 子选项
+16. 🦊会跟着谱面播放摇头！！！！
 
 
 
@@ -24,7 +25,7 @@
 
 **下载 Better Miacode：[GitHub Releases](https://github.com/albertoBradish/Better_Miacode/releases)。** 源码、问题反馈和构建记录均在 [Better_Miacode](https://github.com/albertoBradish/Better_Miacode)。上游官网与上游 Releases 提供的是原版 MiaCode。
 
-当前发布目标为 **2.0.0-better.4**，包含 Windows x64、Windows ARM64 和 Apple 芯片 macOS 包。功能说明描述当前实现；各平台构建、GUI、导出和安装是否完成验证，以本次 Release 的最终验收报告、附件和 CI 结果为准。macOS 要求 13 或以上；现有签名不代表已经完成 Apple notarization。
+当前发布目标为 **2.0.0-better.8**，包含 Windows x64、Windows ARM64 和 Apple 芯片 macOS 包。功能说明描述当前实现；各平台构建、GUI、导出和安装是否完成验证，以本次 Release 的最终验收报告、附件和 CI 结果为准。macOS 要求 13 或以上；现有签名不代表已经完成 Apple notarization。
 
 <p align="center">
   <img src="resources/screenshots/main-dark.png" alt="MiaCode 基础编辑界面；Better Miacode 在此基础上改进操作" width="960">
@@ -38,9 +39,15 @@
 
 Better Miacode 使用独立应用身份、配置、缓存、会话和 worker 运行目录，不自动迁移标准版或手序版的数据。不要用原版更新包覆盖 Better Miacode。
 
-详细操作和边界见 [功能说明](docs/BETTER_MIACODE_ZH.md)，本次变更见 [better.4 发布说明](docs/releases/better_4.md)。
+详细操作和边界见 [功能说明](docs/BETTER_MIACODE_ZH.md)，本次变更见 [better.8 发布说明](docs/releases/better_8.md)。
 
-## better.4 的主要改进
+## better.8 的主要改进
+
+- 新增“显示 Slide 判定时值”，从 star 头拍沿路径匀速将低亮轨迹恢复为正常亮度，在最早 Perfect 时刻全亮；已判定的轨迹照常消失。
+- 新增“有启动拍时从启动拍开始”及“启动拍前已进入 Perfect 时，从头拍全亮”子选项，默认关闭。预览、视频导出和 CLI 共用规则。
+- 修复部分 pp/qq 多圈重叠路径的亮度跳段，片段导出保留完整谱面的启动拍匹配。
+
+## better.4 起提供的编辑与导出功能
 
 ### 从源码、时间轴和预览选择音符
 
