@@ -25,7 +25,7 @@
 
 **下载 Better Miacode：[GitHub Releases](https://github.com/albertoBradish/Better_Miacode/releases)。** 源码、问题反馈和构建记录均在 [Better_Miacode](https://github.com/albertoBradish/Better_Miacode)。上游官网与上游 Releases 提供的是原版 MiaCode。
 
-当前发布目标为 **2.0.0-better.8**，包含 Windows x64、Windows ARM64 和 Apple 芯片 macOS 包。功能说明描述当前实现；各平台构建、GUI、导出和安装是否完成验证，以本次 Release 的最终验收报告、附件和 CI 结果为准。macOS 要求 13 或以上；现有签名不代表已经完成 Apple notarization。
+当前发布目标为 **2.0.0-better.9**，包含 Windows x64、Windows ARM64 和 Apple 芯片 macOS 包。功能说明描述当前实现；各平台构建、GUI、导出和安装是否完成验证，以本次 Release 的最终验收报告、附件和 CI 结果为准。macOS 要求 13 或以上；现有签名不代表已经完成 Apple notarization。
 
 <p align="center">
   <img src="resources/screenshots/main-dark.png" alt="MiaCode 基础编辑界面；Better Miacode 在此基础上改进操作" width="960">
