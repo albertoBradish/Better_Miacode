@@ -423,6 +423,7 @@
         bool previewShowJudgementSkeleton_ = false;
         bool previewShowSlideJudgementTiming_ = false;
         bool previewSlideTimingFromLaunchBeat_ = false;
+        bool previewSlideTimingEarlyPerfectFromHead_ = false;
         int previewMeasureLineMode_ = 0;
         int previewMeasureLineCustomBeats_ = 4;
         bool previewShowObjectStatsHud_ = false;

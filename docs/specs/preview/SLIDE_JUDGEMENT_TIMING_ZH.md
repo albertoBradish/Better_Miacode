@@ -10,6 +10,8 @@
 
 额外开关“有启动拍时从启动拍开始”默认关闭，只在亮度辅助开启时可操作。开启后，以正式起滑时刻、同一起点 A 区上的 star、tap、hold 头、A 区 touch（含可解析的 A 区 touch hold）作为启动拍。没有匹配时仍从原 star 头拍开始。隐藏头、mine、hold 尾或已经按住的 hold 本体不作为启动拍。时间匹配只容忍浮点计算误差（1 微秒），不采用无理检测的宽松碰撞窗口。
 
+子选项“启动拍前已进入 Perfect 时，从头拍全亮”默认关闭，只有亮度辅助和启动拍选项均开启时可操作。勾选后，若已匹配启动拍，且 `PerfectStart` 严格早于该启动拍，则跳过补间，从原 star 头拍立即全亮；头拍前仍保持低亮。恰好在启动拍进入 Perfect、晚于启动拍进入 Perfect 或没有匹配启动拍的情况保持原行为。比较仅扣除 1 纳秒的浮点误差，不扩展判定窗口。关闭父选项时保留子选项勾选状态，但不应用其效果。
+
 片段导出的启动拍索引来自完整谱面，与范围内实际绘制的音符列表分开保存；范围之外的候选不会因画面裁剪而丢失。
 
 ## 计算
@@ -20,7 +22,8 @@
 T = D_last × (1-p_last)
 c = e-T
 a = 匹配的启动拍时刻（额外开关开启时），否则为 h
-b = max(a, PerfectStart)
+若子选项开启、匹配了启动拍且 PerfectStart < 启动拍：a = b = h
+否则：b = max(a, PerfectStart)
 u(t) = clamp((t-a)/(b-a), 0, 1)  （b>a）
 恢复正常亮度的路径长度 = 整条路径弧长 × u(t)
 ```
@@ -50,15 +53,15 @@ GPU 在每个原皮肤图元内按弧长前沿连续调节亮度，使用屏幕�
 ## CLI
 
 ```text
-better-miacode stats --chart maidata.txt --slide-judgement-timing --slide-timing-from-launch-beat --json
-better-miacode export video --chart maidata.txt --output movie.mp4 --slide-judgement-timing --slide-timing-from-launch-beat
+better-miacode stats --chart maidata.txt --slide-judgement-timing --slide-timing-from-launch-beat --slide-timing-early-perfect-from-head --json
+better-miacode export video --chart maidata.txt --output movie.mp4 --slide-judgement-timing --slide-timing-from-launch-beat --slide-timing-early-perfect-from-head
 ```
 
-`stats` 的 `slideJudgementTimings` 提供逐条 shape、源码行列、`h/s/e/c`、头拍至正解时长、末区时长、Perfect 起止时刻和实际全亮时刻 `brightnessCompleteSecond=b`、补间起点 `brightnessStartSecond=a` 及 `usesLaunchBeat` 标识。绝对时刻统一应用 `&first` 一次。WiFi 返回 `wifi-symmetric-reference` 模型标识。默认 stats 输出保持原字段集。
+`stats` 的 `slideJudgementTimings` 提供逐条 shape、源码行列、`h/s/e/c`、头拍至正解时长、末区时长、Perfect 起止时刻和实际全亮时刻 `brightnessCompleteSecond=b`、补间起点 `brightnessStartSecond=a`、匹配标识 `usesLaunchBeat` 和跳过补间标识 `fullBrightFromHead`。跳过补间时 `a=b=h`，`usesLaunchBeat` 仍表示找到了启动拍。子选项 CLI 参数需搭配 `--slide-timing-from-launch-beat`，视频还需开启 `--slide-judgement-timing`。绝对时刻统一应用 `&first` 一次。WiFi 返回 `wifi-symmetric-reference` 模型标识。默认 stats 输出保持原字段集。
 
 ## 验证入口
 
-- `preview_slide_timing_spec`：全 616 条形状、fes 尾判、快速/零等待、窗口上限、折返投影、缓存、精确终点、缺数据处理。
+- `preview_slide_timing_spec`：全 616 条形状、fes 尾判、快速/零等待、窗口上限、折返投影、缓存、精确终点、缺数据处理；启动拍前/恰好/之后进入 Perfect 的分支、子选项缓存失效和三种渲染模式擦除。
 - `video_export_visual_aids_spec`：新开关快照、旧快照、用户设置复制、两个导出后端的显式帧状态。
 - `miacode_slide_timing_render --skin <目录> --output <目录> --backend opengl|d3d11`：真实 QSG 图元截图，验证 `b` 处剩余轨迹与正常材质逐像素一致、后续擦除一致及 seek 重放一致。
 

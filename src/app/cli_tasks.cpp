@@ -134,7 +134,7 @@ bool readChart(const CliRequest& request, ChartInput* chart, QString* error)
     return true;
 }
 
-QJsonObject chartStats(const ChartInput& chart, bool includeSlideTiming, bool fromLaunchBeat)
+QJsonObject chartStats(const ChartInput& chart, bool includeSlideTiming, bool fromLaunchBeat, bool earlyPerfectFromHead)
 {
     const auto events = miacode::chart::buildScoringEvents(chart.parsed.noteMarkers);
     const auto score = miacode::chart::calculateScoreLoss(events);
@@ -157,7 +157,7 @@ QJsonObject chartStats(const ChartInput& chart, bool includeSlideTiming, bool fr
         if (fromLaunchBeat) launchBeats.emplace(chart.parsed.noteMarkers);
         for (const auto& note : chart.parsed.noteMarkers) {
             if (note.type != QLatin1String("slide") && note.type != QLatin1String("wifi")) continue;
-            const auto timing = miacode::slide_judge::timingForMarker(note,launchBeats ? &*launchBeats : nullptr);
+            const auto timing = miacode::slide_judge::timingForMarker(note,launchBeats ? &*launchBeats : nullptr,earlyPerfectFromHead);
             QJsonObject item{{QStringLiteral("line"), note.sourceLine}, {QStringLiteral("column"), note.sourceCol},
                 {QStringLiteral("shape"), note.slideDisplayKey}, {QStringLiteral("valid"), timing.valid}};
             if (timing.valid) {
@@ -169,6 +169,7 @@ QJsonObject chartStats(const ChartInput& chart, bool includeSlideTiming, bool fr
                 item.insert(QStringLiteral("brightnessCompleteSecond"), timing.brightnessCompleteSecond + chart.first);
                 item.insert(QStringLiteral("brightnessStartSecond"), timing.brightnessStartSecond + chart.first);
                 item.insert(QStringLiteral("usesLaunchBeat"), timing.usesLaunchBeat);
+                item.insert(QStringLiteral("fullBrightFromHead"), timing.fullBrightFromHead);
                 item.insert(QStringLiteral("headToJudgementSeconds"), timing.judgementSecond - timing.headSecond);
                 item.insert(QStringLiteral("lastAreaDurationSeconds"), timing.lastAreaDuration);
                 item.insert(QStringLiteral("perfectStartSecond"), timing.perfectStartSecond + chart.first);
@@ -283,6 +284,7 @@ bool prepareTask(const CliRequest& request, const ChartInput& chart, const QStri
     snapshot.showModsHud = request.values.value(QStringLiteral("show-mods")).toBool();
     snapshot.showSlideJudgementTiming = request.values.value(QStringLiteral("slide-judgement-timing")).toBool();
     snapshot.slideTimingFromLaunchBeat = request.values.value(QStringLiteral("slide-timing-from-launch-beat")).toBool();
+    snapshot.slideTimingEarlyPerfectFromHead = request.values.value(QStringLiteral("slide-timing-early-perfect-from-head")).toBool();
     snapshot.intro = miacode::chart_banner::forDifficulty(chart.document, chart.difficulty);
     snapshot.intro.jacketPath = miacode::chart_assets::resolveDisplayBackgroundImagePath(chart.path);
     snapshot.intro.enabled = request.values.value(QStringLiteral("intro")).toBool() && snapshot.fullRangeExport;
@@ -320,9 +322,9 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
     if (command == QLatin1String("help")) return result(request, 0, {{QStringLiteral("text"), QStringLiteral(
         "Better Miacode CLI\n"
         "  better-miacode help | version | capabilities [--json]\n"
-        "  better-miacode stats --chart PATH [--difficulty 4] [--slide-judgement-timing] [--slide-timing-from-launch-beat] [--json]\n"
+        "  better-miacode stats --chart PATH [--difficulty 4] [--slide-judgement-timing] [--slide-timing-from-launch-beat] [--slide-timing-early-perfect-from-head] [--json]\n"
         "  better-miacode presets [--json]\n"
-        "  better-miacode export video --chart PATH --output FILE.mp4 [--width 1080 --height 1080 --fps 60 --start 0 --duration SECONDS] [--slide-judgement-timing] [--slide-timing-from-launch-beat]\n"
+        "  better-miacode export video --chart PATH --output FILE.mp4 [--width 1080 --height 1080 --fps 60 --start 0 --duration SECONDS] [--slide-judgement-timing] [--slide-timing-from-launch-beat] [--slide-timing-early-perfect-from-head]\n"
         "  better-miacode export cover --chart PATH --output FILE.png [--preset builtin:card --time SECONDS]\n"
         "  better-miacode export bpm --chart PATH --output FILE.txt [--format sequence|audio-time|maidata]\n"
         "  better-miacode --request FILE|- [--json]\n"
@@ -344,7 +346,8 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
     if (!readChart(request, &chart, &error)) return result(request, 2, {}, error, QStringLiteral("invalid_chart"));
     if (command == QLatin1String("stats")) return result(request, 0,
         chartStats(chart, request.values.value(QStringLiteral("slide-judgement-timing")).toBool(),
-            request.values.value(QStringLiteral("slide-timing-from-launch-beat")).toBool()));
+            request.values.value(QStringLiteral("slide-timing-from-launch-beat")).toBool(),
+            request.values.value(QStringLiteral("slide-timing-early-perfect-from-head")).toBool()));
     QString output;
     if (!checkOutput(request, chart, &output, &error)) return result(request, 3, {}, error, QStringLiteral("output_conflict"));
     const QString type = request.values.value(QStringLiteral("type")).toString();

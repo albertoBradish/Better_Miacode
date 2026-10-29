@@ -236,6 +236,7 @@ struct PreviewRenderState {
     bool showJudgementSkeleton = false;
     bool showSlideJudgementTiming = false;
     bool slideTimingFromLaunchBeat = false;
+    bool slideTimingEarlyPerfectFromHead = false;
     bool showTimestamp = true;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;

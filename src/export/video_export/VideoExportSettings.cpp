@@ -237,6 +237,7 @@ void copyVideoExportUserSettings(const VideoExportTask& source, VideoExportTask*
     target->showJudgementSkeleton = source.showJudgementSkeleton;
     target->showSlideJudgementTiming = source.showSlideJudgementTiming;
     target->slideTimingFromLaunchBeat = source.slideTimingFromLaunchBeat;
+    target->slideTimingEarlyPerfectFromHead = source.slideTimingEarlyPerfectFromHead;
     target->measureLineMode = source.measureLineMode;
     target->measureLineCustomBeats = source.measureLineCustomBeats;
     target->showObjectStatsHud = source.showObjectStatsHud;

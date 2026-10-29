@@ -1397,6 +1397,14 @@ void ExportSession::setSlideTimingFromLaunchBeat(bool value)
     applyLivePreviewSettings();
 }
 
+void ExportSession::setSlideTimingEarlyPerfectFromHead(bool value)
+{
+    if (task_.slideTimingEarlyPerfectFromHead == value) return;
+    task_.slideTimingEarlyPerfectFromHead = value;
+    emit videoChanged();
+    applyLivePreviewSettings();
+}
+
 
 void ExportSession::setShowSlideJudgementTiming(bool value)
 {

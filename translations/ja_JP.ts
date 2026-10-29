@@ -4827,6 +4827,10 @@ Error: %1</source>
         <source>Start on a matching launch beat</source>
         <translation>始動拍から補間を開始</translation>
     </message>
+    <message id="preview.canvas.slide_timing_early_perfect_from_head">
+        <source>Fully bright from star head when Perfect starts before launch beat</source>
+        <translation>開始拍より前に Perfect に入る場合、星の頭拍から全点灯</translation>
+    </message>
     <message id="preview.canvas.show_slide_judgement_timing">
         <source>Show Slide Judgement Timing</source>
         <translation>スライド判定タイミングを表示</translation>

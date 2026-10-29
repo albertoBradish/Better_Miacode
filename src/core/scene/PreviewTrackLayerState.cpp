@@ -278,7 +278,7 @@ PreviewTrackLayerState buildPreviewTrackLayerState(
                     if (!fallbackLaunchBeats) fallbackLaunchBeats.emplace(state.noteMarkers);
                     launchIndex=&*fallbackLaunchBeats;
                 }
-                uncachedTiming = buildPreviewSlideTimingGeometry(marker,launchIndex);
+                uncachedTiming = buildPreviewSlideTimingGeometry(marker,launchIndex,state.render.slideTimingEarlyPerfectFromHead);
                 timingGeometry = &uncachedTiming;
             }
             if (!timingGeometry->isValid()) {

@@ -176,12 +176,81 @@ bool launchBeats()
         && near(miacode::slide_judge::brightnessProgress(timing,.499),0)
         && near(miacode::slide_judge::brightnessProgress(timing,.5),1),
         "a launch beat already inside Perfect lights immediately at that beat");
+    const auto bypass=miacode::slide_judge::timingForMarker(quick.noteMarkers[0],&index,true);
+    ok &= require(bypass.fullBrightFromHead && bypass.usesLaunchBeat
+        && near(bypass.brightnessStartSecond,0) && near(bypass.brightnessCompleteSecond,0)
+        && near(miacode::slide_judge::brightnessProgress(bypass,-.001),0)
+        && near(miacode::slide_judge::brightnessProgress(bypass,0),1)
+        && near(miacode::slide_judge::brightnessProgress(bypass,.25),1)
+        && near(bypass.perfectStartSecond,timing.perfectStartSecond),
+        "early Perfect child option skips reveal at the original head without changing judgement");
+    const auto noParent=miacode::slide_judge::timingForMarker(quick.noteMarkers[0],nullptr,true);
+    ok &= require(!noParent.fullBrightFromHead && !noParent.usesLaunchBeat
+        && noParent.brightnessCompleteSecond>0,
+        "the early Perfect child option requires a matched launch beat");
+    const miacode::slide_judge::LaunchBeatIndex noCue({quick.noteMarkers[0]});
+    ok &= require(!miacode::slide_judge::timingForMarker(quick.noteMarkers[0],&noCue,true).fullBrightFromHead,
+        "an unmatched slide keeps ordinary head interpolation");
+    auto boundary=quick.noteMarkers[0];
+    // Choose duration so c-17F equals the launch beat, allowing only roundoff.
+    const double boundaryDuration=(17.0/60.0)/boundary.slideSegmentCriticalProportions[0];
+    boundary.slideSegmentDurations[0]=boundaryDuration;
+    boundary.endSecond=boundary.slideTraceSecond+boundaryDuration;
+    const auto equal=miacode::slide_judge::timingForMarker(boundary,&index,true);
+    ok &= require(equal.valid && near(equal.perfectStartSecond,equal.brightnessStartSecond)
+        && !equal.fullBrightFromHead && near(equal.brightnessStartSecond,.5),
+        "Perfect starting exactly on the launch beat keeps launch behavior");
+    boundary.slideSegmentDurations[0]+=0.1;
+    boundary.endSecond+=0.1;
+    const auto later=miacode::slide_judge::timingForMarker(boundary,&index,true);
+    ok &= require(later.valid && !later.fullBrightFromHead
+        && later.perfectStartSecond>later.brightnessStartSecond,
+        "Perfect starting after launch retains launch-to-Perfect interpolation");
     const auto shifted=miacode::timeline::offset::shiftedNoteMarkers(quick.noteMarkers,-2.5,
         miacode::timeline::offset::NonFiniteHandling::PassThrough);
     const miacode::slide_judge::LaunchBeatIndex shiftedIndex(shifted);
     const auto shiftedTiming=miacode::slide_judge::timingForMarker(shifted[0],&shiftedIndex);
     ok &= require(shiftedTiming.usesLaunchBeat && near(shiftedTiming.brightnessStartSecond,-2.0),
         "launch matching preserves negative chart offsets without applying them twice");
+    const auto shiftedBypass=miacode::slide_judge::timingForMarker(shifted[0],&shiftedIndex,true);
+    ok &= require(shiftedBypass.fullBrightFromHead && near(shiftedBypass.brightnessStartSecond,-2.5)
+        && near(shiftedBypass.brightnessCompleteSecond,-2.5),
+        "head bypass applies negative offsets once");
+    PreviewFrameState fastState;
+    fastState.noteMarkers=quick.noteMarkers;
+    fastState.sceneContentRevision=1;
+    fastState.render.showSlideJudgementTiming=true;
+    fastState.render.slideTimingFromLaunchBeat=true;
+    fastState.skin.slideTrackImage=QImage(30,18,QImage::Format_ARGB32_Premultiplied);
+    fastState.skin.slideTrackImage.fill(Qt::cyan);
+    PreviewPreparedSceneCache fastCache;
+    fastCache.sync(fastState);
+    fastState.render.slideTimingEarlyPerfectFromHead=true;
+    ok &= require(fastCache.sync(fastState)
+        && fastCache.slideLikeLayer().entries[0].slideTimingGeometry->timing.fullBrightFromHead,
+        "the child option invalidates prepared timing even with unchanged chart data");
+    for(auto mode:{RenderMode::Native,RenderMode::EraseByArea,RenderMode::MaimuriDxStyle}) {
+        fastState.muriRenderOptions.renderMode=mode;
+        for(double second:{0.0,.25,.52,.6,.625}) {
+            fastState.playheadSeconds=second;
+            fastState.render.showSlideJudgementTiming=false;
+            const auto plain=buildPreviewTrackLayerState(fastState,PreviewActiveMarkerView(fastState.noteMarkers),QRectF(0,0,540,540));
+            fastState.render.showSlideJudgementTiming=true;
+            const auto bright=buildPreviewTrackLayerState(fastState,PreviewActiveMarkerView(fastState.noteMarkers),QRectF(0,0,540,540));
+            bool same=plain.sprites.size()==bright.sprites.size();
+            for(int i=0;same && i<plain.sprites.size();++i)
+                same &= plain.sprites[i].center==bright.sprites[i].center
+                    && near(plain.sprites[i].opacity,bright.sprites[i].opacity)
+                    && near(bright.sprites[i].brightness,1) && near(bright.sprites[i].unrevealedBrightness,1);
+            ok &= require(same,"head bypass uses native brightness and erasure in every render mode");
+        }
+    }
+    fastState.slideTimingLaunchBeats=std::make_shared<const miacode::slide_judge::LaunchBeatIndex>(quick.noteMarkers);
+    fastState.noteMarkers={quick.noteMarkers[0]};
+    ++fastState.sceneContentRevision;
+    ok &= require(fastCache.sync(fastState)
+        && fastCache.slideLikeLayer().entries[0].slideTimingGeometry->timing.fullBrightFromHead,
+        "cropped exports retain the early Perfect bypass from the full-chart launch index");
     PreviewFrameState state;
     const auto parsed=SimaiParser::parseForTimeline(QStringLiteral("(120){4}1pp4[2:1],1,\nE"));
     state.noteMarkers=parsed.noteMarkers;

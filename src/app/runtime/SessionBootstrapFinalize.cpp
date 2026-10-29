@@ -277,6 +277,7 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
         scene_->setShowTimestamp(previewShowTimestamp_);
         scene_->setSlideJudgementTiming(state_.previewShowSlideJudgementTiming_);
         scene_->setSlideTimingFromLaunchBeat(state_.previewSlideTimingFromLaunchBeat_);
+        scene_->setSlideTimingEarlyPerfectFromHead(state_.previewSlideTimingEarlyPerfectFromHead_);
         scene_->setVisualAidSettings(state_.previewShowMeasureLines_, state_.previewShowJudgementSkeleton_,
             state_.previewMeasureLineMode_, state_.previewMeasureLineCustomBeats_);
         scene_->setShowObjectStatsHud(previewShowObjectStatsHud_);

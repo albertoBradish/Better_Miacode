@@ -21,7 +21,7 @@ struct PreviewSlideTimingGeometry {
 };
 
 PreviewSlideTimingGeometry buildPreviewSlideTimingGeometry(const TimelineNoteMarker& marker,
-    const miacode::slide_judge::LaunchBeatIndex* launchBeats = nullptr);
+    const miacode::slide_judge::LaunchBeatIndex* launchBeats = nullptr, bool earlyPerfectFromHead = false);
 void applyPreviewSlideTimingBrightness(PreviewSpriteDescriptor* sprite,
     const PreviewSlideTimingGeometry& geometry, const PreviewSlideArrowDistance& arrow,
     double chartSecond, double canvasScale);

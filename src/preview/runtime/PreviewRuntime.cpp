@@ -643,6 +643,13 @@ void PreviewRuntime::setSlideTimingFromLaunchBeat(bool enabled)
     update();
 }
 
+void PreviewRuntime::setSlideTimingEarlyPerfectFromHead(bool enabled)
+{
+    if (frameState_.render.slideTimingEarlyPerfectFromHead == enabled) return;
+    frameState_.render.slideTimingEarlyPerfectFromHead = enabled;
+    update();
+}
+
 void PreviewRuntime::setSlideJudgementTiming(bool enabled)
 {
     if (frameState_.render.showSlideJudgementTiming == enabled) return;

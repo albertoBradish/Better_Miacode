@@ -64,7 +64,7 @@ int main(int argc, char** argv)
              QStringLiteral("1-5[0##0.125]"),QStringLiteral("1-5b[4:1]"),
              QStringLiteral("1s5[4:1]"),QStringLiteral("1V35[4:1]"),QStringLiteral("1w5[4:1]"),
              QStringLiteral("1pp4[4:1]"),QStringLiteral("1qq6[4:1]"),
-             QStringLiteral("5pp8[4:1]"),QStringLiteral("5qq2[4:1]")}) {
+             QStringLiteral("5pp8[4:1]"),QStringLiteral("5qq2[4:1]"),QStringLiteral("1-5[16:1]")}) {
         const auto parsed = SimaiParser::parseForTimeline(QStringLiteral("(120){8}")+token+QStringLiteral(",\nE"));
         state.noteMarkers.clear();
         for (const auto& marker : parsed.noteMarkers)
@@ -174,6 +174,22 @@ int main(int argc, char** argv)
         }
         if(!launchWaitDim) {QTextStream(stderr)<<"launch wait brightness failed: "<<token<<Qt::endl;return 1;}
         if(!croppedCueMatches) {QTextStream(stderr)<<"cropped launch cue failed: "<<token<<Qt::endl;return 1;}
+        PreviewFrameState earlyState=launchState;
+        earlyState.render.slideTimingEarlyPerfectFromHead=true;
+        const auto earlyTiming=miacode::slide_judge::timingForMarker(earlyState.noteMarkers[0],&launchIndex,true);
+        bool earlyMatches=true;
+        for(double t:{timing.headSecond, (timing.headSecond+timing.traceSecond)*.5,
+                      timing.traceSecond+(timing.endSecond-timing.traceSecond)*.85,timing.endSecond}) {
+            const QImage expected=render(t,earlyTiming.fullBrightFromHead ? launchControl : launchState);
+            earlyMatches &= render(t,earlyState)==expected;
+        }
+        // Both the cached full chart and a cropped export must bypass identically.
+        PreviewFrameState earlyCropped=earlyState;
+        earlyCropped.noteMarkers.removeLast();
+        ++earlyCropped.sceneContentRevision;
+        earlyMatches &= render(timing.headSecond,earlyCropped)==render(timing.headSecond,earlyState);
+        if(!earlyMatches) {QTextStream(stderr)<<"early Perfect pixel contract failed: "<<token<<Qt::endl;return 1;}
+        if(token==QLatin1String("1-5[16:1]") && !earlyTiming.fullBrightFromHead) return 1;
         QImage strip(540*4,570,QImage::Format_RGB32);strip.fill(QColor(24,26,30));
         QPainter painter(&strip);
         painter.setPen(Qt::white);
@@ -185,7 +201,8 @@ int main(int argc, char** argv)
             {"completeMatchesNativePixels",completion},{"seekIdentical",seek},
             {"nativeErasureMatches",erased},{"runtimeJudgementErased",runtimeErased},
             {"launchStartSecond",launchTiming.brightnessStartSecond},{"launchCompleteMatches",launchComplete},
-            {"launchWaitFullyDim",launchWaitDim},{"croppedCueMatches",croppedCueMatches}});
+            {"launchWaitFullyDim",launchWaitDim},{"croppedCueMatches",croppedCueMatches},
+            {"earlyPerfectFromHead",earlyTiming.fullBrightFromHead},{"earlyPerfectPixelsMatch",earlyMatches}});
         ++index;
     }
     QFile report(QDir(output).filePath(QStringLiteral("report.json")));

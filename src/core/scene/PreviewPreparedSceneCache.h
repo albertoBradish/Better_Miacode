@@ -21,6 +21,7 @@ struct PreviewPreparedSceneCacheKey {
     bool showSlideTracks = true;
     bool showSlideJudgementTiming = false;
     bool slideTimingFromLaunchBeat = false;
+    bool slideTimingEarlyPerfectFromHead = false;
     quintptr slideTimingLaunchBeatIdentity = 0;
     bool slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
@@ -39,6 +40,7 @@ struct PreviewPreparedSceneCacheKey {
             && showSlideTracks == other.showSlideTracks
             && showSlideJudgementTiming == other.showSlideJudgementTiming
             && slideTimingFromLaunchBeat == other.slideTimingFromLaunchBeat
+            && slideTimingEarlyPerfectFromHead == other.slideTimingEarlyPerfectFromHead
             && slideTimingLaunchBeatIdentity == other.slideTimingLaunchBeatIdentity
             && slideEarlierSecondAndTextOnTop == other.slideEarlierSecondAndTextOnTop
             && tapJudgeTextDistance == other.tapJudgeTextDistance

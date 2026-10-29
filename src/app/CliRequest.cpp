@@ -43,7 +43,7 @@ CliRequest parseCliRequest(const QStringList& arguments, const QByteArray* suppl
     QString requestPath;
     static const QSet<QString> booleans{QStringLiteral("overwrite"), QStringLiteral("json"), QStringLiteral("ndjson"),
         QStringLiteral("show-bpm"), QStringLiteral("show-cps"), QStringLiteral("show-meter"), QStringLiteral("show-mods"),
-        QStringLiteral("slide-judgement-timing"), QStringLiteral("slide-timing-from-launch-beat"),
+        QStringLiteral("slide-judgement-timing"), QStringLiteral("slide-timing-from-launch-beat"), QStringLiteral("slide-timing-early-perfect-from-head"),
         QStringLiteral("hide-timestamp"), QStringLiteral("show-object-stats"), QStringLiteral("show-chart-info"), QStringLiteral("intro")};
     static const QSet<QString> strings{QStringLiteral("chart"), QStringLiteral("difficulty"), QStringLiteral("output"),
         QStringLiteral("format"), QStringLiteral("preset"), QStringLiteral("skin"), QStringLiteral("track"), QStringLiteral("request")};

@@ -116,6 +116,9 @@ ApplicationWindow {
         property bool showObjectStatsHud: false
         property bool showChartInfoHud: false
         property bool clockCountEnabled: false
+        property bool showSlideJudgementTiming: false
+        property bool slideTimingFromLaunchBeat: false
+        property bool slideTimingEarlyPerfectFromHead: false
         property var fontLibraryOptions: [
             { label: "Default font", path: "", family: "" },
             { label: "Example Font (example.ttf)", path: "/fonts/example.ttf", family: "Example Font" }
@@ -577,6 +580,31 @@ bool verifyBatchInputsOwnASettingsTab(QTextStream& err)
     QCoreApplication::processEvents();
     ok &= require(!batchPage->isVisible(),
                   QStringLiteral("another settings tab hides the batch inputs"), err);
+
+    auto* earlySwitch=findVisualItem(contentItem,QStringLiteral("exportSlideTimingEarlyPerfectFromHeadSwitch"));
+    ok &= require(earlySwitch!=nullptr,QStringLiteral("video options expose the launch child switch"),err);
+    if(earlySwitch) {
+        ok &= require(!earlySwitch->isEnabled() && !earlySwitch->property("checked").toBool(),
+            QStringLiteral("launch child option defaults off and requires both ancestors"),err);
+        session->setProperty("showSlideJudgementTiming",true);
+        QCoreApplication::processEvents();
+        ok &= require(!earlySwitch->isEnabled(),QStringLiteral("main visibility alone does not enable the child"),err);
+        session->setProperty("slideTimingFromLaunchBeat",true);
+        QCoreApplication::processEvents();
+        ok &= require(earlySwitch->isEnabled(),QStringLiteral("matching-launch option enables its child"),err);
+        earlySwitch->setProperty("checked",true);
+        QMetaObject::invokeMethod(earlySwitch,"toggled");
+        ok &= require(session->property("slideTimingEarlyPerfectFromHead").toBool(),
+            QStringLiteral("toggling the child updates export settings"),err);
+        session->setProperty("slideTimingFromLaunchBeat",false);
+        QCoreApplication::processEvents();
+        ok &= require(!earlySwitch->isEnabled() && earlySwitch->property("checked").toBool(),
+            QStringLiteral("disabling the parent retains the child preference"),err);
+        session->setProperty("slideTimingFromLaunchBeat",true);
+        session->setProperty("showSlideJudgementTiming",false);
+        QCoreApplication::processEvents();
+        ok &= require(!earlySwitch->isEnabled(),QStringLiteral("disabling visibility also disables the child"),err);
+    }
 
     session->setProperty("settingsTab", QStringLiteral("batch"));
     session->setProperty("activeTab", QStringLiteral("export"));

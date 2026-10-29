@@ -133,10 +133,10 @@ bool projectInPathOrder(const QVector<ArrowPlacement>& placements,
 }
 
 PreviewSlideTimingGeometry buildPreviewSlideTimingGeometry(const TimelineNoteMarker& marker,
-    const miacode::slide_judge::LaunchBeatIndex* launchBeats)
+    const miacode::slide_judge::LaunchBeatIndex* launchBeats, bool earlyPerfectFromHead)
 {
     PreviewSlideTimingGeometry result;
-    result.timing = miacode::slide_judge::timingForMarker(marker,launchBeats);
+    result.timing = miacode::slide_judge::timingForMarker(marker,launchBeats,earlyPerfectFromHead);
     if (!result.timing.valid) return result;
     if (marker.type == QLatin1String("wifi")) {
         if (marker.wifiLanePoints.size() != 3 || marker.wifiTrackAreaPoints.isEmpty()) return {};

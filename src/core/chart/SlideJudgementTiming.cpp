@@ -44,7 +44,7 @@ double LaunchBeatIndex::startSecondFor(const TimelineNoteMarker& marker) const
         ? *it : marker.second;
 }
 
-Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats)
+Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats, bool earlyPerfectFromHead)
 {
     Timing result;
     if (marker.type != QLatin1String("slide") && marker.type != QLatin1String("wifi")) return result;
@@ -86,7 +86,14 @@ Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* 
     // establishes whether the normal slide's extra fast interval applies.
     result.perfectStartSecond = judgement - (wifi ? halfWidth : std::max(17.0 * frame, halfWidth));
     result.perfectEndSecond = judgement + halfWidth;
-    result.brightnessCompleteSecond = std::max(result.brightnessStartSecond, result.perfectStartSecond);
+    result.fullBrightFromHead = earlyPerfectFromHead && result.usesLaunchBeat
+        && result.perfectStartSecond < result.brightnessStartSecond - 1e-9;
+    if (result.fullBrightFromHead) {
+        result.brightnessStartSecond = head;
+        result.brightnessCompleteSecond = head;
+    } else {
+        result.brightnessCompleteSecond = std::max(result.brightnessStartSecond, result.perfectStartSecond);
+    }
     return result;
 }
 

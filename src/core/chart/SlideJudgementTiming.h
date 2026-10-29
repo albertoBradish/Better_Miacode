@@ -22,6 +22,7 @@ struct Timing {
     double brightnessCompleteSecond = 0.0;
     double brightnessStartSecond = 0.0;
     bool usesLaunchBeat = false;
+    bool fullBrightFromHead = false;
 };
 
 // Only playable note heads at the same A-pad and chart instant count as a
@@ -34,7 +35,7 @@ private:
     std::array<QVector<double>,8> moments_;
 };
 
-Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats = nullptr);
+Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats = nullptr, bool earlyPerfectFromHead = false);
 // Selected-start-to-earliest-Perfect progress. If Perfect has already begun
 // at the selected start (star head or matching launch beat), light immediately.
 double brightnessProgress(const Timing& timing, double chartSecond);

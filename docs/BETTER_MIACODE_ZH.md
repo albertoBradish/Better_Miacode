@@ -1,5 +1,7 @@
 # Better Miacode 功能说明与验收边界
 
+better.8 为“有启动拍时从启动拍开始”新增子选项“启动拍前已进入 Perfect 时，从头拍全亮”。默认关闭；勾选后，符合条件的 slide 从原 star 头拍全亮并沿用正常判定消失。预览与视频导出均支持。
+
 better.7 修复部分 pp/qq 重叠路径的亮度跳段，新增“有启动拍时从启动拍开始”独立选项，预览和视频导出共用匹配规则。
 
 better.6 修正 Slide 补间的判定消失，并将全亮终点设为最早 Perfect 时刻；头拍时已经进入 Perfect 范围的情况直接全亮。
@@ -10,7 +12,7 @@ better.4 新增时间轴 Alt + 鼠标滚轮缩放，保留已有快捷键配置�
 
 Better Miacode 是操作体验改进版本，基线为 Team-MiaCode/MiaCode 的
 `main@7feadff91644fea4b1f8e2c1c0de71b3f35233da`。独立仓库不包含手序版提交。
-本文记录功能契约及分版本验证边界。当前目标版本为 `2.0.0-better.7`；下方 better.1～better.4 的历史验证结论不自动覆盖本次改动。better.7 的验证边界见 `docs/releases/better_7.md`；跨平台结果以对应平台 CI 和实际验收为准。
+本文记录功能契约及分版本验证边界。当前目标版本为 `2.0.0-better.8`；下方 better.1～better.4 的历史验证结论不自动覆盖本次改动。better.8 的验证边界见 `docs/releases/better_8.md`；跨平台结果以对应平台 CI 和实际验收为准。
 
 ## 分批功能
 

@@ -133,6 +133,7 @@ bool PreviewPreparedSceneCache::sync(const PreviewFrameState& state)
     nextKey.showSlideTracks = state.muriRenderOptions.showSlideTracks;
     nextKey.showSlideJudgementTiming = state.render.showSlideJudgementTiming;
     nextKey.slideTimingFromLaunchBeat = state.render.slideTimingFromLaunchBeat;
+    nextKey.slideTimingEarlyPerfectFromHead = state.render.slideTimingEarlyPerfectFromHead;
     nextKey.slideTimingLaunchBeatIdentity = state.render.slideTimingFromLaunchBeat
         ? reinterpret_cast<quintptr>(state.slideTimingLaunchBeats.get()) : 0;
     nextKey.slideEarlierSecondAndTextOnTop = state.render.slideEarlierSecondAndTextOnTop;
@@ -323,7 +324,7 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
                 );
                 if (state.render.showSlideJudgementTiming) {
                     slideLikeLayer_.entries.last().slideTimingGeometry =
-                        std::make_shared<const PreviewSlideTimingGeometry>(buildPreviewSlideTimingGeometry(marker,launchIndex));
+                        std::make_shared<const PreviewSlideTimingGeometry>(buildPreviewSlideTimingGeometry(marker,launchIndex,state.render.slideTimingEarlyPerfectFromHead));
                 }
                 appendPreparedMarkerEntry(
                     &judgeEffectLayer_,
