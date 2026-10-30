@@ -658,28 +658,42 @@ int main(int argc, char* argv[])
     logStartupStage("gui_application_ready");
 
     {
-        QStringList cjkUiFamilies;
-        const QString uiLanguageToken = PreferenceDocument::resolvedLanguageToken();
-        if (uiLanguageToken.startsWith(QStringLiteral("zh"))) {
-            cjkUiFamilies = QStringList{"Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC"};
-        } else if (uiLanguageToken.startsWith(QStringLiteral("ja"))) {
-            cjkUiFamilies = QStringList{"Yu Gothic UI", "Meiryo UI", "Meiryo", "Noto Sans CJK JP"};
-        }
-        if (!cjkUiFamilies.isEmpty()) {
-            const QStringList availableUiFamilies = QFontDatabase::families();
-            QFont cjkUiFont;
-            bool matched = false;
-            for (const QString& family : cjkUiFamilies) {
-                if (availableUiFamilies.contains(family, Qt::CaseInsensitive)) {
-                    cjkUiFont.setFamily(family);
-                    matched = true;
-                    break;
-                }
+        Q_INIT_RESOURCE(fonts);
+        const int bundledFontId = QFontDatabase::addApplicationFont(
+            QStringLiteral(":/fonts/alibaba_puhuiti_3_75_semibold.ttf"));
+        const QStringList bundledFamilies = QFontDatabase::applicationFontFamilies(bundledFontId);
+        if (!bundledFamilies.isEmpty()) {
+            QFont font = app.font();
+            font.setFamily(bundledFamilies.first());
+            font.setStyleName(QStringLiteral("75 SemiBold"));
+            font.setWeight(QFont::DemiBold);
+            font.setStyleStrategy(QFont::PreferAntialias);
+            font.setHintingPreference(QFont::PreferNoHinting);
+            app.setFont(font);
+        } else {
+            QStringList cjkUiFamilies;
+            const QString uiLanguageToken = PreferenceDocument::resolvedLanguageToken();
+            if (uiLanguageToken.startsWith(QStringLiteral("zh"))) {
+                cjkUiFamilies = QStringList{"Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC"};
+            } else if (uiLanguageToken.startsWith(QStringLiteral("ja"))) {
+                cjkUiFamilies = QStringList{"Yu Gothic UI", "Meiryo UI", "Meiryo", "Noto Sans CJK JP"};
             }
-            if (matched) {
-                cjkUiFont.setStyleStrategy(QFont::PreferAntialias);
-                cjkUiFont.setHintingPreference(QFont::PreferNoHinting);
-                app.setFont(cjkUiFont);
+            if (!cjkUiFamilies.isEmpty()) {
+                const QStringList availableUiFamilies = QFontDatabase::families();
+                QFont cjkUiFont;
+                bool matched = false;
+                for (const QString& family : cjkUiFamilies) {
+                    if (availableUiFamilies.contains(family, Qt::CaseInsensitive)) {
+                        cjkUiFont.setFamily(family);
+                        matched = true;
+                        break;
+                    }
+                }
+                if (matched) {
+                    cjkUiFont.setStyleStrategy(QFont::PreferAntialias);
+                    cjkUiFont.setHintingPreference(QFont::PreferNoHinting);
+                    app.setFont(cjkUiFont);
+                }
             }
         }
     }

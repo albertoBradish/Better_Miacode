@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file alias="fonts/alibaba_puhuiti_3_75_semibold.ttf">../assets/fonts/AlibabaPuHuiTi-3-75-SemiBold.ttf</file>
         <file alias="fonts/maple_mono_cn.ttf">../assets/fonts/MapleMonoNormalNL-CN-Regular.ttf</file>
         <file alias="fonts/xiaolai_mono.ttf">../assets/fonts/XiaolaiMono-Regular.subset.ttf</file>
     </qresource>
