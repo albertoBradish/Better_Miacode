@@ -668,6 +668,13 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_5.md') -Destin
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_6.md') -Destination $betterReleaseDocs
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_7.md') -Destination $betterReleaseDocs
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_8.md') -Destination $betterReleaseDocs
+Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_9.md') -Destination $betterReleaseDocs
+Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_10.md') -Destination $betterReleaseDocs
+Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination $DistDir
+$betterDemoParent = Join-Path $DistDir 'resources/demos'
+New-Item -ItemType Directory -Path $betterDemoParent -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'resources/demos/better10') -Destination $betterDemoParent -Recurse -Force
+
 
 $archiveFormats = $toolchainData.Package.ArchiveFormats
 if (!$archiveFormats -or $archiveFormats.Count -eq 0) {
