@@ -15,7 +15,8 @@ QtObject {
     property bool canTransform: false
     property bool canNormalize: false
     property bool canPlaySelection: false
-    property bool netEnabled: false
+    property bool netUploadEnabled: false
+    property bool renderModeMenuAvailable: false
     property bool commandsEnabled: true
 
     signal openRequested()
@@ -50,6 +51,7 @@ QtObject {
     signal closeDocumentRequested()
     signal audioSettingsRequested()
     signal previewSettingsRequested()
+    signal renderModeMenuRequested()
     // -1 / +1 along the preview's playback-rate ladder.
     signal previewRateStepRequested(int direction)
     signal unavailableFeatureRequested(string featureName)

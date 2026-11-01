@@ -64,6 +64,7 @@
 #include "app/MainEntrypoints.h"
 #include "app/CliRequest.h"
 #include "app/services/CliIntegration.h"
+#include "app/StartupArguments.h"
 
 namespace {
 
@@ -183,31 +184,6 @@ bool wantsCliVideoExport(const QStringList& arguments)
 bool wantsCliVideoExportWorker(const QStringList& arguments)
 {
     return arguments.contains(QStringLiteral("--export-video-worker"));
-}
-
-QString startupOpenTargetFromArguments(const QStringList& arguments)
-{
-    for (int index = 1; index < arguments.size(); ++index) {
-        const QString argument = arguments.at(index).trimmed();
-        if (argument.isEmpty()) {
-            continue;
-        }
-        if (argument == QStringLiteral("--")) {
-            if (index + 1 < arguments.size()) {
-                return arguments.at(index + 1);
-            }
-            return QString();
-        }
-        if (argument == QStringLiteral("--rhi")) {
-            ++index;
-            continue;
-        }
-        if (argument.startsWith('-')) {
-            continue;
-        }
-        return arguments.at(index);
-    }
-    return QString();
 }
 
 void appendAppShutdownRuntimeLog(const QString& action, const QString& payload = QString())
@@ -406,7 +382,7 @@ int main(int argc, char* argv[])
 #endif
     const QString startupOpenTarget =
         !cliVideoExportRequested && !cliVideoExportWorkerRequested
-            ? startupOpenTargetFromArguments(rawArgs)
+            ? miacode::app::entry::startupOpenTargetFromArguments(rawArgs)
             : QString();
 
 #ifdef Q_OS_WIN

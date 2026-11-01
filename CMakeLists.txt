@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.24)
 
 set(MIACODE_VERSION_MAJOR "2")
 set(MIACODE_VERSION_MINOR "0")
-set(MIACODE_VERSION_PATCH "0")
+set(MIACODE_VERSION_PATCH "1")
 # Single source of truth for the prerelease tag and package version. The
 # About dialog appends its compile date to this version at runtime.
-set(MIACODE_VERSION_PRERELEASE "better.9")
+set(MIACODE_VERSION_PRERELEASE "better.10")
 set(MIACODE_BUILD_LAYOUT_REVISION "2026-04-21-first-unification")
 set(MIACODE_VERSION "${MIACODE_VERSION_MAJOR}.${MIACODE_VERSION_MINOR}.${MIACODE_VERSION_PATCH}")
 set(MIACODE_VERSION_STRING "${MIACODE_VERSION}")
@@ -75,6 +75,7 @@ set(MIACODE_APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app.ico" CACHE
 set(MIACODE_MACOS_APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app.icns" CACHE FILEPATH "Optional application icon (.icns) for macOS bundles")
 option(MIACODE_BUILD_DEV_TOOLS "Build developer helper tools" OFF)
 option(MIACODE_BUILD_APP "Build the desktop application and its platform dependencies" ON)
+option(MIACODE_BUILD_BATCH_CLEANER "Build the standalone batch chart cleanup tool" ON)
 option(MIACODE_PREVIEW_MULTIMEDIA "Enable QVideoFrame input in the shared preview" ${MIACODE_BUILD_APP})
 
 # External preview hosts configure only the chart/scene/Quick dependency closure.
@@ -526,6 +527,8 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/ui/tools/ChartToolsModel.cpp
     src/app/ui/preferences/LocaleService.h
     src/app/ui/preferences/LocaleService.cpp
+    src/app/ui/preferences/ApplicationMenuTranslation.h
+    src/app/ui/preferences/ApplicationMenuTranslation.cpp
     src/app/ui/preferences/AppBackgroundSettings.h
     src/app/ui/preferences/AppBackgroundSettings.cpp
     src/app/ui/theme/ThemeVariantResolver.h
@@ -655,6 +658,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/components/AppSlider.qml
     src/app/ui/components/AppScrollBar.qml
     src/app/ui/components/AppMenu.qml
+    src/app/ui/components/MajnetActionsMenu.qml
     src/app/ui/components/AppMenuAction.qml
     src/app/ui/components/FloatingCard.qml
     src/app/ui/components/WindowBackground.qml
@@ -722,6 +726,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/editor/BookmarkList.qml
     src/app/ui/timeline/BottomPanel.qml
     src/app/ui/timeline/BottomTabBar.qml
+    src/app/ui/timeline/TimelineZoomControl.qml
     src/app/ui/timeline/TimelineZoomMenu.qml
     src/app/ui/timeline/TimelineSettingsMenu.qml
     src/app/ui/preview/PreviewPane.qml
@@ -774,6 +779,8 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/more-fill.svg
     src/app/ui/resources/icons/folder-open.svg
     src/app/ui/resources/icons/folder-arrow-right.svg
+    src/app/ui/resources/icons/globe.svg
+    src/app/ui/resources/icons/wand.svg
     src/app/ui/resources/icons/save.svg
     src/app/ui/resources/icons/save-multiple.svg
     src/app/ui/resources/icons/undo.svg
@@ -961,6 +968,7 @@ if (WIN32)
     target_link_libraries(MiaCode PRIVATE
         Advapi32     # Windows Credential Manager
         Shell32      # Unicode command-line arguments
+        Crypt32      # Current-user DPAPI encryption
         winmm        # timeBeginPeriod for preview frame pacing
         d3d11        # Startup D3D11 probe (startup_diagnostics_win32.cpp)
         User32       # RegisterPowerSettingNotification
@@ -1041,12 +1049,16 @@ add_custom_command(TARGET MiaCode POST_BUILD
     VERBATIM
 )
 
+include(cmake/MiaCodeNativeFileDialogs.cmake)
+miacode_enable_native_file_dialogs(MiaCode)
+
 if (APPLE)
     target_sources(MiaCode PRIVATE
         src/app/ui/chrome/NativeWindowThemeMac.h
         src/app/ui/chrome/NativeWindowThemeMac.mm
         src/app/ui/chrome/WindowChrome.mm
         src/app/ui/pet/PetNativeWindowMac.mm
+        src/app/ui/preferences/ApplicationMenuTranslationMac.mm
     )
     target_link_libraries(MiaCode PRIVATE "-framework AppKit" "-framework QuartzCore")
 endif()
@@ -1159,6 +1171,10 @@ if (WIN32)
     if (EXISTS "${MIACODE_APP_ICON}" AND DEFINED MIACODE_APP_RC)
         target_sources(MiaCodeLauncher PRIVATE "${MIACODE_APP_RC}")
     endif()
+endif()
+
+if (MIACODE_BUILD_BATCH_CLEANER)
+    include(cmake/BatchCleaner.cmake)
 endif()
 
 if (MIACODE_BUILD_DEV_TOOLS)

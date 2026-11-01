@@ -1,7 +1,7 @@
+#include "app/services/FileDialogPreferences.h"
 #include "common/LocalizedText.h"
 
 #include "app/ui/export/CoverExportSession.h"
-#include "export/cover_export/CoverBatchExportPolicy.h"
 #include "app/ui/document/DifficultyOptions.h"
 #include "app/ui/preferences/LocaleService.h"
 
@@ -212,11 +212,6 @@ double CoverExportSession::activeChartFrameSeconds() const
 }
 
 QVariantList CoverExportSession::builtinPresets() const
-{
-    return builtinPresetChoices();
-}
-
-QVariantList CoverExportSession::builtinPresetChoices()
 {
     return {
         QVariantMap{{QStringLiteral("id"), QStringLiteral("card")},
@@ -469,14 +464,10 @@ void CoverExportSession::selectDifficulty(int difficultyId)
 
 void CoverExportSession::seedFromDifficulty(int difficultyId)
 {
-    seedFromTask(exportEngine_.buildSeedTask(difficultyId));
-}
-
-void CoverExportSession::seedFromTask(const VideoExportTask& nextTask)
-{
     commitActiveLayerFrameSeconds();
     stopAndDetachLiveChartScene();
     setBusy(true);
+    const VideoExportTask nextTask = exportEngine_.buildSeedTask(difficultyId);
     const bool chartChanged = task_.chartPath != nextTask.chartPath;
     const bool loadProjectSettings = chartChanged || !hasLoadedPreferences_;
     if (chartChanged) flushComposition();
@@ -520,11 +511,7 @@ void CoverExportSession::seedFromTask(const VideoExportTask& nextTask)
         saved.remove(QStringLiteral("outputFile"));
         saved.remove(QStringLiteral("output"));
         if (!saved.isEmpty()) {
-            if (batchExportMode_) {
-                applyCompositionJsonInternal(saved, false, false);
-            } else {
-                applyCompositionJson(saved, false);
-            }
+            applyCompositionJson(saved, false);
         }
         hasLoadedPreferences_ = true;
     }
@@ -579,7 +566,7 @@ void CoverExportSession::seedFromTask(const VideoExportTask& nextTask)
     // Warm the secondary capture surface without making it a prerequisite for
     // the live preview. By the time the user switches away from the active
     // chart frame, the surface has had normal event-loop time to initialize.
-    if (!batchExportMode_ && chartFrameAvailable_ && !visibleChartFrames.isEmpty() && frameRenderer_ != nullptr) {
+    if (chartFrameAvailable_ && !visibleChartFrames.isEmpty() && frameRenderer_ != nullptr) {
         frameRenderer_->prepareCaptureWindow(
             qBound(512, qMax(outputWidth(), outputHeight()), 2048),
             activeChartFrameSeconds());
@@ -646,7 +633,6 @@ bool CoverExportSession::renderChartFrame(miacode::cover_export::CoverLayer* lay
 
 void CoverExportSession::syncPlaybackFromActiveLayer()
 {
-    if (batchExportMode_) return;
     if (playback_ == nullptr) {
         return;
     }
@@ -691,7 +677,7 @@ void CoverExportSession::onPlaybackReachedEnd()
     commitActiveLayerFrameSeconds();
 }
 
-bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx, bool reportErrors)
+bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx)
 {
     if (!chartFrameAvailable_ || layout_ == nullptr) {
         return true;
@@ -704,7 +690,7 @@ bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx, bool repo
             return false;
         }
         layer->setFrameSeconds(frame.seconds);
-        if (!renderChartFrame(layer, sidePx, reportErrors)) {
+        if (!renderChartFrame(layer, sidePx, true)) {
             return false;
         }
         if (layer->frameBgUsesPv() && !pvMediaPath_.isEmpty()) {
@@ -714,10 +700,8 @@ bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx, bool repo
             const QImage pvFrame = miacode::cover_export::CoverPvFrameSource::decodeFrame(
                 pvMediaPath_, frame.seconds, sidePx, &error);
             if (pvFrame.isNull()) {
-                if (reportErrors) {
-                    notifyError(miacode::localizedText("cover.chart_frame"),
-                                miacode::localizedText("cover.could_not_render_the_chart"), error);
-                }
+                notifyError(miacode::localizedText("cover.chart_frame"),
+                            miacode::localizedText("cover.could_not_render_the_chart"), error);
                 return false;
             }
             layout_->setLayerPvFrame(layer->key(), pvFrame);
@@ -728,7 +712,6 @@ bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx, bool repo
 
 void CoverExportSession::requestPvFrame(miacode::cover_export::CoverLayer* layer)
 {
-    if (batchExportMode_) return;
     if (layer == nullptr || layout_ == nullptr || layer->kind() != QStringLiteral("chartFrame")) {
         return;
     }
@@ -812,9 +795,13 @@ void CoverExportSession::addImageLayer()
 {
     miacode::FileRequest request;
     request.title = miacode::localizedText("cover.choose_image");
+    request.startPath = miacode::file_dialog_preferences::chartDirectory(
+        miacode::file_dialog_preferences::ChartPurpose::CoverImage, task_.chartPath);
     request.nameFilters = {miacode::localizedText("cover.images_png_jpg_jpeg_bmp")};
-    uiRequests_->requestFile(request, [this](const QString& path) {
-        if (path.isEmpty() || layout_ == nullptr) return;
+    uiRequests_->requestFile(request, [this, chartPath = task_.chartPath, generation = sourceGeneration_](const QString& path) {
+        if (path.isEmpty() || layout_ == nullptr || generation != sourceGeneration_) return;
+        miacode::file_dialog_preferences::rememberChartFile(
+            miacode::file_dialog_preferences::ChartPurpose::CoverImage, chartPath, path);
         if (auto* layer = layout_->addImageLayer(path)) {
             selectLayerKey(layer->key());
             persistComposition();
@@ -912,11 +899,14 @@ void CoverExportSession::browseActiveLayerImage()
     if (layer == nullptr || layer->kind() != QStringLiteral("image")) return;
     miacode::FileRequest request;
     request.title = miacode::localizedText("cover.choose_image");
-    request.startPath = QFileInfo(layer->imagePath()).absolutePath();
+    request.startPath = miacode::file_dialog_preferences::chartDirectory(
+        miacode::file_dialog_preferences::ChartPurpose::CoverImage, task_.chartPath);
     request.nameFilters = {miacode::localizedText("cover.images_png_jpg_jpeg_bmp")};
-    uiRequests_->requestFile(request, [this](const QString& path) {
-        if (path.isEmpty()) return;
-        if (auto* active = activeCoverLayer(); active != nullptr && active->kind() == QStringLiteral("image")) {
+    uiRequests_->requestFile(request, [this, chartPath = task_.chartPath, generation = sourceGeneration_, layerKey = layer->key()](const QString& path) {
+        if (path.isEmpty() || generation != sourceGeneration_ || layout_ == nullptr) return;
+        miacode::file_dialog_preferences::rememberChartFile(
+            miacode::file_dialog_preferences::ChartPurpose::CoverImage, chartPath, path);
+        if (auto* active = layout_->layer(layerKey); active != nullptr && active->kind() == QStringLiteral("image")) {
             active->setImagePath(path);
             persistComposition();
         }
@@ -927,9 +917,11 @@ void CoverExportSession::requestFont(bool displayFont, bool textLayerFont)
 {
     miacode::FileRequest request;
     request.title = miacode::localizedText("card_font.import");
+    request.startPath = miacode::file_dialog_preferences::recentDirectory(miacode::file_dialog_preferences::Purpose::CoverFont);
     request.nameFilters = {miacode::localizedText("file_filter.font")};
     uiRequests_->requestFile(request, [this, displayFont, textLayerFont](const QString& path) {
         if (path.isEmpty()) return;
+        miacode::file_dialog_preferences::rememberFile(miacode::file_dialog_preferences::Purpose::CoverFont, path);
         const auto result = miacode::video_export::importFontFileIntoLibrary(path, miacode::app_preferences::fontLibraryDirectory());
         if (result.path.isEmpty()) {
             notifyError(miacode::localizedText("card_font.import"),
@@ -1260,10 +1252,13 @@ void CoverExportSession::browseBackgroundImage()
 {
     miacode::FileRequest request;
     request.title = miacode::localizedText("cover.choose_background_image");
-    request.startPath = QFileInfo(backgroundPath_).absolutePath();
+    request.startPath = miacode::file_dialog_preferences::chartDirectory(
+        miacode::file_dialog_preferences::ChartPurpose::CoverBackground, task_.chartPath);
     request.nameFilters = {miacode::localizedText("cover.images_png_jpg_jpeg_bmp")};
-    uiRequests_->requestFile(request, [this, generation = sourceGeneration_](const QString& path) {
+    uiRequests_->requestFile(request, [this, chartPath = task_.chartPath, generation = sourceGeneration_](const QString& path) {
         if (path.isEmpty() || sourceGeneration_ != generation) return;
+        miacode::file_dialog_preferences::rememberChartFile(
+            miacode::file_dialog_preferences::ChartPurpose::CoverBackground, chartPath, path);
         backgroundPath_ = path;
         backgroundMode_ = miacode::cover_export::CoverBackgroundMode::Custom;
         backgroundDirty_ = true;
@@ -1446,7 +1441,6 @@ bool CoverExportSession::applyCompositionJsonInternal(const QJsonObject& root,
             layout_->clearLayerImage(frame->key());
         }
         if (!chartFrameAvailable_) {
-            if (batchExportMode_ && !layout_->visibleChartFrameLayers().isEmpty()) return false;
             for (auto* frame : layout_->chartFrameLayers()) {
                 frame->setVisible(false);
             }
@@ -1525,14 +1519,12 @@ bool CoverExportSession::applyCompositionJson(const QJsonObject& root, bool repo
 
 void CoverExportSession::persistComposition()
 {
-    if (batchExportMode_) return;
     compositionDirty_ = true;
     compositionSaveTimer_.start();
 }
 
 void CoverExportSession::flushComposition()
 {
-    if (batchExportMode_) return;
     compositionSaveTimer_.stop();
     if (compositionDirty_
         && miacode::app_preferences::coverExportPreferences().savePreferences(sharedCompositionJson())) {
@@ -1555,7 +1547,9 @@ void CoverExportSession::saveLayout()
 {
     miacode::FileRequest request;
     request.title = miacode::localizedText("cover.save_cover_layout");
-    request.startPath = QStringLiteral("cover-layout.miacover");
+    const QString directory = miacode::file_dialog_preferences::recentDirectory(
+        miacode::file_dialog_preferences::Purpose::CoverLayout, QFileInfo(recentLayoutFiles_.value(0)).absolutePath());
+    request.startPath = QDir(directory).filePath(QStringLiteral("cover-layout.miacover"));
     request.nameFilters = {miacode::localizedText("cover.cover_layout_miacover")};
     request.saveMode = true;
     uiRequests_->requestFile(request, [this](QString path) {
@@ -1568,6 +1562,7 @@ void CoverExportSession::saveLayout()
                         miacode::localizedText("cover.could_not_write_the_layout"), path);
             return;
         }
+        miacode::file_dialog_preferences::rememberFile(miacode::file_dialog_preferences::Purpose::CoverLayout, path);
         miacode::app_preferences::coverExportPreferences().pushRecentFile(path);
         refreshSavedLists();
     });
@@ -1577,8 +1572,13 @@ void CoverExportSession::importLayout()
 {
     miacode::FileRequest request;
     request.title = miacode::localizedText("cover.import_cover_layout");
+    request.startPath = miacode::file_dialog_preferences::recentDirectory(
+        miacode::file_dialog_preferences::Purpose::CoverLayout, QFileInfo(recentLayoutFiles_.value(0)).absolutePath());
     request.nameFilters = {miacode::localizedText("cover.cover_layout_miacover")};
-    uiRequests_->requestFile(request, [this](const QString& path) { openRecentLayout(path); });
+    uiRequests_->requestFile(request, [this](const QString& path) {
+        miacode::file_dialog_preferences::rememberFile(miacode::file_dialog_preferences::Purpose::CoverLayout, path);
+        openRecentLayout(path);
+    });
 }
 
 void CoverExportSession::openRecentLayout(const QString& path)

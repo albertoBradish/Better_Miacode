@@ -372,6 +372,7 @@ private:
         const miacode::preview_audio::PreviewAudioCompletion& completion);
     void handlePreviewPlayingRetainedSeekCompletion(
         const miacode::preview_audio::PreviewAudioCompletion& completion);
+    void noticePlaybackWithoutAudio(int nativeErrorCode);
     void scheduleDeferredPreviewUiTail(
         bool applyPreviewVisualSettings,
         bool applyDeferredAnalysis,

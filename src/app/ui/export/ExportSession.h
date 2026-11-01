@@ -90,6 +90,7 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     // and is remembered per chart; the segment length is fixed.
     Q_PROPERTY(bool introPvPreview READ introPvPreview WRITE setIntroPvPreview NOTIFY introChanged)
     Q_PROPERTY(double introPvStartSeconds READ introPvStartSeconds WRITE setIntroPvStartSeconds NOTIFY introChanged)
+    Q_PROPERTY(double introPvBrightness READ introPvBrightness WRITE setIntroPvBrightness NOTIFY introChanged)
     Q_PROPERTY(double introPvSegmentSeconds READ introPvSegmentSeconds CONSTANT)
     // How long the segment's music plays into the intro (it fades out under the wipe).
     Q_PROPERTY(double introPvMusicSeconds READ introPvMusicSeconds CONSTANT)
@@ -115,8 +116,6 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(bool rangePlaybackEnabled READ rangePlaybackEnabled WRITE setRangePlaybackEnabled NOTIFY rangePlaybackStateChanged)
 
     // Batch
-    Q_PROPERTY(QString batchCoverPreset READ batchCoverPreset WRITE setBatchCoverPreset NOTIFY batchChanged)
-    Q_PROPERTY(QVariantList batchCoverPresetOptions READ batchCoverPresetOptions NOTIFY batchChanged)
     Q_PROPERTY(QStringList chartDirectories READ chartDirectories NOTIFY batchChanged)
     Q_PROPERTY(QVariantList batchDifficultyChecks READ batchDifficultyChecks NOTIFY batchChanged)
     Q_PROPERTY(QString batchOutputDirectory READ batchOutputDirectory WRITE setBatchOutputDirectory NOTIFY batchChanged)
@@ -196,6 +195,7 @@ public:
     QString introFontBodyPath() const { return task_.intro.fontBodyPath; }
     bool introPvPreview() const { return task_.intro.pvPreview; }
     double introPvStartSeconds() const { return task_.intro.pvPreviewStartSeconds; }
+    double introPvBrightness() const { return task_.intro.pvPreviewBrightness; }
     double introPvSegmentSeconds() const;
     double introPvMusicSeconds() const;
     bool introPvVideoAvailable() const;
@@ -218,8 +218,6 @@ public:
 
     QStringList chartDirectories() const { return chartDirectories_; }
     QVariantList batchDifficultyChecks() const;
-    QString batchCoverPreset() const { return batchCoverPreset_; }
-    QVariantList batchCoverPresetOptions() const;
     QString batchOutputDirectory() const { return batchOutputDirectory_; }
 
     void enter(int previousActiveDifficultyId) override;
@@ -290,13 +288,13 @@ public:
     void setIntroFontBodyPath(const QString& path);
     void setIntroPvPreview(bool value);
     void setIntroPvStartSeconds(double seconds);
+    void setIntroPvBrightness(double value);
     void setIntroPvSegmentDragging(bool dragging);
     void setIntroAuditionLoop(bool loop);
     void setIntroSoundIndex(int index);
     void setIntroSoundFileName(const QString& fileName);
     void setExportStartSeconds(double value);
     void setExportEndSeconds(double value);
-    void setBatchCoverPreset(const QString& preset);
     void setBatchOutputDirectory(const QString& path);
 
 signals:
