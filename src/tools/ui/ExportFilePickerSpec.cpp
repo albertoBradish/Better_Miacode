@@ -8,6 +8,10 @@
 #include "app/services/ShellNotifications.h"
 #include "app/services/UiRequestService.h"
 #include "app/services/VideoExportPreferences.h"
+#include "common/RuntimePaths.h"
+#include "export/video_export/VideoExportSettings.h"
+#include <QFile>
+#include <QJsonDocument>
 
 #include <QDir>
 #include <QFileInfo>
@@ -54,9 +58,8 @@ public:
 };
 }
 
-// ExportSession reads v1's batch history from the native QSettings store,
-// which QSettings::setPath cannot redirect. Set the developer's real values
-// aside for the run and put them back afterwards, even when a check fails.
+// Legacy picker history is confined to the marked Better runtime. Preserve
+// that isolated test store; never read or alter the standard app registry.
 class LegacyBatchHistoryGuard
 {
 public:
@@ -84,7 +87,7 @@ private:
         return {QStringLiteral("batch_video_export_dialog/last_chart_directory"),
                 QStringLiteral("batch_video_export_dialog/last_output_directory")};
     }
-    QSettings store_{QStringLiteral("fanfaredash"), QStringLiteral("MiaCode")};
+    QSettings store_{miacode::runtime_paths::configFile("export-session.ini"), QSettings::IniFormat};
     QHash<QString, QVariant> saved_;
 };
 
@@ -362,6 +365,58 @@ ApplicationWindow {
         session.enter(5);
         wait();
         expect(session.batchOutputDirectory().isEmpty(), "a cleared output does not revive v1's history");
+    }
+    {
+        miacode::ui::ExportSession session(notifications, historyRequests, progress, appearance, seedSlot, preview);
+        seed.task.contentDurationSeconds = 60;
+        session.enter(5); wait();
+        session.setCoverPresetChecked(QStringLiteral("builtin:card"), true, false);
+        session.setCoverPresetChecked(QStringLiteral("builtin:pure_chart_frame"), true, false);
+        session.setCoverPresetChecked(QStringLiteral("builtin:card"), true, false);
+        expect(session.singleCoverPresets().size() == 2, "multiple covers are selected without duplicates");
+        session.setCoverPresetChecked(QStringLiteral("builtin:dual_chart_frames"), true, true);
+        const int widescreen = 5;
+        session.setResolutionIndex(widescreen);
+        session.setSizePresetIndex(4);
+        expect(session.outputWidth() == 854 && session.outputHeight() == 480 && !session.introPvPreview(), "30 MB enforces 480p with the selected aspect and no PV intro");
+        session.setResolutionIndex(8);
+        expect(session.outputHeight() == 480, "30 MB retains 480p when another height is selected");
+        session.setSizePresetIndex(5);
+        session.setResolutionIndex(20);
+        session.setShowCpsHud(true);
+        session.saveVideoTemplate(QStringLiteral("Review 4K"));
+        auto templates = miacode::app_preferences::loadDialogPreferences().value("templates").toObject();
+        const auto saved = templates.value("Review 4K").toObject();
+        expect(saved.value("resolution_width").toInt() == 3840 && saved.value("showCpsHud").toBool()
+            && !saved.contains("outputPath") && !saved.contains("chartPath") && !saved.contains("exportStartSeconds"),
+            "templates retain display and encoding settings while excluding chart, range and destination");
+        session.setOutputPath(QStringLiteral("keep-this-output.mp4"));
+        session.setExportRangeSeconds(10, 25);
+        const double rangeStart = session.exportStartSeconds(), rangeEnd = session.exportEndSeconds();
+        session.setResolutionIndex(0);
+        session.setCoverPresetChecked({}, false, false);
+        session.applyVideoTemplate(QStringLiteral("Review 4K"));
+        expect(session.outputWidth() == 3840 && session.singleCoverPresets().size() == 2
+            && session.outputPath() == QLatin1String("keep-this-output.mp4")
+            && session.exportStartSeconds() == rangeStart && session.exportEndSeconds() == rangeEnd,
+            "applying a template preserves output and range while restoring multiple covers");
+        session.renameVideoTemplate(QStringLiteral("Review 4K"), QStringLiteral("Archive 4K"));
+        expect(session.videoTemplates().last().toMap().value("name").toString() == QLatin1String("Archive 4K"), "template rename persists");
+        const QString templatePath = parent.filePath(QStringLiteral("portable.miacode.json"));
+        session.exportVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(templatePath));
+        QFile portable(templatePath); expect(portable.open(QIODevice::ReadOnly), "template file is written");
+        const auto wrapper = QJsonDocument::fromJson(portable.readAll()).object(); portable.close();
+        expect(wrapper.value("version").toInt() == 1 && wrapper.value("kind").toString() == QLatin1String("better-miacode-video-template"), "template file has an explicit format and version");
+        session.setResolutionIndex(0);
+        session.importVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(templatePath));
+        expect(session.outputWidth() == 3840 && session.videoTemplates().size() >= 2, "portable template imports, applies and joins the saved list");
+        auto invalid = saved; invalid.insert("outlineVariant", 99);
+        auto task = seed.task;
+        expect(!miacode::video_export::applyVideoExportTemplateSettings(invalid, &task), "invalid enum values cannot enter a template task");
+        session.removeVideoTemplate(QStringLiteral("Archive 4K"));
+        expect(!miacode::app_preferences::loadDialogPreferences().value("templates").toObject().contains("Archive 4K"), "template deletion persists");
+        for (const auto& row : session.singleCoverPresetOptions())
+            expect(row.toMap().value("label").toString() != QLatin1String("dialog.batch_export.cover_none"), "cover-off label is translated");
     }
     miacode::FileRequest save;
     save.saveMode = true;

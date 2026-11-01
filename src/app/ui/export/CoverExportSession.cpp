@@ -2,6 +2,7 @@
 #include "common/LocalizedText.h"
 
 #include "app/ui/export/CoverExportSession.h"
+#include "export/cover_export/CoverBatchExportPolicy.h"
 #include "app/ui/document/DifficultyOptions.h"
 #include "app/ui/preferences/LocaleService.h"
 
@@ -212,6 +213,11 @@ double CoverExportSession::activeChartFrameSeconds() const
 }
 
 QVariantList CoverExportSession::builtinPresets() const
+{
+    return builtinPresetChoices();
+}
+
+QVariantList CoverExportSession::builtinPresetChoices()
 {
     return {
         QVariantMap{{QStringLiteral("id"), QStringLiteral("card")},
@@ -464,10 +470,14 @@ void CoverExportSession::selectDifficulty(int difficultyId)
 
 void CoverExportSession::seedFromDifficulty(int difficultyId)
 {
+    seedFromTask(exportEngine_.buildSeedTask(difficultyId));
+}
+
+void CoverExportSession::seedFromTask(const VideoExportTask& nextTask)
+{
     commitActiveLayerFrameSeconds();
     stopAndDetachLiveChartScene();
     setBusy(true);
-    const VideoExportTask nextTask = exportEngine_.buildSeedTask(difficultyId);
     const bool chartChanged = task_.chartPath != nextTask.chartPath;
     const bool loadProjectSettings = chartChanged || !hasLoadedPreferences_;
     if (chartChanged) flushComposition();
@@ -511,7 +521,11 @@ void CoverExportSession::seedFromDifficulty(int difficultyId)
         saved.remove(QStringLiteral("outputFile"));
         saved.remove(QStringLiteral("output"));
         if (!saved.isEmpty()) {
-            applyCompositionJson(saved, false);
+            if (batchExportMode_) {
+                applyCompositionJsonInternal(saved, false, false);
+            } else {
+                applyCompositionJson(saved, false);
+            }
         }
         hasLoadedPreferences_ = true;
     }
@@ -566,7 +580,7 @@ void CoverExportSession::seedFromDifficulty(int difficultyId)
     // Warm the secondary capture surface without making it a prerequisite for
     // the live preview. By the time the user switches away from the active
     // chart frame, the surface has had normal event-loop time to initialize.
-    if (chartFrameAvailable_ && !visibleChartFrames.isEmpty() && frameRenderer_ != nullptr) {
+    if (!batchExportMode_ && chartFrameAvailable_ && !visibleChartFrames.isEmpty() && frameRenderer_ != nullptr) {
         frameRenderer_->prepareCaptureWindow(
             qBound(512, qMax(outputWidth(), outputHeight()), 2048),
             activeChartFrameSeconds());
@@ -633,6 +647,7 @@ bool CoverExportSession::renderChartFrame(miacode::cover_export::CoverLayer* lay
 
 void CoverExportSession::syncPlaybackFromActiveLayer()
 {
+    if (batchExportMode_) return;
     if (playback_ == nullptr) {
         return;
     }
@@ -677,7 +692,7 @@ void CoverExportSession::onPlaybackReachedEnd()
     commitActiveLayerFrameSeconds();
 }
 
-bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx)
+bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx, bool reportErrors)
 {
     if (!chartFrameAvailable_ || layout_ == nullptr) {
         return true;
@@ -690,7 +705,7 @@ bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx)
             return false;
         }
         layer->setFrameSeconds(frame.seconds);
-        if (!renderChartFrame(layer, sidePx, true)) {
+        if (!renderChartFrame(layer, sidePx, reportErrors)) {
             return false;
         }
         if (layer->frameBgUsesPv() && !pvMediaPath_.isEmpty()) {
@@ -700,8 +715,10 @@ bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx)
             const QImage pvFrame = miacode::cover_export::CoverPvFrameSource::decodeFrame(
                 pvMediaPath_, frame.seconds, sidePx, &error);
             if (pvFrame.isNull()) {
-                notifyError(miacode::localizedText("cover.chart_frame"),
-                            miacode::localizedText("cover.could_not_render_the_chart"), error);
+                if (reportErrors) {
+                    notifyError(miacode::localizedText("cover.chart_frame"),
+                                miacode::localizedText("cover.could_not_render_the_chart"), error);
+                }
                 return false;
             }
             layout_->setLayerPvFrame(layer->key(), pvFrame);
@@ -712,6 +729,7 @@ bool CoverExportSession::renderVisibleChartFramesForExport(int sidePx)
 
 void CoverExportSession::requestPvFrame(miacode::cover_export::CoverLayer* layer)
 {
+    if (batchExportMode_) return;
     if (layer == nullptr || layout_ == nullptr || layer->kind() != QStringLiteral("chartFrame")) {
         return;
     }
@@ -1441,6 +1459,7 @@ bool CoverExportSession::applyCompositionJsonInternal(const QJsonObject& root,
             layout_->clearLayerImage(frame->key());
         }
         if (!chartFrameAvailable_) {
+            if (batchExportMode_ && !layout_->visibleChartFrameLayers().isEmpty()) return false;
             for (auto* frame : layout_->chartFrameLayers()) {
                 frame->setVisible(false);
             }
@@ -1519,12 +1538,14 @@ bool CoverExportSession::applyCompositionJson(const QJsonObject& root, bool repo
 
 void CoverExportSession::persistComposition()
 {
+    if (batchExportMode_) return;
     compositionDirty_ = true;
     compositionSaveTimer_.start();
 }
 
 void CoverExportSession::flushComposition()
 {
+    if (batchExportMode_) return;
     compositionSaveTimer_.stop();
     if (compositionDirty_
         && miacode::app_preferences::coverExportPreferences().savePreferences(sharedCompositionJson())) {

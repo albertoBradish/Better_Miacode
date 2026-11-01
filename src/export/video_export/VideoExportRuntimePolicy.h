@@ -12,6 +12,9 @@ enum class VideoExportSizePreset {
     Compact,
     UltraCompactWithPv,
     UltraCompact,
+    Target30Mb,
+    Target100Mb,
+    Target200Mb,
 };
 
 constexpr int kVideoExportWorkerMaxCrashRetries = 1;
@@ -33,6 +36,8 @@ struct VideoExportSizePolicy {
 
 VideoExportSizePolicy videoExportSizePolicy(VideoExportSizePreset preset);
 QString videoExportSizePresetToken(VideoExportSizePreset preset);
+qint64 videoExportTargetBytes(VideoExportSizePreset preset);
+qint64 videoExportTargetBitrateKbps(VideoExportSizePreset preset, double seconds, int audioKbps);
 int effectiveVideoExportAudioBitrateKbps(VideoExportSizePreset preset, int requestedKbps);
 int effectiveVideoExportX264Crf(VideoExportSizePreset preset, int baseCrf);
 

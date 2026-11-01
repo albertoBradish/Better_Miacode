@@ -41,6 +41,9 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
 
     // Output
     Q_PROPERTY(QString singleCoverPreset READ singleCoverPreset WRITE setSingleCoverPreset NOTIFY outputChanged)
+    Q_PROPERTY(QStringList singleCoverPresets READ singleCoverPresets NOTIFY outputChanged)
+    Q_PROPERTY(QStringList batchCoverPresets READ batchCoverPresets NOTIFY batchChanged)
+    Q_PROPERTY(QVariantList videoTemplates READ videoTemplates NOTIFY templatesChanged)
     Q_PROPERTY(QVariantList singleCoverPresetOptions READ singleCoverPresetOptions NOTIFY outputChanged)
     Q_PROPERTY(QString outputPath READ outputPath WRITE setOutputPath NOTIFY outputChanged)
     Q_PROPERTY(int outputWidth READ outputWidth NOTIFY outputChanged)
@@ -56,7 +59,7 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(int presetIndex READ presetIndex WRITE setPresetIndex NOTIFY outputChanged)
     Q_PROPERTY(QVariantList presetOptions READ presetOptions NOTIFY localeLabelsChanged)
     Q_PROPERTY(int sizePresetIndex READ sizePresetIndex WRITE setSizePresetIndex NOTIFY outputChanged)
-    Q_PROPERTY(QVariantList sizePresetOptions READ sizePresetOptions NOTIFY localeLabelsChanged)
+    Q_PROPERTY(QVariantList sizePresetOptions READ sizePresetOptions NOTIFY outputChanged)
 
     Q_PROPERTY(bool showObjectStatsHud READ showObjectStatsHud WRITE setShowObjectStatsHud NOTIFY videoChanged)
     Q_PROPERTY(bool showChartInfoHud READ showChartInfoHud WRITE setShowChartInfoHud NOTIFY videoChanged)
@@ -116,6 +119,8 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(bool rangePlaybackEnabled READ rangePlaybackEnabled WRITE setRangePlaybackEnabled NOTIFY rangePlaybackStateChanged)
 
     // Batch
+    Q_PROPERTY(QString batchCoverPreset READ batchCoverPreset WRITE setBatchCoverPreset NOTIFY batchChanged)
+    Q_PROPERTY(QVariantList batchCoverPresetOptions READ batchCoverPresetOptions NOTIFY batchChanged)
     Q_PROPERTY(QStringList chartDirectories READ chartDirectories NOTIFY batchChanged)
     Q_PROPERTY(QVariantList batchDifficultyChecks READ batchDifficultyChecks NOTIFY batchChanged)
     Q_PROPERTY(QString batchOutputDirectory READ batchOutputDirectory WRITE setBatchOutputDirectory NOTIFY batchChanged)
@@ -145,6 +150,16 @@ public:
     bool exportRunning() const { return exportRunning_; }
 
     QString singleCoverPreset() const { return singleCoverPreset_; }
+    QStringList singleCoverPresets() const { return singleCoverPresets_; }
+    QStringList batchCoverPresets() const { return batchCoverPresets_; }
+    QVariantList videoTemplates() const;
+    Q_INVOKABLE void setCoverPresetChecked(const QString& token, bool checked, bool batch);
+    Q_INVOKABLE void saveVideoTemplate(const QString& name);
+    Q_INVOKABLE void applyVideoTemplate(const QString& name);
+    Q_INVOKABLE void renameVideoTemplate(const QString& oldName, const QString& newName);
+    Q_INVOKABLE void removeVideoTemplate(const QString& name);
+    Q_INVOKABLE void importVideoTemplate();
+    Q_INVOKABLE void exportVideoTemplate();
     QVariantList singleCoverPresetOptions() const;
     void setSingleCoverPreset(const QString& preset);
     QString outputPath() const { return task_.outputPath; }
@@ -218,6 +233,8 @@ public:
 
     QStringList chartDirectories() const { return chartDirectories_; }
     QVariantList batchDifficultyChecks() const;
+    QString batchCoverPreset() const { return batchCoverPreset_; }
+    QVariantList batchCoverPresetOptions() const;
     QString batchOutputDirectory() const { return batchOutputDirectory_; }
 
     void enter(int previousActiveDifficultyId) override;
@@ -295,9 +312,11 @@ public:
     void setIntroSoundFileName(const QString& fileName);
     void setExportStartSeconds(double value);
     void setExportEndSeconds(double value);
+    void setBatchCoverPreset(const QString& preset);
     void setBatchOutputDirectory(const QString& path);
 
 signals:
+    void templatesChanged();
     void pageSessionActiveChanged();
     void introPreviewStateChanged();
     void selectedDifficultyIdChanged();
@@ -318,6 +337,8 @@ signals:
     void batchChanged();
 
 private:
+    QJsonObject currentTemplateSettings() const;
+    bool applyTemplateSettings(const QJsonObject& settings);
     void seedFromDifficulty(int difficultyId);
     void rebuildDifficultyList();
     void syncAudition();
@@ -403,6 +424,8 @@ private:
     QList<int> batchSelectedDifficultyIds_;
     QString batchOutputDirectory_;
     QString singleCoverPreset_;
+    QStringList singleCoverPresets_;
+    QStringList batchCoverPresets_;
     miacode::cover_export::CoverCompanionJob singleCoverJob_;
     bool singleCoverSourceChanged_ = false;
     bool singleCoverVideoLaunched_ = false;

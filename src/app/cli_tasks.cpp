@@ -19,6 +19,7 @@
 #include "core/chart/model/TimelineMarkerOffset.h"
 #include "core/video/AssetPaths.h"
 #include "export/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportSettings.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -267,6 +268,11 @@ bool prepareTask(const CliRequest& request, const ChartInput& chart, const QStri
     snapshot.outputWidth = request.values.value(QStringLiteral("width")).toInt(1080);
     snapshot.outputHeight = request.values.value(QStringLiteral("height")).toInt(1080);
     snapshot.fps = request.values.value(QStringLiteral("fps")).toInt(60);
+    const QString sizeToken = request.values.value(QStringLiteral("size-preset")).toString(QStringLiteral("standard"));
+    snapshot.sizePreset = miacode::video_export::videoExportSizePresetFromPreference(sizeToken, VideoExportSizePreset::Standard);
+    if (miacode::video_export::videoExportSizePresetToken(snapshot.sizePreset) != sizeToken) {
+        *error = QStringLiteral("Unknown size preset: ") + sizeToken; return false;
+    }
     snapshot.exportStartSeconds = request.values.value(QStringLiteral("start")).toDouble(0);
     const double musicDuration = request.values.value(QStringLiteral("type")).toString() == QLatin1String("video") && !snapshot.trackPath.isEmpty()
         ? miacode::audio_decode::probeFileDurationSeconds(snapshot.trackPath) : 0;

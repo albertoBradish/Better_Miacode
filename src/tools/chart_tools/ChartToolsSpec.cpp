@@ -1,4 +1,5 @@
 #include "core/chart/ChartBpmExport.h"
+#include "core/chart/ChartBpmImport.h"
 #include "core/chart/ChartScoreLoss.h"
 #include "core/chart/ChartTiming.h"
 #include "core/chart/document/SimaiDocument.h"
@@ -81,8 +82,8 @@ int main(int argc, char** argv)
         expect(boundary, "SSS capacities include exact equality before display rounding");
         expect(breakBoundary, "break bonus loss uses 100 points each and capacity is capped by actual count");
         const auto noBreak = calculateScoreLoss(ScoringEvents{{ScoringEvent{0, ScoringKind::Tap}}, false});
-        expect(noBreak.rows.first().maximumSss == 1 && noBreak.rows.first().maximumSssPlus == 0,
-            "no-break maximum is 100%, including perfect judgment");
+        expect(noBreak.rows.first().maximumSss == 0 && noBreak.rows.first().maximumSssPlus == 0,
+            "no-break chart has no loss budget for SSS");
         expect(!calculateScoreLoss({}).calculable, "empty chart cannot calculate achievement");
     }
     {
@@ -121,17 +122,64 @@ int main(int argc, char** argv)
         events.events = {{0, ScoringKind::Tap, false, true}, {0, ScoringKind::Star, true, true},
             {0, ScoringKind::Hold, true, true, false, true}};
         const auto stats = calculateScoreLoss(events);
-        bool exTapLocked = false, break2550 = false, break2500 = false;
+        bool exTapLocked = true, break2550 = false, break2500 = true;
         for (const auto& row : stats.rows) {
             if (row.object == QLatin1String("Tap") && row.judgment == QLatin1String("Great"))
-                exTapLocked = row.quantity == 0 && row.maximumSss == 0;
+                exTapLocked = false;
             if (row.object == QLatin1String("Break") && row.judgment == QLatin1String("Perfect 2550"))
                 break2550 = row.quantity == 1;
             if (row.object == QLatin1String("Break") && row.judgment == QLatin1String("Perfect 2500"))
-                break2500 = row.quantity == 0;
+                break2500 = false;
         }
         expect(exTapLocked, "EX tap cannot supply Great or Good tolerance");
         expect(break2550 && break2500, "EX hold tail may degrade to 2550 but EX heads cannot supply 2500");
+    }
+    {
+        const auto events = buildScoringEvents(SimaiParser::parseForTimeline(QStringLiteral("(120){4}A1/A2/A3/1,A4/A5,2,E")).noteMarkers);
+        expect(events.events.size() == 7, "multi-touch leaves score event and object counts intact");
+        expect(scoringEventsInPastSecond(events.events, 0) == 2, "simultaneous touches count once alongside a tap");
+        expect(scoringEventsInPastSecond(events.events, 0.5) == 3, "different touch timestamps each contribute one CPS");
+        expect(scoringEventsInPastSecond(events.events, 1) == 2, "rolling CPS excludes touches at t-1");
+        const auto stats = calculateScoreLoss(events);
+        bool allLosing = true;
+        for (const auto& row : stats.rows) allLosing &= row.lossPercent > 0 && row.quantity > 0;
+        expect(allLosing, "score loss table only contains possible losing judgments");
+    }
+    {
+        ScoringEvents events;
+        events.events.append({0, ScoringKind::Tap, true});
+        for (int i = 0; i < 39; ++i) events.events.append({0, ScoringKind::Slide});
+        const auto stats = calculateScoreLoss(events);
+        expect(stats.simpleGreatSss == 6 && stats.simpleGreatSssPlus == 3, "simple Tap Great equivalent budget is not capped by Tap inventory");
+    }
+    {
+        const QStringList originals{
+            QStringLiteral("(120){4}1,2h[4:1],3-5[4:1],A1/A2,|| keep (200) {99}\n(180){8}4h[8:1],E"),
+            QStringLiteral("(123.456789){7}1h[#1.23],2-4[0.25##4:1],<HS*2>A1/A2,{16}4,|| 7/8\n5,E"),
+            QStringLiteral("(120){4}1-5[4:1]*-3[8:1],,,E"),
+            QStringLiteral("(180){8}1h[120#4:3],2-6[150#8:1],C1h[4:1],E")};
+        for (const auto& original : originals) {
+            const auto result = importChartBpm(QStringLiteral("00:00:000/150.00 - 00:00:750/90.00"), original, {}, 0);
+            expect(result.ok(), "BPM import preserves taps, holds, slides, branches, touchholds, HS and comments");
+            if (!result.ok()) log << result.error << '\n';
+        }
+        const auto clean = importChartBpm(QStringLiteral("00:00:000/135 - 00:03:250/180 - 00:07:500/120"), originals.first(), {}, 0);
+        expect(clean.ok() && SimaiParser::validateSyntax(clean.chart).ok && SimaiParser::validateSyntax(clean.chart).warnings.isEmpty(), "common BPM imports introduce no after-note directive or fine-subdivision warnings");
+        expect(!importChartBpm(QStringLiteral("00:00:000/150"), QStringLiteral("(120){4}1\n,2,E"), {}, 0).ok(),
+            "strict syntax errors cannot be carried into a BPM transaction");
+        const auto nonStandard = importChartBpm(QStringLiteral("00:00:000/144"), QStringLiteral("(120){4}1,2,E"), {}, 0);
+        expect(nonStandard.ok() && nonStandard.nonStandardSubdivisions.contains(QStringLiteral("10")),
+            "non-384 subdivisions needed for exact audio timing are surfaced before applying");
+        const auto negative = importChartBpm(QStringLiteral("-00:02:000/150.00 - -00:01:250/90.00"), originals.first(), {}, -2);
+        expect(negative.ok(), "negative audio timestamps include first exactly once");
+        const auto timing = SimaiParser::parseForTimeline(QStringLiteral("(135.123456789){7},,,(180){16},|| 7/8\n,,E"));
+        const auto imported = importChartBpm(exportChartBpm(timing, -0.25, BpmExportFormat::EmptyMaidata), originals.first(), {}, 0);
+        expect(imported.ok(), "empty maidata imports precise tempo, offset and meter states into populated charts");
+        const auto empty = importChartBpm(QStringLiteral("00:00:000/120 - 00:02:123/150"), QString(), {}, 0);
+        expect(empty.ok() && SimaiParser::parseForTimeline(empty.chart).noteMarkers.isEmpty(), "empty chart receives a valid timing skeleton");
+        expect(!importChartBpm(QStringLiteral("120-180"), originals.first(), {}, 0).ok(), "untimed BPM sequences are rejected");
+        expect(!importChartBpm(QStringLiteral("00:01:000/120 - 00:00:000/180"), originals.first(), {}, 0).ok(), "unordered timestamps are rejected");
+        expect(!importChartBpm(QStringLiteral("&first=0\n&inote_1=(120){4}1,E"), originals.first(), {}, 0).ok(), "maidata with notes cannot masquerade as a timing skeleton");
     }
     return failures ? 1 : 0;
 }

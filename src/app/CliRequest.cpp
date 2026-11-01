@@ -46,7 +46,7 @@ CliRequest parseCliRequest(const QStringList& arguments, const QByteArray* suppl
         QStringLiteral("slide-judgement-timing"), QStringLiteral("slide-timing-from-launch-beat"), QStringLiteral("slide-timing-early-perfect-from-head"),
         QStringLiteral("hide-timestamp"), QStringLiteral("show-object-stats"), QStringLiteral("show-chart-info"), QStringLiteral("intro")};
     static const QSet<QString> strings{QStringLiteral("chart"), QStringLiteral("difficulty"), QStringLiteral("output"),
-        QStringLiteral("format"), QStringLiteral("preset"), QStringLiteral("skin"), QStringLiteral("track"), QStringLiteral("request")};
+        QStringLiteral("format"), QStringLiteral("preset"), QStringLiteral("size-preset"), QStringLiteral("skin"), QStringLiteral("track"), QStringLiteral("request")};
     static const QSet<QString> numbers{QStringLiteral("width"), QStringLiteral("height"), QStringLiteral("fps"),
         QStringLiteral("start"), QStringLiteral("duration"), QStringLiteral("time"), QStringLiteral("flow-speed")};
     for (int i = 1; i < arguments.size(); ++i) {

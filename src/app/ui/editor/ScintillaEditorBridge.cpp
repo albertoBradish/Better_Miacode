@@ -1005,6 +1005,21 @@ bool ScintillaEditorBridge::applyChartTransform(const QString& operation)
     }
     return documentSession_ && applyEditorTransaction(documentSession_->transformChartSelection(document_.text(), selectionStart(), selectionEnd(), operation));
 }
+bool ScintillaEditorBridge::applyBpmImport(const QString& original, const QString& replacement, int difficulty, quint64 revision)
+{
+    if (!documentSession_ || documentSession_->currentDifficultyId() != difficulty
+        || documentSession_->documentRevision() != revision || document_.text() != original || replacement.isEmpty()) return false;
+    miacode::editor::SimaiTextEditResult edit;
+    edit.consumed = true;
+    edit.transaction.hasEdit = original != replacement;
+    edit.transaction.replacementStart = 0;
+    edit.transaction.replacementEnd = original.size();
+    edit.transaction.replacementText = replacement;
+    edit.transaction.anchor = edit.transaction.position = 0;
+    const bool success = applyEditorTransaction(edit);
+    forceActiveFocus();
+    return success;
+}
 bool ScintillaEditorBridge::createBookmarkAtLine(int line, const QString& title)
 {
     if (!controller_ || line < 1 || line > document_.lineCount()) return false;

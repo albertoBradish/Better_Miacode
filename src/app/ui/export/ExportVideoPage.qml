@@ -76,6 +76,28 @@ Rectangle {
         }
     }
 
+    component CoverChecks: SettingsSection {
+        id: coverChecks
+        property bool batch: false
+        title: qsTrId("video_cover.multiple")
+        enabled: root.session && !root.session.exportRunning
+        Layout.fillWidth: true
+        Flow {
+            Layout.fillWidth: true
+            spacing: 12
+            Repeater {
+                model: root.session ? root.session.singleCoverPresetOptions : []
+                delegate: AppCheckBox {
+                    required property var modelData
+                    readonly property var selected: root.session ? (coverChecks.batch ? root.session.batchCoverPresets : root.session.singleCoverPresets) : []
+                    text: modelData.label
+                    checked: modelData.value === "" ? selected.length === 0 : selected.indexOf(modelData.value) >= 0
+                    onToggled: if (root.session) root.session.setCoverPresetChecked(modelData.value, checked, coverChecks.batch)
+                }
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.bottomMargin: Theme.dialogPadding
@@ -88,6 +110,14 @@ Rectangle {
             sidebarTitle: true
             showMore: false
 
+            AppButton {
+                id: videoTemplateButton
+                objectName: "videoTemplateButton"
+                text: qsTrId("video_template.title")
+                selected: videoTemplateMenu.active
+                enabled: root.settingsAvailable && !root.session.exportRunning
+                onClicked: videoTemplateMenu.active ? videoTemplateMenu.close() : videoTemplateMenu.openAt(videoTemplateButton)
+            }
             AppChoiceButton {
                 text: qsTrId("action.batch_export")
                 enabled: root.session !== null
@@ -230,6 +260,8 @@ Rectangle {
                                 onClicked: if (root.session) root.session.browseBatchOutputDirectory()
                             }
                         }
+
+                        CoverChecks { batch: true }
 
                         SettingsSection {
                             title: qsTrId("dialog.batch_export.chart_folders")
@@ -394,14 +426,7 @@ Rectangle {
                             }
                         }
 
-                        LabeledCombo {
-                            Layout.fillWidth: true
-                            visible: root.session && root.session.activeTab === "export"
-                            label: qsTrId("dialog.video_export.cover_preset")
-                            options: root.session ? root.session.singleCoverPresetOptions : []
-                            currentValue: root.session ? root.session.singleCoverPreset : ""
-                            onPicked: function(value) { if (root.session) root.session.singleCoverPreset = value }
-                        }
+                        CoverChecks { visible: root.session && root.session.activeTab === "export" }
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -1064,4 +1089,48 @@ Rectangle {
                 exportRangeEndField.text = root.session.exportEndSeconds.toFixed(3)
         }
     }
+    AppMenu {
+        id: videoTemplateMenu
+        hugContent: true
+        AppMenuItem { text: qsTrId("video_template.export"); onTriggered: root.session.exportVideoTemplate() }
+        AppMenuItem { text: qsTrId("video_template.import"); onTriggered: root.session.importVideoTemplate() }
+        AppMenuItem { text: qsTrId("cover.manage_presets"); onTriggered: videoTemplateDialog.open() }
+        AppMenuSeparator {}
+        Instantiator {
+            model: root.session ? root.session.videoTemplates : []
+            delegate: AppMenuItem {
+                required property var modelData
+                text: modelData.name
+                onTriggered: root.session.applyVideoTemplate(modelData.name)
+            }
+            onObjectAdded: (index, item) => videoTemplateMenu.insertItem(index + 4, item)
+            onObjectRemoved: (index, item) => videoTemplateMenu.removeItem(item)
+        }
+    }
+    AppDialog {
+        id: videoTemplateDialog
+        title: qsTrId("video_template.title")
+        preferredWidth: 560
+        preferredHeight: 400
+        footer: DialogFooter { acceptText: qsTrId("action.close"); onAccepted: videoTemplateDialog.close() }
+        body: ColumnLayout {
+            spacing: Theme.settingsRowSpacing
+            RowLayout {
+                AppTextField { id: templateName; Layout.fillWidth: true; placeholderText: qsTrId("cover.preset_name") }
+                AppButton { text: qsTrId("cover.save_preset"); enabled: templateName.text.trim().length > 0; onClicked: root.session.saveVideoTemplate(templateName.text) }
+            }
+            Repeater {
+                model: root.session ? root.session.videoTemplates : []
+                delegate: RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    AppTextField { id: savedName; Layout.fillWidth: true; text: modelData.name }
+                    AppButton { text: qsTrId("cover.apply_preset"); onClicked: root.session.applyVideoTemplate(modelData.name) }
+                    AppButton { text: qsTrId("cover.rename_preset"); onClicked: root.session.renameVideoTemplate(modelData.name, savedName.text) }
+                    AppButton { text: qsTrId("cover.delete_preset"); onClicked: root.session.removeVideoTemplate(modelData.name) }
+                }
+            }
+        }
+    }
+
 }

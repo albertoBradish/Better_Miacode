@@ -4997,7 +4997,7 @@ Error: %1</source>
     </message>
     <message id="tools.bpm.title">
         <source>Export BPM</source>
-        <translation>BPM を出力</translation>
+        <translation>BPM 読み込み / 書き出し</translation>
     </message>
     <message id="tools.bpm.sequence">
         <source>BPM sequence (xx.xx-xx.xx)</source>
@@ -5135,6 +5135,61 @@ Error: %1</source>
         <source>Could not open the system folder picker.</source>
         <translation>システムのフォルダー選択画面を開けませんでした。</translation>
     </message>
+
+    <!-- ID translations use the unnamed context for qtTrId in Qt 6.11. -->
+
+<message id="dialog.video_export.range.play_clip">
+        <source>Play Range</source>
+        <translation>範囲を再生</translation>
+    </message>
+<message id="dialog.batch_export.cover_preset">
+        <source>Cover preset</source>
+        <translation>カバープリセット</translation>
+    </message>
+<message id="dialog.batch_export.cover_none">
+        <source>Cover export off</source>
+        <translation>カバー出力をオフ</translation>
+    </message>
+<message id="dialog.batch_export.cover_summary">
+        <source>Covers: %1 succeeded, %2 failed</source>
+        <translation>カバー出力：成功 %1 件、失敗 %2 件</translation>
+    </message>
+<message id="dialog.batch_export.cover_preset_unavailable">
+        <source>The cover preset cannot be applied to this chart</source>
+        <translation>この譜面にカバープリセットを適用できません</translation>
+    </message>
+<message id="dialog.batch_export.cover_frame_adjusted">
+        <source>%1: frame time adjusted from %2 s to %3 s</source>
+        <translation>%1：フレーム時間を %2 秒から %3 秒に調整</translation>
+    </message>
+    <message id="video_template.title"><source>Video templates</source><translation>動画テンプレート</translation></message>
+    <message id="video_template.export"><source>Export current template…</source><translation>現在のテンプレートを書き出す…</translation></message>
+    <message id="video_template.import"><source>Import and apply template…</source><translation>テンプレートを読み込んで適用…</translation></message>
+    <message id="video_template.invalid"><source>This video template is invalid or uses an unsupported version.</source><translation>動画テンプレートが無効か、未対応のバージョンです。</translation></message>
+    <message id="video_cover.multiple"><source>Companion covers (multiple selection)</source><translation>同時に出力するカバー（複数選択可）</translation></message>
+    <message id="video_size.target30"><source>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</source><translation>30 MB（480p、PV なし；動画 %1 kbps、音声 %2 kbps）</translation></message>
+    <message id="video_size.target100"><source>100 MB (video %1 kbps, audio %2 kbps)</source><translation>100 MB（動画 %1 kbps、音声 %2 kbps）</translation></message>
+    <message id="video_size.target200"><source>200 MB (video %1 kbps, audio %2 kbps)</source><translation>200 MB（動画 %1 kbps、音声 %2 kbps）</translation></message>
+    <message id="video_size.parameters"><source> (video %1 kbps, audio %2 kbps)</source><translation>（動画 %1 kbps、音声 %2 kbps）</translation></message>
+    <message id="video_size.adaptive_parameters"><source> (adaptive; hardware reference %1 kbps, audio %2 kbps)</source><translation>（自動；HW 目安 %1 kbps、音声 %2 kbps）</translation></message>
+    <message id="tools.dx_loss.simple_summary"><source>Tap Great budget: SSS %1 · SSS+ %2</source><translation>Tap Great 許容数：SSS %1 · SSS+ %2</translation></message>
+    <message id="tools.dx_loss.unreachable"><source>unreachable</source><translation>到達不可</translation></message>
+    <message id="tools.bpm.import"><source>Import BPM…</source><translation>BPM を読み込む…</translation></message>
+    <message id="tools.bpm.paste"><source>Paste BPM</source><translation>BPM を貼り付け</translation></message>
+    <message id="tools.bpm.apply"><source>Apply to current chart</source><translation>現在の譜面に適用</translation></message>
+    <message id="tools.bpm.import_hint"><source>Import audio timestamps or an empty maidata. Existing note times and durations are preserved.</source><translation>音声時刻形式とノーツのない maidata に対応。既存ノーツの時刻と長さを維持します。</translation></message>
+    <message id="tools.bpm.import_placeholder"><source>Paste audio timestamps or empty maidata here</source><translation>音声時刻形式か空の maidata を貼り付け</translation></message>
+    <message id="tools.bpm.import_summary"><source>Preview: %1 timing states, %2 note objects. Apply as one undoable edit.</source><translation>プレビュー：時刻点 %1 個、ノーツ %2 個。1 回の操作で元に戻せます。</translation></message>
+    <message id="tools.bpm.import_invalid"><source>Invalid BPM input. Use audio timestamps or an empty maidata.</source><translation>BPM データが無効です。音声時刻形式か空の maidata を使用してください。</translation></message>
+    <message id="tools.bpm.import_one_difficulty"><source>The timing maidata must contain exactly one difficulty.</source><translation>時刻データの maidata は難易度を 1 つだけ含む必要があります。</translation></message>
+    <message id="tools.bpm.import_empty_required"><source>The imported maidata must be valid and contain no notes.</source><translation>読み込む maidata は有効で、ノーツを含まない必要があります。</translation></message>
+    <message id="tools.bpm.import_chart_invalid"><source>Fix the current chart syntax before importing BPM.</source><translation>BPM を読み込む前に現在の譜面の構文エラーを修正してください。</translation></message>
+    <message id="tools.bpm.import_precision"><source>The timing cannot be embedded without changing note times. The chart was not modified.</source><translation>ノーツの時刻を維持して適用できないため、譜面を変更しませんでした。</translation></message>
+    <message id="tools.bpm.import_stale"><source>The chart changed. Import or paste the timing again.</source><translation>譜面が変更されました。時刻データを再度読み込むか貼り付けてください。</translation></message>
+    <message id="tools.bpm.import_applied"><source>BPM applied. Undo in the source editor to restore the chart.</source><translation>BPM を適用しました。ソースエディターで元に戻せます。</translation></message>
+<message id="tools.bpm.import_preview"><source>Chart preview after applying BPM</source><translation>BPM 適用後の譜面プレビュー</translation></message>
+<message id="tools.bpm.back_export"><source>Back to export</source><translation>書き出しに戻る</translation></message>
+<message id="tools.bpm.import_subdivisions"><source>Keeping note times requires subdivisions %1; check chart-converter compatibility.</source><translation>元の時刻を維持するため分拍 %1 を使用します。譜面変換時の互換性をご確認ください。</translation></message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the
@@ -5188,6 +5243,9 @@ Error: %1</source>
         <translation>終了</translation>
     </message>
 </context>
+
+
+
 
 
 

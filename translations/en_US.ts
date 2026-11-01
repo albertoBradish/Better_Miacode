@@ -4997,7 +4997,7 @@ Error: %1</translation>
     </message>
     <message id="tools.bpm.title">
         <source>Export BPM</source>
-        <translation>Export BPM</translation>
+        <translation>BPM import / export</translation>
     </message>
     <message id="tools.bpm.sequence">
         <source>BPM sequence (xx.xx-xx.xx)</source>
@@ -5135,6 +5135,61 @@ Error: %1</translation>
         <source>Could not open the system folder picker.</source>
         <translation>Could not open the system folder picker.</translation>
     </message>
+
+    <!-- ID translations use the unnamed context for qtTrId in Qt 6.11. -->
+
+<message id="dialog.video_export.range.play_clip">
+        <source>Play Range</source>
+        <translation>Play Range</translation>
+    </message>
+<message id="dialog.batch_export.cover_preset">
+        <source>Cover preset</source>
+        <translation>Cover preset</translation>
+    </message>
+<message id="dialog.batch_export.cover_none">
+        <source>Cover export off</source>
+        <translation>Cover export off</translation>
+    </message>
+<message id="dialog.batch_export.cover_summary">
+        <source>Covers: %1 succeeded, %2 failed</source>
+        <translation>Covers: %1 succeeded, %2 failed</translation>
+    </message>
+<message id="dialog.batch_export.cover_preset_unavailable">
+        <source>The cover preset cannot be applied to this chart</source>
+        <translation>The cover preset cannot be applied to this chart</translation>
+    </message>
+<message id="dialog.batch_export.cover_frame_adjusted">
+        <source>%1: frame time adjusted from %2 s to %3 s</source>
+        <translation>%1: frame time adjusted from %2 s to %3 s</translation>
+    </message>
+    <message id="video_template.title"><source>Video templates</source><translation>Video templates</translation></message>
+    <message id="video_template.export"><source>Export current template…</source><translation>Export current template…</translation></message>
+    <message id="video_template.import"><source>Import and apply template…</source><translation>Import and apply template…</translation></message>
+    <message id="video_template.invalid"><source>This video template is invalid or uses an unsupported version.</source><translation>This video template is invalid or uses an unsupported version.</translation></message>
+    <message id="video_cover.multiple"><source>Companion covers (multiple selection)</source><translation>Companion covers (multiple selection)</translation></message>
+    <message id="video_size.target30"><source>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</source><translation>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</translation></message>
+    <message id="video_size.target100"><source>100 MB (video %1 kbps, audio %2 kbps)</source><translation>100 MB (video %1 kbps, audio %2 kbps)</translation></message>
+    <message id="video_size.target200"><source>200 MB (video %1 kbps, audio %2 kbps)</source><translation>200 MB (video %1 kbps, audio %2 kbps)</translation></message>
+    <message id="video_size.parameters"><source> (video %1 kbps, audio %2 kbps)</source><translation> (video %1 kbps, audio %2 kbps)</translation></message>
+    <message id="video_size.adaptive_parameters"><source> (adaptive; hardware reference %1 kbps, audio %2 kbps)</source><translation> (adaptive; hardware reference %1 kbps, audio %2 kbps)</translation></message>
+    <message id="tools.dx_loss.simple_summary"><source>Tap Great budget: SSS %1 · SSS+ %2</source><translation>Tap Great budget: SSS %1 · SSS+ %2</translation></message>
+    <message id="tools.dx_loss.unreachable"><source>unreachable</source><translation>unreachable</translation></message>
+    <message id="tools.bpm.import"><source>Import BPM…</source><translation>Import BPM…</translation></message>
+    <message id="tools.bpm.paste"><source>Paste BPM</source><translation>Paste BPM</translation></message>
+    <message id="tools.bpm.apply"><source>Apply to current chart</source><translation>Apply to current chart</translation></message>
+    <message id="tools.bpm.import_hint"><source>Import audio timestamps or an empty maidata. Existing note times and durations are preserved.</source><translation>Import audio timestamps or an empty maidata. Existing note times and durations are preserved.</translation></message>
+    <message id="tools.bpm.import_placeholder"><source>Paste audio timestamps or empty maidata here</source><translation>Paste audio timestamps or empty maidata here</translation></message>
+    <message id="tools.bpm.import_summary"><source>Preview: %1 timing states, %2 note objects. Apply as one undoable edit.</source><translation>Preview: %1 timing states, %2 note objects. Apply as one undoable edit.</translation></message>
+    <message id="tools.bpm.import_invalid"><source>Invalid BPM input. Use audio timestamps or an empty maidata.</source><translation>Invalid BPM input. Use audio timestamps or an empty maidata.</translation></message>
+    <message id="tools.bpm.import_one_difficulty"><source>The timing maidata must contain exactly one difficulty.</source><translation>The timing maidata must contain exactly one difficulty.</translation></message>
+    <message id="tools.bpm.import_empty_required"><source>The imported maidata must be valid and contain no notes.</source><translation>The imported maidata must be valid and contain no notes.</translation></message>
+    <message id="tools.bpm.import_chart_invalid"><source>Fix the current chart syntax before importing BPM.</source><translation>Fix the current chart syntax before importing BPM.</translation></message>
+    <message id="tools.bpm.import_precision"><source>The timing cannot be embedded without changing note times. The chart was not modified.</source><translation>The timing cannot be embedded without changing note times. The chart was not modified.</translation></message>
+    <message id="tools.bpm.import_stale"><source>The chart changed. Import or paste the timing again.</source><translation>The chart changed. Import or paste the timing again.</translation></message>
+    <message id="tools.bpm.import_applied"><source>BPM applied. Undo in the source editor to restore the chart.</source><translation>BPM applied. Undo in the source editor to restore the chart.</translation></message>
+<message id="tools.bpm.import_preview"><source>Chart preview after applying BPM</source><translation>Chart preview after applying BPM</translation></message>
+<message id="tools.bpm.back_export"><source>Back to export</source><translation>Back to export</translation></message>
+<message id="tools.bpm.import_subdivisions"><source>Keeping note times requires subdivisions %1; check chart-converter compatibility.</source><translation>Keeping note times requires subdivisions %1; check chart-converter compatibility.</translation></message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the
@@ -5169,6 +5224,9 @@ Error: %1</translation>
         <translation>Quit %1</translation>
     </message>
 </context>
+
+
+
 
 
 

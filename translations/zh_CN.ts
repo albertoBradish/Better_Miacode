@@ -4997,7 +4997,7 @@ Error: %1</source>
     </message>
     <message id="tools.bpm.title">
         <source>Export BPM</source>
-        <translation>导出 BPM</translation>
+        <translation>BPM 导入 / 导出</translation>
     </message>
     <message id="tools.bpm.sequence">
         <source>BPM sequence (xx.xx-xx.xx)</source>
@@ -5135,6 +5135,61 @@ Error: %1</source>
         <source>Could not open the system folder picker.</source>
         <translation>无法打开系统文件夹选择窗口。</translation>
     </message>
+
+    <!-- ID translations use the unnamed context for qtTrId in Qt 6.11. -->
+
+<message id="dialog.video_export.range.play_clip">
+        <source>Play Range</source>
+        <translation>播放区间</translation>
+    </message>
+<message id="dialog.batch_export.cover_preset">
+        <source>Cover preset</source>
+        <translation>封面预设</translation>
+    </message>
+<message id="dialog.batch_export.cover_none">
+        <source>Cover export off</source>
+        <translation>关闭封面导出</translation>
+    </message>
+<message id="dialog.batch_export.cover_summary">
+        <source>Covers: %1 succeeded, %2 failed</source>
+        <translation>封面导出：成功 %1 项，失败 %2 项</translation>
+    </message>
+<message id="dialog.batch_export.cover_preset_unavailable">
+        <source>The cover preset cannot be applied to this chart</source>
+        <translation>封面预设无法应用到此谱面</translation>
+    </message>
+<message id="dialog.batch_export.cover_frame_adjusted">
+        <source>%1: frame time adjusted from %2 s to %3 s</source>
+        <translation>%1：截图时间从 %2 秒调整为 %3 秒</translation>
+    </message>
+    <message id="video_template.title"><source>Video templates</source><translation>视频模板</translation></message>
+    <message id="video_template.export"><source>Export current template…</source><translation>导出当前模板…</translation></message>
+    <message id="video_template.import"><source>Import and apply template…</source><translation>导入并应用模板…</translation></message>
+    <message id="video_template.invalid"><source>This video template is invalid or uses an unsupported version.</source><translation>视频模板无效或版本不受支持。</translation></message>
+    <message id="video_cover.multiple"><source>Companion covers (multiple selection)</source><translation>同步导出封面（可多选）</translation></message>
+    <message id="video_size.target30"><source>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</source><translation>30 MB（480p、无 PV；视频 %1 kbps，音频 %2 kbps）</translation></message>
+    <message id="video_size.target100"><source>100 MB (video %1 kbps, audio %2 kbps)</source><translation>100 MB（视频 %1 kbps，音频 %2 kbps）</translation></message>
+    <message id="video_size.target200"><source>200 MB (video %1 kbps, audio %2 kbps)</source><translation>200 MB（视频 %1 kbps，音频 %2 kbps）</translation></message>
+    <message id="video_size.parameters"><source> (video %1 kbps, audio %2 kbps)</source><translation>（视频 %1 kbps，音频 %2 kbps）</translation></message>
+    <message id="video_size.adaptive_parameters"><source> (adaptive; hardware reference %1 kbps, audio %2 kbps)</source><translation>（自适应；硬编参考 %1 kbps，音频 %2 kbps）</translation></message>
+    <message id="tools.dx_loss.simple_summary"><source>Tap Great budget: SSS %1 · SSS+ %2</source><translation>Tap Great 容许数：SSS %1 · SSS+ %2</translation></message>
+    <message id="tools.dx_loss.unreachable"><source>unreachable</source><translation>不可达</translation></message>
+    <message id="tools.bpm.import"><source>Import BPM…</source><translation>导入 BPM…</translation></message>
+    <message id="tools.bpm.paste"><source>Paste BPM</source><translation>粘贴 BPM</translation></message>
+    <message id="tools.bpm.apply"><source>Apply to current chart</source><translation>应用到当前谱面</translation></message>
+    <message id="tools.bpm.import_hint"><source>Import audio timestamps or an empty maidata. Existing note times and durations are preserved.</source><translation>支持音频时间格式或空 maidata，保留现有音符的音频时间与持续时长。</translation></message>
+    <message id="tools.bpm.import_placeholder"><source>Paste audio timestamps or empty maidata here</source><translation>在此粘贴音频时间格式或空 maidata</translation></message>
+    <message id="tools.bpm.import_summary"><source>Preview: %1 timing states, %2 note objects. Apply as one undoable edit.</source><translation>预览：%1 个时序点，%2 个音符对象。应用后可一次撤销。</translation></message>
+    <message id="tools.bpm.import_invalid"><source>Invalid BPM input. Use audio timestamps or an empty maidata.</source><translation>BPM 数据无效，请使用音频时间格式或空 maidata。</translation></message>
+    <message id="tools.bpm.import_one_difficulty"><source>The timing maidata must contain exactly one difficulty.</source><translation>时序 maidata 必须只包含一个难度。</translation></message>
+    <message id="tools.bpm.import_empty_required"><source>The imported maidata must be valid and contain no notes.</source><translation>导入的 maidata 必须有效且不含音符。</translation></message>
+    <message id="tools.bpm.import_chart_invalid"><source>Fix the current chart syntax before importing BPM.</source><translation>请先修复当前谱面的语法错误，再导入 BPM。</translation></message>
+    <message id="tools.bpm.import_precision"><source>The timing cannot be embedded without changing note times. The chart was not modified.</source><translation>无法在保持音符时间的条件下嵌入此时序，谱面未修改。</translation></message>
+    <message id="tools.bpm.import_stale"><source>The chart changed. Import or paste the timing again.</source><translation>谱面已更改，请重新导入或粘贴时序。</translation></message>
+    <message id="tools.bpm.import_applied"><source>BPM applied. Undo in the source editor to restore the chart.</source><translation>BPM 已应用，可在源码编辑器中撤销恢复。</translation></message>
+<message id="tools.bpm.import_preview"><source>Chart preview after applying BPM</source><translation>应用后的谱面预览</translation></message>
+<message id="tools.bpm.back_export"><source>Back to export</source><translation>返回导出</translation></message>
+<message id="tools.bpm.import_subdivisions"><source>Keeping note times requires subdivisions %1; check chart-converter compatibility.</source><translation>保持原时间需使用分音 %1；转谱兼容性请先核对。</translation></message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the
@@ -5188,6 +5243,9 @@ Error: %1</source>
         <translation>退出</translation>
     </message>
 </context>
+
+
+
 
 
 

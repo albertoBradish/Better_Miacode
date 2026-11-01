@@ -2,6 +2,8 @@
 #include "core/chart/model/TimelineData.h"
 #include <QSet>
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace miacode::chart {
 enum class ScoringKind { Tap, Hold, Star, Slide, Touch, TouchHold };
@@ -74,6 +76,15 @@ inline int scoringEventsInPastSecond(const QVector<ScoringEvent>& events, double
         return std::upper_bound(events.cbegin(), events.cend(), value,
             [](double time, const ScoringEvent& event) { return time < event.second; });
     };
-    return static_cast<int>(upper(second) - upper(second - 1.0));
+    int count = 0;
+    double lastTouch = -std::numeric_limits<double>::infinity();
+    for (auto it = upper(second - 1.0), end = upper(second); it != end; ++it) {
+        if (it->kind == ScoringKind::Touch) {
+            if (std::abs(it->second - lastTouch) <= 1e-9) continue;
+            lastTouch = it->second;
+        }
+        ++count;
+    }
+    return count;
 }
 } // namespace miacode::chart

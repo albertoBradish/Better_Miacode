@@ -20,6 +20,8 @@ struct ScoreLossResult {
     int breakTotal = 0;
     int total = 0;
     int mineCount = 0;
+    int simpleGreatSss = 0;
+    int simpleGreatSssPlus = -1;
     QVector<int> counts = QVector<int>(9, 0); // six kinds, Break, Ex, Firework; attributes overlap
     QVector<ScoreLossRow> rows;
 };
@@ -48,9 +50,16 @@ inline ScoreLossResult calculateScoreLoss(const ScoringEvents& source)
     }
     result.calculable = result.total > 0 && !source.hasUnofficialExtensions;
     if (!result.calculable) return result;
+    // A normal Tap Great loses 100 base points. Express the whole remaining
+    // achievement budget in these units, independently of the Tap inventory.
+    if (result.breakTotal) {
+        result.simpleGreatSss = static_cast<int>(result.baseTotal / 10000);
+        result.simpleGreatSssPlus = static_cast<int>(result.baseTotal / 20000);
+    }
     const auto append = [&](const QString& object, const QString& judgment, int count,
                             int baseLoss, int extraLoss) {
         ScoreLossRow row{object, judgment, count, baseLoss, extraLoss};
+        if (count <= 0 || (baseLoss == 0 && extraLoss == 0)) return;
         row.lossPercent = 100.0 * baseLoss / result.baseTotal
             + (result.breakTotal ? static_cast<double>(extraLoss) / (100 * result.breakTotal) : 0.0);
         // All official base scores are multiples of 500; all losses multiples of 50.

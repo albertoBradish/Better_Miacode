@@ -30,6 +30,7 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
+#include <QScopeGuard>
 #include <QHash>
 #include <QImage>
 #include <QImageReader>
@@ -342,10 +343,18 @@ bool prepareMixedAudioWavOutput(
 }  // namespace miacode::video_export::detail
 
 VideoExportResult VideoExportController::exportPreparedTask(
-    const VideoExportTask& task,
+    const VideoExportTask& requestedTask,
     const VideoExportProgressCallback& progressCallback
 )
 {
+    VideoExportTask task = requestedTask;
+    if (task.sizePreset == VideoExportSizePreset::Target30Mb) {
+        const double aspect = static_cast<double>(task.outputWidth) / qMax(1, task.outputHeight);
+        task.outputHeight = 480;
+        task.outputWidth = qMax(480, qRound(480 * aspect / 2) * 2);
+        // Cover/still backgrounds remain available; video PV is disabled below.
+        task.intro.pvPreview = false;
+    }
     MC_OP("VideoExportController::exportPreparedTask");
     _mc_op_.note(QStringLiteral("output=%1 chart=%2 size=%3x%4 fps=%5")
                      .arg(task.outputPath, task.chartPath)
@@ -545,6 +554,10 @@ VideoExportResult VideoExportController::exportPreparedTask(
     const QString wavStagePath = producesWav
         ? makeRemuxStageOutputPath(wavOutputPath)
         : QString();
+    const auto stagedOutputCleanup = qScopeGuard([&] {
+        if (!remuxStagePath.isEmpty()) QFile::remove(remuxStagePath);
+        if (!wavStagePath.isEmpty()) QFile::remove(wavStagePath);
+    });
     appendVideoExportLog(
         QStringLiteral("output_staging"),
         QStringLiteral("mode=%1 encodeTemp=%2 remuxStage=%3 videoFinal=%4 wavStage=%5 wavFinal=%6")
@@ -1073,17 +1086,33 @@ VideoExportResult VideoExportController::exportPreparedTask(
     // The export preset controls both readback and encoder tuning. Fast prefers
     // hardware encoding and uses a faster libx264 fallback; HighQuality keeps
     // the existing compactness-oriented policy.
-    const VideoEncoderConfig encoderConfig = chooseVideoEncoder(
+    VideoEncoderConfig encoderConfig = chooseVideoEncoder(
         ffmpegPath,
         frameWidth,
         frameHeight,
         task.fps,
         task.preset,
-        task.sizePreset,
+        miacode::video_export::videoExportTargetBytes(task.sizePreset) ? VideoExportSizePreset::Standard : task.sizePreset,
         memoryInfo,
         exportConfig,
         &encoderProbeLog
     );
+    qint64 targetVideoKbps = miacode::video_export::videoExportTargetBitrateKbps(
+        task.sizePreset, alignedTotalSeconds,
+        miacode::video_export::effectiveVideoExportAudioBitrateKbps(task.sizePreset, task.audioBitrateKbps));
+    if (miacode::video_export::videoExportTargetBytes(task.sizePreset)) {
+        if (targetVideoKbps < 64) {
+            result.message = QStringLiteral("The selected size budget is too small for this duration and audio bitrate.");
+            return result;
+        }
+        encoderConfig = VideoEncoderConfig{};
+        encoderConfig.codec = QStringLiteral("libx264");
+        encoderConfig.isHardware = false;
+        encoderConfig.extraArgs = {QStringLiteral("-preset"), QStringLiteral("veryfast"),
+            QStringLiteral("-b:v"), QStringLiteral("%1k").arg(targetVideoKbps),
+            QStringLiteral("-maxrate"), QStringLiteral("%1k").arg(targetVideoKbps),
+            QStringLiteral("-bufsize"), QStringLiteral("%1k").arg(targetVideoKbps * 2)};
+    }
     appendVideoExportLog(QStringLiteral("encoder_select"), encoderProbeLog);
     if (encoderConfig.needsVaapiHwUpload) {
         if (encoderConfig.vaapiDevicePath.isEmpty()) {
@@ -2740,6 +2769,53 @@ VideoExportResult VideoExportController::exportPreparedTask(
             return result;
         }
     }
+
+    const qint64 targetBytes = miacode::video_export::videoExportTargetBytes(task.sizePreset);
+    const QString sizeSourcePath = QDir(tempDir.path()).filePath(QStringLiteral("size_source.mp4"));
+    if (targetBytes && QFileInfo(remuxStagePath).size() > targetBytes && !QFile::copy(remuxStagePath, sizeSourcePath)) {
+        result.message = QStringLiteral("Unable to prepare file size correction.");
+        QFile::remove(remuxStagePath);
+        return result;
+    }
+    for (int attempt = 0; targetBytes && QFileInfo(remuxStagePath).size() > targetBytes && attempt < 3; ++attempt) {
+        const qint64 actualBytes = QFileInfo(remuxStagePath).size();
+        targetVideoKbps = qMax<qint64>(32, static_cast<qint64>(targetVideoKbps * targetBytes / static_cast<double>(actualBytes) * 0.93));
+        const QString correctedPath = QDir(tempDir.path()).filePath(QStringLiteral("size_corrected_%1.mp4").arg(attempt));
+        QStringList correctionArgs{QStringLiteral("-y"), QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"), QStringLiteral("error"),
+            QStringLiteral("-i"), sizeSourcePath, QStringLiteral("-map"), QStringLiteral("0:v:0"),
+            QStringLiteral("-map"), QStringLiteral("0:a:0?"), QStringLiteral("-c:v"), QStringLiteral("libx264"),
+            QStringLiteral("-preset"), QStringLiteral("veryfast"), QStringLiteral("-threads"), QStringLiteral("4"),
+            QStringLiteral("-b:v"), QStringLiteral("%1k").arg(targetVideoKbps),
+            QStringLiteral("-maxrate"), QStringLiteral("%1k").arg(targetVideoKbps),
+            QStringLiteral("-bufsize"), QStringLiteral("%1k").arg(targetVideoKbps * 2),
+            QStringLiteral("-c:a"), QStringLiteral("copy"), QStringLiteral("-movflags"), QStringLiteral("+faststart"), correctedPath};
+        QProcess correction;
+        correction.setProcessChannelMode(QProcess::MergedChannels);
+        correction.start(ffmpegPath, correctionArgs);
+        if (!correction.waitForStarted(5000)
+            || !waitForProcessWithProgress(correction, QStringLiteral("size_correction_begin"), QStringLiteral("size_correction_end"),
+                QStringLiteral("Adjusting bitrate to the actual file size..."), 97, setProgressPercent,
+                QStringLiteral("size_correction"), &result)
+            || correction.exitStatus() != QProcess::NormalExit || correction.exitCode() != 0) {
+            if (result.message != QLatin1String("canceled")) result.message = QStringLiteral("Unable to meet the selected file size budget.");
+            result.details = processOutputAndErrorForLog(correction, 2000);
+            QFile::remove(remuxStagePath);
+            return result;
+        }
+        QString correctionError;
+        if (!replaceOutputFileAtomicallyBestEffort(correctedPath, remuxStagePath, &correctionError)) {
+            result.message = correctionError;
+            QFile::remove(remuxStagePath);
+            return result;
+        }
+    }
+    if (targetBytes && QFileInfo(remuxStagePath).size() > targetBytes) {
+        result.message = QStringLiteral("The completed video exceeds the selected file size budget.");
+        QFile::remove(remuxStagePath);
+        return result;
+    }
+    appendVideoExportLog(QStringLiteral("size_budget_verified"), QStringLiteral("budget=%1 actual=%2")
+        .arg(targetBytes).arg(QFileInfo(remuxStagePath).size()));
 
     QString promoteError;
     if (!replaceOutputFileAtomicallyBestEffort(remuxStagePath, videoOutputPath, &promoteError)) {

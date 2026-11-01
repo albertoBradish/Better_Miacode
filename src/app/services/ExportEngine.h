@@ -31,7 +31,7 @@ public:
         std::function<void(int percent, const QString& label)> progressChanged;
         std::function<bool()> cancellationRequested;
         std::function<void()> retrying;
-        std::function<QString(const VideoExportTask&, const QString&, QString*, QStringList*)> exportCover;
+        std::function<QStringList(const VideoExportTask&, const QString&, QString*, QStringList*)> exportCover;
     };
 
     virtual ~ExportEngine() = default;

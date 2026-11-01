@@ -27,6 +27,15 @@ bool verifyPolicy(QTextStream& err)
     using miacode::video_export::videoExportSizePolicy;
     using miacode::video_export::videoExportSizePresetToken;
 
+    using namespace miacode::video_export;
+    if (!require(videoExportTargetBytes(VideoExportSizePreset::Target30Mb) == 30000000
+        && videoExportTargetBytes(VideoExportSizePreset::Target100Mb) == 100000000
+        && videoExportTargetBytes(VideoExportSizePreset::Target200Mb) == 200000000
+        && videoExportTargetBitrateKbps(VideoExportSizePreset::Target30Mb, 180, 128) == 1156
+        && videoExportTargetBitrateKbps(VideoExportSizePreset::Target30Mb, 0, 128) == 0
+        && videoExportSizePolicy(VideoExportSizePreset::Target30Mb).disableVideoBackground
+        && !videoExportSizePolicy(VideoExportSizePreset::Target100Mb).disableVideoBackground,
+        QStringLiteral("target sizes reserve audio/container bytes and constrain PV only at 30 MB"), err)) return false;
     const auto standard = videoExportSizePolicy(VideoExportSizePreset::Standard);
     const auto compact = videoExportSizePolicy(VideoExportSizePreset::Compact);
     const auto ultraWithPv = videoExportSizePolicy(VideoExportSizePreset::UltraCompactWithPv);

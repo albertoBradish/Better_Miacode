@@ -64,6 +64,10 @@ VideoExportSizePreset videoExportSizePresetFromPreference(
     VideoExportSizePreset fallback)
 {
     const QString token = value.toString().trimmed();
+    if (token.compare(QStringLiteral("target_30mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target30Mb;
+    if (token.compare(QStringLiteral("target_100mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target100Mb;
+    if (token.compare(QStringLiteral("target_200mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target200Mb;
+
     if (token.compare(QStringLiteral("compact"), Qt::CaseInsensitive) == 0) {
         return VideoExportSizePreset::Compact;
     }
@@ -154,6 +158,99 @@ void appendVideoExportPreferences(QJsonObject* settings, const VideoExportTask& 
         task.intro.lvRenderMode.compare(QStringLiteral("text"), Qt::CaseInsensitive) == 0);
     settings->insert(QStringLiteral("intro_card_font_display"), task.intro.fontDisplayPath);
     settings->insert(QStringLiteral("intro_card_font_body"), task.intro.fontBodyPath);
+}
+
+QJsonObject videoExportTemplateSettings(const VideoExportTask& task)
+{
+    QJsonObject settings;
+    appendVideoExportPreferences(&settings, task);
+    settings.insert(QStringLiteral("smoothBrightness"), task.smoothBrightness);
+    settings.insert(QStringLiteral("showTimestamp"), task.showTimestamp);
+    settings.insert(QStringLiteral("showMeasureLines"), task.showMeasureLines);
+    settings.insert(QStringLiteral("showJudgementSkeleton"), task.showJudgementSkeleton);
+    settings.insert(QStringLiteral("showSlideJudgementTiming"), task.showSlideJudgementTiming);
+    settings.insert(QStringLiteral("slideTimingFromLaunchBeat"), task.slideTimingFromLaunchBeat);
+    settings.insert(QStringLiteral("slideTimingEarlyPerfectFromHead"), task.slideTimingEarlyPerfectFromHead);
+    settings.insert(QStringLiteral("showObjectStatsHud"), task.showObjectStatsHud);
+    settings.insert(QStringLiteral("showChartInfoHud"), task.showChartInfoHud);
+    settings.insert(QStringLiteral("showBpmHud"), task.showBpmHud);
+    settings.insert(QStringLiteral("showCpsHud"), task.showCpsHud);
+    settings.insert(QStringLiteral("showMeterHud"), task.showMeterHud);
+    settings.insert(QStringLiteral("showModsHud"), task.showModsHud);
+    settings.insert(QStringLiteral("slideEarlierSecondAndTextOnTop"), task.slideEarlierSecondAndTextOnTop);
+    settings.insert(QStringLiteral("backgroundBrightnessOuter"), task.backgroundBrightnessOuter);
+    settings.insert(QStringLiteral("backgroundBrightnessInner"), task.backgroundBrightnessInner);
+    settings.insert(QStringLiteral("layoutSquareScale"), task.layoutSquareScale);
+    settings.insert(QStringLiteral("fireworkBrightness"), task.fireworkBrightness);
+    settings.insert(QStringLiteral("tapFlowSpeed"), task.tapFlowSpeed);
+    settings.insert(QStringLiteral("touchFlowSpeed"), task.touchFlowSpeed);
+    settings.insert(QStringLiteral("measureLineMode"), task.measureLineMode);
+    settings.insert(QStringLiteral("measureLineCustomBeats"), task.measureLineCustomBeats);
+    settings.insert(QStringLiteral("introSoundFileName"), task.introSoundFileName);
+    settings.insert(QStringLiteral("backgroundScaleMode"), static_cast<int>(task.backgroundScaleMode));
+    settings.insert(QStringLiteral("outlineVariant"), static_cast<int>(task.outlineVariant));
+    settings.insert(QStringLiteral("tapJudgeTextDistance"), static_cast<int>(task.tapJudgeTextDistance));
+    settings.insert(QStringLiteral("judgeEffectStyle"), static_cast<int>(task.judgeEffectStyle));
+    settings.insert(QStringLiteral("centerDisplayMode"), static_cast<int>(task.centerDisplayMode));
+    settings.insert(QStringLiteral("intro_pv_brightness"), task.intro.pvPreviewBrightness);
+    return settings;
+}
+
+bool applyVideoExportTemplateSettings(const QJsonObject& settings, VideoExportTask* task)
+{
+    if (!task || settings.isEmpty()) return false;
+    for (const char* key : {"resolution_width", "resolution_height", "fps"})
+        if (!settings.value(QLatin1String(key)).isDouble()) return false;
+    VideoExportTask candidate = *task;
+    applyVideoExportPreferences(settings, &candidate);
+    if (settings.contains(QStringLiteral("smoothBrightness"))) { if (!settings.value(QStringLiteral("smoothBrightness")).isBool()) return false; candidate.smoothBrightness = settings.value(QStringLiteral("smoothBrightness")).toBool(); }
+    if (settings.contains(QStringLiteral("showTimestamp"))) { if (!settings.value(QStringLiteral("showTimestamp")).isBool()) return false; candidate.showTimestamp = settings.value(QStringLiteral("showTimestamp")).toBool(); }
+    if (settings.contains(QStringLiteral("showMeasureLines"))) { if (!settings.value(QStringLiteral("showMeasureLines")).isBool()) return false; candidate.showMeasureLines = settings.value(QStringLiteral("showMeasureLines")).toBool(); }
+    if (settings.contains(QStringLiteral("showJudgementSkeleton"))) { if (!settings.value(QStringLiteral("showJudgementSkeleton")).isBool()) return false; candidate.showJudgementSkeleton = settings.value(QStringLiteral("showJudgementSkeleton")).toBool(); }
+    if (settings.contains(QStringLiteral("showSlideJudgementTiming"))) { if (!settings.value(QStringLiteral("showSlideJudgementTiming")).isBool()) return false; candidate.showSlideJudgementTiming = settings.value(QStringLiteral("showSlideJudgementTiming")).toBool(); }
+    if (settings.contains(QStringLiteral("slideTimingFromLaunchBeat"))) { if (!settings.value(QStringLiteral("slideTimingFromLaunchBeat")).isBool()) return false; candidate.slideTimingFromLaunchBeat = settings.value(QStringLiteral("slideTimingFromLaunchBeat")).toBool(); }
+    if (settings.contains(QStringLiteral("slideTimingEarlyPerfectFromHead"))) { if (!settings.value(QStringLiteral("slideTimingEarlyPerfectFromHead")).isBool()) return false; candidate.slideTimingEarlyPerfectFromHead = settings.value(QStringLiteral("slideTimingEarlyPerfectFromHead")).toBool(); }
+    if (settings.contains(QStringLiteral("showObjectStatsHud"))) { if (!settings.value(QStringLiteral("showObjectStatsHud")).isBool()) return false; candidate.showObjectStatsHud = settings.value(QStringLiteral("showObjectStatsHud")).toBool(); }
+    if (settings.contains(QStringLiteral("showChartInfoHud"))) { if (!settings.value(QStringLiteral("showChartInfoHud")).isBool()) return false; candidate.showChartInfoHud = settings.value(QStringLiteral("showChartInfoHud")).toBool(); }
+    if (settings.contains(QStringLiteral("showBpmHud"))) { if (!settings.value(QStringLiteral("showBpmHud")).isBool()) return false; candidate.showBpmHud = settings.value(QStringLiteral("showBpmHud")).toBool(); }
+    if (settings.contains(QStringLiteral("showCpsHud"))) { if (!settings.value(QStringLiteral("showCpsHud")).isBool()) return false; candidate.showCpsHud = settings.value(QStringLiteral("showCpsHud")).toBool(); }
+    if (settings.contains(QStringLiteral("showMeterHud"))) { if (!settings.value(QStringLiteral("showMeterHud")).isBool()) return false; candidate.showMeterHud = settings.value(QStringLiteral("showMeterHud")).toBool(); }
+    if (settings.contains(QStringLiteral("showModsHud"))) { if (!settings.value(QStringLiteral("showModsHud")).isBool()) return false; candidate.showModsHud = settings.value(QStringLiteral("showModsHud")).toBool(); }
+    if (settings.contains(QStringLiteral("slideEarlierSecondAndTextOnTop"))) { if (!settings.value(QStringLiteral("slideEarlierSecondAndTextOnTop")).isBool()) return false; candidate.slideEarlierSecondAndTextOnTop = settings.value(QStringLiteral("slideEarlierSecondAndTextOnTop")).toBool(); }
+    if (settings.contains(QStringLiteral("backgroundBrightnessOuter"))) { if (!settings.value(QStringLiteral("backgroundBrightnessOuter")).isDouble()) return false; candidate.backgroundBrightnessOuter = settings.value(QStringLiteral("backgroundBrightnessOuter")).toDouble(); }
+    if (settings.contains(QStringLiteral("backgroundBrightnessInner"))) { if (!settings.value(QStringLiteral("backgroundBrightnessInner")).isDouble()) return false; candidate.backgroundBrightnessInner = settings.value(QStringLiteral("backgroundBrightnessInner")).toDouble(); }
+    if (settings.contains(QStringLiteral("layoutSquareScale"))) { if (!settings.value(QStringLiteral("layoutSquareScale")).isDouble()) return false; candidate.layoutSquareScale = settings.value(QStringLiteral("layoutSquareScale")).toDouble(); }
+    if (settings.contains(QStringLiteral("fireworkBrightness"))) { if (!settings.value(QStringLiteral("fireworkBrightness")).isDouble()) return false; candidate.fireworkBrightness = settings.value(QStringLiteral("fireworkBrightness")).toDouble(); }
+    if (settings.contains(QStringLiteral("tapFlowSpeed"))) { if (!settings.value(QStringLiteral("tapFlowSpeed")).isDouble()) return false; candidate.tapFlowSpeed = settings.value(QStringLiteral("tapFlowSpeed")).toDouble(); }
+    if (settings.contains(QStringLiteral("touchFlowSpeed"))) { if (!settings.value(QStringLiteral("touchFlowSpeed")).isDouble()) return false; candidate.touchFlowSpeed = settings.value(QStringLiteral("touchFlowSpeed")).toDouble(); }
+    if (settings.contains(QStringLiteral("measureLineMode"))) { if (!settings.value(QStringLiteral("measureLineMode")).isDouble()) return false; candidate.measureLineMode = settings.value(QStringLiteral("measureLineMode")).toInt(-1); }
+    if (settings.contains(QStringLiteral("measureLineCustomBeats"))) { if (!settings.value(QStringLiteral("measureLineCustomBeats")).isDouble()) return false; candidate.measureLineCustomBeats = settings.value(QStringLiteral("measureLineCustomBeats")).toInt(-1); }
+    candidate.introSoundFileName = settings.value(QStringLiteral("introSoundFileName")).toString(candidate.introSoundFileName);
+    if (settings.contains(QStringLiteral("backgroundScaleMode"))) { const int value = settings.value(QStringLiteral("backgroundScaleMode")).toInt(-1); if (value < 0 || value > 3) return false; candidate.backgroundScaleMode = static_cast<decltype(candidate.backgroundScaleMode)>(value); }
+    if (settings.contains(QStringLiteral("outlineVariant"))) { const int value = settings.value(QStringLiteral("outlineVariant")).toInt(-1); if (value < 0 || value > 4) return false; candidate.outlineVariant = static_cast<decltype(candidate.outlineVariant)>(value); }
+    if (settings.contains(QStringLiteral("tapJudgeTextDistance"))) { const int value = settings.value(QStringLiteral("tapJudgeTextDistance")).toInt(-1); if (value < 0 || value > 2) return false; candidate.tapJudgeTextDistance = static_cast<decltype(candidate.tapJudgeTextDistance)>(value); }
+    if (settings.contains(QStringLiteral("judgeEffectStyle"))) { const int value = settings.value(QStringLiteral("judgeEffectStyle")).toInt(-1); if (value < 0 || value > 1) return false; candidate.judgeEffectStyle = static_cast<decltype(candidate.judgeEffectStyle)>(value); }
+    if (settings.contains(QStringLiteral("centerDisplayMode"))) { const int value = settings.value(QStringLiteral("centerDisplayMode")).toInt(-1); if (value < 0 || value > 7) return false; candidate.centerDisplayMode = static_cast<decltype(candidate.centerDisplayMode)>(value); }
+    candidate.intro.pvPreviewBrightness = settings.value(QStringLiteral("intro_pv_brightness")).toDouble(candidate.intro.pvPreviewBrightness);
+    bool resolutionValid = false;
+    for (const auto& preset : kVideoExportResolutionPresets)
+        resolutionValid |= preset.width == candidate.outputWidth && preset.height == candidate.outputHeight;
+    if (!resolutionValid || candidate.backgroundBrightnessOuter < 0 || candidate.backgroundBrightnessOuter > 1
+        || candidate.backgroundBrightnessInner < 0 || candidate.backgroundBrightnessInner > 1
+        || candidate.tapFlowSpeed <= 0 || candidate.tapFlowSpeed > 100
+        || candidate.touchFlowSpeed <= 0 || candidate.touchFlowSpeed > 100
+        || candidate.measureLineCustomBeats < 1 || candidate.measureLineCustomBeats > 10000) return false;
+    if (candidate.layoutSquareScale < 0.1 || candidate.layoutSquareScale > 1
+        || candidate.fireworkBrightness < 0.5 || candidate.fireworkBrightness > 1.2
+        || candidate.intro.pvPreviewBrightness < 0 || candidate.intro.pvPreviewBrightness > 1
+        || candidate.measureLineMode < 0 || candidate.measureLineMode > 2) return false;
+    if (candidate.sizePreset == VideoExportSizePreset::Target30Mb) {
+        candidate.outputWidth = qMax(480, qRound(480.0 * candidate.outputWidth / candidate.outputHeight / 2) * 2);
+        candidate.outputHeight = 480;
+        candidate.intro.pvPreview = false;
+    }
+    *task = std::move(candidate);
+    return true;
 }
 
 QString sanitizeVideoExportTimestamp(QString text)

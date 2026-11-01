@@ -130,6 +130,7 @@ Rectangle {
     function exportSelectionRange() { sourceArea.exportSelectionRange() }
     function playSelection() { syncController.playSelection() }
     function applyChartTransform(operation) { return sourceArea.applyChartTransform(operation) }
+    function applyBpmImport(original, replacement, difficulty, revision) { return sourceArea.applyBpmImport(original, replacement, difficulty, revision) }
     function applyNormalization(options) { return sourceArea.applyNormalization(options) }
     function selectionDescription() {
         if (sourceArea.selectionStart === sourceArea.selectionEnd)

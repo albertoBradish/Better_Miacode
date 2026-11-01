@@ -119,6 +119,7 @@ public:
     Q_INVOKABLE void exportSelectionRange();
     Q_INVOKABLE bool applyNormalization(const QVariantMap& options);
     Q_INVOKABLE bool applyChartTransform(const QString& operation);
+    Q_INVOKABLE bool applyBpmImport(const QString& original, const QString& replacement, int difficulty, quint64 revision);
     Q_INVOKABLE bool createBookmarkAtLine(int line, const QString& title);
     Q_INVOKABLE bool renameBookmarkAtLine(int line, const QString& title);
     Q_INVOKABLE bool deleteBookmarkAtLine(int line);

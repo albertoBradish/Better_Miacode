@@ -52,12 +52,14 @@ ApplicationWindow {
         Label {
             Layout.fillWidth: true
             text: root.chartTools.calculationStatus
+            visible: text.length > 0
             wrapMode: Text.Wrap
             color: Theme.colors.text.secondary
         }
         Label {
             Layout.fillWidth: true
-            text: qsTrId("tools.dx_loss.attributes")
+            text: root.chartTools.simpleLossSummary
+            visible: text.length > 0
             wrapMode: Text.Wrap
             color: Theme.colors.text.secondary
         }

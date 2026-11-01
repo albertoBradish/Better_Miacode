@@ -2,6 +2,7 @@
 
 #include <QImage>
 #include <QString>
+#include <QVector>
 #include <QtGlobal>
 #include <optional>
 #include <utility>
@@ -12,9 +13,11 @@ namespace miacode::cover_export {
 // success consumes them; cancellation and stale asynchronous cleanup drop them.
 class CoverCompanionJob final {
 public:
+    struct NamedImage { QString token; QImage image; QString error; };
     struct Prepared {
         QImage image;
         QString error;
+        QVector<NamedImage> images;
     };
     quint64 begin()
     {
@@ -27,6 +30,12 @@ public:
     {
         if (!active_ || generation != generation_) return false;
         prepared_ = Prepared{std::move(image), std::move(error)};
+        return true;
+    }
+    bool prepareMany(quint64 generation, QVector<NamedImage> images)
+    {
+        if (!active_ || generation != generation_) return false;
+        prepared_ = Prepared{{}, {}, std::move(images)};
         return true;
     }
     // Source changes only cancel the preparation stage. Once pixels are ready,

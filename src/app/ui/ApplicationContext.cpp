@@ -129,7 +129,7 @@ void ApplicationContext::refreshChartTools()
     const auto snapshot = services_.workspace().snapshot();
     const auto* difficulty = document.difficulty(snapshot.activeDifficultyId);
     chartTools_.setChart(difficulty ? difficulty->chart : QString(),
-        miacode::simai::buildTimingMetadata(document), document.first);
+        miacode::simai::buildTimingMetadata(document), document.first, snapshot.activeDifficultyId, snapshot.revision);
 }
 
 void ApplicationContext::setWindowChrome(QObject* chrome)

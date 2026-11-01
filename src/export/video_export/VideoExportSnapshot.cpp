@@ -91,6 +91,10 @@ VideoExportPreset videoExportPresetFromToken(const QString& token)
 
 VideoExportSizePreset videoExportSizePresetFromToken(const QString& token)
 {
+
+    if (token.compare(QStringLiteral("target_30mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target30Mb;
+    if (token.compare(QStringLiteral("target_100mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target100Mb;
+    if (token.compare(QStringLiteral("target_200mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target200Mb;
     if (token.compare(QStringLiteral("compact"), Qt::CaseInsensitive) == 0) {
         return VideoExportSizePreset::Compact;
     }

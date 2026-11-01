@@ -705,16 +705,16 @@ bool miacode::runtime::VideoExportHost::runBatchExport(
             VideoExportTask coverTask;
             QString coverError;
             QStringList adjustments;
-            QString coverPath;
+            QStringList coverPaths;
             if (buildVideoExportTaskFromSnapshot(snapshot, &coverTask, &coverError)) {
-                coverPath = callbacks.exportCover(coverTask, snapshot.outputPath, &coverError, &adjustments);
+                coverPaths = callbacks.exportCover(coverTask, snapshot.outputPath, &coverError, &adjustments);
             }
-            if (coverPath.isEmpty()) {
-                result->failedCovers.append(job.displayName + QStringLiteral(" - ") + coverError);
-            } else {
-                ++result->coverSuccessCount;
-                result->exportedFiles.append(QFileInfo(coverPath).fileName());
+            if (!coverError.isEmpty()) {
+                for (const auto& error : coverError.split(QLatin1Char('\n'), Qt::SkipEmptyParts))
+                    result->failedCovers.append(job.displayName + QStringLiteral(" - ") + error);
             }
+            result->coverSuccessCount += coverPaths.size();
+            for (const auto& coverPath : coverPaths) result->exportedFiles.append(QFileInfo(coverPath).fileName());
             for (const auto& adjustment : adjustments) {
                 result->coverAdjustments.append(job.displayName + QStringLiteral(" - ") + adjustment);
             }

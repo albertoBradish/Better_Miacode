@@ -100,6 +100,9 @@ ApplicationWindow {
         }
         property string unavailableReason: ""
         property bool exportRunning: false
+        property var singleCoverPresets: []
+        property var batchCoverPresets: []
+        property var videoTemplates: []
         property string singleCoverPreset: ""
         property var singleCoverPresetOptions: [{label: "None", value: ""}, {label: "Card", value: "builtin:card"}]
         property string outputPath: "out.mp4"

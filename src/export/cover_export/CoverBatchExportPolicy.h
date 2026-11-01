@@ -3,6 +3,8 @@
 #include "core/chart/IntroConfig.h"
 
 #include <QDir>
+#include <QCryptographicHash>
+#include <QRegularExpression>
 #include <QFileInfo>
 #include <QString>
 #include <QtGlobal>
@@ -43,6 +45,23 @@ inline QString batchCoverOutputPath(const QString& outputDirectory, const QStrin
 {
     return QDir(outputDirectory).filePath(QFileInfo(exportPath).completeBaseName()
                                         + QStringLiteral("_cover.png"));
+}
+
+inline QString companionCoverOutputPath(const QString& videoPath, const QString& token, bool multiple)
+{
+    const QFileInfo info(videoPath);
+    QString name = info.completeBaseName() + QStringLiteral("_cover");
+    if (multiple) {
+        QString label = token.mid(token.indexOf(QLatin1Char(':')) + 1);
+        if (token.startsWith(QLatin1String("file:"))) label = QFileInfo(label).completeBaseName();
+        label.replace(QRegularExpression(QStringLiteral("[<>:\"/\\\\|?*\\x00-\\x1f]")), QStringLiteral("_"));
+        name += QLatin1Char('_') + label.left(60) + QLatin1Char('_')
+            + QString::fromLatin1(QCryptographicHash::hash(token.toUtf8(), QCryptographicHash::Sha256).toHex().left(8));
+    }
+    QString path = info.dir().filePath(name + QStringLiteral(".png"));
+    for (int index = 2; QFileInfo::exists(path); ++index)
+        path = info.dir().filePath(name + QStringLiteral("_%1.png").arg(index));
+    return path;
 }
 
 } // namespace miacode::cover_export

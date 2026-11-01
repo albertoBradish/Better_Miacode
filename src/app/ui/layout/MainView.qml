@@ -868,6 +868,14 @@ Item {
         chartTools: root.applicationContext.chartTools
         transientParent: root.Window.window
     }
+    Connections {
+        target: root.applicationContext.chartTools
+        function onApplyBpmRequested(original, replacement, difficulty, revision) {
+            root.applicationContext.chartTools.completeBpmApply(
+                splitView.sourceEditorItem.applyBpmImport(original, replacement, difficulty, revision))
+            root.applicationContext.refreshChartTools()
+        }
+    }
     Timer {
         id: chartToolsRefresh
         interval: 150

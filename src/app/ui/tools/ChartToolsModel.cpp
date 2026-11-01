@@ -2,6 +2,8 @@
 #include "app/services/UiRequestService.h"
 #include "app/ui/preferences/LocaleService.h"
 #include "core/chart/ChartBpmExport.h"
+#include "core/chart/ChartBpmImport.h"
+#include <QFile>
 #include "core/chart/ChartScoreLoss.h"
 #include "core/video/AssetPaths.h"
 #include <QUrl>
@@ -24,8 +26,16 @@ QString ChartToolsModel::error() const
     if (error_ == QLatin1String("tools.chart.parse_error")) return qtTrId("tools.chart.parse_error");
     return error_.isEmpty() ? saveError_ : error_;
 }
-void ChartToolsModel::setChart(const QString& text, const miacode::simai::SimaiTimingMetadata& timing, const QString& first)
+void ChartToolsModel::setChart(const QString& text, const miacode::simai::SimaiTimingMetadata& timing, const QString& first,
+    int difficulty, quint64 revision)
 {
+    if (initialized_ && (difficulty_ != difficulty || revision_ != revision) && !importText_.isEmpty()) {
+        importPreview_.clear();
+        importError_ = QStringLiteral("tools.bpm.import_stale");
+    }
+    const bool identityChanged = difficulty_ != difficulty || revision_ != revision;
+    difficulty_ = difficulty; revision_ = revision;
+    if (identityChanged) emit changed();
     if (initialized_ && chartText_ == text && timing_ == timing && firstText_ == first) return;
     initialized_ = true;
     chartText_ = text;
@@ -39,6 +49,65 @@ void ChartToolsModel::setChart(const QString& text, const miacode::simai::SimaiT
     if (!parsed_.ok) error_ = QStringLiteral("tools.chart.parse_error");
     score_ = chart::calculateScoreLoss(chart::buildScoringEvents(parsed_.noteMarkers));
     emit changed();
+}
+
+QString ChartToolsModel::bpmImportSummary() const
+{
+    if (!importError_.isEmpty()) return qtTrId(qPrintable(importError_));
+    if (importPreview_.isEmpty()) return {};
+    QString summary = qtTrId("tools.bpm.import_summary").arg(importChanges_).arg(importNotes_);
+    if (!importSubdivisionWarning_.isEmpty())
+        summary += QLatin1Char('\n') + qtTrId("tools.bpm.import_subdivisions").arg(importSubdivisionWarning_);
+    return summary;
+}
+
+void ChartToolsModel::setBpmImportText(const QString& text)
+{
+    importText_ = text;
+    importPreview_.clear(); importError_.clear(); importSubdivisionWarning_.clear();
+    importDifficulty_ = difficulty_; importRevision_ = revision_;
+    if (!text.trimmed().isEmpty() && !error_.isEmpty()) importError_ = error_;
+    else if (!text.trimmed().isEmpty()) {
+        const auto result = chart::importChartBpm(text, chartText_, timing_, first_);
+        importPreview_ = result.chart; importError_ = result.error;
+        importChanges_ = result.changes; importNotes_ = result.notes;
+        importSubdivisionWarning_ = result.nonStandardSubdivisions.join(QStringLiteral(", "));
+    }
+    emit changed();
+}
+
+void ChartToolsModel::loadBpm()
+{
+    FileRequest request;
+    request.title = qtTrId("tools.bpm.import");
+    request.nameFilters = {QStringLiteral("BPM / maidata (*.txt)")};
+    QPointer<ChartToolsModel> guard(this);
+    const quint64 revision = revision_;
+    const int difficulty = difficulty_;
+    requests_->requestFile(request, [guard, revision, difficulty](const QString& path) {
+        if (!guard || path.isEmpty()) return;
+        if (guard->revision_ != revision || guard->difficulty_ != difficulty) {
+            guard->importError_ = QStringLiteral("tools.bpm.import_stale");
+            guard->importPreview_.clear(); emit guard->changed(); return;
+        }
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly) || file.size() > 4 * 1024 * 1024) {
+            guard->importError_ = QStringLiteral("tools.bpm.import_invalid");
+            guard->importPreview_.clear(); emit guard->changed(); return;
+        }
+        guard->setBpmImportText(QString::fromUtf8(file.readAll()));
+    });
+}
+void ChartToolsModel::pasteBpm() { setBpmImportText(QGuiApplication::clipboard()->text()); }
+void ChartToolsModel::applyBpm()
+{
+    if (canApplyBpm()) emit applyBpmRequested(chartText_, importPreview_, importDifficulty_, importRevision_);
+}
+void ChartToolsModel::completeBpmApply(bool success)
+{
+    importPreview_.clear();
+    importError_ = success ? QStringLiteral("tools.bpm.import_applied") : QStringLiteral("tools.bpm.import_stale");
+    importText_.clear(); emit changed();
 }
 QVariantList ChartToolsModel::objectCounts() const
 {
@@ -81,8 +150,14 @@ QString ChartToolsModel::calculationStatus() const
     const auto& stats = score_;
     if (stats.hasUnofficialExtensions) return qtTrId("tools.dx_loss.extensions");
     if (stats.total == 0) return qtTrId("tools.dx_loss.empty");
-    return stats.breakTotal ? qtTrId("tools.dx_loss.maximum_break")
-        : qtTrId("tools.dx_loss.maximum_no_break");
+    return {};
+}
+QString ChartToolsModel::simpleLossSummary() const
+{
+    if (!calculable()) return {};
+    return qtTrId("tools.dx_loss.simple_summary").arg(score_.simpleGreatSss)
+        .arg(score_.simpleGreatSssPlus < 0 ? qtTrId("tools.dx_loss.unreachable")
+                                         : QString::number(score_.simpleGreatSssPlus));
 }
 void ChartToolsModel::setBpmFormat(int format)
 {
