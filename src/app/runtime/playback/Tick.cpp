@@ -102,6 +102,7 @@ qint64 miacode::runtime::PlaybackCoordinator::timelineCadenceWatchdogThresholdMs
 
 void miacode::runtime::PlaybackCoordinator::onTimelineRenderCadenceTick()
 {
+    if (state_.lowPerformanceMode_ && state_.playing_) return;
     if (!state_.playing_) {
         return;
     }
@@ -118,6 +119,7 @@ void miacode::runtime::PlaybackCoordinator::onTimelineRenderCadenceTick()
 
 void miacode::runtime::PlaybackCoordinator::onTimelineCadenceWatchdogTick()
 {
+    if (state_.lowPerformanceMode_ && state_.playing_) return;
     miacode::timeline::cadence::ArbitrationState arbitration;
     arbitration.playing = state_.playing_;
     arbitration.lastCadenceMs = state_.qtPreviewLastTimelineCadenceMs_;

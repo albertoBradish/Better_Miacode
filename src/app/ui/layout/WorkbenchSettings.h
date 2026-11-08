@@ -59,6 +59,16 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(bool editorSelectionBeatDisplay READ editorSelectionBeatDisplay WRITE setEditorSelectionBeatDisplay NOTIFY editorSettingsChanged)
     Q_PROPERTY(bool editorOverviewRulerEnabled READ editorOverviewRulerEnabled WRITE setEditorOverviewRulerEnabled NOTIFY editorSettingsChanged)
 
+    Q_PROPERTY(bool advancedMetadataEnabled READ advancedMetadataEnabled WRITE setAdvancedMetadataEnabled NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool lowPerformanceMode READ lowPerformanceMode WRITE setLowPerformanceMode NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool spaceGuardEnabled READ spaceGuardEnabled WRITE setSpaceGuardEnabled NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool autoNormalizeEnabled READ autoNormalizeEnabled WRITE setAutoNormalizeEnabled NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool warnEmptyDifficulty READ warnEmptyDifficulty WRITE setWarnEmptyDifficulty NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(QString timelineLayoutMode READ timelineLayoutMode WRITE setTimelineLayoutMode NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(QString timelineVerticalDirection READ timelineVerticalDirection WRITE setTimelineVerticalDirection NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(double timelineVerticalWidthRatio READ timelineVerticalWidthRatio WRITE setTimelineVerticalWidthRatio NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(QString timelineLaneOrder READ timelineLaneOrder WRITE setTimelineLaneOrder NOTIFY workflowSettingsChanged)
+
 public:
     // What 关于 MiaCode shows: version, platform triple and build type. Read
     // from the build's own macros so the page cannot drift from the binary.
@@ -94,7 +104,7 @@ public:
     QString darkThemeToken() const;
     QString activeThemeToken() const;
     bool darkTheme() const;
-    bool blurMaterialsEnabled() const { return blurMaterialsEnabled_; }
+    bool blurMaterialsEnabled() const { return blurMaterialsEnabled_ && !lowPerformanceMode_; }
     void setBlurMaterialsEnabled(bool enabled);
     QFont codeFont() const;
     QString editorFontFamily() const;
@@ -132,7 +142,27 @@ public:
     void setEditorSelectionBeatDisplay(bool enabled);
     void setEditorOverviewRulerEnabled(bool enabled);
 
+    bool advancedMetadataEnabled() const { return advancedMetadataEnabled_; }
+    void setAdvancedMetadataEnabled(bool value);
+    bool lowPerformanceMode() const { return lowPerformanceMode_; }
+    void setLowPerformanceMode(bool value);
+    bool spaceGuardEnabled() const { return spaceGuardEnabled_; }
+    void setSpaceGuardEnabled(bool value);
+    bool autoNormalizeEnabled() const { return autoNormalizeEnabled_; }
+    void setAutoNormalizeEnabled(bool value);
+    bool warnEmptyDifficulty() const { return warnEmptyDifficulty_; }
+    void setWarnEmptyDifficulty(bool value);
+    QString timelineLayoutMode() const { return timelineLayoutMode_; }
+    void setTimelineLayoutMode(const QString& value);
+    QString timelineVerticalDirection() const { return timelineVerticalDirection_; }
+    void setTimelineVerticalDirection(const QString& value);
+    double timelineVerticalWidthRatio() const { return timelineVerticalWidthRatio_; }
+    void setTimelineVerticalWidthRatio(double value);
+    QString timelineLaneOrder() const { return timelineLaneOrder_; }
+    void setTimelineLaneOrder(const QString& value);
+
 signals:
+    void workflowSettingsChanged();
     void setupCompletedChanged();
     void efficientSidebarEnabledChanged();
     void sidebarVisibleChanged();
@@ -150,6 +180,15 @@ signals:
     void uiScalePercentChanged();
 
 private:
+    bool advancedMetadataEnabled_ = false;
+    bool lowPerformanceMode_ = false;
+    bool spaceGuardEnabled_ = true;
+    bool autoNormalizeEnabled_ = true;
+    bool warnEmptyDifficulty_ = true;
+    QString timelineLayoutMode_ = QStringLiteral("horizontal");
+    QString timelineVerticalDirection_ = QStringLiteral("falling");
+    double timelineVerticalWidthRatio_ = 0.34;
+    QString timelineLaneOrder_ = QStringLiteral("natural");
     static constexpr int kSidebarDefaultWidth = 190;
     static constexpr int kUiScaleDefaultPercent = 100;
     static constexpr int kUiScaleMinimumPercent = 75;

@@ -10,6 +10,7 @@ class SettingsHost final : public miacode::PreferencesStore {
 public:
     SettingsHost(Session& session, RuntimeContext::Ui& ui, RuntimeContext::State& state);
 
+    void setLowPerformanceMode(bool enabled) override;
     int editorTextFontSize() const override;
     double editorLineSpacingFactor() const override;
     bool editorHalfWidthInputEnabled() const override;

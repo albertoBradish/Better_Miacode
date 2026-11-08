@@ -33,6 +33,10 @@ PreferencesModel::PreferencesModel(miacode::PreferencesStore*& storeSlot,
     , storeSlot_(&storeSlot)
     , settings_(&settings)
 {
+    connect(&settings, &WorkbenchSettings::workflowSettingsChanged, this, [this] {
+        if (store()) store()->setLowPerformanceMode(settings_->lowPerformanceMode());
+        emit performanceChanged();
+    });
     completionDurations_.setHalfWidthInputEnabled(editorHalfWidthInput());
     completionDivisions_.setHalfWidthInputEnabled(editorHalfWidthInput());
     reloadCompletionCandidates();

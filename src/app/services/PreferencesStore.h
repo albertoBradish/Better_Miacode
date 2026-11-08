@@ -27,6 +27,8 @@ public:
     virtual void applyEditorCompletionCandidates(const QStringList& durations,
                                                  const QStringList& divisions, bool persist) = 0;
 
+    virtual void setLowPerformanceMode(bool) {}
+
     // ---- frame pacing ----
     virtual PreviewCanvasFrameRateMode previewCanvasFrameRateMode() const = 0;
     virtual PreviewCanvasFrameRateMode previewStageMediaFrameRateMode() const = 0;

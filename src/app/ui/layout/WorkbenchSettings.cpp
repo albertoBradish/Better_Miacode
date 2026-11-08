@@ -123,6 +123,18 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
 
     // 启动时读取并约束到界面可接受范围。无 json 键时回退到旧 QSettings，供 macOS 上已有记录迁入。
     const QJsonObject ui = loadUiObject();
+    advancedMetadataEnabled_ = ui.value(QStringLiteral("advanced_metadata_enabled")).toBool(false);
+    lowPerformanceMode_ = ui.value(QStringLiteral("low_performance_mode")).toBool(false);
+    spaceGuardEnabled_ = ui.value(QStringLiteral("space_guard_enabled")).toBool(true);
+    autoNormalizeEnabled_ = ui.value(QStringLiteral("auto_normalize_enabled")).toBool(true);
+    warnEmptyDifficulty_ = ui.value(QStringLiteral("warn_empty_difficulty")).toBool(true);
+    timelineLayoutMode_ = ui.value(QStringLiteral("timeline_layout_mode")).toString(QStringLiteral("horizontal"));
+    if (!QStringList{QStringLiteral("horizontal"), QStringLiteral("vertical_before_editor"), QStringLiteral("vertical_after_editor")}.contains(timelineLayoutMode_)) timelineLayoutMode_ = QStringLiteral("horizontal");
+    timelineVerticalDirection_ = ui.value(QStringLiteral("timeline_vertical_direction")).toString(QStringLiteral("falling"));
+    if (!QStringList{QStringLiteral("falling"), QStringLiteral("rising")}.contains(timelineVerticalDirection_)) timelineVerticalDirection_ = QStringLiteral("falling");
+    timelineVerticalWidthRatio_ = qBound(0.2, ui.value(QStringLiteral("timeline_vertical_width_ratio")).toDouble(0.34), 0.6);
+    timelineLaneOrder_ = ui.value(QStringLiteral("timeline_lane_order")).toString(QStringLiteral("natural"));
+    if (!QStringList{QStringLiteral("natural"), QStringLiteral("rotated"), QStringLiteral("reversed"), QStringLiteral("rotated_reversed")}.contains(timelineLaneOrder_)) timelineLaneOrder_ = QStringLiteral("natural");
     efficientSidebarEnabled_ = ui.value(QLatin1String(kEfficientSidebarEnabled)).toBool(false);
     previewDetached_ = ui.value(QLatin1String(kPreviewDetached)).toBool(false);
     blurMaterialsEnabled_ = ui.value(QLatin1String(kBlurMaterialsEnabled)).toBool(true);
@@ -578,6 +590,85 @@ void WorkbenchSettings::setFontSize(int value)
     fontSize_ = value;
     storeUiValue(kFontSize, value);
     emit fontSizeChanged();
+}
+
+
+void WorkbenchSettings::setAdvancedMetadataEnabled(bool value)
+{
+    if (advancedMetadataEnabled_ == value) return;
+    advancedMetadataEnabled_ = value;
+    storeUiValue("advanced_metadata_enabled", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setLowPerformanceMode(bool value)
+{
+    if (lowPerformanceMode_ == value) return;
+    lowPerformanceMode_ = value;
+    emit blurMaterialsEnabledChanged();
+    storeUiValue("low_performance_mode", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setSpaceGuardEnabled(bool value)
+{
+    if (spaceGuardEnabled_ == value) return;
+    spaceGuardEnabled_ = value;
+    storeUiValue("space_guard_enabled", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setAutoNormalizeEnabled(bool value)
+{
+    if (autoNormalizeEnabled_ == value) return;
+    autoNormalizeEnabled_ = value;
+    storeUiValue("auto_normalize_enabled", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setWarnEmptyDifficulty(bool value)
+{
+    if (warnEmptyDifficulty_ == value) return;
+    warnEmptyDifficulty_ = value;
+    storeUiValue("warn_empty_difficulty", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setTimelineLayoutMode(const QString& value)
+{
+    if (!QStringList{QStringLiteral("horizontal"), QStringLiteral("vertical_before_editor"), QStringLiteral("vertical_after_editor")}.contains(value)) return;
+    if (timelineLayoutMode_ == value) return;
+    timelineLayoutMode_ = value;
+    storeUiValue("timeline_layout_mode", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setTimelineVerticalDirection(const QString& value)
+{
+    if (!QStringList{QStringLiteral("falling"), QStringLiteral("rising")}.contains(value)) return;
+    if (timelineVerticalDirection_ == value) return;
+    timelineVerticalDirection_ = value;
+    storeUiValue("timeline_vertical_direction", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setTimelineLaneOrder(const QString& value)
+{
+    if (!QStringList{QStringLiteral("natural"), QStringLiteral("rotated"), QStringLiteral("reversed"), QStringLiteral("rotated_reversed")}.contains(value)) return;
+    if (timelineLaneOrder_ == value) return;
+    timelineLaneOrder_ = value;
+    storeUiValue("timeline_lane_order", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setTimelineVerticalWidthRatio(double value)
+{
+    if (!qIsFinite(value)) return;
+    value = qBound(0.2, value, 0.6);
+    if (qFuzzyCompare(timelineVerticalWidthRatio_, value)) return;
+    timelineVerticalWidthRatio_ = value;
+    storeUiValue("timeline_vertical_width_ratio", value);
+    emit workflowSettingsChanged();
 }
 
 } // namespace miacode::ui

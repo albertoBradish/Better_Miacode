@@ -60,6 +60,7 @@ void miacode::runtime::EditorHost::loadPortableState()
 
     const QJsonObject root = PreferenceDocument::loadPreferencesObject();
     const QJsonObject ui = root.value("ui").toObject();
+    state_.lowPerformanceMode_ = ui.value("low_performance_mode").toBool(false);
     const QJsonObject app = root.value("app").toObject();
     const QJsonObject preview = app.value("preview").toObject();
 
@@ -983,4 +984,12 @@ void Session::applyEditorOverwriteModeEnabled(bool enabled, bool persistPreferen
 {
     editor_->applyEditorOverwriteModeEnabled(enabled, persistPreference);
     if (persistPreference) emit editorPreferencesChanged();
+}
+
+void miacode::runtime::SettingsHost::setLowPerformanceMode(bool enabled)
+{
+    if (state_.lowPerformanceMode_ == enabled) return;
+    state_.lowPerformanceMode_ = enabled;
+    session_.playback_->setPreviewCanvasFrameRateMode(state_.previewCanvasFrameRateMode_, false);
+    if (!enabled || !state_.playing_) session_.playback_->flushQtPreviewTimelinePosition();
 }

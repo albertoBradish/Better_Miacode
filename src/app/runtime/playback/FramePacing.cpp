@@ -89,7 +89,7 @@ QString miacode::runtime::PlaybackCoordinator::timelineFrameRateModeStorageValue
 
 Session::PreviewCanvasFrameRateMode miacode::runtime::PlaybackCoordinator::currentPreviewStageMediaFrameRateMode() const
 {
-    return state_.previewStageMediaFrameRateMode_;
+    return state_.lowPerformanceMode_ ? PreviewCanvasFrameRateMode::Fps30 : state_.previewStageMediaFrameRateMode_;
 }
 
 bool miacode::runtime::PlaybackCoordinator::currentVideoDecodePrefersSoftware() const
@@ -147,7 +147,7 @@ qint64 miacode::runtime::PlaybackCoordinator::previewCanvasTargetFrameIntervalNs
     // Same clamp guards Fps60 against (rare) sub-60 Hz displays.
     const double displayHz = currentPreviewCanvasRefreshRate();
     double targetHz;
-    switch (state_.previewCanvasFrameRateMode_) {
+    switch (state_.lowPerformanceMode_ ? PreviewCanvasFrameRateMode::Fps60 : state_.previewCanvasFrameRateMode_) {
     case PreviewCanvasFrameRateMode::Fps30:
         targetHz = qMin(30.0, displayHz);
         break;
