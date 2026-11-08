@@ -274,7 +274,11 @@ bool prepareTask(const CliRequest& request, const ChartInput& chart, const QStri
     snapshot.outputWidth = request.values.value(QStringLiteral("width")).toInt(1080);
     snapshot.outputHeight = request.values.value(QStringLiteral("height")).toInt(1080);
     snapshot.fps = request.values.value(QStringLiteral("fps")).toInt(60);
-    const QString sizeToken = request.values.value(QStringLiteral("size-preset")).toString(QStringLiteral("standard"));
+    QString sizeToken = request.values.value(QStringLiteral("size-preset")).toString(QStringLiteral("standard"));
+    // Public command tokens remain short; persisted template tokens stay stable.
+    if (sizeToken == QLatin1String("30mb")) sizeToken = QStringLiteral("target_30mb");
+    else if (sizeToken == QLatin1String("100mb")) sizeToken = QStringLiteral("target_100mb");
+    else if (sizeToken == QLatin1String("200mb")) sizeToken = QStringLiteral("target_200mb");
     snapshot.sizePreset = miacode::video_export::videoExportSizePresetFromPreference(sizeToken, VideoExportSizePreset::Standard);
     if (miacode::video_export::videoExportSizePresetToken(snapshot.sizePreset) != sizeToken) {
         *error = QStringLiteral("Unknown size preset: ") + sizeToken; return false;
