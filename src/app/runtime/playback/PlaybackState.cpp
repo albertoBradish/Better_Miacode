@@ -569,6 +569,24 @@ void miacode::runtime::PlaybackCoordinator::stopQtPreviewTimers()
     setPreviewFixedTimerHighResolutionActive(state_, false);
 }
 
+void miacode::runtime::PlaybackCoordinator::updateTimelinePlaybackCadence()
+{
+    // Start on the watchdog until the first live render-cadence sample.
+    state_.qtPreviewLastTimelineCadenceMs_ = -1;
+    state_.qtPreviewLastTimelineCadenceFlushNs_ = -1;
+    const bool active = state_.playing_ && !state_.lowPerformanceMode_;
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setPlaybackCadenceActive(active);
+    }
+    if (ui_.qtPreviewTimelineTimer_ != nullptr) {
+        if (active) {
+            ui_.qtPreviewTimelineTimer_->start();
+        } else {
+            ui_.qtPreviewTimelineTimer_->stop();
+        }
+    }
+}
+
 void miacode::runtime::PlaybackCoordinator::finalizeQtPreviewPlaybackStart(double effectiveStartSecond)
 {
     state_.pausedPreviewMediaSeekPending_ = false;
@@ -621,15 +639,7 @@ void miacode::runtime::PlaybackCoordinator::finalizeQtPreviewPlaybackStart(doubl
     } else {
         requestNextFixedIntervalPreviewFrame();
     }
-    // Start on the watchdog: the first afterAnimating tick claims the sampling phase.
-    state_.qtPreviewLastTimelineCadenceMs_ = -1;
-    state_.qtPreviewLastTimelineCadenceFlushNs_ = -1;
-    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
-        state_.timeline_.timelineQuickStateBridge_->setPlaybackCadenceActive(true);
-    }
-    if (ui_.qtPreviewTimelineTimer_ != nullptr && !ui_.qtPreviewTimelineTimer_->isActive()) {
-        ui_.qtPreviewTimelineTimer_->start();
-    }
+    updateTimelinePlaybackCadence();
     if (ui_.previewStatsUiTimer_ != nullptr && !ui_.previewStatsUiTimer_->isActive()) {
         ui_.previewStatsUiTimer_->start();
     }

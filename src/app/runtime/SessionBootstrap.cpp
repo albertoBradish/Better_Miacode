@@ -305,6 +305,25 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
         if (!playing_) {
             return;
         }
+        if (state_.lowPerformanceMode_) {
+            // Count real window presents without using them to drive the next update.
+            ++qtPreviewFixedGateFramePresentSeq_;
+            if (miacode::debug_options::previewFramePacingDiagnosticsEnabled()) {
+                const qint64 nowMs = qtPreviewWatchdogElapsed_.elapsed();
+                if (qtPreviewFramePacingDiagLastPresentLogMs_ < 0
+                    || nowMs - qtPreviewFramePacingDiagLastPresentLogMs_
+                        >= miacode::debug_options::previewFramePacingDiagnosticSampleMs()) {
+                    qtPreviewFramePacingDiagLastPresentLogMs_ = nowMs;
+                    appendPreviewFramePacingDiagLog(
+                        QStringLiteral("low_mode_present"),
+                        QStringLiteral("request_seq=%1 present_seq=%2 target_ms=%3")
+                            .arg(qtPreviewFixedGateFrameRequestSeq_)
+                            .arg(qtPreviewFixedGateFramePresentSeq_)
+                            .arg(previewCanvasTargetFrameIntervalNs() / 1000000.0, 0, 'f', 3));
+                }
+            }
+            return;
+        }
         if (previewCanvasUsesFrameSwappedPacing()) {
             const bool matchedRequest = qtPreviewAwaitingFrameSwap_;
             const qint64 nowNs = qtPreviewWatchdogElapsed_.nsecsElapsed();

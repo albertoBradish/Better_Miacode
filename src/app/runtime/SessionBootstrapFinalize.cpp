@@ -89,12 +89,14 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
     qtPreviewTimer_->setSingleShot(true);
     qtPreviewTimer_->setTimerType(Qt::PreciseTimer);
     connect(qtPreviewTimer_, &QChronoTimer::timeout, this, [this]() {
-        // Doc section 4.1/4.3: qtPreviewTimer_ is a watchdog for both modes — it no longer
-        // carries the normal visual cadence. It only fires if the framePresented pipeline
-        // has stalled long enough to warrant a kick.
         if (!playing_) {
             return;
         }
+        if (state_.lowPerformanceMode_) {
+            playback_->onLowPerformancePreviewFrameDeadline();
+            return;
+        }
+        // Normal playback uses this timer as a watchdog for the present pipeline.
         const qint64 nowMs = qtPreviewWatchdogElapsed_.elapsed();
         const int stallTimeoutMs =
             previewFrameSwapWatchdogTimeoutMs(previewCanvasTargetFrameIntervalNs());
