@@ -28,6 +28,7 @@ using miacode::timeline::TimelineThemeColors;
 constexpr int kPlayableLaneCount = 8;
 constexpr int kLaneCount = kPlayableLaneCount + 1;
 constexpr int kHeaderHeight = 36;
+constexpr int kVerticalHeaderWidth = 42;
 constexpr int kLaneHeight = 20;
 constexpr double kMinimumContentScale = 0.25;
 constexpr double kMinimumTextScale = 0.5;
@@ -352,17 +353,19 @@ void appendSprite(
 
 TimelineSceneLayoutMetrics buildLayoutMetrics(const TimelineSceneBuildRequest& request)
 {
+    const int headerSize = request.axisMode == miacode::timeline::TimelineAxisMode::Horizontal
+        ? kHeaderHeight : kVerticalHeaderWidth;
     double contentScale = normalizedContentScale(request.contentScale);
     if (request.fitViewportHeight) {
         const double viewportScale =
-            static_cast<double>(request.viewportSize.height() - kHeaderHeight)
+            static_cast<double>(request.viewportSize.height() - headerSize)
                 / (kLaneCount * kLaneHeight);
         contentScale = qBound(kMinimumContentScale, viewportScale, 1.0);
     }
     TimelineSceneLayoutMetrics metrics;
     metrics.viewportSize = request.viewportSize;
     metrics.timelineLeft = kTimelineLeftMargin;
-    metrics.timelineTop = kHeaderHeight;
+    metrics.timelineTop = headerSize;
     if (request.fitViewportHeight) {
         metrics.timelineHeight = qMax<qreal>(
             0.0,
@@ -464,6 +467,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
     TimelineSceneState state;
     const TimelineSceneLayoutMetrics metrics = buildLayoutMetrics(request);
     applyLayoutMetrics(&state, metrics);
+    state.axisMode = request.axisMode;
     state.laneOrder = request.laneOrder;
     state.horizontalScrollValue = qMax(0.0, request.horizontalScrollValue);
     state.headerLeftLimit = qMax(0, request.headerLeftLimit);
@@ -874,8 +878,9 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
     // node trees rebuild at bucket boundaries, not on every scroll tick.
     for (const HeaderLineLabel& label : collapsedHeaderLabels) {
         const QString labelText = QString::number(label.lineNumber);
-        const qreal labelHalfWidth =
-            (headerMetrics.horizontalAdvance(labelText) * 0.5) + kTimelineTextHorizontalPadding;
+        const QSizeF labelSize = timelineTextLogicalSize(headerFont, labelText);
+        const qreal labelHalfWidth = (state.axisProjection().vertical()
+            ? labelSize.height() : labelSize.width()) * 0.5;
         if (headerLabelEmitSpanFits(label.screenX, labelHalfWidth)
             && (headerLabels.isEmpty()
                 || (label.screenX - headerLabels.constLast().screenX >= headerLabelMinSpacing
@@ -890,7 +895,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                     headerTextBottom - headerMetrics.height() - kTimelineTextVerticalPadding),
                 headerFont,
                 theme.textSecondary,
-                timelineTextLogicalSize(headerFont, labelText),
+                labelSize,
             });
         }
         if (markerHeight >= 2.0

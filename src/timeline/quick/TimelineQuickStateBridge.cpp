@@ -269,8 +269,13 @@ void TimelineQuickStateBridge::setQuickViewportSize(const QSize& viewportSize)
     if (quickViewportSize_ == normalized) {
         return;
     }
+    const bool keepCenter = layoutMetricsValid_ && layoutMetrics_.viewportSize.width() > 1;
+    const double center = keepCenter ? viewportCenterSecond() : 0.0;
     quickViewportSize_ = normalized;
     refreshLayoutMetrics();
+    if (keepCenter) {
+        centerOnSecond(center);
+    }
     ++layoutRevision_;
     emit renderStateChanged();
 }
@@ -285,17 +290,20 @@ QRectF TimelineQuickStateBridge::noteViewportRect() const
     if (!layoutMetricsValid_) {
         return QRectF();
     }
-    return QRectF(
-        layoutMetrics_.timelineLeft,
-        layoutMetrics_.timelineTop,
+    const miacode::timeline::TimelineAxisProjection axis{
+        miacode::timeline::timelineAxisModeForToken(axisMode_), qreal(layoutMetrics_.viewportSize.width())};
+    const QRectF noteArea(layoutMetrics_.timelineLeft, layoutMetrics_.timelineTop,
         qMax(0, layoutMetrics_.viewportSize.width() - layoutMetrics_.timelineLeft),
         layoutMetrics_.timelineHeight);
+    return axis.toScreenTransform().mapRect(noteArea);
 }
 
 QSize TimelineQuickStateBridge::effectiveViewportSize() const
 {
     if (quickViewportSize_.isValid()) {
-        return quickViewportSize_;
+        const miacode::timeline::TimelineAxisProjection axis{
+            miacode::timeline::timelineAxisModeForToken(axisMode_)};
+        return axis.axisSize(quickViewportSize_);
     }
     return QSize(1, 1);
 }
@@ -305,6 +313,7 @@ void TimelineQuickStateBridge::refreshLayoutMetrics()
     miacode::timeline::TimelineSceneBuildRequest request;
     request.snapshot = snapshot_;
     request.waveformData = waveformData_;
+    request.axisMode = miacode::timeline::timelineAxisModeForToken(axisMode_);
     request.viewportSize = effectiveViewportSize();
     request.skinDirectory = skinDirectory_;
     request.zoomScale = zoomScale();
@@ -353,6 +362,20 @@ void TimelineQuickStateBridge::setHorizontalScrollValue(double value)
                 .arg(effectiveViewportSize().width())
         );
     }
+    emit renderStateChanged();
+}
+
+void TimelineQuickStateBridge::setAxisMode(const QString& mode)
+{
+    if (axisMode_ == mode) {
+        return;
+    }
+    const double center = viewportCenterSecond();
+    axisMode_ = mode;
+    refreshLayoutMetrics();
+    centerOnSecond(center);
+    bumpAllRevisions();
+    emit axisModeChanged();
     emit renderStateChanged();
 }
 

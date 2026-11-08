@@ -16,13 +16,14 @@
 namespace miacode::timeline {
 
 struct TimelineSceneBuildRequest {
+    TimelineAxisMode axisMode = TimelineAxisMode::Horizontal;
     TimelineLaneOrder laneOrder = TimelineLaneOrder::Natural;
     TimelineRenderSnapshot snapshot;
     QSet<quint64> selectedNoteLocations;
     std::shared_ptr<const miacode::waveform::WaveformData> waveformData;
     QHash<quint64, QVector<TimelineMuriMarkerPlacement>> muriMarkersByLocation;
     QHash<quint64, QString> muriMarkerTooltips;
-    QSize viewportSize;
+    QSize viewportSize;  // In (time, lane) axes.
     QFont headerLineNumberFont;
     QString skinDirectory;
     // Sub-pixel. Follow-mode playback moves this by ~1-4 logical px per frame, so rounding it

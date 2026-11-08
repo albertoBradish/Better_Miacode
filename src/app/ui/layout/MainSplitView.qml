@@ -47,8 +47,9 @@ Item {
         root.compact ? 0 : root.preferences.efficientSidebarEnabled
             ? sidebar.width + sidebarToggle.width : sidebar.activityBarWidth,
         horizontalSplit.height)
-    readonly property real minimumEditorWidth: Math.max(editorPane.minimumWidth,
-        bottomPanel.minimumWidth)
+    readonly property real minimumEditorWidth: root.verticalTimeline
+        ? editorPane.minimumWidth + bottomPanel.minimumWidth + Theme.splitDividerThickness
+        : Math.max(editorPane.minimumWidth, bottomPanel.minimumWidth)
     // 拆分后的工作区按编辑器和底部面板计算，侧栏所需空间单独计算。
     readonly property real minimumWorkspaceWidth: root.previewDetached
         ? minimumEditorWidth
@@ -58,7 +59,7 @@ Item {
         + (root.preferences.efficientSidebarEnabled ? 20 : 0)
     readonly property real minimumHeight: Math.max(
         editorHost.SplitView.minimumHeight + (root.bottomPanelEffectivelyVisible
-            ? bottomPanel.minimumHeight + Theme.splitDividerThickness : 0),
+            && !root.verticalTimeline ? bottomPanel.minimumHeight + Theme.splitDividerThickness : 0),
         root.previewDetached ? 0 : preview.minimumHeight)
     readonly property bool canUndo: editorPane.canUndo
     readonly property bool canRedo: editorPane.canRedo
@@ -73,6 +74,12 @@ Item {
     readonly property bool bottomPanelEffectivelyVisible:
         (root.viewState.difficultyEditorActive || root.viewState.latencyEditorActive)
         && root.viewState.bottomPanelVisible && root.timelineSession.panelVisible
+    readonly property bool verticalTimeline: bottomPanelEffectivelyVisible
+        && (root.preferences.timelineLayoutMode === "vertical_before_editor"
+            || root.preferences.timelineLayoutMode === "vertical_after_editor")
+    readonly property bool timelineBeforeEditor: verticalTimeline
+        && root.preferences.timelineLayoutMode === "vertical_before_editor"
+    readonly property bool previewOnLeft: !verticalTimeline && root.preferencesModel.previewOnLeft
     readonly property bool exportVideoActive:
         root.pages.activePageId === "export"
     readonly property real previewEditorAvailableWidth:
@@ -96,11 +103,16 @@ Item {
         alignmentTolerance: 0.5 / root.Screen.devicePixelRatio
     }
 
-    function persistBottomPanelHeightRatio(finalHeight, sizeAtPress) {
+    function persistBottomPanelSize(finalSize, sizeAtPress) {
+        if (root.verticalTimeline) {
+            if (centerSplit.width > 0 && finalSize !== sizeAtPress)
+                root.preferences.timelineVerticalWidthRatio = finalSize / centerSplit.width
+            return
+        }
         if (!root.bottomPanelEffectivelyVisible || centerSplit.height <= 0)
             return
         const height = Math.max(bottomPanelSnap.minimumSize,
-            Math.min(bottomPanelSnap.maximumSize, finalHeight))
+            Math.min(bottomPanelSnap.maximumSize, finalSize))
         if (height === sizeAtPress)
             return
         // 比例按基础约束保存，吸附期间的固定高度属于临时布局约束。
@@ -233,18 +245,22 @@ Item {
     }
 
     function syncWorkspacePanelOrder() {
-        const targetPreviewIndex = root.preferencesModel.previewOnLeft ? 0 : 1
-        const currentPreviewIndex = workspaceSplit.itemAt(0) === previewHost ? 0 : 1
-        if (currentPreviewIndex !== targetPreviewIndex)
-            workspaceSplit.moveItem(currentPreviewIndex, targetPreviewIndex)
-    }
-
-    Connections {
-        target: root.preferencesModel
-        function onInterfaceChanged() {
-            root.syncWorkspacePanelOrder()
+        if (workspaceSplit.count === 2) {
+            const targetPreviewIndex = root.previewOnLeft ? 0 : 1
+            const currentPreviewIndex = workspaceSplit.itemAt(0) === previewHost ? 0 : 1
+            if (currentPreviewIndex !== targetPreviewIndex)
+                workspaceSplit.moveItem(currentPreviewIndex, targetPreviewIndex)
+        }
+        if (centerSplit.count === 2) {
+            const targetTimelineIndex = root.timelineBeforeEditor ? 0 : 1
+            const currentTimelineIndex = centerSplit.itemAt(0) === bottomPanel ? 0 : 1
+            if (currentTimelineIndex !== targetTimelineIndex)
+                centerSplit.moveItem(currentTimelineIndex, targetTimelineIndex)
         }
     }
+
+    onPreviewOnLeftChanged: Qt.callLater(root.syncWorkspacePanelOrder)
+    onTimelineBeforeEditorChanged: Qt.callLater(root.syncWorkspacePanelOrder)
 
     PreviewPane {
         id: preview
@@ -253,7 +269,7 @@ Item {
         documentAvailable: root.documentSession.hasDocument
         surfaceActive: !root.previewSurfaceMoving
         detached: root.previewDetached
-        transportMirrored: root.preferencesModel.previewOnLeft && !root.previewDetached
+        transportMirrored: root.previewOnLeft && !root.previewDetached
         previewSession: root.previewSession
         preferences: root.preferences
         exportSession: root.pages.exportSession
@@ -510,17 +526,17 @@ Item {
 
             SplitView {
                 id: centerSplit
-                orientation: Qt.Vertical
+                orientation: root.verticalTimeline ? Qt.Horizontal : Qt.Vertical
 
                 SplitView.fillWidth: true
                 SplitView.minimumWidth: previewHost.visible
-                    ? root.previewEditorAvailableWidth * (1 - root.preferences.previewMaximumWidthRatio)
+                    ? root.previewEditorAvailableWidth - previewWidthSnap.maximumSize
                     : root.minimumEditorWidth
                 SplitView.maximumWidth: previewHost.visible
                     ? root.previewEditorAvailableWidth * (1 - root.preferences.previewMinimumWidthRatio) : Infinity
 
                 handle: SplitHandle {
-                    verticalDivider: false
+                    verticalDivider: root.verticalTimeline
                     onReleased: bottomPanelSnap.finishDrag(true)
                 }
 
@@ -528,7 +544,12 @@ Item {
                     id: editorHost
                     clip: true
                     SplitView.fillHeight: true
+                    SplitView.fillWidth: true
                     SplitView.minimumHeight: 180
+                    SplitView.minimumWidth: root.verticalTimeline
+                        ? Math.min(editorPane.minimumWidth,
+                            Math.max(1, centerSplit.width - bottomPanelSnap.minimumSize - Theme.splitDividerThickness))
+                        : 0
 
                     EditorPane {
                         id: editorPane
@@ -565,16 +586,21 @@ Item {
                 BottomPanel {
                     id: bottomPanel
                     visible: root.bottomPanelEffectivelyVisible
+                    verticalTimeline: root.verticalTimeline
                     guideSettingsActive: root.timelineGuideActive
                     documentSession: root.documentSession
                     analysisSession: root.analysisSession
                     preferences: root.preferences
                     timelineSession: root.timelineSession
                     previewSession: root.previewSession
-                    SplitView.minimumHeight: bottomPanelSnap.constrained
+                    readonly property real splitMinimum: bottomPanelSnap.constrained
                         ? bottomPanelSnap.targetSize : bottomPanelSnap.minimumSize
-                    SplitView.maximumHeight: bottomPanelSnap.constrained
+                    readonly property real splitMaximum: bottomPanelSnap.constrained
                         ? bottomPanelSnap.targetSize : bottomPanelSnap.maximumSize
+                    SplitView.minimumHeight: root.verticalTimeline ? 0 : splitMinimum
+                    SplitView.maximumHeight: root.verticalTimeline ? Infinity : splitMaximum
+                    SplitView.minimumWidth: root.verticalTimeline ? splitMinimum : 0
+                    SplitView.maximumWidth: root.verticalTimeline ? splitMaximum : Infinity
                     onAnalysisRowActivated: (difficultyId, revision, line, column, endColumn, second) =>
                         editorPane.revealAnalysisRow(
                             difficultyId, revision, line, column, endColumn, second, root.analysisSession)
@@ -597,9 +623,13 @@ Item {
             y: workspaceSplit.y
             splitView: workspaceSplit
             resizedItem: previewHost
-            resizeDirection: root.preferencesModel.previewOnLeft ? 1 : -1
+            resizeDirection: root.previewOnLeft ? 1 : -1
             minimumSize: root.previewEditorAvailableWidth * root.preferences.previewMinimumWidthRatio
-            maximumSize: root.previewEditorAvailableWidth * root.preferences.previewMaximumWidthRatio
+            maximumSize: {
+                const ratioLimit = root.previewEditorAvailableWidth * root.preferences.previewMaximumWidthRatio
+                return root.verticalTimeline ? Math.max(minimumSize,
+                    Math.min(ratioLimit, root.previewEditorAvailableWidth - root.minimumEditorWidth)) : ratioLimit
+            }
             targets: [{ size: root.previewEditorAvailableWidth * root.preferences.previewDefaultWidthRatio }]
             snapAvailable: dragAvailable && !root.previewDetached && !root.previewSurfaceMoving
                 && centerSplit.visible
@@ -612,17 +642,20 @@ Item {
             y: workspaceSplit.y + workspaceSplit.contentItem.y + centerSplit.y
             splitView: centerSplit
             resizedItem: bottomPanel
-            resizeDirection: -1
-            minimumSize: root.bottomPanelEffectivelyVisible
+            resizeDirection: root.timelineBeforeEditor ? 1 : -1
+            minimumSize: root.verticalTimeline ? Math.min(bottomPanel.minimumWidth, centerSplit.width * 0.48)
+                : root.bottomPanelEffectivelyVisible
                 ? Math.max(bottomPanel.minimumHeight,
                     centerSplit.height * root.preferences.bottomPanelMinimumHeightRatio) : 0
-            maximumSize: root.bottomPanelEffectivelyVisible
+            maximumSize: root.verticalTimeline
+                ? Math.max(minimumSize, centerSplit.width - editorHost.SplitView.minimumWidth - Theme.splitDividerThickness)
+                : root.bottomPanelEffectivelyVisible
                 ? Math.max(bottomPanel.minimumHeight, Math.min(
                     centerSplit.height * root.preferences.bottomPanelMaximumHeightRatio,
                     centerSplit.height - editorHost.SplitView.minimumHeight
                         - Theme.splitDividerThickness)) : 0
             snapAvailable: dragAvailable
-            readonly property bool lineSnapAvailable: dragAvailable
+            readonly property bool lineSnapAvailable: dragAvailable && !root.verticalTimeline
                 && !root.previewDetached && !root.previewSurfaceMoving
                 && previewHost.visible && preview.visible && root.transportItem.visible
                 && root.transportItem.width > 0 && root.transportItem.height > 0
@@ -636,7 +669,8 @@ Item {
                     + root.transportItem.topEdgeCenterY - centerSplit.y : NaN
             readonly property bool lineConstrained: constrained && snappedTargetIndex === 1
             targets: {
-                const values = [{ size: centerSplit.height * root.preferences.bottomPanelDefaultHeightRatio }]
+                const values = [{ size: root.verticalTimeline ? centerSplit.width * 0.34
+                    : centerSplit.height * root.preferences.bottomPanelDefaultHeightRatio }]
                 if (lineSnapAvailable) {
                     values.push({
                         size: centerSplit.height - targetCenter + activeLineCenterOffset,
@@ -648,7 +682,7 @@ Item {
                 return values
             }
             onFinished: (finalSize, sizeAtPress) =>
-                root.persistBottomPanelHeightRatio(finalSize, sizeAtPress)
+                root.persistBottomPanelSize(finalSize, sizeAtPress)
 
             function lineCenterOffset(thickness) {
                 return -Theme.splitDividerThickness
@@ -681,7 +715,7 @@ Item {
             backgroundOffset: Qt.point(root.backgroundOffset.x + x, root.backgroundOffset.y)
             panelItem: !root.compact && root.viewState.sidebarVisible
                 ? sidebar.cornerSourceItem
-                : root.preferencesModel.previewOnLeft && previewHost.visible
+                : root.previewOnLeft && previewHost.visible
                     ? preview.cornerSourceItem
                     : root.exportVideoActive ? exportVideoPage.cornerSourceItem
                         : editorPane.cornerSourceItem
@@ -817,7 +851,15 @@ Item {
         property: "preferredHeight"
         value: root.bottomPanelEffectivelyVisible
             ? centerSplit.height * root.preferences.bottomPanelHeightRatio : 0
-        when: !centerSplit.resizing
+        when: !centerSplit.resizing && !root.verticalTimeline
+        restoreMode: Binding.RestoreNone
+    }
+
+    Binding {
+        target: bottomPanel.SplitView
+        property: "preferredWidth"
+        value: centerSplit.width * (root.preferences.timelineVerticalWidthRatio ?? 0.34)
+        when: !centerSplit.resizing && root.verticalTimeline
         restoreMode: Binding.RestoreNone
     }
 }

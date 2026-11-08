@@ -38,6 +38,7 @@ class TimelineQuickStateBridge : public QObject
                WRITE setWaveformBrightness NOTIFY waveformBrightnessChanged)
     Q_PROPERTY(double measureLineBrightness READ measureLineBrightness
                WRITE setMeasureLineBrightness NOTIFY measureLineBrightnessChanged)
+    Q_PROPERTY(QString axisMode READ axisMode WRITE setAxisMode NOTIFY axisModeChanged)
     Q_PROPERTY(QString laneOrder READ laneOrder WRITE setLaneOrder NOTIFY laneOrderChanged)
     Q_PROPERTY(double zoomScale READ zoomScale NOTIFY zoomScaleChanged)
     Q_PROPERTY(QVariantList zoomPresetValues READ zoomPresetValues CONSTANT)
@@ -67,6 +68,8 @@ public:
     // not a position.
     double horizontalScrollValue() const;
     void setHorizontalScrollValue(double value);
+    const QString& axisMode() const { return axisMode_; }
+    void setAxisMode(const QString& mode);
     const QString& laneOrder() const { return laneOrder_; }
     void setLaneOrder(const QString& order);
     double zoomScale() const;
@@ -143,6 +146,7 @@ signals:
     void noteSelectionRequested(const QSet<quint64>& locations, bool additive);
     void renderStateChanged();
     void playheadChanged(double second);
+    void axisModeChanged();
     void laneOrderChanged();
     void zoomScaleChanged(double scale);
     // Emitted once per timeline frame from TimelineQuickItem's afterAnimating hook, on the
@@ -186,6 +190,7 @@ private:
     QVector<double> zoomPresets_;
     QStringList zoomInWheelShortcuts_{QStringLiteral("Ctrl+WheelUp")};
     QStringList zoomOutWheelShortcuts_{QStringLiteral("Ctrl+WheelDown")};
+    QString axisMode_ = QStringLiteral("horizontal");
     QString laneOrder_ = QStringLiteral("natural");
     double zoomScale_ = 0.5;
     double horizontalScrollValue_ = 0.0;

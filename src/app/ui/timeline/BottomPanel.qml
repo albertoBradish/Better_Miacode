@@ -14,6 +14,7 @@ Item {
     required property var timelineSession
     required property var previewSession
     property bool guideSettingsActive: false
+    property bool verticalTimeline: false
     readonly property bool guideSettingsAvailable: root.guideSettingsActive
         && root.visible && timelineItem.visible
     readonly property Item timelineGuideItem: timelineItem
@@ -40,8 +41,8 @@ Item {
     }
     clip: true
     readonly property int contentTopMargin: 0
-    readonly property real minimumHeight: tabs.implicitHeight + timelineItem.minimumViewportHeight
-    readonly property real minimumWidth: tabs.minimumWidth
+    readonly property real minimumHeight: tabs.implicitHeight + (verticalTimeline ? 100 : timelineItem.minimumViewportHeight)
+    readonly property real minimumWidth: verticalTimeline ? 168 : tabs.minimumWidth
     readonly property real analysisTextLeftInset:
         Theme.panelPadding + Theme.chromePadding
     readonly property real analysisListLeftInset:
@@ -142,6 +143,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
+        rightAccessoryWidth: root.verticalTimeline && timelineItem.visible ? brightnessButton.width : 0
         documentSession: root.documentSession
         analysisSession: root.analysisSession
         timelineSession: root.timelineSession
@@ -151,6 +153,12 @@ Item {
         target: root.timelineSession.stateBridge
         property: "laneOrder"
         value: root.preferences.timelineLaneOrder ?? "natural"
+    }
+
+    Binding {
+        target: root.timelineSession.stateBridge
+        property: "axisMode"
+        value: root.verticalTimeline ? (root.preferences.timelineVerticalDirection ?? "falling") : "horizontal"
     }
 
     TimelineQuickItem {
@@ -164,8 +172,9 @@ Item {
         visible: root.timelineSession.currentTabId === "timeline"
         enabled: visible
         stateBridge: root.timelineSession.stateBridge
-        headerRightLimit: Math.max(0, brightnessButton.x - 2)
-        headerMarkerRightLimit: Math.max(0, brightnessButton.x - 2)
+        lowPerformanceMode: root.preferences.lowPerformanceMode ?? false
+        headerRightLimit: root.verticalTimeline ? 0 : Math.max(0, brightnessButton.x - 2)
+        headerMarkerRightLimit: headerRightLimit
         onHeaderNavigateRequested: second => root.timelineSession.headerNavigate(second)
         onTimelineWheelNavigateRequested: second => root.timelineSession.wheelNavigate(second)
         onCenterNavigateRequested: second => root.timelineSession.centerNavigate(second)
@@ -197,7 +206,9 @@ Item {
         width: implicitWidth
         height: implicitHeight
         x: root.width - tabs.edgePadding - width + horizontalInset
-        y: timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
+        y: root.verticalTimeline
+            ? tabs.y + (tabs.height - height) / 2
+            : timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
         visible: timelineItem.visible
         iconSource: Qt.resolvedUrl("icons/sliders-horizontal.svg")
         filledIconSource: Qt.resolvedUrl("icons/sliders-horizontal-fill.svg")

@@ -18,7 +18,8 @@ class QQuickWindow;
 QImage makeTimelineGlyphImage(const miacode::timeline::TimelineSceneGlyph& glyph);
 QSGNode* buildTimelineTextNode(
     QQuickWindow* window,
-    const miacode::timeline::TimelineSceneTextLabel& label);
+    const miacode::timeline::TimelineSceneTextLabel& label,
+    const miacode::timeline::TimelineAxisProjection& axis);
 QSGNode* buildTimelineLineNode(const miacode::timeline::TimelineSceneLine& line);
 QSGNode* buildTimelineRectNode(const miacode::timeline::TimelineSceneRect& rect);
 QSGNode* buildTimelineTriangleNode(const miacode::timeline::TimelineSceneTriangle& triangle);

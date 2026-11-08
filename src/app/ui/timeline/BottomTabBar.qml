@@ -10,6 +10,7 @@ Item {
     required property var documentSession
     required property var analysisSession
     required property var timelineSession
+    property real rightAccessoryWidth: 0
 
     readonly property int edgePadding: 4
     readonly property int rowVerticalMargin:
@@ -18,7 +19,14 @@ Item {
         edgePadding - Theme.chromeInsetX
     implicitHeight: Theme.controlMinHeight + 2 * rowVerticalMargin
     readonly property real minimumWidth: tabLayout.implicitWidth
-        + tabLayout.anchors.leftMargin + tabLayout.anchors.rightMargin
+        + 2 * rowHorizontalMargin + rightAccessoryWidth
+
+    function revealTab(tab) {
+        if (tab.x < tabScroll.contentX)
+            tabScroll.contentX = tab.x
+        else if (tab.x + tab.width > tabScroll.contentX + tabScroll.width)
+            tabScroll.contentX = tab.x + tab.width - tabScroll.width
+    }
 
     function countIssues(rows) {
         let errors = 0
@@ -41,6 +49,7 @@ Item {
         readonly property int badgeHeight: badgeFontSize + 5
 
         Layout.alignment: Qt.AlignVCenter
+        onActiveFocusChanged: if (activeFocus && tabScroll.interactive) root.revealTab(tab)
         Accessible.description: count > 0 ? String(count) : ""
 
         accessory: count > 0 ? badgeAccessory : null
@@ -77,36 +86,48 @@ Item {
             ? Theme.colors.danger.primary : Theme.colors.accent.badge
     }
 
-    RowLayout {
-        id: tabLayout
+    Flickable {
+        id: tabScroll
         anchors.fill: parent
         anchors.topMargin: root.rowVerticalMargin
         anchors.bottomMargin: root.rowVerticalMargin
         anchors.leftMargin: root.rowHorizontalMargin
-        anchors.rightMargin: root.rowHorizontalMargin
-        spacing: 4
+        anchors.rightMargin: root.rowHorizontalMargin + root.rightAccessoryWidth
+        contentWidth: tabLayout.width
+        contentHeight: height
+        flickableDirection: Flickable.HorizontalFlick
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: contentWidth > width
+        clip: interactive
 
-        BottomTab {
-            visible: root.timelineSession.timelineTabVisible
-            text: root.timelineSession.timelineTabLabel
-            checked: root.timelineSession.currentTabId === "timeline"
-            onClicked: root.timelineSession.setCurrentTabId("timeline")
-        }
-        AnalysisTab {
-            visible: root.timelineSession.validationTabVisible
-            text: root.timelineSession.validationTabLabel
-            issueCounts: root.countIssues(root.analysisSession.validationRows)
-            checked: root.timelineSession.currentTabId === "validation"
-            onClicked: root.timelineSession.setCurrentTabId("validation")
-        }
-        AnalysisTab {
-            visible: root.timelineSession.muriTabVisible
-            text: root.timelineSession.muriTabLabel
-            issueCounts: ({ errors: root.analysisSession.muriIssueCount, warnings: root.analysisSession.muriWarningCount })
-            checked: root.timelineSession.currentTabId === "muri"
-            onClicked: root.timelineSession.setCurrentTabId("muri")
-        }
+        RowLayout {
+            id: tabLayout
+            width: Math.max(tabScroll.width, implicitWidth)
+            height: tabScroll.height
+            spacing: 4
 
-        Item { Layout.fillWidth: true }
+            BottomTab {
+                visible: root.timelineSession.timelineTabVisible
+                text: root.timelineSession.timelineTabLabel
+                checked: root.timelineSession.currentTabId === "timeline"
+                onClicked: root.timelineSession.setCurrentTabId("timeline")
+            }
+            AnalysisTab {
+                visible: root.timelineSession.validationTabVisible
+                text: root.timelineSession.validationTabLabel
+                issueCounts: root.countIssues(root.analysisSession.validationRows)
+                checked: root.timelineSession.currentTabId === "validation"
+                onClicked: root.timelineSession.setCurrentTabId("validation")
+            }
+            AnalysisTab {
+                visible: root.timelineSession.muriTabVisible
+                text: root.timelineSession.muriTabLabel
+                issueCounts: ({ errors: root.analysisSession.muriIssueCount, warnings: root.analysisSession.muriWarningCount })
+                checked: root.timelineSession.currentTabId === "muri"
+                onClicked: root.timelineSession.setCurrentTabId("muri")
+            }
+
+            Item { Layout.fillWidth: true }
+        }
     }
 }

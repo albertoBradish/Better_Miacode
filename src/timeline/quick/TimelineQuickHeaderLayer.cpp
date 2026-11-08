@@ -151,7 +151,7 @@ QSGNode* TimelineQuickHeaderLayer::updateNode(
     if (appearanceChanged || layoutChanged || root->headerRevision != state.headerRevision) {
         clearChildren(headerContentRoot);
         for (const auto& label : state.headerLabels) {
-            headerContentRoot->appendChildNode(buildTimelineTextNode(window, label));
+            headerContentRoot->appendChildNode(buildTimelineTextNode(window, label, state.axisProjection()));
         }
         root->headerRevision = state.headerRevision;
     }

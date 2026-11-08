@@ -8,9 +8,50 @@
 #include <QSizeF>
 #include <QString>
 #include <QStringView>
+#include <QTransform>
 #include <QVector>
 
 namespace miacode::timeline {
+
+enum class TimelineAxisMode {
+    Horizontal,
+    Falling,
+    Rising,
+};
+
+inline TimelineAxisMode timelineAxisModeForToken(QStringView token)
+{
+    if (token == u"falling") return TimelineAxisMode::Falling;
+    if (token == u"rising") return TimelineAxisMode::Rising;
+    return TimelineAxisMode::Horizontal;
+}
+
+// Scene layers use (time, lane) coordinates. The projection maps them to the
+// item without changing source time or moving the surrounding QML controls.
+struct TimelineAxisProjection {
+    TimelineAxisMode mode = TimelineAxisMode::Horizontal;
+    qreal timeExtent = 0.0;
+
+    bool vertical() const { return mode != TimelineAxisMode::Horizontal; }
+    int direction() const { return mode == TimelineAxisMode::Falling ? -1 : 1; }
+
+    QSize axisSize(QSize screenSize) const
+    {
+        return vertical() ? screenSize.transposed() : screenSize;
+    }
+
+    QPointF toAxis(const QPointF& position) const
+    {
+        if (!vertical()) return position;
+        return QPointF(mode == TimelineAxisMode::Falling ? timeExtent - position.y() : position.y(), position.x());
+    }
+
+    QTransform toScreenTransform() const
+    {
+        if (!vertical()) return {};
+        return QTransform(0, direction(), 1, 0, 0, mode == TimelineAxisMode::Falling ? timeExtent : 0.0);
+    }
+};
 
 enum class TimelineLaneOrder {
     Natural,
@@ -143,8 +184,10 @@ struct TimelineSceneHoldSpan {
 };
 
 struct TimelineSceneState {
+    TimelineAxisMode axisMode = TimelineAxisMode::Horizontal;
     TimelineLaneOrder laneOrder = TimelineLaneOrder::Natural;
     QSize viewportSize;
+    TimelineAxisProjection axisProjection() const { return {axisMode, qreal(viewportSize.width())}; }
     int timelineLeft = 0;
     int timelineTop = 0;
     qreal timelineHeight = 0.0;
