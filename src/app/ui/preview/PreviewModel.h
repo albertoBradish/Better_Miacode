@@ -31,6 +31,7 @@ class PreviewModel final : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(double quarterBeat READ quarterBeat NOTIFY positionChanged)
+    Q_PROPERTY(QObject* structure READ structure CONSTANT)
     Q_PROPERTY(double positionSeconds READ positionSeconds WRITE setPositionSeconds NOTIFY positionChanged)
     Q_PROPERTY(double durationSeconds READ durationSeconds NOTIFY transportChanged)
     Q_PROPERTY(double lowerBoundSeconds READ lowerBoundSeconds NOTIFY transportChanged)
@@ -61,6 +62,8 @@ public:
                              QObject* parent = nullptr);
 
     double positionSeconds() const;
+    QObject* structure() const { return structure_; }
+    void setStructure(QObject* model) { structure_ = model; }
     double quarterBeat() const { return quarterBeat_; }
     double durationSeconds() const;
     double lowerBoundSeconds() const;
@@ -126,6 +129,7 @@ private:
     void appendV2UiProbeSummary() const;
 
     miacode::ShellNotifications* notifications_ = nullptr;
+    QObject* structure_ = nullptr;
     // Bound to the assembly's slot, not a snapshot.
     miacode::PreviewSurface** surfaceSlot_ = nullptr;
     miacode::PreviewSurface* surface() const

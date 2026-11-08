@@ -86,7 +86,8 @@ QVector<float> resampleLinear(
     return result;
 }
 
-DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate)
+DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate,
+    double maximumDurationSeconds, const std::atomic_bool* cancelled)
 {
     DecodedMonoAudio decoded;
     ScopedBassDecodeDevice device;
@@ -120,11 +121,21 @@ DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate)
     }
     const int channels = qBound(1, static_cast<int>(info.chans), 8);
     const int sourceSampleRate = static_cast<int>(info.freq);
+    const QWORD length = BASS_ChannelGetLength(stream, BASS_POS_BYTE);
+    if (maximumDurationSeconds > 0.0 && length != static_cast<QWORD>(-1)
+        && BASS_ChannelBytes2Seconds(stream, length) > maximumDurationSeconds) {
+        BASS_StreamFree(stream);
+        return {};
+    }
 
     constexpr int kFramesPerChunk = 4096;
     QVector<float> interleaved(kFramesPerChunk * channels, 0.0f);
     QVector<float> mono;
     while (true) {
+        if (cancelled && cancelled->load(std::memory_order_relaxed)) {
+            BASS_StreamFree(stream);
+            return {};
+        }
         const DWORD requestedBytes = static_cast<DWORD>(interleaved.size() * sizeof(float));
         const DWORD bytesRead = BASS_ChannelGetData(
             stream, interleaved.data(), requestedBytes | BASS_DATA_FLOAT);
@@ -136,6 +147,11 @@ DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate)
             break;
         }
         const int oldSize = mono.size();
+        if (maximumDurationSeconds > 0.0
+            && static_cast<double>(oldSize + framesRead) / sourceSampleRate > maximumDurationSeconds) {
+            BASS_StreamFree(stream);
+            return {};
+        }
         mono.resize(oldSize + framesRead);
         for (int frame = 0; frame < framesRead; ++frame) {
             double sum = 0.0;
@@ -162,10 +178,16 @@ DecodedMonoAudio decodeFileToMono(
     const QString& path,
     int targetSampleRate)
 {
+    return decodeFileToMono(path, targetSampleRate, 0.0, nullptr);
+}
+
+DecodedMonoAudio decodeFileToMono(const QString& path, int targetSampleRate,
+    double maximumDurationSeconds, const std::atomic_bool* cancelled)
+{
     if (path.isEmpty() || targetSampleRate <= 0 || !QFileInfo::exists(path)) {
         return {};
     }
-    return decodeWithBass(path, targetSampleRate);
+    return decodeWithBass(path, targetSampleRate, maximumDurationSeconds, cancelled);
 }
 
 double probeFileDurationSeconds(const QString& path)

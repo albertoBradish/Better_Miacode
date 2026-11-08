@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <atomic>
 
 #include <QString>
 #include <QVector>
@@ -12,6 +13,9 @@ namespace miacode::audio_decode {
 DecodedMonoAudio decodeFileToMono(
     const QString& path,
     int targetSampleRate);
+DecodedMonoAudio decodeFileToMono(
+    const QString& path, int targetSampleRate,
+    double maximumDurationSeconds, const std::atomic_bool* cancelled);
 double probeFileDurationSeconds(const QString& path);
 
 // decodeFileToMono() behind the AudioFileDecoder interface ("bass").

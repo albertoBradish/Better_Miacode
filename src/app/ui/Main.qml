@@ -106,10 +106,16 @@ ApplicationWindow {
     }
 
     PetOverlay {
+        readonly property var structure: window.applicationContext.chartStructure || null
         controller: window.applicationContext.pet
         hostWindow: window
         rhythmQuarterBeat: window.applicationContext.preview.quarterBeat
         rhythmPlaying: window.applicationContext.preview.playing
+        rhythmSecond: window.applicationContext.preview.positionSeconds
+        dropAvailable: structure !== null && structure.dropAvailable
+        dropStart: structure ? structure.dropStartSeconds : 0
+        dropEnd: structure ? structure.dropEndSeconds : 0
+        throttleAuxiliary: window.applicationContext.preferences.lowPerformanceMode === true
     }
 
     Binding {

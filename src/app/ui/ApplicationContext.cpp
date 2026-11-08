@@ -1,6 +1,7 @@
 #include "app/ui/ApplicationContext.h"
 
 #include "app/services/update/UpdateService.h"
+#include "app/ui/preferences/LocaleService.h"
 
 namespace miacode::ui {
 ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
@@ -15,6 +16,7 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
                 services.previewSurfaceSlot(), this)
     , analysis_(services.workspace(), services.analysis(), this)
     , preview_(services.shellNotifications(), services.previewSurfaceSlot(), services.playbackControlSlot(), this)
+    , chartStructure_(services.workspace(), services.files(), this)
     , timeline_(services.shellNotifications(), services.timelineSurfaceSlot(), this)
     , commands_(document_, services.documentBridgeSlot(), this)
     , pages_(services.shellNotifications(), document_, services.editorPageRouterSlot(),
@@ -36,6 +38,22 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
     , chartTools_(services.uiRequests(), this)
     , lifecycle_(services.editorPageRouterSlot(), this)
 {
+    preview_.setStructure(&chartStructure_);
+    const auto syncStructureTransport = [this] {
+        chartStructure_.setPlaying(preview_.playing());
+        chartStructure_.setPlaybackDuration(preview_.durationSeconds());
+    };
+    connect(&preview_, &PreviewModel::playingChanged, this, syncStructureTransport);
+    connect(&preview_, &PreviewModel::transportChanged, this, syncStructureTransport);
+    syncStructureTransport();
+    const auto syncStructurePerformance = [this] {
+        chartStructure_.setLowPerformanceMode(preferences_.lowPerformanceMode());
+    };
+    connect(&preferences_, &WorkbenchSettings::workflowSettingsChanged, this, syncStructurePerformance);
+    syncStructurePerformance();
+    connect(&LocaleService::instance(), &LocaleService::languageChanged,
+            &chartStructure_, &ChartStructureModel::changed);
+
     net_.setHost(&document_, &services.uiRequests());
     if (auto* netService = services.netService()) {
         netService->setDocumentSnapshotHandler([this] { return document_.documentIdentity(); });

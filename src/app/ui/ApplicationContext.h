@@ -7,6 +7,7 @@
 #include "app/ui/editor/EditorController.h"
 #include "app/ui/chrome/ShortcutModel.h"
 #include "app/ui/preview/PreviewModel.h"
+#include "app/ui/preview/ChartStructureModel.h"
 #include "app/ui/shell/ShellLifecycle.h"
 #include "app/ui/timeline/TimelineModel.h"
 #include "app/ui/chrome/PlatformChrome.h"
@@ -39,6 +40,7 @@ class ApplicationContext final : public QObject
     Q_PROPERTY(QObject* preferences READ preferences CONSTANT)
     Q_PROPERTY(QObject* appBackground READ appBackground CONSTANT)
     Q_PROPERTY(QObject* preview READ preview CONSTANT)
+    Q_PROPERTY(QObject* chartStructure READ chartStructure CONSTANT)
     Q_PROPERTY(QObject* commands READ commands CONSTANT)
     // Root-window close contract; the polling shell controller it replaced
     // is gone, so this is deliberately small.
@@ -76,6 +78,8 @@ public:
     QObject* preferences();
     QObject* appBackground();
     QObject* preview();
+    QObject* chartStructure() { return &chartStructure_; }
+    const ChartStructureModel& chartStructureModel() const { return chartStructure_; }
     QObject* commands();
     QObject* shell();
     QObject* timeline();
@@ -115,6 +119,7 @@ private:
     DocumentModel document_;
     AnalysisModel analysis_;
     PreviewModel preview_;
+    ChartStructureModel chartStructure_;
     miacode::ui::TimelineModel timeline_;
     CommandService commands_;
     PageHost pages_;
