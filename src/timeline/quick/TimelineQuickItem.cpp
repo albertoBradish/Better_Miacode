@@ -1917,15 +1917,17 @@ void TimelineQuickItem::wheelEvent(QWheelEvent* event)
     // Keep custom direction bindings authoritative, including an intentional
     // reversed Alt-wheel mapping; the built-in alias fills only unbound input.
     const bool altZoom = event->modifiers() == Qt::AltModifier && !shortcutZoomIn && !shortcutZoomOut;
-    const bool zoomInWheel = shortcutZoomIn || (altZoom && delta > 0);
-    const bool zoomOutWheel = shortcutZoomOut || (altZoom && delta < 0);
-    if (zoomInWheel || zoomOutWheel) {
-        const miacode::timeline::TimelineSceneState state = currentSceneState();
+    if (altZoom) {
+        const double wheelSteps = pixel != 0 ? pixel / 60.0 : angle / 120.0;
+        const double scale = stateBridge_->zoomScale() * std::pow(1.20, wheelSteps);
+        stateBridge_->zoomAtViewportPosition(scale, event->position().x());
+        event->accept();
+        return;
+    }
+    if (shortcutZoomIn || shortcutZoomOut) {
         const int steps = qMax(1, qAbs(qRound(static_cast<double>(delta) / 120.0)))
-            * (zoomInWheel ? 1 : -1);
-        stateBridge_->stepZoomPreset(
-            steps,
-            miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, width() / 2.0));
+            * (shortcutZoomIn ? 1 : -1);
+        stateBridge_->stepZoomPreset(steps, stateBridge_->viewportCenterSecond());
         event->accept();
         return;
     }

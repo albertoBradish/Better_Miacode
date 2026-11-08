@@ -81,6 +81,7 @@ public:
     double viewportCenterSecond();
     QSize viewportSize() const;
     void setZoomScaleAnchored(double scale, double anchorSecond);
+    void zoomAtViewportPosition(double scale, qreal timePosition);
     double contentScale() const;
     void setContentScale(double scale);
     double waveformBrightness() const;
@@ -162,6 +163,8 @@ private:
     void refreshLayoutMetrics();
     int maxHorizontalScrollValue() const;
     bool centerOnSecond(double second);
+    void applyZoomScale(double scale, double anchorSecond, qreal anchorPosition);
+    bool placeSecondAt(double second, qreal position);
     void bumpAllRevisions();
     void bumpHeaderRevision();
     void bumpNotesRevision();
@@ -179,7 +182,7 @@ private:
     QVector<double> zoomPresets_;
     QStringList zoomInWheelShortcuts_{QStringLiteral("Ctrl+WheelUp")};
     QStringList zoomOutWheelShortcuts_{QStringLiteral("Ctrl+WheelDown")};
-    int zoomPresetIndex_ = 1;
+    double zoomScale_ = 0.5;
     double horizontalScrollValue_ = 0.0;
     bool playbackCadenceActive_ = false;
     double contentScale_ = 1.0;

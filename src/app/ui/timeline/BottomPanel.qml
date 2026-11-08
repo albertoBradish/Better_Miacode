@@ -158,9 +158,7 @@ Item {
         visible: root.timelineSession.currentTabId === "timeline"
         enabled: visible
         stateBridge: root.timelineSession.stateBridge
-        headerLeftLimit: zoomButton.x + zoomButton.width + 2
         headerRightLimit: Math.max(0, brightnessButton.x - 2)
-        headerMarkerLeftLimit: zoomButton.x + zoomButton.width + 2
         headerMarkerRightLimit: Math.max(0, brightnessButton.x - 2)
         onHeaderNavigateRequested: second => root.timelineSession.headerNavigate(second)
         onTimelineWheelNavigateRequested: second => root.timelineSession.wheelNavigate(second)
@@ -185,17 +183,6 @@ Item {
             const position = timelineItem.mapToItem(parent, timelineItem.hoverTooltipPosition)
             return position.y + 16
         }
-    }
-
-    // Header controls share the tab row's edge inset, measured on their chrome.
-    TimelineZoomControl {
-        id: zoomButton
-
-        x: tabs.edgePadding - Theme.chromeInsetX + Theme.chromeHighlightOutset
-        y: timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
-        height: Theme.controlHighlightHeight + 2 * (Theme.chromeInsetY - Theme.chromeHighlightOutset)
-        visible: timelineItem.visible
-        stateBridge: root.timelineSession.stateBridge
     }
 
     IconButton {
