@@ -1,3 +1,5 @@
+#include "app/services/AutomaticChartPreparation.h"
+#include "app/services/PreferenceDocument.h"
 #include "common/LocalizedText.h"
 
 #include "app/runtime/export/VideoExportHost.h"
@@ -32,39 +34,63 @@ void miacode::runtime::VideoExportHost::onPackAsZip()
 
     const miacode::LocalizedText dialogTitle = miacode::localizedText("export.export_as_zip");
 
-    // Flush the in-progress editor field into the document so the packaged
-    // maidata.txt matches what the user sees (same contract as save-to-path).
-    if (session_.documents_ != nullptr) {
+    auto& workspace = session_.applicationServices_.workspace();
+    const auto before = workspace.snapshot();
+    if (!before.hasDocument) return;
+    const auto unchanged = [this, before] {
+        const auto current = session_.applicationServices_.workspace().snapshot();
+        return current.documentOpenGeneration == before.documentOpenGeneration && current.revision == before.revision;
+    };
+    const auto choosePath = [this, requests, dialogTitle, before, unchanged] {
+        if (!unchanged()) {
+            requests->postNotice(miacode::NoticeSeverity::Warning, dialogTitle, miacode::localizedText("export.document_changed_retry"));
+            return;
+        }
+        const auto& document = session_.applicationServices_.workspace().document();
+        const QString defaultName = miacode::zip_export::sanitizedZipStem(document.title) + QStringLiteral(".zip");
+        miacode::FileRequest request;
+        request.title = dialogTitle;
+        request.startPath = before.filePath.isEmpty() ? defaultName : QFileInfo(before.filePath).absoluteDir().filePath(defaultName);
+        request.nameFilters = {miacode::localizedText("file_filter.zip")};
+        request.saveMode = true;
+        requests->requestFile(request, [this, requests, dialogTitle, before, unchanged](const QString& picked) {
+            if (picked.isEmpty()) return;
+            if (!unchanged()) {
+                requests->postNotice(miacode::NoticeSeverity::Warning, dialogTitle, miacode::localizedText("export.document_changed_retry"));
+                return;
+            }
+            auto& services = session_.applicationServices_;
+            const auto prepared = miacode::automatic_chart::prepare(services.workspace(), services.files(), miacode::automatic_chart::Trigger::Zip);
+            if (!prepared.accepted) {
+                requests->postNotice(miacode::NoticeSeverity::Error, dialogTitle, prepared.error);
+                return;
+            }
+            const QString chartText = services.workspace().document().toText();
+            packChartToZipAtPath(chartText, before.filePath, dialogTitle, picked);
+        });
+    };
+    bool hasEmptyDifficulty = false;
+    const auto timing = miacode::simai::buildTimingMetadata(workspace.document());
+    for (const int id : workspace.document().difficultyIds()) {
+        const auto* difficulty = workspace.document().difficulty(id);
+        if (!difficulty) continue;
+        const auto parsed = SimaiParser::parseForTimeline(difficulty->chart, timing);
+        if (!parsed.ok) {
+            requests->postNotice(miacode::NoticeSeverity::Warning, dialogTitle, miacode::localizedText("export.syntax_before_zip"));
+            return;
+        }
+        if (parsed.noteMarkers.isEmpty()) hasEmptyDifficulty = true;
     }
-
-    const QString chartText = session_.applicationServices_.workspace().document().toText();
-    if (chartText.isEmpty()) {
-        _mc_op_.fail(QStringLiteral("empty chart"));
-        requests->postNotice(
-            miacode::NoticeSeverity::Warning,
-            dialogTitle,
-            miacode::localizedText("export.the_chart_is_empty_there"));
-        return;
-    }
-
-    const QString chartPath = session_.currentFilePath_;
-    QString defaultDir = chartPath.isEmpty()
-        ? QString()
-        : QFileInfo(chartPath).absolutePath();
-    if (defaultDir.isEmpty() && session_.documents_ != nullptr) {
-        defaultDir = session_.documents_->resolveInitialOpenDirectory();
-    }
-    const QString defaultName =
-        miacode::zip_export::sanitizedZipStem(session_.applicationServices_.workspace().document().title) + QStringLiteral(".zip");
-
-    miacode::FileRequest request;
-    request.title = dialogTitle;
-    request.startPath = defaultDir.isEmpty() ? defaultName : QDir(defaultDir).filePath(defaultName);
-    request.nameFilters = {miacode::localizedText("file_filter.zip")};
-    request.saveMode = true;
-    requests->requestFile(request, [this, chartText, chartPath, dialogTitle](const QString& picked) {
-        packChartToZipAtPath(chartText, chartPath, dialogTitle, picked);
-    });
+    const bool warn = PreferenceDocument::loadPreferencesObject().value(QStringLiteral("ui")).toObject()
+        .value(QStringLiteral("warn_empty_difficulty")).toBool(true);
+    if (warn && hasEmptyDifficulty) {
+        const QVariantList choices{
+            QVariantMap{{"id", "continue"}, {"label", qtTrId("export.empty_difficulty_continue")}, {"role", ""}},
+            QVariantMap{{"id", "reject"}, {"label", qtTrId("action.cancel")}, {"role", "reject"}, {"default", true}}
+        };
+        requests->requestChoice(dialogTitle, miacode::localizedText("export.empty_difficulty_warning"), choices,
+            QStringLiteral("reject"), [choosePath](const QString& id) { if (id == QLatin1String("continue")) choosePath(); });
+    } else choosePath();
 }
 
 void miacode::runtime::VideoExportHost::packChartToZipAtPath(
@@ -89,7 +115,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     miacode::zip_export::ChartZipInput input;
     input.chartText = chartText;
     input.chartPath = chartPath;
-    input.videoFieldValue = session_.applicationServices_.workspace().document().videoPath;
+    input.videoFieldValue = SimaiDocument::fromText(chartText).videoPath;
     input.outputZipPath = outputPath;
 
     jobProgress->begin(

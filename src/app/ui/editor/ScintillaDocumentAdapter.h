@@ -14,6 +14,7 @@ public:
     explicit ScintillaDocumentAdapter(ScintillaQuick_item& editor);
     ~ScintillaDocumentAdapter();
     void activate(const QString& scope, const QString& text);
+    bool hasScope(const QString& scope) const { return documents_.contains(scope); }
     void clear();
     void drop(const QString& scope);
     void refresh();

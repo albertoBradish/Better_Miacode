@@ -453,6 +453,11 @@ void ScintillaEditorBridge::synchronizeDocument()
         reportedAnchor_ = reportedCaret_ = -1;
         wheelRemainder_ = 0;
     }
+    if (!document_.hasScope(scope)) {
+        const QString original = documentSession_->takeNormalizationOriginalChart(
+            documentSession_->currentDifficultyId(), documentSession_->chartText());
+        if (!original.isEmpty()) { document_.activate(scope, original); document_.refresh(); }
+    }
     document_.activate(scope, documentSession_->chartText());
     if (identityChanged && miacode::debug_options::runtimeDebugOutputEnabled()) {
         miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,

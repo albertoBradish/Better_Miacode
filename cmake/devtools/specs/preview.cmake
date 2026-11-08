@@ -245,3 +245,8 @@ target_compile_definitions(preview_note_selection_interaction_spec PRIVATE
     "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\""
 )
 set_tests_properties(preview_note_selection_interaction_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+miacode_add_dev_tool(video_export_background_policy_spec TEST
+    SOURCES src/tools/video_export/VideoExportBackgroundPolicySpec.cpp
+    LIBS miacode_export Qt6::Quick Qt6::Gui
+    INCLUDES src)

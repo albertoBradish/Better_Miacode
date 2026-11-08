@@ -20,6 +20,13 @@ Item {
         return actions
     }
 
+    function focusDefaultChoice() {
+        for (let i = 0; i < choiceRepeater.count; ++i) {
+            const button = choiceRepeater.itemAt(i)
+            if (button && button.modelData.default === true) { button.forceActiveFocus(); return }
+        }
+    }
+
     signal accepted()
     signal rejected()
     signal chosen(string choiceId)
@@ -36,6 +43,7 @@ Item {
         layoutDirection: Qt.RightToLeft
 
         Repeater {
+            id: choiceRepeater
             model: root.choices.slice().reverse()
             delegate: AppButton {
                 required property var modelData

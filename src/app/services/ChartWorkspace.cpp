@@ -119,6 +119,7 @@ ChartWorkspaceResult ChartWorkspace::openSource(
     // inote, unmatched brackets, unknown tokens) stay on the result for the
     // validation panel; they must not refuse the file. v1 loadDocument uses
     // SimaiDocument::fromText the same way.
+    normalizationOriginals_.clear();
     document_ = preflight.candidate;
     const int requestedDifficulty = preferredDifficultyId > 0
         ? preferredDifficultyId : activeDifficultyId_;
@@ -410,6 +411,34 @@ ChartWorkspaceResult ChartWorkspace::closeDocument()
     unifiedDesignerEnabled_ = false;
     ++documentOpenGeneration_;
     return commit();
+}
+
+ChartWorkspaceResult ChartWorkspace::replaceExtraFields(const QVector<SimaiRawField>& fields)
+{
+    if (!hasDocument_) return reject();
+    if (fields == document_.extraFields) return acceptWithoutChange();
+    document_.extraFields = fields;
+    refreshSourceAndDirty();
+    return commit();
+}
+
+void ChartWorkspace::applyNormalizedDocument(const SimaiDocument& document, const QString& savedSource,
+                                            const QMap<int, QString>& originals)
+{
+    document_ = document;
+    savedSourceText_ = savedSource;
+    savedDocument_ = SimaiDocument::fromText(savedSource);
+    for (auto it = originals.cbegin(); it != originals.cend(); ++it)
+        normalizationOriginals_.insert(it.key(), it.value());
+    refreshSourceAndDirty();
+    commit();
+}
+
+QString ChartWorkspace::takeNormalizationOriginalChart(int difficultyId, const QString& normalized)
+{
+    const auto* difficulty = document_.difficulty(difficultyId);
+    if (!difficulty || difficulty->chart != normalized) return {};
+    return normalizationOriginals_.take(difficultyId);
 }
 
 ChartWorkspaceResult ChartWorkspace::revertDifficultyChart(int difficultyId)

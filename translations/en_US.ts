@@ -5234,8 +5234,11 @@ Error: %1</translation>
     <message id="video_template.export"><source>Export current template…</source><translation>Export current template…</translation></message>
     <message id="video_template.import"><source>Import and apply template…</source><translation>Import and apply template…</translation></message>
     <message id="video_template.invalid"><source>This video template is invalid or uses an unsupported version.</source><translation>This video template is invalid or uses an unsupported version.</translation></message>
-    <message id="video_cover.multiple"><source>Companion covers (multiple selection)</source><translation>Companion covers (multiple selection)</translation></message>
-    <message id="video_size.target30"><source>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</source><translation>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</translation></message>
+    <message id="video_cover.multiple"><source>Companion covers</source><translation>Companion covers</translation></message>
+    <message id="video_size.target30">
+        <source>30 MB (video %1 kbps, audio %2 kbps)</source>
+        <translation>30 MB (video %1 kbps, audio %2 kbps)</translation>
+    </message>
     <message id="video_size.target100"><source>100 MB (video %1 kbps, audio %2 kbps)</source><translation>100 MB (video %1 kbps, audio %2 kbps)</translation></message>
     <message id="video_size.target200"><source>200 MB (video %1 kbps, audio %2 kbps)</source><translation>200 MB (video %1 kbps, audio %2 kbps)</translation></message>
     <message id="video_size.parameters"><source> (video %1 kbps, audio %2 kbps)</source><translation> (video %1 kbps, audio %2 kbps)</translation></message>
@@ -5308,6 +5311,422 @@ Error: %1</translation>
     <message id="dialog.preferences.theme.dracula"><source>Dracula</source><translation>Dracula</translation></message>
     <message id="dialog.preferences.theme.tokyo_night"><source>Tokyo Night</source><translation>Tokyo Night</translation></message>
     <message id="dialog.preferences.theme.noah"><source>Noa</source><translation>Noa</translation></message>
+    <message id="preferences.advanced_metadata">
+        <source>Enable advanced chart information</source>
+        <translation>Enable advanced chart information</translation>
+    </message>
+    <message id="preferences.low_performance">
+        <source>Low performance mode (prioritize 60 Hz preview)</source>
+        <translation>Low performance mode (prioritize 60 Hz preview)</translation>
+    </message>
+    <message id="preferences.space_guard">
+        <source>Prevent accidental spaces (press 3 times to unlock)</source>
+        <translation>Prevent accidental spaces (press 3 times to unlock)</translation>
+    </message>
+    <message id="preferences.auto_normalize">
+        <source>Automatically normalize charts</source>
+        <translation>Automatically normalize charts</translation>
+    </message>
+    <message id="preferences.warn_empty_difficulty">
+        <source>Warn before exporting empty difficulties</source>
+        <translation>Warn before exporting empty difficulties</translation>
+    </message>
+    <message id="editor.space_unlocked">
+        <source>Space input unlocked · relocks on focus loss</source>
+        <translation>Space input unlocked · relocks on focus loss</translation>
+    </message>
+    <message id="metadata.advanced.title">
+        <source>Advanced chart information</source>
+        <translation>Advanced chart information</translation>
+    </message>
+    <message id="metadata.advanced.song">
+        <source>Song identifiers</source>
+        <translation>Song identifiers</translation>
+    </message>
+    <message id="metadata.advanced.artist_id">
+        <source>Artist ID</source>
+        <translation>Artist ID</translation>
+    </message>
+    <message id="metadata.advanced.song_id">
+        <source>Song ID</source>
+        <translation>Song ID</translation>
+    </message>
+    <message id="metadata.advanced.timing">
+        <source>Timing and demo</source>
+        <translation>Timing and demo</translation>
+    </message>
+    <message id="metadata.advanced.whole_bpm">
+        <source>BPM metadata</source>
+        <translation>BPM metadata</translation>
+    </message>
+    <message id="metadata.advanced.demo_start">
+        <source>Demo start (seconds)</source>
+        <translation>Demo start (seconds)</translation>
+    </message>
+    <message id="metadata.advanced.demo_length">
+        <source>Demo length (seconds)</source>
+        <translation>Demo length (seconds)</translation>
+    </message>
+    <message id="metadata.advanced.compatibility">
+        <source>Legacy compatibility</source>
+        <translation>Legacy compatibility</translation>
+    </message>
+    <message id="metadata.advanced.legacy_seek">
+        <source>Legacy seek (seconds)</source>
+        <translation>Legacy seek (seconds)</translation>
+    </message>
+    <message id="metadata.advanced.legacy_wait">
+        <source>Legacy wait (seconds)</source>
+        <translation>Legacy wait (seconds)</translation>
+    </message>
+    <message id="metadata.advanced.legacy_warning">
+        <source>The current Fanmade Portal form does not support seek/wait. Keep existing values when needed; use first for timing adjustment.</source>
+        <translation>The current Fanmade Portal form does not support seek/wait. Keep existing values when needed; use first for timing adjustment.</translation>
+    </message>
+    <message id="metadata.advanced.catalog">
+        <source>Category and version</source>
+        <translation>Category and version</translation>
+    </message>
+    <message id="metadata.advanced.genre">
+        <source>Genre</source>
+        <translation>Genre</translation>
+    </message>
+    <message id="metadata.advanced.genre_id">
+        <source>Genre ID</source>
+        <translation>Genre ID</translation>
+    </message>
+    <message id="metadata.advanced.cabinet">
+        <source>Cabinet (SD / DX)</source>
+        <translation>Cabinet (SD / DX)</translation>
+    </message>
+    <message id="metadata.advanced.version">
+        <source>Version</source>
+        <translation>Version</translation>
+    </message>
+    <message id="metadata.advanced.author">
+        <source>Creator information</source>
+        <translation>Creator information</translation>
+    </message>
+    <message id="metadata.advanced.video_url">
+        <source>Chart video URL</source>
+        <translation>Chart video URL</translation>
+    </message>
+    <message id="metadata.advanced.created">
+        <source>Creation date (YYYYMMDD)</source>
+        <translation>Creation date (YYYYMMDD)</translation>
+    </message>
+    <message id="metadata.advanced.comment">
+        <source>Creator comment</source>
+        <translation>Creator comment</translation>
+    </message>
+    <message id="metadata.advanced.difficulty">
+        <source>Difficulty metadata</source>
+        <translation>Difficulty metadata</translation>
+    </message>
+    <message id="metadata.advanced.creator_id">
+        <source>Creator IDs (comma separated)</source>
+        <translation>Creator IDs (comma separated)</translation>
+    </message>
+    <message id="metadata.advanced.constant">
+        <source>Chart constant</source>
+        <translation>Chart constant</translation>
+    </message>
+    <message id="metadata.advanced.regulation">
+        <source>Regulation</source>
+        <translation>Regulation</translation>
+    </message>
+    <message id="metadata.advanced.single_line">
+        <source>This field accepts one line only.</source>
+        <translation>This field accepts one line only.</translation>
+    </message>
+    <message id="metadata.advanced.embedded_field">
+        <source>A field value cannot contain another &amp;key= assignment.</source>
+        <translation>A field value cannot contain another &amp;key= assignment.</translation>
+    </message>
+    <message id="metadata.advanced.invalid_date">
+        <source>Enter a valid date as YYYYMMDD.</source>
+        <translation>Enter a valid date as YYYYMMDD.</translation>
+    </message>
+    <message id="metadata.advanced.invalid_url">
+        <source>Enter a valid HTTP or HTTPS URL.</source>
+        <translation>Enter a valid HTTP or HTTPS URL.</translation>
+    </message>
+    <message id="metadata.advanced.invalid_id">
+        <source>Use digits for IDs; separate collaborating creator IDs with commas.</source>
+        <translation>Use digits for IDs; separate collaborating creator IDs with commas.</translation>
+    </message>
+    <message id="metadata.advanced.positive_number">
+        <source>Enter a finite number greater than zero.</source>
+        <translation>Enter a finite number greater than zero.</translation>
+    </message>
+    <message id="metadata.advanced.nonnegative_number">
+        <source>Enter a finite number of zero or greater.</source>
+        <translation>Enter a finite number of zero or greater.</translation>
+    </message>
+    <message id="metadata.advanced.no_document">
+        <source>No chart is open.</source>
+        <translation>No chart is open.</translation>
+    </message>
+    <message id="metadata.advanced.unknown_field">
+        <source>Unsupported advanced field.</source>
+        <translation>Unsupported advanced field.</translation>
+    </message>
+    <message id="metadata.advanced.update_failed">
+        <source>The metadata change could not be applied.</source>
+        <translation>The metadata change could not be applied.</translation>
+    </message>
+    <message id="timeline.layout.horizontal">
+        <source>Horizontal</source>
+        <translation>Horizontal</translation>
+    </message>
+    <message id="timeline.layout.before_editor">
+        <source>Before editor</source>
+        <translation>Before editor</translation>
+    </message>
+    <message id="timeline.layout.after_editor">
+        <source>After editor</source>
+        <translation>After editor</translation>
+    </message>
+    <message id="timeline.layout.direction">
+        <source>Vertical note direction</source>
+        <translation>Vertical note direction</translation>
+    </message>
+    <message id="timeline.layout.falling">
+        <source>Falling (later notes above)</source>
+        <translation>Falling (later notes above)</translation>
+    </message>
+    <message id="timeline.layout.rising">
+        <source>Rising (later notes below)</source>
+        <translation>Rising (later notes below)</translation>
+    </message>
+    <message id="timeline.layout.lane_order">
+        <source>Lane order</source>
+        <translation>Lane order</translation>
+    </message>
+    <message id="timeline.drop_region">
+        <source>Drop</source>
+        <translation>Drop</translation>
+    </message>
+    <message id="export.document_changed_retry">
+        <source>The chart changed while the export dialog was open. Please export again.</source>
+        <translation>The chart changed while the export dialog was open. Please export again.</translation>
+    </message>
+    <message id="export.empty_difficulty_warning">
+        <source>Empty difficulties were detected. Continue exporting?</source>
+        <translation>Empty difficulties were detected. Continue exporting?</translation>
+    </message>
+    <message id="export.empty_difficulty_continue">
+        <source>I know what I am doing!</source>
+        <translation>I know what I am doing!</translation>
+    </message>
+    <message id="qml.debug_rendering">
+        <source>Debug rendering</source>
+        <translation>Debug rendering</translation>
+    </message>
+    <message id="qml.debug_labeled_judge_area">
+        <source>Labeled judgement areas</source>
+        <translation>Labeled judgement areas</translation>
+    </message>
+    <message id="qml.debug_muri_markers">
+        <source>Muri judgement markers</source>
+        <translation>Muri judgement markers</translation>
+    </message>
+    <message id="qml.debug_touch_trail">
+        <source>Touch trails</source>
+        <translation>Touch trails</translation>
+    </message>
+    <message id="dialog.video_export.less_display">
+        <source>Show less</source>
+        <translation>Show less</translation>
+    </message>
+    <message id="video_size.custom">
+        <source>Custom</source>
+        <translation>Custom</translation>
+    </message>
+    <message id="video_size.target_mbps">
+        <source>Target video bitrate (Mbps)</source>
+        <translation>Target video bitrate (Mbps)</translation>
+    </message>
+    <message id="video_size.estimated_mb">
+        <source>Estimated size: %1 MB</source>
+        <translation>Estimated size: %1 MB</translation>
+    </message>
+    <message id="video_export.include_pv">
+        <source>Export PV</source>
+        <translation>Export PV</translation>
+    </message>
+    <message id="video_export.intro_style_chart_preview">
+        <source>Chart preview</source>
+        <translation>Chart preview</translation>
+    </message>
+    <message id="video_export.drop_range">
+        <source>Drop: %1 – %2</source>
+        <translation>Drop: %1 – %2</translation>
+    </message>
+    <message id="video_export.use_drop_range">
+        <source>Use drop range</source>
+        <translation>Use drop range</translation>
+    </message>
+    <message id="video_export.intro_automatic_segment">
+        <source>Use recommended segment</source>
+        <translation>Use recommended segment</translation>
+    </message>
+    <message id="video_template.file_filter">
+        <source>MiaCode video template (*.miatemplate)</source>
+        <translation>MiaCode video template (*.miatemplate)</translation>
+    </message>
+    <message id="video_template.compatible_file_filter">
+        <source>MiaCode video template (*.miatemplate *.json)</source>
+        <translation>MiaCode video template (*.miatemplate *.json)</translation>
+    </message>
+    <message id="video_export.intro_source_manual">
+        <source>Custom segment</source>
+        <translation>Custom segment</translation>
+    </message>
+    <message id="video_export.intro_source_demo">
+        <source>Chart demo</source>
+        <translation>Chart demo</translation>
+    </message>
+    <message id="video_export.intro_source_drop">
+        <source>Drop</source>
+        <translation>Drop</translation>
+    </message>
+    <message id="video_export.intro_source_default">
+        <source>Default segment</source>
+        <translation>Default segment</translation>
+    </message>
+    <message id="video_export.intro_follow_drop">
+        <source>Follow drop</source>
+        <translation>Follow drop</translation>
+    </message>
+    <message id="video_export.intro_automatic">
+        <source>Automatic</source>
+        <translation>Automatic</translation>
+    </message>
+    <message id="structure.session_only">
+        <source>Drop changes are in this session only</source>
+        <translation>Drop changes are in this session only</translation>
+    </message>
+    <message id="structure.manual_outside">
+        <source>Manual drop is outside the media duration</source>
+        <translation>Manual drop is outside the media duration</translation>
+    </message>
+    <message id="structure.manual_audio_changed">
+        <source>Audio changed. Review the manual drop</source>
+        <translation>Audio changed. Review the manual drop</translation>
+    </message>
+    <message id="structure.manual">
+        <source>Manual drop</source>
+        <translation>Manual drop</translation>
+    </message>
+    <message id="structure.detected">
+        <source>Detected drop</source>
+        <translation>Detected drop</translation>
+    </message>
+    <message id="structure.analyzing">
+        <source>Analyzing chart and audio…</source>
+        <translation>Analyzing chart and audio…</translation>
+    </message>
+    <message id="structure.canceled">
+        <source>Structure analysis canceled</source>
+        <translation>Structure analysis canceled</translation>
+    </message>
+    <message id="structure.wait_for_pause">
+        <source>Analysis waits for playback to pause</source>
+        <translation>Analysis waits for playback to pause</translation>
+    </message>
+    <message id="structure.syntax_estimate">
+        <source>Pressure estimate from a chart with syntax errors</source>
+        <translation>Pressure estimate from a chart with syntax errors</translation>
+    </message>
+    <message id="structure.no_audio">
+        <source>Pressure estimate · Audio unavailable</source>
+        <translation>Pressure estimate · Audio unavailable</translation>
+    </message>
+    <message id="structure.candidates">
+        <source>Drop candidates · Select a range to confirm</source>
+        <translation>Drop candidates · Select a range to confirm</translation>
+    </message>
+    <message id="structure.no_clear_drop">
+        <source>Pressure estimate · No clear drop</source>
+        <translation>Pressure estimate · No clear drop</translation>
+    </message>
+    <message id="structure.cancel_analysis">
+        <source>Cancel analysis</source>
+        <translation>Cancel analysis</translation>
+    </message>
+    <message id="structure.edit_button">
+        <source>Drop…</source>
+        <translation>Drop…</translation>
+    </message>
+    <message id="structure.pressure_tooltip">
+        <source>%1 s · Relative chart pressure
+Density %2 · Simultaneous %3 · Held %4
+Slides %5 · Movement %6 · Rhythm %7</source>
+        <translation>%1 s · Relative chart pressure
+Density %2 · Simultaneous %3 · Held %4
+Slides %5 · Movement %6 · Rhythm %7</translation>
+    </message>
+    <message id="structure.edit_title">
+        <source>Edit drop range</source>
+        <translation>Edit drop range</translation>
+    </message>
+    <message id="structure.start_seconds">
+        <source>Start (seconds)</source>
+        <translation>Start (seconds)</translation>
+    </message>
+    <message id="structure.end_seconds">
+        <source>End (seconds)</source>
+        <translation>End (seconds)</translation>
+    </message>
+    <message id="structure.recommendation">
+        <source>Recommendation · %1–%2 s</source>
+        <translation>Recommendation · %1–%2 s</translation>
+    </message>
+    <message id="structure.candidate">
+        <source>Candidate · %1–%2 s</source>
+        <translation>Candidate · %1–%2 s</translation>
+    </message>
+    <message id="structure.undo">
+        <source>Undo drop edit</source>
+        <translation>Undo drop edit</translation>
+    </message>
+    <message id="structure.redo">
+        <source>Redo drop edit</source>
+        <translation>Redo drop edit</translation>
+    </message>
+    <message id="structure.clear">
+        <source>Clear drop</source>
+        <translation>Clear drop</translation>
+    </message>
+    <message id="structure.analyze_again">
+        <source>Analyze again</source>
+        <translation>Analyze again</translation>
+    </message>
+    <message id="structure.save_drop">
+        <source>Save drop</source>
+        <translation>Save drop</translation>
+    </message>
+    <message id="structure.apply_manual">
+        <source>Apply manual drop</source>
+        <translation>Apply manual drop</translation>
+    </message>
+    <message id="editor.slide_component_edit_rejected">
+        <source>This edit would change an unselected Slide component. Select the whole Slide and try again.</source>
+        <translation>This edit would change an unselected Slide component. Select the whole Slide and try again.</translation>
+    </message>
+    <message id="metadata.advanced.conflict_warning">
+        <source>The original file contains conflicting fields: %1. Review the complete source before saving; automatic metadata saves are blocked.</source>
+        <translation>The original file contains conflicting fields: %1. Review the complete source before saving; automatic metadata saves are blocked.</translation>
+    </message>
+    <message id="export.syntax_before_zip">
+        <source>The chart contains syntax errors. Fix them before exporting ZIP.</source>
+        <translation>The chart contains syntax errors. Fix them before exporting ZIP.</translation>
+    </message>
+    <message id="video_template.path_exists">
+        <source>A template with that name already exists.</source>
+        <translation>A template with that name already exists.</translation>
+    </message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the

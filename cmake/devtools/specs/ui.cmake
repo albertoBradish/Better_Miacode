@@ -93,6 +93,8 @@ miacode_add_dev_tool(qml_chart_drop_bridge_spec TEST
 miacode_add_dev_tool(document_model_save_spec TEST
     SOURCES
         src/tools/ui/DocumentModelSaveSpec.cpp
+        src/app/services/AutomaticChartPreparation.cpp
+        src/app/ui/document/DocumentModel.AdvancedMetadata.cpp
         src/app/ui/document/DocumentModel.cpp
         src/app/ui/document/DocumentModel.h
         src/app/ui/preferences/LocaleService.cpp
@@ -101,6 +103,7 @@ miacode_add_dev_tool(document_model_save_spec TEST
         src/app/services/PreferenceDocument.cpp
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/DocumentProjection.cpp
         src/app/services/AnalysisService.cpp

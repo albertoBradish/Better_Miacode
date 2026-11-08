@@ -90,6 +90,7 @@ public:
     ChartWorkspaceResult replaceActiveDifficultyChart(const QString& chartText);
     bool updateDocumentField(ChartWorkspaceDocumentField field, const QString& value);
     ChartWorkspaceResult replaceExtraFields(const QString& value);
+    ChartWorkspaceResult replaceExtraFields(const QVector<SimaiRawField>& fields);
     // Metadata-form replacement: parse unmanaged fields and carry the dedicated
     // clock_count value in the same workspace transaction.
     ChartWorkspaceResult replaceExtraFields(
@@ -140,6 +141,11 @@ public:
 
     ChartWorkspaceSnapshot snapshot() const;
     const SimaiDocument& document() const;
+    const QString& savedSourceText() const { return savedSourceText_; }
+    void applyNormalizedDocument(const SimaiDocument& document, const QString& savedSource,
+                                 const QMap<int, QString>& originals);
+    QString takeNormalizationOriginalChart(int difficultyId, const QString& normalized);
+
 
 signals:
     // Every accepted state transaction emits exactly once with its resulting
@@ -153,6 +159,7 @@ private:
     void refreshSourceAndDirty();
 
     SimaiDocument document_;
+    QMap<int, QString> normalizationOriginals_;
     QVector<int> computeDirtyDifficultyIds() const;
 
     QString sourceText_;

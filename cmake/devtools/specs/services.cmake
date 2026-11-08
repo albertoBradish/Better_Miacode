@@ -87,6 +87,7 @@ miacode_add_dev_tool(chart_workspace_file_service_spec TEST
         src/tools/services/ChartWorkspaceFileServiceSpec.cpp
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/ChartWorkspaceFileService.h
     LIBS miacode_chart Qt6::Core Qt6::Gui
@@ -145,6 +146,7 @@ miacode_add_dev_tool(editor_page_router_spec TEST
         src/app/services/ChartWorkspace.h
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspaceFileService.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/EditorPageRouter.h
         src/app/services/EditorSyncController.h
@@ -173,6 +175,7 @@ miacode_add_dev_tool(export_engine_spec TEST
         src/app/services/ChartWorkspace.h
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspaceFileService.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/EditorSyncController.h
         src/app/services/EditorSyncController.cpp
@@ -210,6 +213,7 @@ miacode_add_dev_tool(application_services_spec TEST
         src/app/services/ChartWorkspace.h
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspaceFileService.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/EditorSyncController.h
         src/app/services/EditorSyncController.cpp
@@ -378,3 +382,21 @@ miacode_add_dev_tool(cli_request_spec TEST
     LIBS Qt6::Core
     INCLUDES src
 )
+
+miacode_add_dev_tool(workflow_safety_spec TEST
+    SOURCES
+        src/tools/services/WorkflowSafetySpec.cpp
+        src/app/services/AutomaticChartPreparation.cpp
+        src/app/services/ChartFileSafety.cpp
+        src/app/services/ChartWorkspace.cpp
+        src/app/services/ChartWorkspace.h
+        src/app/services/ChartWorkspaceFileService.cpp
+        src/app/services/ChartWorkspaceFileService.h
+        src/app/services/PreferenceDocument.cpp
+    LIBS miacode_chart Qt6::Core Qt6::Gui
+    INCLUDES src)
+
+miacode_add_dev_tool(chart_structure_spec TEST
+    SOURCES src/tools/preview/ChartStructureSpec.cpp
+    LIBS miacode_analysis Qt6::Core
+    INCLUDES src)

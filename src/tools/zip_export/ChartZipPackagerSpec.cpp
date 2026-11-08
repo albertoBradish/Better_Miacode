@@ -169,6 +169,21 @@ int main(int argc, char** argv)
         check(!QFile::exists(input.outputZipPath), "case3 writes no file on failure");
     }
 
+    // Canceling a replacement must preserve an already exported archive.
+    {
+        ChartZipInput input;
+        input.chartText = QString::fromUtf8(chartBody);
+        input.chartPath = chartPath;
+        input.outputZipPath = QDir(dir).filePath(QStringLiteral("existing.zip"));
+        QFile old(input.outputZipPath);
+        check(old.open(QIODevice::WriteOnly), "existing output created");
+        old.write("previous archive"); old.close();
+        const auto canceled = packChartToZip(input, [](int, int, const QString&) { return false; });
+        check(canceled.canceled && !canceled.ok, "replacement canceled");
+        check(old.open(QIODevice::ReadOnly) && old.readAll() == QByteArray("previous archive"),
+              "cancel preserves existing output bytes");
+    }
+
     QTextStream(stdout) << (g_failures == 0 ? "ALL PASS\n" : QStringLiteral("%1 FAILURES\n").arg(g_failures));
     return g_failures == 0 ? 0 : 1;
 }

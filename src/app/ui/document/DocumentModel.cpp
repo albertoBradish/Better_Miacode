@@ -1,3 +1,4 @@
+#include "app/services/AutomaticChartPreparation.h"
 #include "app/services/FileDialogPreferences.h"
 #include "common/LocalizedText.h"
 
@@ -242,6 +243,7 @@ DocumentModel::DocumentModel(
     connect(workspace_, &miacode::ChartWorkspace::changed, this, [this](quint64) {
         if (suppressWorkspaceChanged_) return;
         publishWorkspaceCommit(WorkspaceCommitKind::Incremental);
+        scheduleFirstOpenPreparation();
     });
     connect(analysisService_, &miacode::AnalysisService::snapshotChanged,
             this, [this](int, quint64) {
@@ -259,6 +261,7 @@ DocumentModel::DocumentModel(
         // and derived bookmark list rather than a new chart with old state.
         QMetaObject::invokeMethod(this, [this] {
             adoptBackendDocumentReplacement();
+            scheduleFirstOpenPreparation();
             // A desktop report says the editor keeps showing the outgoing
             // chart after a switch while the timeline and preview media follow
             // the incoming one. Nothing in the log records document identity,
@@ -1967,6 +1970,7 @@ void DocumentModel::publishWorkspaceCommit(
     if (kind != WorkspaceCommitKind::ChartText) refreshUnifiedDesignerState();
     emitDocumentStateChanged(kind);
     if (replacement) emit documentReplaced();
+    if (kind == WorkspaceCommitKind::Open) scheduleFirstOpenPreparation();
 }
 
 void DocumentModel::emitDocumentStateChanged(WorkspaceCommitKind kind)
@@ -2354,3 +2358,24 @@ QVariantList DocumentModel::normalizeSyntaxOptions() const
 }
 
 } // namespace miacode::ui
+
+QString miacode::ui::DocumentModel::takeNormalizationOriginalChart(int difficultyId, const QString& normalized)
+{
+    return workspace_ ? workspace_->takeNormalizationOriginalChart(difficultyId, normalized) : QString();
+}
+
+void miacode::ui::DocumentModel::scheduleFirstOpenPreparation()
+{
+    if (!workspace_ || !fileService_ || !hasDocument() || currentFilePath().isEmpty()) return;
+    const auto generation = documentOpenGeneration();
+    if (autoPreparationGeneration_ == generation) return;
+    autoPreparationGeneration_ = generation;
+    fileService_->observeCurrentDisk();
+    QTimer::singleShot(0, this, [this, generation] {
+        if (documentOpenGeneration() != generation) return;
+        const auto result = miacode::automatic_chart::prepare(*workspace_, *fileService_, miacode::automatic_chart::Trigger::FirstOpen);
+        if (!result.accepted && uiRequests_)
+            uiRequests_->postNotice(miacode::NoticeSeverity::Warning,
+                miacode::localizedText("preferences.auto_normalize"), result.error);
+    });
+}

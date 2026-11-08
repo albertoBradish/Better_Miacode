@@ -401,6 +401,10 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/ChartMediaService.h
     src/app/services/ChartMediaImport.cpp
     src/app/services/ChartMediaImport.h
+    src/app/services/AutomaticChartPreparation.cpp
+    src/app/services/AutomaticChartPreparation.h
+    src/app/services/ChartFileSafety.cpp
+    src/app/services/ChartFileSafety.h
     src/app/services/ChartWorkspaceFileService.cpp
     src/app/services/ChartWorkspaceFileService.h
     src/app/services/AnalysisService.cpp
@@ -713,6 +717,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/export/CoverExportPage.qml
     src/app/ui/export/CoverLayerList.qml
     src/app/ui/export/CoverExportWindow.qml
+    src/app/ui/editor/AdvancedMetadataForm.qml
     src/app/ui/editor/EditorPane.qml
     src/app/ui/editor/MetadataDifficultyCard.qml
     src/app/ui/editor/EditorTabBar.qml
@@ -733,16 +738,16 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/latency/LatencyPage.qml
     src/app/ui/editor/FindReplaceBar.qml
     src/app/ui/editor/BookmarkList.qml
+    src/app/ui/timeline/TimelineLayoutPreview.qml
     src/app/ui/timeline/BottomPanel.qml
     src/app/ui/timeline/BottomTabBar.qml
-    src/app/ui/timeline/TimelineZoomControl.qml
-    src/app/ui/timeline/TimelineZoomMenu.qml
     src/app/ui/timeline/TimelineSettingsMenu.qml
     src/app/ui/preview/PreviewPane.qml
     src/app/ui/preview/PreviewRenderModeMenu.qml
     src/app/ui/preview/PreviewRateMenu.qml
     src/app/ui/preview/PreviewRateToast.qml
     src/app/ui/preview/PreviewCanvasMenu.qml
+    src/app/ui/preview/ChartStructureStrip.qml
     src/app/ui/preview/PreviewTransport.qml
     src/app/ui/preview/NoteStatistics.qml
     src/app/ui/preview/AudioSettingsDialog.qml
@@ -873,10 +878,13 @@ qt_add_qml_module(MiaCode
         src/app/ui/document/CommandService.h
         src/app/ui/chrome/ShortcutCommands.h
         src/app/ui/document/DocumentModel.cpp
+        src/app/ui/document/DocumentModel.AdvancedMetadata.cpp
         src/app/ui/document/DocumentModel.h
         src/app/ui/document/AnalysisModel.cpp
         src/app/ui/document/AnalysisDecoration.h
         src/app/ui/document/AnalysisModel.h
+        src/app/ui/preview/ChartStructureModel.cpp
+        src/app/ui/preview/ChartStructureModel.h
         src/app/ui/preview/PreviewModel.cpp
         src/app/ui/preview/PreviewModel.h
         src/app/ui/timeline/TimelineModel.cpp

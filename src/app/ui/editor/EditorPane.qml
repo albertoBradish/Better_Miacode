@@ -596,6 +596,12 @@ Item {
                 }
             }
 
+            AdvancedMetadataForm {
+                Layout.fillWidth: true
+                visible: root.preferences.advancedMetadataEnabled
+                documentSession: root.documentSession
+            }
+
             SettingsSection {
                 Layout.fillWidth: true
                 title: qsTrId("qml.other_fields")

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QFileDevice>
+#include <QHash>
+#include <QByteArray>
 #include <QString>
 #include <QVector>
 #include <optional>
@@ -32,6 +34,7 @@ public:
     // application assembly; a second workspace behind the file boundary is how
     // "save" and "what is on screen" drift apart.
     ChartWorkspace& workspace() const { return *workspace_; }
+    void observeCurrentDisk() const;
 
     // Reads .txt/.simai (or a chart directory's maidata.txt) into the workspace.
     // Unsupported extensions fail before reading, with unsupported_file_type.
@@ -59,6 +62,7 @@ private:
     ChartWorkspaceFileResult writeToPath(const QString& path, int difficultyId) const;
 
     ChartWorkspace* workspace_ = nullptr;
+    mutable QHash<QString, QByteArray> diskDigests_;
 };
 
 }  // namespace miacode

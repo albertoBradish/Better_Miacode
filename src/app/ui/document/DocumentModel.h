@@ -49,6 +49,7 @@ class DocumentModel final : public QObject
     Q_PROPERTY(bool metadataHasVideo READ metadataHasVideo NOTIFY metadataMediaChanged)
     Q_PROPERTY(QString metadataClockCount READ metadataClockCount WRITE setMetadataClockCount NOTIFY metadataChanged)
     Q_PROPERTY(QString metadataExtraText READ metadataExtraText WRITE setMetadataExtraText NOTIFY metadataChanged)
+    Q_PROPERTY(QString metadataConflictText READ metadataConflictText NOTIFY metadataChanged)
     Q_PROPERTY(QString metadataExtraError READ metadataExtraError NOTIFY metadataChanged)
     Q_PROPERTY(bool unifiedDesignerEnabled READ unifiedDesignerEnabled NOTIFY unifiedDesignerEnabledChanged)
     Q_PROPERTY(QVariantList designerSlots READ designerSlots NOTIFY documentStateChanged)
@@ -111,7 +112,13 @@ public:
     bool metadataHasVideo() const;
     QString metadataClockCount() const;
     QString metadataExtraText() const;
+    QString takeNormalizationOriginalChart(int difficultyId, const QString& normalized);
+    void scheduleFirstOpenPreparation();
+    Q_INVOKABLE QString advancedMetadataValue(const QString& key) const;
+    Q_INVOKABLE QVariantList advancedMetadataGroups(int difficultyId) const;
+    Q_INVOKABLE QString setAdvancedMetadataField(const QString& key, const QString& value);
     QString metadataExtraError() const;
+    QString metadataConflictText() const;
     QString wholeBpm() const;
     bool unifiedDesignerEnabled() const;
     QVariantList designerSlots() const;
@@ -369,5 +376,6 @@ private:
     void saveSectionOrAskForPath(int difficultyId, std::function<void(bool)> onSaved);
     void requestLeaveSection(int difficultyId, std::function<void(bool)> onDecided);
     bool closeDecisionPending_ = false;
+    quint64 autoPreparationGeneration_ = 0;
 };
 } // namespace miacode::ui

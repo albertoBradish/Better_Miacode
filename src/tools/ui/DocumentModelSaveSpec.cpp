@@ -312,6 +312,43 @@ bool verifyPickerDirectories()
     analysis.shutdown();
     return ok;
 }
+bool verifyFirstOpenAutomaticPreparation()
+{
+    QTemporaryDir directory;
+    const QString path = directory.filePath("maidata.txt");
+    const QByteArray source = "&title=First open\n&lv_5=12\n&inote_5=(120){4}1,2,3,4,E\n";
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly) || file.write(source) != source.size()) return false;
+    file.close();
+    auto preferences = PreferenceDocument::loadPreferencesObject();
+    auto ui = preferences.value("ui").toObject(); ui.insert("auto_normalize_enabled", true);
+    preferences.insert("ui", ui); PreferenceDocument::savePreferencesObject(preferences);
+    miacode::ChartWorkspace workspace;
+    miacode::ChartWorkspaceFileService files(workspace);
+    miacode::AnalysisService analysis(workspace); analysis.setDiagnosticsDeferred(true);
+    miacode::ShellNotifications notifications;
+    miacode::UiRequestService requests;
+    FakeBridge fake;
+    miacode::DocumentBridge* bridge = &fake;
+    miacode::PreviewSurface* preview = nullptr;
+    miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    bool ok = expect(model.openChartFile(QUrl::fromLocalFile(path)), "real document-model open path accepts fixture");
+    QCoreApplication::processEvents();
+    QCoreApplication::processEvents();
+    ok &= expect(read(path) != source && !workspace.snapshot().dirty,
+        "first open performs automatic normalization and establishes matching save point");
+    const auto backups = QDir(directory.filePath(".autosave")).entryList({"*.bak"}, QDir::Files);
+    ok &= expect(backups.size() == 1 && read(directory.filePath(".autosave/" + backups.value(0))) == source,
+        "first open stores original bytes before normalization");
+    const QByteArray normalized = read(path);
+    ok &= expect(model.openChartFile(QUrl::fromLocalFile(path)), "already-opened chart reopens");
+    QCoreApplication::processEvents();
+    ok &= expect(read(path) == normalized && QDir(directory.filePath(".autosave")).entryList({"*.bak"}, QDir::Files).size() == 1,
+        "reopen does not repeat first-open preparation");
+    analysis.shutdown();
+    return ok;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -319,6 +356,6 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
     QStandardPaths::setTestModeEnabled(true);
     app.setApplicationName(QStringLiteral("MiaCodeDocumentModelSaveSpec"));
-    return verifyDifficultyCardProjection() && verifyUnsupportedOpenShowsError()
+    return verifyFirstOpenAutomaticPreparation() && verifyDifficultyCardProjection() && verifyUnsupportedOpenShowsError()
         && verifyRejectedDraftBlocksPersistenceAndLeave() && verifyPickerDirectories() ? 0 : 1;
 }

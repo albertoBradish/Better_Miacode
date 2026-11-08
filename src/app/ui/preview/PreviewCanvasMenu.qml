@@ -115,31 +115,5 @@ AppStickyPopup {
                 checked = Qt.binding(() => root.aidSettings.showSlideJudgementTiming === true)
             }
         }
-        AppMenuItem {
-            objectName: "previewSlideTimingFromLaunchBeatItem"
-            width: parent.width
-            text: qsTrId("preview.canvas.slide_timing_from_launch_beat")
-            enabled: root.aidSettings.showSlideJudgementTiming === true
-            checkable: true
-            checked: root.aidSettings.slideTimingFromLaunchBeat === true
-            onTriggered: {
-                root.putAid("slideTimingFromLaunchBeat", !root.aidSettings.slideTimingFromLaunchBeat)
-                checked = Qt.binding(() => root.aidSettings.slideTimingFromLaunchBeat === true)
-            }
-        }
-        AppMenuItem {
-            objectName: "previewSlideTimingEarlyPerfectFromHeadItem"
-            width: parent.width
-            leftPadding: 28
-            text: qsTrId("preview.canvas.slide_timing_early_perfect_from_head")
-            enabled: root.aidSettings.showSlideJudgementTiming === true
-                && root.aidSettings.slideTimingFromLaunchBeat === true
-            checkable: true
-            checked: root.aidSettings.slideTimingEarlyPerfectFromHead === true
-            onTriggered: {
-                root.putAid("slideTimingEarlyPerfectFromHead", !root.aidSettings.slideTimingEarlyPerfectFromHead)
-                checked = Qt.binding(() => root.aidSettings.slideTimingEarlyPerfectFromHead === true)
-            }
-        }
     }
 }

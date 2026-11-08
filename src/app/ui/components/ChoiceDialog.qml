@@ -23,8 +23,10 @@ AppDialog {
     }
 
     onRejected: root.chosen(root.dismissChoiceId)
+    onOpened: Qt.callLater(() => choiceFooter.focusDefaultChoice())
 
     footer: DialogFooter {
+        id: choiceFooter
         choices: root.choices
         onChosen: choiceId => root.resolve(choiceId)
     }

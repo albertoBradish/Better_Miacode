@@ -533,8 +533,61 @@ AppDialog {
                         }
                     }
                     PreferenceGroup {
+                        title: qsTrId("dialog.preferences.group.timeline")
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Repeater {
+                                model: [
+                                    {value: "horizontal", label: qsTrId("timeline.layout.horizontal")},
+                                    {value: "vertical_before_editor", label: qsTrId("timeline.layout.before_editor")},
+                                    {value: "vertical_after_editor", label: qsTrId("timeline.layout.after_editor")}
+                                ]
+                                delegate: TimelineLayoutPreview {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    layoutMode: modelData.value
+                                    layoutLabel: modelData.label
+                                    selected: root.preferences.timelineLayoutMode === modelData.value
+                                    onClicked: root.preferences.timelineLayoutMode = modelData.value
+                                }
+                            }
+                        }
+                        PreferenceCombo {
+                            label: qsTrId("timeline.layout.direction")
+                            options: [
+                                {value: "falling", label: qsTrId("timeline.layout.falling")},
+                                {value: "rising", label: qsTrId("timeline.layout.rising")}
+                            ]
+                            currentValue: root.preferences.timelineVerticalDirection
+                            onPicked: value => root.preferences.timelineVerticalDirection = value
+                        }
+                        PreferenceCombo {
+                            label: qsTrId("timeline.layout.lane_order")
+                            options: [
+                                {value: "natural", label: "1-2-3-4-5-6-7-8"},
+                                {value: "rotated", label: "5-6-7-8-1-2-3-4"},
+                                {value: "reversed", label: "8-7-6-5-4-3-2-1"},
+                                {value: "rotated_reversed", label: "4-3-2-1-8-7-6-5"}
+                            ]
+                            currentValue: root.preferences.timelineLaneOrder
+                            onPicked: value => root.preferences.timelineLaneOrder = value
+                        }
+                    }
+                    PreferenceGroup {
                         title: qsTrId("dialog.render_settings.preview_group")
                         enabled: !!root.previewSession
+                        PreferenceSwitch {
+                            text: qsTrId("preview.canvas.slide_timing_from_launch_beat")
+                            checked: root.canvasSettings.slideTimingFromLaunchBeat === true
+                            onToggled: root.previewSession.setCanvasSetting("slideTimingFromLaunchBeat", checked)
+                        }
+                        PreferenceSwitch {
+                            text: qsTrId("preview.canvas.slide_timing_early_perfect_from_head")
+                            enabled: root.canvasSettings.slideTimingFromLaunchBeat === true
+                            checked: root.canvasSettings.slideTimingEarlyPerfectFromHead === true
+                            onToggled: root.previewSession.setCanvasSetting("slideTimingEarlyPerfectFromHead", checked)
+                        }
                         PreferenceCombo {
                             objectName: "preferencesMeasureLineModeCombo"
                             label: qsTrId("preview.canvas.measure_mode")
@@ -716,6 +769,13 @@ AppDialog {
                             }
 
                             PreferenceSwitch {
+                                objectName: "preferencesAutoNormalizeSwitch"
+                                text: qsTrId("preferences.auto_normalize")
+                                checked: root.preferences.autoNormalizeEnabled
+                                onToggled: root.preferences.autoNormalizeEnabled = checked
+                            }
+
+                            PreferenceSwitch {
                                 objectName: "preferencesAutoWrapSwitch"
                                 text: qsTrId("preferences.editor_auto_wrap")
                                 checked: root.preferencesModel.editorAutoWrap
@@ -739,6 +799,13 @@ AppDialog {
                                 text: root.previewSettings.labels.touchPadAuthoringShortcut || ""
                                 checked: root.previewSettings.values.touchPadAuthoringShortcut === true
                                 onToggled: root.previewSettings.setValue("touchPadAuthoringShortcut", checked)
+                            }
+
+                            PreferenceSwitch {
+                                objectName: "preferencesSpaceGuardSwitch"
+                                text: qsTrId("preferences.space_guard")
+                                checked: root.preferences.spaceGuardEnabled
+                                onToggled: root.preferences.spaceGuardEnabled = checked
                             }
 
                             PreferenceSwitch {
@@ -767,6 +834,13 @@ AppDialog {
 
                         PreferenceGroup {
                             title: qsTrId("dialog.preferences.group.editing_aids")
+
+                            PreferenceSwitch {
+                                objectName: "preferencesWarnEmptyDifficultySwitch"
+                                text: qsTrId("preferences.warn_empty_difficulty")
+                                checked: root.preferences.warnEmptyDifficulty
+                                onToggled: root.preferences.warnEmptyDifficulty = checked
+                            }
 
                             PreferenceSwitch {
                                 objectName: "preferencesScrollPastEndSwitch"
@@ -902,6 +976,17 @@ AppDialog {
 
                 PreferencePage {
                     PreferenceGroup {
+                        title: qsTrId("dialog.preferences.performance_group")
+                        first: true
+                            PreferenceSwitch {
+                                objectName: "preferencesLowPerformanceSwitch"
+                                text: qsTrId("preferences.low_performance")
+                                checked: root.preferences.lowPerformanceMode
+                                onToggled: root.preferences.lowPerformanceMode = checked
+                            }
+
+                    }
+                    PreferenceGroup {
                         title: qsTrId("dialog.preferences.group.video")
                         first: true
 
@@ -915,6 +1000,7 @@ AppDialog {
 
                         PreferenceCombo {
                             objectName: "preferencesPvFrameRateCombo"
+                            enabled: !root.preferences.lowPerformanceMode
                             label: qsTrId("qml.pv_frame_rate")
                             options: root.preferencesModel.appFrameRateOptions
                             currentValue: root.preferencesModel.stageMediaFrameRateMode
@@ -927,6 +1013,7 @@ AppDialog {
 
                         PreferenceSwitch {
                             objectName: "preferencesBlurMaterialsSwitch"
+                            enabled: !root.preferences.lowPerformanceMode
                             text: qsTrId("dialog.preferences.blur_materials")
                             checked: root.preferencesModel.blurMaterialsEnabled
                             onToggled: root.preferencesModel.blurMaterialsEnabled = checked
@@ -934,6 +1021,7 @@ AppDialog {
 
                         PreferenceCombo {
                             objectName: "preferencesCanvasFrameRateCombo"
+                            enabled: !root.preferences.lowPerformanceMode
                             label: qsTrId("qml.canvas_frame_rate")
                             options: root.preferencesModel.canvasFrameRateOptions
                             currentValue: root.preferencesModel.canvasFrameRateMode
@@ -942,6 +1030,7 @@ AppDialog {
 
                         PreferenceCombo {
                             objectName: "preferencesTimelineFrameRateCombo"
+                            enabled: !root.preferences.lowPerformanceMode
                             label: qsTrId("qml.timeline_frame_rate")
                             options: root.preferencesModel.appFrameRateOptions
                             currentValue: root.preferencesModel.timelineFrameRateMode
@@ -1071,6 +1160,17 @@ AppDialog {
                 }
 
                 PreferencePage {
+                    PreferenceGroup {
+                        title: qsTrId("metadata.advanced.title")
+                        first: true
+                            PreferenceSwitch {
+                                objectName: "preferencesAdvancedMetadataSwitch"
+                                text: qsTrId("preferences.advanced_metadata")
+                                checked: root.preferences.advancedMetadataEnabled
+                                onToggled: root.preferences.advancedMetadataEnabled = checked
+                            }
+
+                    }
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 12

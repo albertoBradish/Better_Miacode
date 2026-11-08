@@ -56,6 +56,10 @@ miacode_add_module(miacode_chart
         src/core/chart/SlideJudgementTiming.cpp
         src/core/chart/SlideJudgementTiming.h
         src/core/chart/document/ChartClockCount.h
+        src/core/chart/ChartPreviewRegion.cpp
+        src/core/chart/ChartPreviewRegion.h
+        src/core/chart/document/AdvancedMetadata.cpp
+        src/core/chart/document/AdvancedMetadata.h
         src/core/chart/document/SimaiDocument.cpp
         src/core/chart/document/SimaiDocument.h
         src/core/chart/document/SimaiTimingMetadata.cpp
@@ -100,6 +104,8 @@ set_source_files_properties(
 # ---- analysis: Muri and the analysis pipeline -----------------------------
 miacode_add_module(miacode_analysis
     SOURCES
+        src/core/analysis/ChartStructureAnalysis.cpp
+        src/core/analysis/ChartStructureAnalysis.h
         src/core/analysis/MuriAnalyzer.cpp
         src/core/analysis/MuriAnalyzer.h
         src/core/analysis/MuriAnalyzerGeometry.cpp

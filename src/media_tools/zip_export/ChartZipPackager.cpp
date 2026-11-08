@@ -7,6 +7,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QTemporaryFile>
+#include <QSaveFile>
+#include <QScopeGuard>
 
 #include <cstring>
 
@@ -113,7 +116,12 @@ ChartZipResult packChartToZip(const ChartZipInput& input, const ChartZipProgress
 
     mz_zip_archive zip;
     std::memset(&zip, 0, sizeof(zip));
-    const QByteArray outUtf8 = QDir::toNativeSeparators(input.outputZipPath).toUtf8();
+    QTemporaryFile staged(QFileInfo(input.outputZipPath).absoluteDir().filePath(QStringLiteral(".miacode-zip-XXXXXX.tmp")));
+    if (!staged.open()) { result.errorMessage = staged.errorString(); return result; }
+    const QString stagedPath = staged.fileName();
+    staged.remove();
+    const auto removeStaged = qScopeGuard([&] { QFile::remove(stagedPath); });
+    const QByteArray outUtf8 = QDir::toNativeSeparators(stagedPath).toUtf8();
     if (!mz_zip_writer_init_file(&zip, outUtf8.constData(), 0)) {
         result.errorMessage = QStringLiteral("Could not create the .zip file:\n%1").arg(input.outputZipPath);
         return result;
@@ -121,7 +129,7 @@ ChartZipResult packChartToZip(const ChartZipInput& input, const ChartZipProgress
 
     const auto abortAndRemove = [&]() {
         mz_zip_writer_end(&zip);
-        QFile::remove(input.outputZipPath);
+        QFile::remove(stagedPath);
     };
 
     for (int index = 0; index < jobs.size(); ++index) {
@@ -171,6 +179,27 @@ ChartZipResult packChartToZip(const ChartZipInput& input, const ChartZipProgress
     }
     mz_zip_writer_end(&zip);
 
+    QFile finished(stagedPath);
+    QSaveFile output(input.outputZipPath);
+    output.setDirectWriteFallback(false);
+    if (!finished.open(QIODevice::ReadOnly) || !output.open(QIODevice::WriteOnly)) {
+        result.errorMessage = QStringLiteral("Cannot publish the completed ZIP archive.");
+        return result;
+    }
+    while (!finished.atEnd()) {
+        const QByteArray block = finished.read(1024 * 1024);
+        if (finished.error() != QFileDevice::NoError || output.write(block) != block.size()) {
+            result.errorMessage = QStringLiteral("Cannot write the completed ZIP archive.");
+            output.cancelWriting();
+            return result;
+        }
+        if (progress && !progress(total, total, QStringLiteral("maidata.txt"))) {
+            result.canceled = true;
+            output.cancelWriting();
+            return result;
+        }
+    }
+    if (!output.commit()) { result.errorMessage = output.errorString(); return result; }
     result.ok = true;
     return result;
 }

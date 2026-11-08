@@ -421,8 +421,14 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
             &TimelineQuickStateBridge::renderCadenceTick,
             this,
             &Session::onTimelineRenderCadenceTick);
-    connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::zoomScaleChanged, this, [this](double) {
-        savePortableState();
+    auto* zoomSaveTimer = new QTimer(this);
+    zoomSaveTimer->setSingleShot(true);
+    zoomSaveTimer->setInterval(250);
+    connect(zoomSaveTimer, &QTimer::timeout, this, [this] { savePortableState(); });
+    connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::zoomScaleChanged,
+            zoomSaveTimer, [zoomSaveTimer](double) { zoomSaveTimer->start(); });
+    connect(qApp, &QCoreApplication::aboutToQuit, this, [this, zoomSaveTimer] {
+        if (zoomSaveTimer->isActive()) { zoomSaveTimer->stop(); savePortableState(); }
     });
     connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::waveformBrightnessChanged, this, [this](double) {
         savePortableState();

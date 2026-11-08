@@ -5234,8 +5234,11 @@ Error: %1</source>
     <message id="video_template.export"><source>Export current template…</source><translation>导出当前模板…</translation></message>
     <message id="video_template.import"><source>Import and apply template…</source><translation>导入并应用模板…</translation></message>
     <message id="video_template.invalid"><source>This video template is invalid or uses an unsupported version.</source><translation>视频模板无效或版本不受支持。</translation></message>
-    <message id="video_cover.multiple"><source>Companion covers (multiple selection)</source><translation>同步导出封面（可多选）</translation></message>
-    <message id="video_size.target30"><source>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</source><translation>30 MB（480p、无 PV；视频 %1 kbps，音频 %2 kbps）</translation></message>
+    <message id="video_cover.multiple"><source>Companion covers</source><translation>同步导出封面</translation></message>
+    <message id="video_size.target30">
+        <source>30 MB (video %1 kbps, audio %2 kbps)</source>
+        <translation>30 MB（视频 %1 kbps，音频 %2 kbps）</translation>
+    </message>
     <message id="video_size.target100"><source>100 MB (video %1 kbps, audio %2 kbps)</source><translation>100 MB（视频 %1 kbps，音频 %2 kbps）</translation></message>
     <message id="video_size.target200"><source>200 MB (video %1 kbps, audio %2 kbps)</source><translation>200 MB（视频 %1 kbps，音频 %2 kbps）</translation></message>
     <message id="video_size.parameters"><source> (video %1 kbps, audio %2 kbps)</source><translation>（视频 %1 kbps，音频 %2 kbps）</translation></message>
@@ -5308,6 +5311,422 @@ Error: %1</source>
     <message id="dialog.preferences.theme.dracula"><source>Dracula</source><translation>德古拉</translation></message>
     <message id="dialog.preferences.theme.tokyo_night"><source>Tokyo Night</source><translation>东京之夜</translation></message>
     <message id="dialog.preferences.theme.noah"><source>Noa</source><translation>诺亚</translation></message>
+    <message id="preferences.advanced_metadata">
+        <source>Enable advanced chart information</source>
+        <translation>启用高级信息编辑</translation>
+    </message>
+    <message id="preferences.low_performance">
+        <source>Low performance mode (prioritize 60 Hz preview)</source>
+        <translation>低性能模式（优先保证 60 Hz 预览）</translation>
+    </message>
+    <message id="preferences.space_guard">
+        <source>Prevent accidental spaces (press 3 times to unlock)</source>
+        <translation>防空格误触（三连按解锁输入）</translation>
+    </message>
+    <message id="preferences.auto_normalize">
+        <source>Automatically normalize charts</source>
+        <translation>自动整理谱面</translation>
+    </message>
+    <message id="preferences.warn_empty_difficulty">
+        <source>Warn before exporting empty difficulties</source>
+        <translation>导出 ZIP 前提示空难度</translation>
+    </message>
+    <message id="editor.space_unlocked">
+        <source>Space input unlocked · relocks on focus loss</source>
+        <translation>空格输入已解锁 · 失焦后重新锁定</translation>
+    </message>
+    <message id="metadata.advanced.title">
+        <source>Advanced chart information</source>
+        <translation>高级谱面信息</translation>
+    </message>
+    <message id="metadata.advanced.song">
+        <source>Song identifiers</source>
+        <translation>歌曲标识</translation>
+    </message>
+    <message id="metadata.advanced.artist_id">
+        <source>Artist ID</source>
+        <translation>曲师 ID</translation>
+    </message>
+    <message id="metadata.advanced.song_id">
+        <source>Song ID</source>
+        <translation>曲目 ID</translation>
+    </message>
+    <message id="metadata.advanced.timing">
+        <source>Timing and demo</source>
+        <translation>时间与试听</translation>
+    </message>
+    <message id="metadata.advanced.whole_bpm">
+        <source>BPM metadata</source>
+        <translation>BPM 资料</translation>
+    </message>
+    <message id="metadata.advanced.demo_start">
+        <source>Demo start (seconds)</source>
+        <translation>试听起点（秒）</translation>
+    </message>
+    <message id="metadata.advanced.demo_length">
+        <source>Demo length (seconds)</source>
+        <translation>试听长度（秒）</translation>
+    </message>
+    <message id="metadata.advanced.compatibility">
+        <source>Legacy compatibility</source>
+        <translation>旧格式兼容</translation>
+    </message>
+    <message id="metadata.advanced.legacy_seek">
+        <source>Legacy seek (seconds)</source>
+        <translation>旧 seek（秒）</translation>
+    </message>
+    <message id="metadata.advanced.legacy_wait">
+        <source>Legacy wait (seconds)</source>
+        <translation>旧 wait（秒）</translation>
+    </message>
+    <message id="metadata.advanced.legacy_warning">
+        <source>The current Fanmade Portal form does not support seek/wait. Keep existing values when needed; use first for timing adjustment.</source>
+        <translation>当前 Fanmade Portal 新版表单不支持 seek/wait。按需保留旧值；时间偏移请使用 first。</translation>
+    </message>
+    <message id="metadata.advanced.catalog">
+        <source>Category and version</source>
+        <translation>分类与版本</translation>
+    </message>
+    <message id="metadata.advanced.genre">
+        <source>Genre</source>
+        <translation>分类</translation>
+    </message>
+    <message id="metadata.advanced.genre_id">
+        <source>Genre ID</source>
+        <translation>分类 ID</translation>
+    </message>
+    <message id="metadata.advanced.cabinet">
+        <source>Cabinet (SD / DX)</source>
+        <translation>谱面制式（SD / DX）</translation>
+    </message>
+    <message id="metadata.advanced.version">
+        <source>Version</source>
+        <translation>版本</translation>
+    </message>
+    <message id="metadata.advanced.author">
+        <source>Creator information</source>
+        <translation>作者资料</translation>
+    </message>
+    <message id="metadata.advanced.video_url">
+        <source>Chart video URL</source>
+        <translation>谱面视频链接</translation>
+    </message>
+    <message id="metadata.advanced.created">
+        <source>Creation date (YYYYMMDD)</source>
+        <translation>创建日期（YYYYMMDD）</translation>
+    </message>
+    <message id="metadata.advanced.comment">
+        <source>Creator comment</source>
+        <translation>作者评论</translation>
+    </message>
+    <message id="metadata.advanced.difficulty">
+        <source>Difficulty metadata</source>
+        <translation>难度资料</translation>
+    </message>
+    <message id="metadata.advanced.creator_id">
+        <source>Creator IDs (comma separated)</source>
+        <translation>谱师 ID（多人以逗号分隔）</translation>
+    </message>
+    <message id="metadata.advanced.constant">
+        <source>Chart constant</source>
+        <translation>谱面定数</translation>
+    </message>
+    <message id="metadata.advanced.regulation">
+        <source>Regulation</source>
+        <translation>谱面规则分类</translation>
+    </message>
+    <message id="metadata.advanced.single_line">
+        <source>This field accepts one line only.</source>
+        <translation>此字段只允许一行文字。</translation>
+    </message>
+    <message id="metadata.advanced.embedded_field">
+        <source>A field value cannot contain another &amp;key= assignment.</source>
+        <translation>字段值不能包含另一条 &amp;key= 赋值。</translation>
+    </message>
+    <message id="metadata.advanced.invalid_date">
+        <source>Enter a valid date as YYYYMMDD.</source>
+        <translation>请输入有效的 YYYYMMDD 日期。</translation>
+    </message>
+    <message id="metadata.advanced.invalid_url">
+        <source>Enter a valid HTTP or HTTPS URL.</source>
+        <translation>请输入有效的 HTTP 或 HTTPS 链接。</translation>
+    </message>
+    <message id="metadata.advanced.invalid_id">
+        <source>Use digits for IDs; separate collaborating creator IDs with commas.</source>
+        <translation>ID 请使用数字；多人谱师 ID 用逗号分隔。</translation>
+    </message>
+    <message id="metadata.advanced.positive_number">
+        <source>Enter a finite number greater than zero.</source>
+        <translation>请输入大于 0 的有限数字。</translation>
+    </message>
+    <message id="metadata.advanced.nonnegative_number">
+        <source>Enter a finite number of zero or greater.</source>
+        <translation>请输入大于或等于 0 的有限数字。</translation>
+    </message>
+    <message id="metadata.advanced.no_document">
+        <source>No chart is open.</source>
+        <translation>尚未打开谱面。</translation>
+    </message>
+    <message id="metadata.advanced.unknown_field">
+        <source>Unsupported advanced field.</source>
+        <translation>不支持的高级字段。</translation>
+    </message>
+    <message id="metadata.advanced.update_failed">
+        <source>The metadata change could not be applied.</source>
+        <translation>无法应用元数据修改。</translation>
+    </message>
+    <message id="timeline.layout.horizontal">
+        <source>Horizontal</source>
+        <translation>横向</translation>
+    </message>
+    <message id="timeline.layout.before_editor">
+        <source>Before editor</source>
+        <translation>编辑区左侧</translation>
+    </message>
+    <message id="timeline.layout.after_editor">
+        <source>After editor</source>
+        <translation>编辑区右侧</translation>
+    </message>
+    <message id="timeline.layout.direction">
+        <source>Vertical note direction</source>
+        <translation>纵向音符方向</translation>
+    </message>
+    <message id="timeline.layout.falling">
+        <source>Falling (later notes above)</source>
+        <translation>下落（上方为更晚时间）</translation>
+    </message>
+    <message id="timeline.layout.rising">
+        <source>Rising (later notes below)</source>
+        <translation>上落（下方为更晚时间）</translation>
+    </message>
+    <message id="timeline.layout.lane_order">
+        <source>Lane order</source>
+        <translation>键位排列</translation>
+    </message>
+    <message id="timeline.drop_region">
+        <source>Drop</source>
+        <translation>Drop 区间</translation>
+    </message>
+    <message id="export.document_changed_retry">
+        <source>The chart changed while the export dialog was open. Please export again.</source>
+        <translation>导出对话框打开期间谱面发生了变化，请重新导出。</translation>
+    </message>
+    <message id="export.empty_difficulty_warning">
+        <source>Empty difficulties were detected. Continue exporting?</source>
+        <translation>检测到有空难度，还要继续导出吗？</translation>
+    </message>
+    <message id="export.empty_difficulty_continue">
+        <source>I know what I am doing!</source>
+        <translation>我知道我在做什么！</translation>
+    </message>
+    <message id="qml.debug_rendering">
+        <source>Debug rendering</source>
+        <translation>调试渲染</translation>
+    </message>
+    <message id="qml.debug_labeled_judge_area">
+        <source>Labeled judgement areas</source>
+        <translation>带编号的判定区</translation>
+    </message>
+    <message id="qml.debug_muri_markers">
+        <source>Muri judgement markers</source>
+        <translation>无理判定标记</translation>
+    </message>
+    <message id="qml.debug_touch_trail">
+        <source>Touch trails</source>
+        <translation>触摸轨迹</translation>
+    </message>
+    <message id="dialog.video_export.less_display">
+        <source>Show less</source>
+        <translation>收起更多</translation>
+    </message>
+    <message id="video_size.custom">
+        <source>Custom</source>
+        <translation>自定义</translation>
+    </message>
+    <message id="video_size.target_mbps">
+        <source>Target video bitrate (Mbps)</source>
+        <translation>目标视频码率（Mbps）</translation>
+    </message>
+    <message id="video_size.estimated_mb">
+        <source>Estimated size: %1 MB</source>
+        <translation>预计体积：%1 MB</translation>
+    </message>
+    <message id="video_export.include_pv">
+        <source>Export PV</source>
+        <translation>导出 PV</translation>
+    </message>
+    <message id="video_export.intro_style_chart_preview">
+        <source>Chart preview</source>
+        <translation>谱面预览</translation>
+    </message>
+    <message id="video_export.drop_range">
+        <source>Drop: %1 – %2</source>
+        <translation>Drop：%1 – %2</translation>
+    </message>
+    <message id="video_export.use_drop_range">
+        <source>Use drop range</source>
+        <translation>采用 Drop 区间</translation>
+    </message>
+    <message id="video_export.intro_automatic_segment">
+        <source>Use recommended segment</source>
+        <translation>使用推荐片段</translation>
+    </message>
+    <message id="video_template.file_filter">
+        <source>MiaCode video template (*.miatemplate)</source>
+        <translation>MiaCode 视频模板 (*.miatemplate)</translation>
+    </message>
+    <message id="video_template.compatible_file_filter">
+        <source>MiaCode video template (*.miatemplate *.json)</source>
+        <translation>MiaCode 视频模板 (*.miatemplate *.json)</translation>
+    </message>
+    <message id="video_export.intro_source_manual">
+        <source>Custom segment</source>
+        <translation>自定义片段</translation>
+    </message>
+    <message id="video_export.intro_source_demo">
+        <source>Chart demo</source>
+        <translation>谱面试听</translation>
+    </message>
+    <message id="video_export.intro_source_drop">
+        <source>Drop</source>
+        <translation>Drop</translation>
+    </message>
+    <message id="video_export.intro_source_default">
+        <source>Default segment</source>
+        <translation>默认片段</translation>
+    </message>
+    <message id="video_export.intro_follow_drop">
+        <source>Follow drop</source>
+        <translation>跟随 Drop</translation>
+    </message>
+    <message id="video_export.intro_automatic">
+        <source>Automatic</source>
+        <translation>自动</translation>
+    </message>
+    <message id="structure.session_only">
+        <source>Drop changes are in this session only</source>
+        <translation>Drop 修改仅保留在本次会话</translation>
+    </message>
+    <message id="structure.manual_outside">
+        <source>Manual drop is outside the media duration</source>
+        <translation>手动 Drop 超出媒体时长</translation>
+    </message>
+    <message id="structure.manual_audio_changed">
+        <source>Audio changed. Review the manual drop</source>
+        <translation>音频已更换，请复核手动 Drop</translation>
+    </message>
+    <message id="structure.manual">
+        <source>Manual drop</source>
+        <translation>手动 Drop</translation>
+    </message>
+    <message id="structure.detected">
+        <source>Detected drop</source>
+        <translation>已检测到 Drop</translation>
+    </message>
+    <message id="structure.analyzing">
+        <source>Analyzing chart and audio…</source>
+        <translation>正在分析谱面与音频…</translation>
+    </message>
+    <message id="structure.canceled">
+        <source>Structure analysis canceled</source>
+        <translation>已取消结构分析</translation>
+    </message>
+    <message id="structure.wait_for_pause">
+        <source>Analysis waits for playback to pause</source>
+        <translation>暂停播放后开始分析</translation>
+    </message>
+    <message id="structure.syntax_estimate">
+        <source>Pressure estimate from a chart with syntax errors</source>
+        <translation>谱面有语法错误，压力为估计值</translation>
+    </message>
+    <message id="structure.no_audio">
+        <source>Pressure estimate · Audio unavailable</source>
+        <translation>压力估计 · 无法读取音频</translation>
+    </message>
+    <message id="structure.candidates">
+        <source>Drop candidates · Select a range to confirm</source>
+        <translation>Drop 候选 · 选择区间以确认</translation>
+    </message>
+    <message id="structure.no_clear_drop">
+        <source>Pressure estimate · No clear drop</source>
+        <translation>压力估计 · 未找到明显的 Drop</translation>
+    </message>
+    <message id="structure.cancel_analysis">
+        <source>Cancel analysis</source>
+        <translation>取消分析</translation>
+    </message>
+    <message id="structure.edit_button">
+        <source>Drop…</source>
+        <translation>Drop…</translation>
+    </message>
+    <message id="structure.pressure_tooltip">
+        <source>%1 s · Relative chart pressure
+Density %2 · Simultaneous %3 · Held %4
+Slides %5 · Movement %6 · Rhythm %7</source>
+        <translation>%1 秒 · 相对谱面压力
+密度 %2 · 同押 %3 · 持续 %4
+滑键 %5 · 移动 %6 · 节奏 %7</translation>
+    </message>
+    <message id="structure.edit_title">
+        <source>Edit drop range</source>
+        <translation>编辑 Drop 区间</translation>
+    </message>
+    <message id="structure.start_seconds">
+        <source>Start (seconds)</source>
+        <translation>起点（秒）</translation>
+    </message>
+    <message id="structure.end_seconds">
+        <source>End (seconds)</source>
+        <translation>终点（秒）</translation>
+    </message>
+    <message id="structure.recommendation">
+        <source>Recommendation · %1–%2 s</source>
+        <translation>推荐 · %1–%2 秒</translation>
+    </message>
+    <message id="structure.candidate">
+        <source>Candidate · %1–%2 s</source>
+        <translation>候选 · %1–%2 秒</translation>
+    </message>
+    <message id="structure.undo">
+        <source>Undo drop edit</source>
+        <translation>撤销区间编辑</translation>
+    </message>
+    <message id="structure.redo">
+        <source>Redo drop edit</source>
+        <translation>重做区间编辑</translation>
+    </message>
+    <message id="structure.clear">
+        <source>Clear drop</source>
+        <translation>清除 Drop</translation>
+    </message>
+    <message id="structure.analyze_again">
+        <source>Analyze again</source>
+        <translation>重新分析</translation>
+    </message>
+    <message id="structure.save_drop">
+        <source>Save drop</source>
+        <translation>保存 Drop</translation>
+    </message>
+    <message id="structure.apply_manual">
+        <source>Apply manual drop</source>
+        <translation>应用手动 Drop</translation>
+    </message>
+    <message id="editor.slide_component_edit_rejected">
+        <source>This edit would change an unselected Slide component. Select the whole Slide and try again.</source>
+        <translation>这项操作会改动未选中的 Slide 组件。请选中整条 Slide 后重试。</translation>
+    </message>
+    <message id="metadata.advanced.conflict_warning">
+        <source>The original file contains conflicting fields: %1. Review the complete source before saving; automatic metadata saves are blocked.</source>
+        <translation>原文件包含值冲突的重复字段：%1。请在全文编辑中确认后保存；已阻止自动元数据覆盖。</translation>
+    </message>
+    <message id="export.syntax_before_zip">
+        <source>The chart contains syntax errors. Fix them before exporting ZIP.</source>
+        <translation>谱面存在语法错误，请修复后再导出 ZIP。</translation>
+    </message>
+    <message id="video_template.path_exists">
+        <source>A template with that name already exists.</source>
+        <translation>已存在同名模板。</translation>
+    </message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the

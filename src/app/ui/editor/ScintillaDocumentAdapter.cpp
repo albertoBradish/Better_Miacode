@@ -71,7 +71,8 @@ void ScintillaDocumentAdapter::activate(const QString& scope, const QString& tex
 {
     if (scope_ != scope || !documents_.contains(scope)) {
         saveViewport();
-        if (!documents_.contains(scope)) {
+        const bool newDocument = !documents_.contains(scope);
+        if (newDocument) {
             Document document;
             document.pointer = editor_.send(SCI_CREATEDOCUMENT, 0, SC_DOCUMENTOPTION_DEFAULT);
             documents_.insert(scope, document);
@@ -84,9 +85,18 @@ void ScintillaDocumentAdapter::activate(const QString& scope, const QString& tex
             editor_.send(SCI_ALLOCATELINECHARACTERINDEX, SC_LINECHARACTERINDEX_UTF16);
         refresh();
         if (text_ != text) {
-            editor_.sends(SCI_SETTEXT, 0, text.toUtf8().constData());
-            editor_.send(SCI_EMPTYUNDOBUFFER);
-            documents_[scope_].undoSelections.clear();
+            if (newDocument) {
+                editor_.sends(SCI_SETTEXT, 0, text.toUtf8().constData());
+                editor_.send(SCI_EMPTYUNDOBUFFER);
+                documents_[scope_].undoSelections.clear();
+            } else {
+                editor_.send(SCI_BEGINUNDOACTION);
+                editor_.send(SCI_SETTARGETSTART, 0);
+                editor_.send(SCI_SETTARGETEND, editor_.send(SCI_GETLENGTH));
+                const QByteArray replacement = text.toUtf8();
+                editor_.sends(SCI_REPLACETARGET, replacement.size(), replacement.constData());
+                editor_.send(SCI_ENDUNDOACTION);
+            }
         }
         const int length = editor_.send(SCI_GETLENGTH);
         editor_.send(SCI_SETSELECTION, qBound(0, document.caret, length), qBound(0, document.anchor, length));

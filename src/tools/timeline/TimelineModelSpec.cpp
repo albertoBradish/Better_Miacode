@@ -1,3 +1,4 @@
+#include "core/chart/transform/ChartNormalization.h"
 #include "timeline/TimelineQuickModel.h"
 #include "app/runtime/ContentDurationConfig.h"
 #include "timeline/TimelineQuickModelPrivate.h"
@@ -2461,6 +2462,21 @@ int main(int argc, char** argv)
                            QStringLiteral("runtime_ != nullptr && selectionDragActive_")),
                 QStringLiteral("selection outlines occupy the penultimate slot and the live drag box paints above them"));
         }
+    }
+
+    {
+        const QString chart = QStringLiteral("(120){4}1,2,3,4,E");
+        const auto normalized = miacode::chart_transform::normalizeChartText(chart, {}, {true, false, true});
+        TimelineQuickModel originalModel, normalizedModel;
+        originalModel.rebuildFromText(chart, 0.0);
+        normalizedModel.rebuildFromText(normalized.text, 0.0);
+        expect(normalized.ok && qAbs(originalModel.snapshot().durationSeconds - normalizedModel.snapshot().durationSeconds) < 1e-8,
+            QStringLiteral("normalization preserves rendered timeline duration despite empty-comma sampling changes"));
+        const auto a = SimaiParser::parseForTimeline(chart), b = SimaiParser::parseForTimeline(normalized.text);
+        double lastA = 0.0, lastB = 0.0;
+        for (const auto& marker : a.noteMarkers) lastA = qMax(lastA, qMax(marker.second, marker.endSecond));
+        for (const auto& marker : b.noteMarkers) lastB = qMax(lastB, qMax(marker.second, marker.endSecond));
+        expect(qAbs(lastA - lastB) < 1e-8, QStringLiteral("normalization preserves export's last gameplay-event time"));
     }
 
     if (failed > 0) {
