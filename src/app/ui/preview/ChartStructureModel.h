@@ -119,7 +119,7 @@ private:
     void stopCurrentTask();
     static Result calculate(const Input& input, const QString& cacheRoot, const std::atomic_bool& cancelled);
     void acceptResult(const Input& input, quint64 sequence, Result result);
-    bool persist(Selection selection);
+    bool persist(Selection selection, bool explicitSave = false);
     bool applyEdit(Selection selection);
     void restoreEdit(Selection selection);
     Selection currentSelection() const;

@@ -88,6 +88,9 @@ Result prepare(ChartWorkspace& workspace, ChartWorkspaceFileService& files, Trig
 {
     const auto snapshot = workspace.snapshot();
     if (!snapshot.hasDocument || workspace.isNetPreview() || snapshot.filePath.isEmpty()) return {};
+    if (trigger == Trigger::FirstOpen
+        && QFileInfo(snapshot.filePath).fileName().compare(QStringLiteral("maidata.txt"), Qt::CaseInsensitive) != 0)
+        return {};
     auto preferences = PreferenceDocument::loadPreferencesObject();
     const auto ui = preferences.value(QStringLiteral("ui")).toObject();
     auto seen = preferences.value(QStringLiteral("auto_normalize_opened")).toObject();

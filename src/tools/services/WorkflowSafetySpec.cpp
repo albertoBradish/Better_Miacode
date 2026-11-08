@@ -109,6 +109,16 @@ int main(int argc, char** argv)
     check(!duplicateFiles.save(miacode::ChartWorkspace::MetadataSection).accepted && read(duplicatePath) == duplicate,
           "automatic metadata cannot erase conflicting original fields");
 
+    const QString otherName = directory.filePath("notes.simai");
+    const QByteArray plainNotes = "(120){4}1,2,3,4,E\n";
+    write(otherName, plainNotes);
+    miacode::ChartWorkspace otherWorkspace;
+    miacode::ChartWorkspaceFileService otherFiles(otherWorkspace);
+    otherFiles.open(otherName);
+    const auto otherOpen = miacode::automatic_chart::prepare(otherWorkspace, otherFiles, miacode::automatic_chart::Trigger::FirstOpen);
+    check(otherOpen.accepted && !otherOpen.changed && read(otherName) == plainNotes,
+          "first-open preparation is limited to maidata.txt, preserving other chart text files");
+
     QTemporaryDir blocked;
     const QString blockedPath = blocked.filePath("maidata.txt");
     check(write(blockedPath, original) && write(blocked.filePath(".autosave"), "not a directory"), "blocked backup fixture prepared");

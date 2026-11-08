@@ -455,7 +455,7 @@ QVariantMap ChartStructureModel::pressureAt(double seconds) const
         {QStringLiteral("movement"), frame.movement}, {QStringLiteral("rhythm"), frame.rhythm}};
 }
 
-bool ChartStructureModel::persist(Selection selection)
+bool ChartStructureModel::persist(Selection selection, bool explicitSave)
 {
     auto& state = edits_[input_.difficulty];
     const auto snapshot = workspace_.snapshot();
@@ -471,7 +471,9 @@ bool ChartStructureModel::persist(Selection selection)
     state.unsaved = true;
     const bool unsavedChart = selection && selection->source == DropSource::Auto
         && snapshot.dirtyDifficultyIds.contains(input_.difficulty);
-    if (snapshot.origin != ChartDocumentOrigin::Local || snapshot.filePath.isEmpty() || workspace_.metadataDirty() || unsavedChart
+    const bool preserveOtherTextFormat = !explicitSave
+        && QFileInfo(snapshot.filePath).fileName().compare(QStringLiteral("maidata.txt"), Qt::CaseInsensitive) != 0;
+    if (snapshot.origin != ChartDocumentOrigin::Local || snapshot.filePath.isEmpty() || workspace_.metadataDirty() || unsavedChart || preserveOtherTextFormat
         || !QFileInfo(snapshot.filePath).isWritable() || !chart_file_safety::backupOriginal(snapshot.filePath)) return false;
     if (selection) seedDemoWindow(document, selection->range, mediaDuration());
     const QScopedValueRollback guard(applying_, true);
@@ -502,7 +504,7 @@ bool ChartStructureModel::applyEdit(Selection selection)
 void ChartStructureModel::restoreEdit(Selection selection)
 {
     edits_[input_.difficulty].suppressAuto = !selection || selection->source == DropSource::Manual;
-    persist(selection);
+    persist(selection, true);
     emit changed();
 }
 
@@ -520,7 +522,7 @@ bool ChartStructureModel::saveSessionDrop()
     if (!unsaved()) return false;
     const auto selection = currentSelection();
     if (selection && !effectiveDrop()) return false;
-    const bool saved = persist(selection);
+    const bool saved = persist(selection, true);
     emit changed();
     return saved;
 }
