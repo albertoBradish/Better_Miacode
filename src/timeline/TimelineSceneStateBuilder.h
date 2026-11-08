@@ -16,6 +16,7 @@
 namespace miacode::timeline {
 
 struct TimelineSceneBuildRequest {
+    TimelineLaneOrder laneOrder = TimelineLaneOrder::Natural;
     TimelineRenderSnapshot snapshot;
     QSet<quint64> selectedNoteLocations;
     std::shared_ptr<const miacode::waveform::WaveformData> waveformData;

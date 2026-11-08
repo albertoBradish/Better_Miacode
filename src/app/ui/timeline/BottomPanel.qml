@@ -147,6 +147,12 @@ Item {
         timelineSession: root.timelineSession
     }
 
+    Binding {
+        target: root.timelineSession.stateBridge
+        property: "laneOrder"
+        value: root.preferences.timelineLaneOrder ?? "natural"
+    }
+
     TimelineQuickItem {
         id: timelineItem
         objectName: "timelineQuickItem"

@@ -356,6 +356,17 @@ void TimelineQuickStateBridge::setHorizontalScrollValue(double value)
     emit renderStateChanged();
 }
 
+void TimelineQuickStateBridge::setLaneOrder(const QString& order)
+{
+    if (laneOrder_ == order) {
+        return;
+    }
+    laneOrder_ = order;
+    bumpAllRevisions();
+    emit laneOrderChanged();
+    emit renderStateChanged();
+}
+
 double TimelineQuickStateBridge::zoomScale() const
 {
     return zoomScale_;
