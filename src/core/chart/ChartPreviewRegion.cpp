@@ -89,7 +89,9 @@ QString dropChartFingerprint(const SimaiDocument& document, int difficultyId)
     QByteArray bytes;
     QDataStream stream(&bytes, QIODevice::WriteOnly);
     stream.setVersion(QDataStream::Qt_6_0);
-    stream << difficulty->chart << timeline::offset::parsedFirstSeconds(document.first)
+    QString logicalChart = difficulty->chart;
+    logicalChart.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+    stream << logicalChart << timeline::offset::parsedFirstSeconds(document.first)
         << timing.wholeTimeSignatureText << timing.wholeTimeSignatureNumerator
         << timing.wholeTimeSignatureDenominator << timing.wholeTimeSignatureValid
         << SimaiParser::allowNegativeHsEnabled();

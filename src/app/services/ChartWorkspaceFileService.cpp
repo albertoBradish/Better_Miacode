@@ -237,14 +237,20 @@ std::optional<QString> ChartWorkspaceFileService::decodeDocumentText(
 {
     if (usedSystemEncoding != nullptr) *usedSystemEncoding = false;
     QStringDecoder utf8Decoder(QStringConverter::Utf8, QStringConverter::Flag::Stateless);
-    const QString text = utf8Decoder.decode(bytes);
-    if (!utf8Decoder.hasError()) return text;
+    QString text = utf8Decoder.decode(bytes);
+    if (!utf8Decoder.hasError()) {
+        // Match QIODevice::Text without discarding the original bytes used by
+        // backups and external-change detection. Writers expand LF only once.
+        text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+        return text;
+    }
     if (bytes.startsWith("\xEF\xBB\xBF")) return std::nullopt;
 
     QStringDecoder systemDecoder(QStringConverter::System, QStringConverter::Flag::Stateless);
-    const QString systemText = systemDecoder.decode(bytes);
+    QString systemText = systemDecoder.decode(bytes);
     if (systemDecoder.hasError()) return std::nullopt;
     if (usedSystemEncoding != nullptr) *usedSystemEncoding = true;
+    systemText.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
     return systemText;
 }
 

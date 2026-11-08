@@ -119,6 +119,27 @@ int main(int argc, char** argv)
     check(otherOpen.accepted && !otherOpen.changed && read(otherName) == plainNotes,
           "first-open preparation is limited to maidata.txt, preserving other chart text files");
 
+    const QString windowsPath = directory.filePath("windows-save.txt");
+    const QByteArray windowsBytes = "&title=Windows round trip\r\n&lv_5=12\r\n&inote_5=(120)\r\n{4}1,2,3,4,E\r\n";
+    write(windowsPath, windowsBytes);
+    miacode::ChartWorkspace windowsWorkspace;
+    miacode::ChartWorkspaceFileService windowsFiles(windowsWorkspace);
+    // The runtime loader historically reads in QIODevice::Text mode.
+    windowsWorkspace.openSource(QString::fromUtf8(windowsBytes).replace("\r\n", "\n"), windowsPath, 5);
+    windowsFiles.observeCurrentDisk();
+    windowsWorkspace.upsertExtraField("artistid", "0007");
+    check(windowsFiles.save(miacode::ChartWorkspace::MetadataSection).accepted,
+          "metadata saves from the runtime's LF representation");
+    const auto afterMetadataSave = miacode::automatic_chart::prepare(windowsWorkspace, windowsFiles, miacode::automatic_chart::Trigger::Render);
+    check(afterMetadataSave.accepted, "Windows CRLF output is not mistaken for an external edit before rendering");
+    miacode::ChartWorkspace binaryOpened;
+    miacode::ChartWorkspaceFileService binaryFiles(binaryOpened);
+    write(windowsPath, windowsBytes);
+    check(binaryFiles.open(windowsPath).accepted && !binaryOpened.document().difficulty(5)->chart.contains('\r'),
+          "binary reads retain raw hashes but normalize logical CRLF chart text");
+    check(binaryFiles.save(5).accepted && !read(windowsPath).contains("\r\r\n"),
+          "saving a CRLF chart never doubles carriage returns");
+
     QTemporaryDir blocked;
     const QString blockedPath = blocked.filePath("maidata.txt");
     check(write(blockedPath, original) && write(blocked.filePath(".autosave"), "not a directory"), "blocked backup fixture prepared");

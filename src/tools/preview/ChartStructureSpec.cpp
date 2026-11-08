@@ -133,5 +133,10 @@ int main(int argc, char** argv)
     const bool audio = testAudioStructure();
     const bool pressure = testPressure();
     const bool document = testDocumentRegion();
-    return audio && pressure && document ? 0 : 1;
+    const QString lf = QStringLiteral("&lv_5=12\n&inote_5=(120)\n{4}1,2,3,4,E\n");
+    QString crlf = lf; crlf.replace(QStringLiteral("\n"), QStringLiteral("\r\n"));
+    const bool newlineIdentity = expect(dropChartFingerprint(SimaiDocument::fromText(lf), 5)
+        == dropChartFingerprint(SimaiDocument::fromText(crlf), 5),
+        "logical LF/CRLF equivalents share a portable drop fingerprint");
+    return audio && pressure && document && newlineIdentity ? 0 : 1;
 }
