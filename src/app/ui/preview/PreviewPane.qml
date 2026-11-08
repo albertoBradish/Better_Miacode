@@ -156,7 +156,7 @@ Rectangle {
             anchors.bottom: previewSurfaceLoader.bottom
             anchors.leftMargin: 2
             anchors.rightMargin: 2
-            height: Math.min(16, previewSurfaceLoader.height * 0.045)
+            height: Math.min(36, previewSurfaceLoader.height * 0.075)
             visible: previewSurfaceLoader.active && root.documentAvailable && !root.latencyActive
                 && !root.exportPageActive && structure !== null && structure.available
             readonly property var structure: root.previewSession.structure || null
@@ -173,18 +173,36 @@ Rectangle {
                 context.clearRect(0, 0, width, height)
                 if (!visible || width < 1 || endSecond <= startSecond)
                     return
-                const columns = Math.min(4096, Math.ceil(width * Screen.devicePixelRatio))
+                const columns = Math.max(32, Math.min(256, Math.ceil(width / 8)))
                 const samples = structure.heatmapSamples(startSecond, endSecond, columns)
-                const columnWidth = width / Math.max(1, samples.length)
+                if (samples.length < 2)
+                    return
+                // Smooth the display envelope only; tooltips retain original pressure values.
+                const points = []
+                const weights = [1, 2, 3, 2, 1]
                 for (let i = 0; i < samples.length; ++i) {
-                    const strength = samples[i]
-                    if (strength < 0.015)
-                        continue
-                    const barHeight = Math.max(1, height * strength)
-                    context.fillStyle = Qt.rgba(0.24 + strength * 0.67, 0.57 - strength * 0.13,
-                        0.88 - strength * 0.47, 0.26 + strength * 0.34)
-                    context.fillRect(i * columnWidth, height - barHeight, columnWidth + 0.15, barHeight)
+                    let total = 0
+                    for (let j = -2; j <= 2; ++j) {
+                        const index = Math.max(0, Math.min(samples.length - 1, i + j))
+                        total += Math.max(0, Math.min(1, samples[index])) * weights[j + 2]
+                    }
+                    points.push({ x: i * width / (samples.length - 1), y: height - total / 9 * (height - 1) })
                 }
+                context.beginPath()
+                context.moveTo(0, height)
+                context.lineTo(points[0].x, points[0].y)
+                for (let i = 1; i < points.length; ++i) {
+                    const previous = points[i - 1]
+                    const current = points[i]
+                    context.quadraticCurveTo(previous.x, previous.y,
+                        (previous.x + current.x) / 2, (previous.y + current.y) / 2)
+                }
+                const last = points[points.length - 1]
+                context.quadraticCurveTo(last.x, last.y, width, last.y)
+                context.lineTo(width, height)
+                context.closePath()
+                context.fillStyle = Qt.rgba(0.87, 0.87, 0.87, pressureHover.hovered ? 0.58 : 0.38)
+                context.fill()
             }
 
             Connections {
@@ -194,7 +212,10 @@ Rectangle {
                         pressureOverlay.requestPaint()
                 }
             }
-            HoverHandler { id: pressureHover }
+            HoverHandler {
+                id: pressureHover
+                onHoveredChanged: pressureOverlay.requestPaint()
+            }
             ToolTip.visible: pressureHover.hovered && ToolTip.text.length > 0
             ToolTip.delay: 500
             ToolTip.text: {

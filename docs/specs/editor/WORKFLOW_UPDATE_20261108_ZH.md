@@ -50,3 +50,7 @@
 ## 公共命令行
 
 `export video` 与 schemaVersion 1 请求共用本轮能力：`--debug-render`、`--no-pv`、`--size-preset standard|30mb|100mb|200mb|custom`、`--video-bitrate 0.1..100`（Mbps）、`--intro-style classic|pv|chart`、`--intro-window automatic|drop|default`、`--intro-pv-start <秒>`。`--intro-chart-preview` 兼容专用导出入口的写法。JSON 布尔 false 保持 false；固定体积与自定义码率不能同时指定。统计/BPM/封面入口保持只读，视频输出路径检查成功后才进行安全整理。
+
+## 热图视觉补充
+
+用户已确认进度条小标记方案；后续不改其交互。热图参考 YouTube Most Replayed 的简洁曲线表达，采用灰白单色半透明面积、平滑曲线和无边框叠加，不使用彩色直方图或 Drop 色块。平滑仅用于显示包络，原始压力与工具提示保持不变。参考：[YouTube 官方功能说明](https://support.google.com/youtube/thread/164099151/youtube-video-player-updates-most-replayed-video-chapters-single-loop-more?hl=en)。
