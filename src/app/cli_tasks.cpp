@@ -34,7 +34,6 @@
 #include <QTemporaryDir>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
-#include <QStringDecoder>
 #include <QTextStream>
 #include <csignal>
 #include <memory>
@@ -119,9 +118,16 @@ bool readChart(const CliRequest& request, ChartInput* chart, QString* error)
     if (!file.open(QIODevice::ReadOnly)) { *error = QStringLiteral("Cannot read chart: %1").arg(file.errorString()); return false; }
     if (file.size() > 64 * 1024 * 1024) { *error = QStringLiteral("Chart exceeds 64 MiB."); return false; }
     const QByteArray bytes = file.readAll();
-    QStringDecoder decoder(QStringDecoder::Utf8);
-    chart->source = decoder.decode(bytes);
-    if (decoder.hasError()) chart->source = QString::fromLocal8Bit(bytes);
+    if (file.error() != QFileDevice::NoError) {
+        *error = QStringLiteral("Cannot read chart: %1").arg(file.errorString());
+        return false;
+    }
+    const auto decoded = miacode::ChartWorkspaceFileService::decodeDocumentText(bytes);
+    if (!decoded) {
+        *error = QStringLiteral("Chart text could not be decoded.");
+        return false;
+    }
+    chart->source = *decoded;
     chart->path = QFileInfo(path).canonicalFilePath();
     chart->document = SimaiDocument::fromText(chart->source);
     chart->difficulty = difficultyId(request.values.value(QStringLiteral("difficulty")));
@@ -413,10 +419,20 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
         miacode::ChartWorkspaceFileService files(workspace);
         const auto opened = files.open(chart.path);
         if (!opened.accepted) return result(request, 2, {}, opened.error, QStringLiteral("invalid_chart"));
+        if (workspace.document().toText() != chart.document.toText()) {
+            return result(request, 1, {}, QStringLiteral("Chart changed while preparing the export."),
+                QStringLiteral("chart_preparation"));
+        }
         const auto prepared = miacode::automatic_chart::prepare(workspace, files, miacode::automatic_chart::Trigger::Render);
         if (!prepared.accepted) return result(request, 1, {}, prepared.error, QStringLiteral("chart_preparation"));
-        if (prepared.changed && !readChart(request, &chart, &error))
-            return result(request, 2, {}, error, QStringLiteral("invalid_chart"));
+        if (prepared.changed) {
+            if (!readChart(request, &chart, &error))
+                return result(request, 2, {}, error, QStringLiteral("invalid_chart"));
+            if (workspace.document().toText() != chart.document.toText()) {
+                return result(request, 1, {}, QStringLiteral("Chart changed after automatic preparation."),
+                    QStringLiteral("chart_preparation"));
+            }
+        }
     }
     if (type == QLatin1String("bpm")) {
         const QString format = request.values.value(QStringLiteral("format")).toString(QStringLiteral("sequence"));
