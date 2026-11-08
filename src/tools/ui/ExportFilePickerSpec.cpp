@@ -1,4 +1,5 @@
 #include "app/ui/export/ExportSession.h"
+#include "app/runtime/document/WorkspacePageOwnership.h"
 #include "app/ui/preview/PreviewSettingsModel.h"
 #include "app/ui/media/MediaToolsModel.h"
 #include "app/ui/dialogs/NativeFolderPicker.h"
@@ -32,6 +33,7 @@
 #include <QTranslator>
 #include <QtTest/QTest>
 
+#include <functional>
 #include <memory>
 
 namespace {
@@ -43,12 +45,18 @@ public:
     bool batchLaunchSucceeds = false;
     BatchResult batchResult;
     int seeds = 0;
+    std::function<void()> onStartAudition;
     VideoExportTask buildSeedTask(int) override { ++seeds; return task; }
     QList<int> difficultyIds() const override { return {4, 5}; }
     QString difficultyChartText(int) const override { return {}; }
     int lastOpenedDifficultyId() const override { return 5; }
     void applySharedTaskSettings(const VideoExportTask&) override {}
-    bool startAudition(int, const VideoExportTask&) override { return false; }
+    bool startAudition(int, const VideoExportTask&) override
+    {
+        if (!onStartAudition) return false;
+        onStartAudition();
+        return true;
+    }
     void clearAudition() override {}
     void stopAudition() override {}
     bool launchVideoExport(const VideoExportTask& requested, int, QString*) override
@@ -474,7 +482,27 @@ ApplicationWindow {
             return miacode::ui::ExportSession::ChartPreviewContext{
                 seed.task.chartPath, 1, &document, {}, drop, 120.0};
         });
+        bool revisionPublished = false;
+        seed.onStartAudition = [&] {
+            // Enter has opened the export session and queued its first seed.
+            // Auto-normalization publishes a workspace revision before the
+            // backend sets the audition-active flag.
+            if (!miacode::runtime::document_detail::exportPageOwnsWorkspaceRevision(
+                    u"export", &session, /*documentIdentityChanged=*/false)) {
+                session.leave();
+            }
+            revisionPublished = true;
+            emit notifications.documentRevisionChanged(2);
+            session.chartPreviewContextChanged();
+        };
         session.enter(5); wait();
+        seed.onStartAudition = {};
+        expect(revisionPublished && session.pageSessionActive() && session.rangePreviewAvailable()
+            && session.dropAvailable(),
+            "the first audition can publish a workspace revision without disabling the drop range controls");
+        expect(!miacode::runtime::document_detail::exportPageOwnsWorkspaceRevision(
+            u"export", &session, /*documentIdentityChanged=*/true),
+            "a new document does not inherit the export-entry guard");
         session.setIntroStyleIndex(2);
         expect(session.previewIntroSpec().previewWindowSource == IntroWindowSource::Demo
             && session.introPvStartSeconds() == 4.0 && session.introPvSegmentSeconds() == 6.0,

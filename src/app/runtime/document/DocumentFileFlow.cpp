@@ -1,6 +1,7 @@
 #include "common/LocalizedText.h"
 
 #include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/document/WorkspacePageOwnership.h"
 #include "app/services/UiRequestService.h"
 #include "app/services/ChartWorkspaceFileService.h"
 #include "app/runtime/Shared.h"
@@ -446,11 +447,11 @@ void miacode::runtime::DocumentSessionHost::syncRuntimeFromWorkspace()
     if (snapshot.dirty) {
         noteDocumentEditedForAutosave();
     }
-    // Overlay audition pages deliberately keep their source outside the
-    // workspace's active difficulty. A metadata-only workspace write must not
-    // turn that intentional mismatch into a real difficulty switch.
+    // Export owns the page before its audition has installed a scene. An
+    // in-place workspace commit during preparation must keep the page open.
     const bool auditionPageOwnsSource =
-        state_.latencySandboxAuditionActive_ || state_.exportPreviewAuditionActive_;
+        state_.latencySandboxAuditionActive_ || state_.exportPreviewAuditionActive_
+        || exportPageOwnsWorkspaceRevision(state_.activeOutlineKey_, ui_.qmlExportSession_, documentIdentityChanged);
     const bool difficultyChanged =
         !auditionPageOwnsSource
         && SimaiDocument::isDifficultyId(snapshot.activeDifficultyId)
