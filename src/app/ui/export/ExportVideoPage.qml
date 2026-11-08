@@ -548,22 +548,27 @@ Rectangle {
                             }
                         }
 
-                        AppCheckBox {
-                            text: qsTrId("video_export.include_pv")
-                            enabled: root.session && root.session.outputModeIndex !== 1
-                            checked: root.session ? root.session.includePv : true
-                            onToggled: if (root.session) root.session.includePv = checked
-                        }
-
-                        ColumnLayout {
-                            visible: root.session && root.session.customBitrate
+                        GridLayout {
+                            id: bitrateControls
+                            readonly property bool showCustomBitrate: !!root.session && root.session.customBitrate
                                 && root.session.outputModeIndex !== 1
+                            readonly property bool inlinePv: showCustomBitrate
+                                && width >= bitrateRow.minimumUsableWidth + columnSpacing + includePvCheckBox.implicitWidth
                             Layout.fillWidth: true
-                            spacing: Theme.settingsLabelSpacing
+                            columns: inlinePv ? 2 : 1
+                            columnSpacing: 12
+                            rowSpacing: Theme.settingsLabelSpacing
 
                             RowLayout {
+                                id: bitrateRow
+                                readonly property real minimumUsableWidth: bitrateLabel.implicitWidth
+                                    + bitrateSlider.Layout.minimumWidth + bitrateField.Layout.preferredWidth + 2 * spacing
+                                visible: bitrateControls.showCustomBitrate
                                 Layout.fillWidth: true
                                 Text {
+                                    id: bitrateLabel
+                                    Layout.minimumWidth: 0
+                                    elide: Text.ElideRight
                                     text: qsTrId("video_size.target_mbps")
                                     color: Theme.colors.text.secondary
                                     font.family: Theme.uiFont
@@ -572,6 +577,7 @@ Rectangle {
                                 AppSlider {
                                     id: bitrateSlider
                                     Layout.fillWidth: true
+                                    Layout.minimumWidth: 64
                                     Accessible.name: qsTrId("video_size.target_mbps")
                                     from: 0.1
                                     to: 100
@@ -605,7 +611,17 @@ Rectangle {
                                     }
                                 }
                             }
+                            AppCheckBox {
+                                id: includePvCheckBox
+                                Layout.alignment: bitrateControls.inlinePv ? Qt.AlignRight | Qt.AlignVCenter : Qt.AlignLeft | Qt.AlignVCenter
+                                text: qsTrId("video_export.include_pv")
+                                enabled: root.session && root.session.outputModeIndex !== 1
+                                checked: root.session ? root.session.includePv : true
+                                onToggled: if (root.session) root.session.includePv = checked
+                            }
                             Text {
+                                visible: bitrateControls.showCustomBitrate
+                                Layout.columnSpan: bitrateControls.columns
                                 text: qsTrId("video_size.estimated_mb")
                                     .arg(root.session ? root.session.estimatedCustomSizeMb.toFixed(1) : "0")
                                 color: Theme.colors.text.secondary
