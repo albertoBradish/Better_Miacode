@@ -25,14 +25,14 @@ Item {
     function closeMenus() {
         rateMenu.close()
         canvasMenu.close()
+        structureMarkers.closeEditor()
     }
 
 
     readonly property real progressTopInset: 3
     readonly property real controlsBottomInset: 5
     readonly property real interactionGap: Theme.panelPadding
-    implicitHeight: progressTopInset + (structureStrip.visible ? structureStrip.implicitHeight : 0)
-                    + progress.height + interactionGap
+    implicitHeight: progressTopInset + progress.height + interactionGap
                     + transportRow.implicitHeight + controlsBottomInset
 
     Rectangle {
@@ -120,28 +120,14 @@ Item {
               + " / " + root.formatTime(root.progressEndSeconds)
     }
 
-    ChartStructureStrip {
-        id: structureStrip
-        anchors.left: progress.left
-        anchors.right: progress.right
-        anchors.top: parent.top
-        anchors.topMargin: root.progressTopInset
-        structure: root.previewSession && root.previewSession.structure ? root.previewSession.structure : null
-        visible: root.dataAvailable && structure !== null && structure.available
-        startSeconds: progress.from
-        endSeconds: progress.to
-        positionSeconds: root.displayedSeconds
-        handleInset: progress.handle.width / 2
-    }
-
     AppSlider {
         id: progress
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: structureStrip.visible ? structureStrip.bottom : parent.top
+        anchors.top: parent.top
         anchors.leftMargin: 8
         anchors.rightMargin: 8
-        anchors.topMargin: structureStrip.visible ? 0 : root.progressTopInset
+        anchors.topMargin: root.progressTopInset
         height: 24
         from: root.lowerBoundSeconds
         to: root.progressEndSeconds
@@ -199,6 +185,14 @@ Item {
             root.previewSession.endScrub(root.activeScrubSecond)
             root.scrubActive = false
         }
+    }
+
+    ChartStructureStrip {
+        id: structureMarkers
+        anchors.fill: progress
+        slider: progress
+        structure: root.dataAvailable ? root.previewSession.structure || null : null
+        positionSeconds: root.displayedSeconds
     }
 
     RowLayout {

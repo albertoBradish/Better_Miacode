@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import MiaCode.UI
 import "qrc:/preview/runtime/qml" as Preview
 
@@ -144,6 +145,70 @@ Rectangle {
                 backgroundColor: "transparent"
                 hudTextColor: Theme.colors.previewHud.text
                 hudShadowColor: Theme.colors.previewHud.shadow
+            }
+        }
+
+        Canvas {
+            id: pressureOverlay
+            objectName: "previewPressureOverlay"
+            anchors.left: previewSurfaceLoader.left
+            anchors.right: previewSurfaceLoader.right
+            anchors.bottom: previewSurfaceLoader.bottom
+            anchors.leftMargin: 2
+            anchors.rightMargin: 2
+            height: Math.min(16, previewSurfaceLoader.height * 0.045)
+            visible: previewSurfaceLoader.active && root.documentAvailable && !root.latencyActive
+                && !root.exportPageActive && structure !== null && structure.available
+            readonly property var structure: root.previewSession.structure || null
+            readonly property real startSecond: transport.lowerBoundSeconds
+            readonly property real endSecond: transport.progressEndSeconds
+
+            onStartSecondChanged: requestPaint()
+            onEndSecondChanged: requestPaint()
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+            onVisibleChanged: if (visible) requestPaint()
+            onPaint: {
+                const context = getContext("2d")
+                context.clearRect(0, 0, width, height)
+                if (!visible || width < 1 || endSecond <= startSecond)
+                    return
+                const columns = Math.min(4096, Math.ceil(width * Screen.devicePixelRatio))
+                const samples = structure.heatmapSamples(startSecond, endSecond, columns)
+                const columnWidth = width / Math.max(1, samples.length)
+                for (let i = 0; i < samples.length; ++i) {
+                    const strength = samples[i]
+                    if (strength < 0.015)
+                        continue
+                    const barHeight = Math.max(1, height * strength)
+                    context.fillStyle = Qt.rgba(0.24 + strength * 0.67, 0.57 - strength * 0.13,
+                        0.88 - strength * 0.47, 0.26 + strength * 0.34)
+                    context.fillRect(i * columnWidth, height - barHeight, columnWidth + 0.15, barHeight)
+                }
+            }
+
+            Connections {
+                target: pressureOverlay.structure
+                function onChanged() {
+                    if (pressureOverlay.visible)
+                        pressureOverlay.requestPaint()
+                }
+            }
+            HoverHandler { id: pressureHover }
+            ToolTip.visible: pressureHover.hovered && ToolTip.text.length > 0
+            ToolTip.delay: 500
+            ToolTip.text: {
+                if (!pressureOverlay.visible || !pressureHover.hovered || pressureOverlay.structure.pending)
+                    return ""
+                const fraction = Math.max(0, Math.min(1, pressureHover.point.position.x / Math.max(1, width)))
+                const second = startSecond + fraction * (endSecond - startSecond)
+                const p = structure.pressureAt(second)
+                if (p.density === undefined)
+                    return ""
+                return qsTrId("structure.pressure_tooltip")
+                    .arg(second.toLocaleString(Qt.locale(), 'f', 3)).arg(p.density.toFixed(1))
+                    .arg(p.simultaneous.toFixed(1)).arg(p.held.toFixed(1)).arg(p.slides.toFixed(1))
+                    .arg(p.movement.toFixed(1)).arg(p.rhythm.toFixed(1))
             }
         }
 
