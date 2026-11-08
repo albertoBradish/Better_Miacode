@@ -107,6 +107,13 @@ bool PreviewStageMediaHost::chartHasVideoBackground() const
     return miacode::chart_assets::isVideoBackgroundPath(resolved);
 }
 
+void PreviewStageMediaHost::setBackgroundPolicy(BackgroundPolicy policy)
+{
+    if (backgroundPolicy_ == policy) return;
+    backgroundPolicy_ = policy;
+    reloadCurrentMediaPreservingPlayback();
+}
+
 bool PreviewStageMediaHost::hidePv() const
 {
     return hidePv_;
@@ -264,7 +271,7 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
     // still force a re-decode. Phase 4c — explicit `&video=` beats the sibling
     // heuristic; fall back to the legacy resolver for image-only backgrounds.
     QString resolvedPath;
-    if (!normalizedChartPath.isEmpty()) {
+    if (usesBackgroundMedia(backgroundPolicy_) && !normalizedChartPath.isEmpty()) {
         resolvedPath = resolveStageMediaPath(normalizedChartPath, chartVideoOverridePath);
     }
     const QString mediaStamp = miacode::fs::fileContentStamp(resolvedPath);

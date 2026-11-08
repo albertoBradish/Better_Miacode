@@ -39,6 +39,7 @@ class PreviewModel final : public QObject
     Q_PROPERTY(QString renderMode READ renderMode NOTIFY renderModeChanged)
     Q_PROPERTY(QString renderModeLabel READ renderModeLabel NOTIFY renderModeChanged)
     Q_PROPERTY(bool muriCheckEnabled READ muriCheckEnabled NOTIFY renderModeChanged)
+    Q_PROPERTY(bool debugRendering READ debugRendering NOTIFY renderModeChanged)
     Q_PROPERTY(bool smoothStarErase READ smoothStarErase NOTIFY renderModeChanged)
     // 无理检测 parameters: 手部半径 (1080 px reference) and 撞尾阈值 (ms), plus the
     // slider ranges, so the menu states no limits of its own.
@@ -68,6 +69,7 @@ public:
     QString renderMode() const;
     QString renderModeLabel() const;
     bool muriCheckEnabled() const;
+    bool debugRendering() const { return renderMode_ == QLatin1String("debug"); }
     bool smoothStarErase() const;
     int muriHandRadiusPx() const;
     int muriTapOnSlideThresholdMs() const;
@@ -86,6 +88,7 @@ public:
     void setPlaying(bool value);
     Q_INVOKABLE void toggleRenderMode();
     Q_INVOKABLE void setMuriCheckEnabled(bool enabled);
+    Q_INVOKABLE void setDebugRendering();
     Q_INVOKABLE void setSmoothStarErase(bool enabled);
     Q_INVOKABLE void setMuriHandRadiusPx(int radiusPx);
     Q_INVOKABLE void setMuriTapOnSlideThresholdMs(int thresholdMs);

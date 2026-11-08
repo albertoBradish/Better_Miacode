@@ -2,6 +2,7 @@
 #include "app/runtime/Shared.h"
 
 #include "preview/runtime/PreviewRuntime.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "core/analysis/MuriPanelEntries.h"
 
@@ -109,6 +110,10 @@ void miacode::runtime::ValidationHost::applyMuriRenderOptions()
     }
     if (state_.scene_ != nullptr) {
         state_.scene_->setMuriRenderOptions(state_.muriRenderOptions_);
+    }
+    if (state_.previewStageMediaHost_ != nullptr) {
+        state_.previewStageMediaHost_->setBackgroundPolicy(
+            backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode));
     }
     applyAlignedMuriAnalysisReportToViews();
     // The Muri tab is fed by the application-level analysis, which would otherwise keep

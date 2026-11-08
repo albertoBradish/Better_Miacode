@@ -3,12 +3,19 @@
 #include <QString>
 
 #include "core/analysis/MuriConfig.h"
+#include "core/video/PreviewRenderSettings.h"
 
 enum class RenderMode {
     Native,
     MaimuriDxStyle,
     EraseByArea,
+    Debug,
 };
+
+constexpr BackgroundPolicy backgroundPolicyForRenderMode(RenderMode mode)
+{
+    return mode == RenderMode::Debug ? BackgroundPolicy::OpaqueBlack : BackgroundPolicy::Normal;
+}
 
 struct MuriRenderOptions {
     RenderMode renderMode = RenderMode::Native;
@@ -46,6 +53,8 @@ inline QString muriRenderModeToken(RenderMode mode)
             return QStringLiteral("maimuri_dx_style");
         case RenderMode::EraseByArea:
             return QStringLiteral("erase_by_area");
+        case RenderMode::Debug:
+            return QStringLiteral("debug");
         case RenderMode::Native:
             break;
     }
@@ -60,6 +69,9 @@ inline RenderMode muriRenderModeFromToken(const QString& token)
     }
     if (normalized.compare(QStringLiteral("erase_by_area"), Qt::CaseInsensitive) == 0) {
         return RenderMode::EraseByArea;
+    }
+    if (normalized.compare(QStringLiteral("debug"), Qt::CaseInsensitive) == 0) {
+        return RenderMode::Debug;
     }
     return RenderMode::Native;
 }

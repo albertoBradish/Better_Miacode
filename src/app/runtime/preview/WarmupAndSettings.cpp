@@ -501,6 +501,10 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("measureLineCustomBeats"), state_.previewMeasureLineCustomBeats_},
         {QStringLiteral("touchPadAuthoringShortcut"), state_.previewTouchPadAuthoringShortcutEnabled_},
         {QStringLiteral("showDebugInfo"), state_.previewShowDebugInfo_},
+        {QStringLiteral("showJudgeMarkers"), state_.showJudgeMarkers_},
+        {QStringLiteral("showTouchTrail"), state_.showTouchTrail_},
+        {QStringLiteral("labeledJudgeArea"),
+            state_.previewOutlineVariant_ == PreviewOutlineVariant::JudgeAreaLabeled},
         {QStringLiteral("forceLabeledJudgeLineWhenPaused"), state_.previewForceLabeledJudgeLineWhenPaused_},
         // 玩法
         {QStringLiteral("tapFlowSpeed"), snappedFlowSpeed(state_.previewTapFlowSpeed_)},
@@ -610,6 +614,13 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
     } else if (key == QLatin1String("touchPadAuthoringShortcut")) {
         state_.previewTouchPadAuthoringShortcutEnabled_ = value.toBool();
         applyEffectivePreviewOutlineVariantToCanvas();
+    } else if (key == QLatin1String("showJudgeMarkers")) {
+        onToggleJudgeMarkers(value.toBool());
+    } else if (key == QLatin1String("showTouchTrail")) {
+        onToggleTouchTrail(value.toBool());
+    } else if (key == QLatin1String("labeledJudgeArea")) {
+        applyPreviewOutlineVariant(value.toBool()
+            ? PreviewOutlineVariant::JudgeAreaLabeled : PreviewOutlineVariant::JudgeArea, false, true);
     } else if (key == QLatin1String("showDebugInfo")) {
         state_.previewShowDebugInfo_ = value.toBool();
         if (canvas != nullptr) {

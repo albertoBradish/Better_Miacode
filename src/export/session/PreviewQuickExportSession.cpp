@@ -72,14 +72,14 @@ PreviewQuickExportSession::~PreviewQuickExportSession()
 
 void PreviewQuickExportSession::setBackgroundFrame(const QImage& image, bool cacheable, bool fullFrame, qreal brightness)
 {
-    backgroundEnabled_ = true;
+    backgroundEnabled_ = usesBackgroundMedia(frameState_.render.backgroundPolicy);
     backgroundFullFrame_ = fullFrame;
     backgroundBrightness_ = brightness;
     frameState_.media.resolvedStageImage = image;
     frameState_.media.resolvedStageImageCacheable = cacheable;
     frameState_.media.stageMediaSerial = image.cacheKey();
     if (backgroundItem_) {
-        backgroundItem_->setVisible(true);
+        backgroundItem_->setVisible(backgroundEnabled_);
         backgroundItem_->setFrameState(frameState_, fullFrame, brightness);
     }
 }
@@ -815,7 +815,9 @@ bool PreviewQuickExportSession::convertBottomUpReadbackToRgba(
     // returns nullptr, so the per-pixel `dst[...] = ...` store faults on a
     // near-null address. Allocating explicitly here routes any OOM through the
     // checked isNull() path instead of crashing the export worker.
-    const QImage::Format outputFormat = preservePremultipliedReadback_
+    const bool preservePremultiplied = preservePremultipliedReadback_
+        || frameState_.render.backgroundPolicy == BackgroundPolicy::Transparent;
+    const QImage::Format outputFormat = preservePremultiplied
         ? QImage::Format_RGBA8888_Premultiplied
         : QImage::Format_RGBA8888;
     if (frame->isNull()
@@ -846,7 +848,7 @@ bool PreviewQuickExportSession::convertBottomUpReadbackToRgba(
             }
             return false;
         }
-        if (preservePremultipliedReadback_) {
+        if (preservePremultiplied) {
             std::memcpy(outputRow, sourceRowBytes, static_cast<size_t>(expectedBytesPerRow));
             continue;
         }
@@ -1457,7 +1459,11 @@ void PreviewQuickExportSession::setIntroFrame(int authoringFrame, bool active)
 
 void PreviewQuickExportSession::applyFrameState()
 {
-    if (backgroundItem_ && backgroundEnabled_) {
+    const BackgroundPolicy policy = frameState_.render.backgroundPolicy;
+    if (quickWindow_) quickWindow_->setColor(policy == BackgroundPolicy::OpaqueBlack
+        ? QColor(Qt::black) : QColor(Qt::transparent));
+    if (backgroundItem_) {
+        backgroundItem_->setVisible(backgroundEnabled_ && usesBackgroundMedia(policy));
         backgroundItem_->setFrameState(frameState_, backgroundFullFrame_, backgroundBrightness_);
     }
     bindFrameStateIfNeeded();

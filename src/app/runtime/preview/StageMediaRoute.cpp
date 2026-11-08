@@ -264,6 +264,8 @@ void miacode::runtime::StageMediaHost::ensurePreviewStageMediaHostInitialized()
     }
 
     state_.previewStageMediaHost_ = new PreviewStageMediaHost(&session_);
+    state_.previewStageMediaHost_->setBackgroundPolicy(
+        backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode));
     state_.previewStageMediaHost_->setMissingMediaFallbackEnabled(session_.exportPreviewActive_);
     state_.previewStageMediaHost_->setBackgroundScaleMode(state_.previewBackgroundScaleMode_);
     state_.previewStageMediaHost_->setLayoutSquareScale(state_.previewLayoutSquareScale_);

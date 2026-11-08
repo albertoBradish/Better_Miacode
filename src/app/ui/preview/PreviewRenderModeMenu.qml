@@ -152,7 +152,7 @@ AppStickyPopup {
         ModeRow {
             width: parent.width
             label: qsTrId("qml.normal_rendering")
-            active: !root.previewSession.muriCheckEnabled
+            active: !root.previewSession.muriCheckEnabled && !root.previewSession.debugRendering
             onClicked: root.previewSession.setMuriCheckEnabled(false)
         }
 
@@ -161,6 +161,13 @@ AppStickyPopup {
             label: qsTrId("qml.muri_analysis")
             active: root.previewSession.muriCheckEnabled
             onClicked: root.previewSession.setMuriCheckEnabled(true)
+        }
+
+        ModeRow {
+            width: parent.width
+            label: qsTrId("qml.debug_rendering")
+            active: root.previewSession.debugRendering
+            onClicked: root.previewSession.setDebugRendering()
         }
 
         Item {
@@ -180,7 +187,7 @@ AppStickyPopup {
 
         AppSwitch {
             id: smoothSwitch
-            visible: !root.previewSession.muriCheckEnabled
+            visible: !root.previewSession.muriCheckEnabled && !root.previewSession.debugRendering
             width: parent.width
             leftPadding: 12
             rightPadding: 16
@@ -197,6 +204,38 @@ AppStickyPopup {
                 function onRenderModeChanged() {
                     if (smoothSwitch.checked !== root.previewSession.smoothStarErase)
                         smoothSwitch.checked = root.previewSession.smoothStarErase
+                }
+            }
+        }
+
+        Column {
+            visible: root.previewSession.debugRendering
+            width: parent.width
+
+            Repeater {
+                model: [
+                    ["labeledJudgeArea", qsTrId("qml.debug_labeled_judge_area")],
+                    ["showMeasureLines", qsTrId("preview.canvas.show_measure_lines")],
+                    ["showJudgementSkeleton", qsTrId("preview.canvas.show_judgement_skeleton")],
+                    ["showSlideJudgementTiming", qsTrId("preview.canvas.show_slide_judgement_timing")],
+                    ["showTimestamp", qsTrId("dialog.video_export.option.show_timestamp")],
+                    ["showBpmHud", qsTrId("dialog.video_export.option.show_bpm_hud")],
+                    ["showCpsHud", qsTrId("dialog.video_export.option.show_cps_hud")],
+                    ["showJudgeMarkers", qsTrId("qml.debug_muri_markers")],
+                    ["showTouchTrail", qsTrId("qml.debug_touch_trail")]
+                ]
+
+                delegate: AppCheckBox {
+                    required property var modelData
+                    width: parent.width
+                    leftPadding: 12
+                    rightPadding: 16
+                    text: modelData[1]
+                    checked: root.previewSession.canvasSettings[modelData[0]] === true
+                    onToggled: {
+                        root.previewSession.setCanvasSetting(modelData[0], checked)
+                        checked = Qt.binding(() => root.previewSession.canvasSettings[modelData[0]] === true)
+                    }
                 }
             }
         }

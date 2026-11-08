@@ -49,13 +49,14 @@ bool VideoExportQuickRenderBackend::bootstrap(
     QString* errorMessage)
 {
     assets_.setOutlineSelection(task.outlineVariant, task.outlineImagePath);
-    stageMediaPath_ = stageMediaPath;
+    const BackgroundPolicy policy = backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode);
+    stageMediaPath_ = usesBackgroundMedia(policy) ? stageMediaPath : QString();
     QString mediaError;
-    if (!stageMedia_.open(stageMediaPath, frameSize, &mediaError)) {
+    if (!stageMedia_.open(stageMediaPath_, frameSize, &mediaError)) {
         if (errorMessage) *errorMessage = mediaError;
         return false;
     }
-    const bool stageMediaAvailable = !stageMediaPath.isEmpty();
+    const bool stageMediaAvailable = !stageMediaPath_.isEmpty();
     backgroundFade_ = task.fullRangeExport && task.intro.enabled;
     introPvPreview_ = backgroundFade_ && task.intro.pvPreview && !stageMedia_.isStaticImage()
         && stageMediaAvailable;
@@ -69,6 +70,7 @@ bool VideoExportQuickRenderBackend::bootstrap(
     }
 
     frameState_ = miacode::preview::scene::PreviewFrameState();
+    frameState_.render.backgroundPolicy = policy;
     frameState_.hudFontSettings = task.hudFontSettings;
     frameState_.noteMarkers = noteMarkers;
     if (task.slideTimingFromLaunchBeat)

@@ -378,6 +378,9 @@ void miacode::runtime::PlaybackCoordinator::toggleMuriRenderMode()
         nextMode = RenderMode::MaimuriDxStyle;
         break;
     case RenderMode::MaimuriDxStyle:
+        nextMode = RenderMode::Debug;
+        break;
+    case RenderMode::Debug:
         nextMode = RenderMode::Native;
         break;
     }

@@ -722,6 +722,7 @@ void PreviewRuntime::setMuriAnalysisReport(const MuriAnalysisReport& report)
 void PreviewRuntime::setMuriRenderOptions(const MuriRenderOptions& options)
 {
     frameState_.muriRenderOptions = options;
+    frameState_.render.backgroundPolicy = backgroundPolicyForRenderMode(options.renderMode);
     frameState_.sceneContentRevision += 1;
     update();
 }

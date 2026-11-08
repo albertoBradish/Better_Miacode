@@ -186,7 +186,9 @@ void PreviewModel::refreshFromBackend(bool force)
     const bool nextSmoothStarErase = lastRegularMode_ != RenderMode::EraseByArea;
     const QString nextRenderModeLabel = nextMuriCheckEnabled
         ? qtTrId("qml.muri_analysis")
-        : qtTrId("qml.normal_rendering");
+        : nextRenderModeValue == RenderMode::Debug
+            ? qtTrId("qml.debug_rendering")
+            : qtTrId("qml.normal_rendering");
     const QStringList nextStatisticsTexts = surface()->statsTexts();
     const bool nextStatisticsAvailable = !nextStatisticsTexts.isEmpty();
     const int nextMuriHandRadiusPx = surface()->muriHandRadiusPx();
@@ -360,12 +362,20 @@ void PreviewModel::setMuriCheckEnabled(bool enabled)
         }
         surface()->setMuriRenderMode(RenderMode::MaimuriDxStyle);
     } else {
-        if (current != RenderMode::MaimuriDxStyle) {
+        if (current != RenderMode::MaimuriDxStyle && current != RenderMode::Debug) {
             return;
         }
         surface()->setMuriRenderMode(lastRegularMode_);
     }
     refreshFromBackend();
+}
+
+void PreviewModel::setDebugRendering()
+{
+    if (surface() != nullptr && surface()->muriRenderMode() != RenderMode::Debug) {
+        surface()->setMuriRenderMode(RenderMode::Debug);
+        refreshFromBackend();
+    }
 }
 
 void PreviewModel::setMuriHandRadiusPx(int radiusPx)
@@ -393,7 +403,8 @@ void PreviewModel::setSmoothStarErase(bool enabled)
         return;
     }
     lastRegularMode_ = enabled ? RenderMode::Native : RenderMode::EraseByArea;
-    if (surface()->muriRenderMode() != RenderMode::MaimuriDxStyle) {
+    if (surface()->muriRenderMode() == RenderMode::Native
+        || surface()->muriRenderMode() == RenderMode::EraseByArea) {
         surface()->setMuriRenderMode(lastRegularMode_);
     }
     refreshFromBackend();

@@ -60,6 +60,7 @@ public:
     bool hasResolvedMedia() const;
     bool hasVideoMedia() const;
     bool chartHasVideoBackground() const;
+    void setBackgroundPolicy(BackgroundPolicy policy);
     bool hidePv() const;
     void setHidePv(bool hide);
     void setMissingMediaFallbackEnabled(bool enabled);
@@ -254,6 +255,7 @@ private:
     QString mediaStamp_;
     QUrl imageSource_;
     bool mediaVisible_ = true;
+    BackgroundPolicy backgroundPolicy_ = BackgroundPolicy::Normal;
     bool hidePv_ = false;
     bool missingMediaFallbackEnabled_ = false;
     PreviewBackgroundScaleMode backgroundScaleMode_ = PreviewBackgroundScaleMode::FillCrop;

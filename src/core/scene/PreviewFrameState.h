@@ -232,6 +232,7 @@ struct PreviewAssetState {
 };
 
 struct PreviewRenderState {
+    BackgroundPolicy backgroundPolicy = BackgroundPolicy::Normal;
     double backgroundBrightnessOuter = miacode::preview_video::kBackgroundBrightnessDefault;
     double backgroundBrightnessInner = miacode::preview_video::kBackgroundBrightnessInnerDefault;
     double layoutSquareScale = miacode::preview_video::kLayoutSquareScaleDefault;

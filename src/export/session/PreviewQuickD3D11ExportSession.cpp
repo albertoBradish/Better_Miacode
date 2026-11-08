@@ -226,14 +226,14 @@ PreviewQuickD3D11ExportSession::~PreviewQuickD3D11ExportSession()
 
 void PreviewQuickD3D11ExportSession::setBackgroundFrame(const QImage& image, bool cacheable, bool fullFrame, qreal brightness)
 {
-    backgroundEnabled_ = true;
+    backgroundEnabled_ = usesBackgroundMedia(frameState_.render.backgroundPolicy);
     backgroundFullFrame_ = fullFrame;
     backgroundBrightness_ = brightness;
     frameState_.media.resolvedStageImage = image;
     frameState_.media.resolvedStageImageCacheable = cacheable;
     frameState_.media.stageMediaSerial = image.cacheKey();
     if (backgroundItem_) {
-        backgroundItem_->setVisible(true);
+        backgroundItem_->setVisible(backgroundEnabled_);
         backgroundItem_->setFrameState(frameState_, fullFrame, brightness);
     }
 }
@@ -669,7 +669,8 @@ bool PreviewQuickD3D11ExportSession::readbackStagingTexture(
         static_cast<const uchar*>(mapped.pData),
         lastReadbackRowPitch_,
         renderTargetPixelSize(),
-        preservePremultipliedReadback_,
+        preservePremultipliedReadback_
+            || frameState_.render.backgroundPolicy == BackgroundPolicy::Transparent,
         readbackSlot,
         &convertError);
     d3d_->context->Unmap(d3d_->staging[stagingIndex].Get(), 0);
@@ -950,7 +951,11 @@ void PreviewQuickD3D11ExportSession::setIntroFrame(int authoringFrame, bool acti
 
 void PreviewQuickD3D11ExportSession::applyFrameState()
 {
-    if (backgroundItem_ && backgroundEnabled_) {
+    const BackgroundPolicy policy = frameState_.render.backgroundPolicy;
+    if (quickWindow_) quickWindow_->setColor(policy == BackgroundPolicy::OpaqueBlack
+        ? QColor(Qt::black) : QColor(Qt::transparent));
+    if (backgroundItem_) {
+        backgroundItem_->setVisible(backgroundEnabled_ && usesBackgroundMedia(policy));
         backgroundItem_->setFrameState(frameState_, backgroundFullFrame_, backgroundBrightness_);
     }
     bindFrameStateIfNeeded();
