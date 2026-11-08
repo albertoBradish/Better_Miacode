@@ -63,5 +63,16 @@ int main(int argc, char** argv)
     const auto bpm = parse({QStringLiteral("export"), QStringLiteral("bpm"), QStringLiteral("--chart=x"),
         QStringLiteral("--output=x.txt"), QStringLiteral("--format=audio-time")});
     expect(bpm.error.isEmpty() && !bpm.needsGui(), "BPM export is a text-only task");
+    const auto custom = parse({QStringLiteral("export"), QStringLiteral("video"), QStringLiteral("--chart=x"), QStringLiteral("--output=x.mp4"),
+        QStringLiteral("--video-bitrate=2.5"), QStringLiteral("--no-pv"), QStringLiteral("--debug-render"),
+        QStringLiteral("--intro-style=chart"), QStringLiteral("--intro-window=drop")});
+    expect(custom.error.isEmpty() && custom.values.value("video-bitrate").toDouble() == 2.5
+        && custom.values.value("no-pv").toBool() && custom.values.value("debug-render").toBool(),
+        "new video options reach the public request without losing explicit intent");
+    expect(!parse({QStringLiteral("export"), QStringLiteral("video"), QStringLiteral("--chart=x"), QStringLiteral("--output=x.mp4"),
+        QStringLiteral("--video-bitrate=2.5"), QStringLiteral("--size-preset=30mb")}).error.isEmpty(),
+        "custom bitrate and a fixed file budget are mutually exclusive");
+    expect(!parse({QStringLiteral("export"), QStringLiteral("video"), QStringLiteral("--chart=x"), QStringLiteral("--output=x.mp4"),
+        QStringLiteral("--intro-style=unknown")}).error.isEmpty(), "unknown intro style fails explicitly");
     return failures == 0 ? 0 : 1;
 }

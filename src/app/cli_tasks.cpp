@@ -1,3 +1,6 @@
+#include "app/services/AutomaticChartPreparation.h"
+#include "app/services/ChartFileSafety.h"
+#include "core/chart/ChartPreviewRegion.h"
 #include "app/MainEntrypoints.h"
 #include "app/CliRequest.h"
 #include "AppVersion.h"
@@ -72,6 +75,9 @@ QJsonObject capabilities()
         {QStringLiteral("request"), QStringLiteral("--request <file|-> accepts one schemaVersion 1 JSON object")},
         {QStringLiteral("relativePaths"), QStringLiteral("JSON file paths resolve beside the request file; stdin JSON and command flags resolve from the current directory")},
         {QStringLiteral("progress"), QStringLiteral("Video/cover --json or --ndjson emit NDJSON progress followed by one result")},
+        {QStringLiteral("videoOptions"), QJsonArray{QStringLiteral("size-preset"), QStringLiteral("video-bitrate"),
+            QStringLiteral("no-pv"), QStringLiteral("debug-render"), QStringLiteral("intro-style"),
+            QStringLiteral("intro-window"), QStringLiteral("intro-pv-start")}},
         {QStringLiteral("tasksRequireEnabledIntegration"), true},
         {QStringLiteral("overwrite"), QStringLiteral("Explicit --overwrite; completed artifacts atomically replace the requested path")},
         {QStringLiteral("exampleRequest"), QJsonObject{{QStringLiteral("schemaVersion"), 1}, {QStringLiteral("command"), QStringLiteral("export")},
@@ -273,6 +279,12 @@ bool prepareTask(const CliRequest& request, const ChartInput& chart, const QStri
     if (miacode::video_export::videoExportSizePresetToken(snapshot.sizePreset) != sizeToken) {
         *error = QStringLiteral("Unknown size preset: ") + sizeToken; return false;
     }
+    if (request.values.contains(QStringLiteral("video-bitrate"))) {
+        snapshot.sizePreset = VideoExportSizePreset::Custom;
+        snapshot.targetVideoBitrateMbps = request.values.value(QStringLiteral("video-bitrate")).toDouble();
+    }
+    snapshot.includePv = !request.values.value(QStringLiteral("no-pv")).toBool();
+    if (request.values.value(QStringLiteral("debug-render")).toBool()) snapshot.muriRenderOptions.renderMode = RenderMode::Debug;
     snapshot.exportStartSeconds = request.values.value(QStringLiteral("start")).toDouble(0);
     const double musicDuration = request.values.value(QStringLiteral("type")).toString() == QLatin1String("video") && !snapshot.trackPath.isEmpty()
         ? miacode::audio_decode::probeFileDurationSeconds(snapshot.trackPath) : 0;
@@ -293,7 +305,29 @@ bool prepareTask(const CliRequest& request, const ChartInput& chart, const QStri
     snapshot.slideTimingEarlyPerfectFromHead = request.values.value(QStringLiteral("slide-timing-early-perfect-from-head")).toBool();
     snapshot.intro = miacode::chart_banner::forDifficulty(chart.document, chart.difficulty);
     snapshot.intro.jacketPath = miacode::chart_assets::resolveDisplayBackgroundImagePath(chart.path);
-    snapshot.intro.enabled = request.values.value(QStringLiteral("intro")).toBool() && snapshot.fullRangeExport;
+    const QString style = request.values.value(QStringLiteral("intro-style")).toString(QStringLiteral("classic"));
+    snapshot.intro.chartPreview = style == QLatin1String("chart") || request.values.value(QStringLiteral("intro-chart-preview")).toBool();
+    snapshot.intro.pvPreview = snapshot.intro.chartPreview || style == QLatin1String("pv");
+    snapshot.intro.enabled = request.values.value(QStringLiteral("intro")).toBool(snapshot.intro.pvPreview) && snapshot.fullRangeExport;
+    const QString window = request.values.value(QStringLiteral("intro-window")).toString(QStringLiteral("automatic"));
+    snapshot.intro.previewWindowMode = window == QLatin1String("drop") ? miacode::chart_preview::IntroWindowMode::FollowDrop
+        : window == QLatin1String("default") ? miacode::chart_preview::IntroWindowMode::Default : miacode::chart_preview::IntroWindowMode::Automatic;
+    std::optional<miacode::chart_preview::MediaRange> explicitWindow;
+    if (request.values.contains(QStringLiteral("intro-pv-start"))) {
+        const double start = request.values.value(QStringLiteral("intro-pv-start")).toDouble();
+        explicitWindow = miacode::chart_preview::MediaRange{start, start + miacode::intro::kPvPreviewHoldSeconds};
+    }
+    QString fingerprint;
+    if (QFileInfo(snapshot.trackPath).size() <= 128LL * 1024 * 1024) {
+        const QByteArray audioHash = miacode::chart_file_safety::fileDigest(snapshot.trackPath);
+        if (!audioHash.isEmpty()) fingerprint = miacode::chart_preview::dropInputFingerprint(
+            chart.document, chart.difficulty, QString::fromLatin1(audioHash.toHex()));
+    }
+    const auto introWindow = miacode::chart_preview::resolveIntroWindow(chart.document, chart.difficulty, explicitWindow,
+        snapshot.intro.previewWindowMode, musicDuration > 0.0 ? musicDuration : contentEnd, fingerprint);
+    snapshot.intro.pvPreviewStartSeconds = introWindow.range.startSeconds;
+    snapshot.intro.pvPreviewEndSeconds = introWindow.range.endSeconds;
+    snapshot.intro.previewWindowSource = introWindow.source;
     return buildVideoExportTaskFromSnapshot(snapshot, task, error);
 }
 }
@@ -336,6 +370,8 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
         "  better-miacode --request FILE|- [--json]\n"
         "JSON file paths are relative to the request file; stdin/command flag paths are relative to the current directory.\n"
         "Tasks require command-line integration enabled in Settings > About and an isolated marked runtime.\n"
+        "Video: --size-preset standard|30mb|100mb|200mb|custom, --video-bitrate Mbps (0.1-100), --no-pv, --debug-render.\n"
+        "Intro: --intro-style classic|pv|chart, --intro-window automatic|drop|default, --intro-pv-start seconds.\n"
         "Existing outputs require --overwrite. Completed files replace the exact output atomically.\n"
         "--json/--ndjson: video/cover emit NDJSON progress and a final result; other commands emit one result.\n"
         "Exit codes: 0 success, 1 task failure, 2 invalid request, 3 output conflict, 77 disabled, 78 runtime, 130 canceled.")}});
@@ -368,6 +404,16 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
     const auto previousInt = std::signal(SIGINT, cancelSignal);
     const auto previousTerm = std::signal(SIGTERM, cancelSignal);
     const auto restoreSignals = qScopeGuard([&] { std::signal(SIGINT, previousInt); std::signal(SIGTERM, previousTerm); });
+    if (type == QLatin1String("video")) {
+        miacode::ChartWorkspace workspace;
+        miacode::ChartWorkspaceFileService files(workspace);
+        const auto opened = files.open(chart.path);
+        if (!opened.accepted) return result(request, 2, {}, opened.error, QStringLiteral("invalid_chart"));
+        const auto prepared = miacode::automatic_chart::prepare(workspace, files, miacode::automatic_chart::Trigger::Render);
+        if (!prepared.accepted) return result(request, 1, {}, prepared.error, QStringLiteral("chart_preparation"));
+        if (prepared.changed && !readChart(request, &chart, &error))
+            return result(request, 2, {}, error, QStringLiteral("invalid_chart"));
+    }
     if (type == QLatin1String("bpm")) {
         const QString format = request.values.value(QStringLiteral("format")).toString(QStringLiteral("sequence"));
         if (format != QLatin1String("sequence") && format != QLatin1String("audio-time") && format != QLatin1String("maidata"))

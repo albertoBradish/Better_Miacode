@@ -44,11 +44,11 @@ CliRequest parseCliRequest(const QStringList& arguments, const QByteArray* suppl
     static const QSet<QString> booleans{QStringLiteral("overwrite"), QStringLiteral("json"), QStringLiteral("ndjson"),
         QStringLiteral("show-bpm"), QStringLiteral("show-cps"), QStringLiteral("show-meter"), QStringLiteral("show-mods"),
         QStringLiteral("slide-judgement-timing"), QStringLiteral("slide-timing-from-launch-beat"), QStringLiteral("slide-timing-early-perfect-from-head"),
-        QStringLiteral("hide-timestamp"), QStringLiteral("show-object-stats"), QStringLiteral("show-chart-info"), QStringLiteral("intro")};
+        QStringLiteral("hide-timestamp"), QStringLiteral("show-object-stats"), QStringLiteral("show-chart-info"), QStringLiteral("intro"), QStringLiteral("debug-render"), QStringLiteral("no-pv"), QStringLiteral("intro-chart-preview")};
     static const QSet<QString> strings{QStringLiteral("chart"), QStringLiteral("difficulty"), QStringLiteral("output"),
-        QStringLiteral("format"), QStringLiteral("preset"), QStringLiteral("size-preset"), QStringLiteral("skin"), QStringLiteral("track"), QStringLiteral("request")};
+        QStringLiteral("format"), QStringLiteral("preset"), QStringLiteral("size-preset"), QStringLiteral("skin"), QStringLiteral("track"), QStringLiteral("request"), QStringLiteral("intro-style"), QStringLiteral("intro-window")};
     static const QSet<QString> numbers{QStringLiteral("width"), QStringLiteral("height"), QStringLiteral("fps"),
-        QStringLiteral("start"), QStringLiteral("duration"), QStringLiteral("time"), QStringLiteral("flow-speed")};
+        QStringLiteral("start"), QStringLiteral("duration"), QStringLiteral("time"), QStringLiteral("flow-speed"), QStringLiteral("video-bitrate"), QStringLiteral("intro-pv-start")};
     for (int i = 1; i < arguments.size(); ++i) {
         QString argument = arguments[i];
         if (argument == QLatin1String("--help") || argument == QLatin1String("-h")) { positional = {QStringLiteral("help")}; break; }
@@ -168,6 +168,24 @@ CliRequest parseCliRequest(const QStringList& arguments, const QByteArray* suppl
     for (const QString& key : {QStringLiteral("start"), QStringLiteral("duration"), QStringLiteral("time")})
         if (values.contains(key) && qAbs(values[key].toDouble()) > 86400)
             result.error = QStringLiteral("%1 exceeds the supported 24-hour timeline.").arg(key);
+    if (values.contains(QStringLiteral("video-bitrate"))) {
+        const double bitrate = values.value(QStringLiteral("video-bitrate")).toDouble();
+        if (bitrate < 0.1 || bitrate > 100.0)
+            result.error = QStringLiteral("video-bitrate must be between 0.1 and 100 Mbps.");
+        if (values.contains(QStringLiteral("size-preset"))
+            && values.value(QStringLiteral("size-preset")).toString() != QLatin1String("custom"))
+            result.error = QStringLiteral("video-bitrate cannot be combined with a non-custom size preset.");
+    }
+    if (values.contains(QStringLiteral("intro-pv-start"))
+        && (values.value(QStringLiteral("intro-pv-start")).toDouble() < 0.0
+            || values.value(QStringLiteral("intro-pv-start")).toDouble() > 86400.0))
+        result.error = QStringLiteral("intro-pv-start must be between 0 and 86400 seconds.");
+    if (values.contains(QStringLiteral("intro-style"))
+        && !QStringList{QStringLiteral("classic"), QStringLiteral("pv"), QStringLiteral("chart")}.contains(values.value(QStringLiteral("intro-style")).toString()))
+        result.error = QStringLiteral("intro-style must be classic, pv or chart.");
+    if (values.contains(QStringLiteral("intro-window"))
+        && !QStringList{QStringLiteral("automatic"), QStringLiteral("drop"), QStringLiteral("default")}.contains(values.value(QStringLiteral("intro-window")).toString()))
+        result.error = QStringLiteral("intro-window must be automatic, drop or default.");
     return result;
 }
 }

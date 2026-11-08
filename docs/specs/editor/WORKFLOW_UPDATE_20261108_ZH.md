@@ -46,3 +46,7 @@
 - 开发/验收使用 Release 配置、并发≤4。只有完成初验、归档和哈希校验才更新隔离测试资源；用户手动确认之前不建立正式 Release 标签或分发。
 
 完整工作区方案及外部资料回执保存在源码仓库之外的 `docs/UPDATE_DEV_PLAN_20261108_ZH.md` 与 `exports/update_plan_20261108/research/`。这些是本次开发依据，不自动作为发行包内容。
+
+## 公共命令行
+
+`export video` 与 schemaVersion 1 请求共用本轮能力：`--debug-render`、`--no-pv`、`--size-preset standard|30mb|100mb|200mb|custom`、`--video-bitrate 0.1..100`（Mbps）、`--intro-style classic|pv|chart`、`--intro-window automatic|drop|default`、`--intro-pv-start <秒>`。`--intro-chart-preview` 兼容专用导出入口的写法。JSON 布尔 false 保持 false；固定体积与自定义码率不能同时指定。统计/BPM/封面入口保持只读，视频输出路径检查成功后才进行安全整理。
