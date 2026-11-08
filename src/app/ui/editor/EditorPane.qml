@@ -392,6 +392,7 @@ Item {
         syncController: root.editorSync
         analysisSession: root.analysisSession
         preferences: root.preferences
+        onPlaybackToggleRequested: root.previewSession.togglePlayback()
         onNormalizeChartRequested: root.pages.openNormalizeWholeChart()
         onCompletionSettingsRequested: function(group) { root.completionSettingsRequested(group) }
     }

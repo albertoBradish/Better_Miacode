@@ -7,6 +7,8 @@
 #include "app/services/EditorSyncController.h"
 #include <QtQmlIntegration/qqmlintegration.h>
 #include <optional>
+#include <QElapsedTimer>
+#include "editor/SpaceInputGuard.h"
 
 namespace miacode::ui {
 struct ScintillaQuickForeign
@@ -52,6 +54,8 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(int overviewDisplayLineCount READ overviewDisplayLineCount NOTIFY overviewChanged)
     Q_PROPERTY(int overviewCurrentDisplayLine READ overviewCurrentDisplayLine NOTIFY overviewChanged)
     Q_PROPERTY(bool overviewFollowing READ overviewFollowing NOTIFY overviewChanged)
+    Q_PROPERTY(bool spaceGuardEnabled READ spaceGuardEnabled WRITE setSpaceGuardEnabled NOTIFY spaceGuardChanged)
+    Q_PROPERTY(bool spaceInputUnlocked READ spaceInputUnlocked NOTIFY spaceGuardChanged)
     Q_PROPERTY(bool imeComposing READ imeComposing NOTIFY imeComposingChanged)
 public:
     QColor sceneBackgroundColor() const { return Qt::transparent; }
@@ -97,6 +101,10 @@ public:
     int overviewDisplayLineCount() const;
     int overviewCurrentDisplayLine() const { return overviewCurrentDisplayLine_; }
     bool overviewFollowing() const { return overviewFollowing_; }
+    bool spaceGuardEnabled() const { return spaceGuardEnabled_; }
+    bool spaceInputUnlocked() const { return spaceGuard_.unlocked(); }
+    void setSpaceGuardEnabled(bool enabled);
+    void resetSpaceGuard();
     bool imeComposing() const { return imeComposing_; }
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
@@ -124,6 +132,8 @@ public:
     Q_INVOKABLE bool renameBookmarkAtLine(int line, const QString& title);
     Q_INVOKABLE bool deleteBookmarkAtLine(int line);
 signals:
+    void spaceGuardChanged();
+    void playbackToggleRequested();
     void bindingsChanged();
     void editorColorsChanged();
     void appearanceChanged();
@@ -151,6 +161,9 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
     void inputMethodEvent(QInputMethodEvent* event) override;
 private:
+    bool spaceGuardEnabled_ = true;
+    miacode::editor::SpaceInputGuard spaceGuard_;
+    QElapsedTimer spaceGuardClock_;
     enum OverviewProjectionPart {
         OverviewMarkersDirty = 0x01,
         OverviewCurrentLineDirty = 0x02,

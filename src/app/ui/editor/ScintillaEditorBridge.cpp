@@ -1,3 +1,4 @@
+#include <QGuiApplication>
 #include "app/ui/editor/ScintillaEditorBridge.h"
 #include "app/ui/editor/EditorContextMenu.h"
 #include "editor/SimaiCompletionCatalog.h"
@@ -73,7 +74,12 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
         // Wrapping can shift markers even when the total display-row count stays equal.
         scheduleOverviewProjectionRefresh(OverviewAllDirty);
     });
+    spaceGuardClock_.start();
+    connect(qGuiApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state) {
+        if (state != Qt::ApplicationActive) resetSpaceGuard();
+    });
     connect(this, &QQuickItem::activeFocusChanged, this, [this] {
+        if (!hasActiveFocus()) resetSpaceGuard();
         publishContext(false);
         emit followVisualChanged();
         scheduleOverviewProjectionRefresh(OverviewCurrentLineDirty);
@@ -442,6 +448,7 @@ void ScintillaEditorBridge::synchronizeDocument()
         send(SCI_SETSELECTION, send(SCI_GETCURRENTPOS), send(SCI_GETCURRENTPOS));
     }
     if (identityChanged) {
+        resetSpaceGuard();
         reportedRanges_.clear();
         reportedAnchor_ = reportedCaret_ = -1;
         wheelRemainder_ = 0;
@@ -1159,8 +1166,35 @@ void ScintillaEditorBridge::beginUserInteraction()
     if (syncController_ && documentSession_)
         syncController_->beginPointerInteraction(documentSession_->currentDifficultyId(), documentSession_->documentRevision());
 }
+void ScintillaEditorBridge::setSpaceGuardEnabled(bool enabled)
+{
+    if (spaceGuardEnabled_ == enabled) return;
+    spaceGuardEnabled_ = enabled;
+    resetSpaceGuard();
+    emit spaceGuardChanged();
+}
+void ScintillaEditorBridge::resetSpaceGuard()
+{
+    const bool wasUnlocked = spaceGuard_.unlocked();
+    spaceGuard_.reset();
+    if (wasUnlocked) emit spaceGuardChanged();
+}
+
 void ScintillaEditorBridge::keyPressEvent(QKeyEvent* event)
 {
+    if (spaceGuardEnabled_ && !imeComposing_ && event->key() == Qt::Key_Space
+        && event->modifiers() == Qt::NoModifier) {
+        const auto action = spaceGuard_.press(spaceGuardClock_.elapsed(), event->isAutoRepeat());
+        if (action != miacode::editor::SpaceInputGuard::Action::Insert) {
+            if (action == miacode::editor::SpaceInputGuard::Action::TogglePlayback) emit playbackToggleRequested();
+            if (action == miacode::editor::SpaceInputGuard::Action::Unlock) emit spaceGuardChanged();
+            event->accept();
+            return;
+        }
+    } else if (!event->isAutoRepeat()) {
+        spaceGuard_.interruptSequence();
+    }
+
     if (event->matches(QKeySequence::Find)) { emit findRequested(); event->accept(); return; }
     if (event->key() == Qt::Key_H && event->modifiers().testFlag(Qt::ControlModifier)
         && !event->modifiers().testFlag(Qt::AltModifier)) {
