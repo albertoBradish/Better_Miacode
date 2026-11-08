@@ -308,11 +308,17 @@ PreferenceDocument::ThemePalette loadStoredThemePalette(const char* key)
 {
     const QJsonObject ui = PreferenceDocument::loadPreferencesObject()
                                .value(kUiSectionKey).toObject();
-    return PreferenceDocument::themePaletteFromToken(
+    const bool darkSlot = QLatin1String(key) == QLatin1String(kDarkThemeKey);
+    const auto palette = PreferenceDocument::themePaletteFromToken(
         ui.value(QLatin1String(key)).toString(
             QLatin1String(key) == QLatin1String(kLightThemeKey)
                 ? QStringLiteral("light")
                 : QStringLiteral("dark")));
+    // Older builds allowed assigning a palette to the opposite appearance slot.
+    if (PreferenceDocument::themePaletteIsDark(palette) != darkSlot) {
+        return darkSlot ? PreferenceDocument::ThemePalette::Dark : PreferenceDocument::ThemePalette::Light;
+    }
+    return palette;
 }
 
 void saveStoredLanguagePreference(PreferenceDocument::LanguagePreference preference)
@@ -497,6 +503,30 @@ QString PreferenceDocument::themePaletteToken(ThemePalette palette)
         return QStringLiteral("legacy");
     case ThemePalette::LegacyLight:
         return QStringLiteral("legacy_light");
+    case ThemePalette::Midnight:
+        return QStringLiteral("midnight");
+    case ThemePalette::Forest:
+        return QStringLiteral("forest");
+    case ThemePalette::Paper:
+        return QStringLiteral("paper");
+    case ThemePalette::Lavender:
+        return QStringLiteral("lavender");
+    case ThemePalette::CatppuccinMocha:
+        return QStringLiteral("catppuccin_mocha");
+    case ThemePalette::CatppuccinLatte:
+        return QStringLiteral("catppuccin_latte");
+    case ThemePalette::Nord:
+        return QStringLiteral("nord");
+    case ThemePalette::Noah:
+        return QStringLiteral("noah");
+    case ThemePalette::Yuzu:
+        return QStringLiteral("yuzu");
+    case ThemePalette::Sky:
+        return QStringLiteral("sky");
+    case ThemePalette::Dracula:
+        return QStringLiteral("dracula");
+    case ThemePalette::TokyoNight:
+        return QStringLiteral("tokyo_night");
     default:
         return QStringLiteral("dark");
     }
@@ -514,12 +544,28 @@ PreferenceDocument::ThemePalette PreferenceDocument::themePaletteFromToken(const
     if (normalized == QLatin1String("legacy_light")) {
         return ThemePalette::LegacyLight;
     }
+    if (normalized == QLatin1String("midnight")) return ThemePalette::Midnight;
+    if (normalized == QLatin1String("forest")) return ThemePalette::Forest;
+    if (normalized == QLatin1String("paper")) return ThemePalette::Paper;
+    if (normalized == QLatin1String("lavender")) return ThemePalette::Lavender;
+    if (normalized == QLatin1String("catppuccin_mocha")) return ThemePalette::CatppuccinMocha;
+    if (normalized == QLatin1String("catppuccin_latte")) return ThemePalette::CatppuccinLatte;
+    if (normalized == QLatin1String("nord")) return ThemePalette::Nord;
+    if (normalized == QLatin1String("noah")) return ThemePalette::Noah;
+    if (normalized == QLatin1String("yuzu")) return ThemePalette::Yuzu;
+    if (normalized == QLatin1String("sky")) return ThemePalette::Sky;
+    if (normalized == QLatin1String("dracula")) return ThemePalette::Dracula;
+    if (normalized == QLatin1String("tokyo_night")) return ThemePalette::TokyoNight;
     return ThemePalette::Dark;
 }
 
 bool PreferenceDocument::themePaletteIsDark(ThemePalette palette)
 {
-    return palette == ThemePalette::Dark || palette == ThemePalette::Legacy;
+    return palette == ThemePalette::Dark || palette == ThemePalette::Legacy
+        || palette == ThemePalette::Midnight
+        || palette == ThemePalette::CatppuccinMocha || palette == ThemePalette::Nord
+        || palette == ThemePalette::Noah || palette == ThemePalette::Dracula
+        || palette == ThemePalette::TokyoNight;
 }
 
 PreferenceDocument::LanguagePreference PreferenceDocument::preferredLanguage()

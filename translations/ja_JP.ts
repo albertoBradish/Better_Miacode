@@ -3,6 +3,26 @@
 <TS version="2.1" language="ja_JP">
 <context>
     <name></name>
+    <message id="toast.operation_failed">
+        <source>%1 failed: %2.</source>
+        <translation>%1に失敗しました。%2。</translation>
+    </message>
+    <message id="toast.operation_partially_failed">
+        <source>%1 partially failed: %2.</source>
+        <translation>%1の一部に失敗しました。%2。</translation>
+    </message>
+    <message id="toast.selection_required">
+        <source>Select the chart text whose subdivision you want to adjust</source>
+        <translation>分音を調整する譜面テキストを選択してください</translation>
+    </message>
+    <message id="toast.subdivision_incompatible">
+        <source>The selected chart cannot be adjusted by this subdivision ratio</source>
+        <translation>選択した部分はこの分音比率で調整できません</translation>
+    </message>
+    <message id="toast.subdivision_limit">
+        <source>The subdivision value exceeds the supported range</source>
+        <translation>分音の値が対応範囲を超えています</translation>
+    </message>
     <message id="setup.completion_hint">
         <source>Customize completion candidates in Preferences.</source>
         <translation>補完候補リストは環境設定でカスタマイズできます。</translation>
@@ -1310,12 +1330,40 @@ Failed: %2</source>
         <translation>ダークテーマ</translation>
     </message>
     <message id="dialog.preferences.theme.legacy">
+        <source>Classic</source>
+        <translation>クラシック</translation>
+    </message>
+    <message id="dialog.preferences.theme.default">
+        <source>Default</source>
+        <translation>デフォルト</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_dark">
+        <source>Default Dark</source>
+        <translation>デフォルトダーク</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_light">
+        <source>Default Light</source>
+        <translation>デフォルトライト</translation>
+    </message>
+    <message id="dialog.preferences.theme.legacy_dark">
         <source>Classic Dark</source>
         <translation>クラシックダーク</translation>
     </message>
     <message id="dialog.preferences.theme.legacy_light">
         <source>Classic Light</source>
         <translation>クラシックライト</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_mocha">
+        <source>Catppuccin Mocha</source>
+        <translation>モカ</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_latte">
+        <source>Catppuccin Latte</source>
+        <translation>ラテ</translation>
+    </message>
+    <message id="dialog.preferences.theme.nord">
+        <source>Nord</source>
+        <translation>ノルド</translation>
     </message>
     <message id="dialog.preferences.theme.light">
         <source>Light</source>
@@ -1620,6 +1668,18 @@ Failed: %2</source>
     <message id="dialog.render_settings.video.skin.standard">
         <source>SD</source>
         <translation>SD</translation>
+    </message>
+    <message id="dialog.skin_settings.firework">
+        <source>Firework effect</source>
+        <translation>花火エフェクト</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.modern">
+        <source>Modern</source>
+        <translation>モダン</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.standard">
+        <source>Standard</source>
+        <translation>標準</translation>
     </message>
     <message id="dialog.render_settings.video.firework_brightness">
         <source>Firework brightness</source>
@@ -2395,7 +2455,7 @@ File: </source>
     </message>
     <message id="media_tools.audio_processing_track">
         <source>Audio Processing track.mp3</source>
-        <translation>音声処理 track.mp3</translation>
+        <translation>音声処理</translation>
     </message>
     <message id="media_tools.audio_video_processing">
         <source>Audio/Video Processing</source>
@@ -2771,7 +2831,7 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="media_tools.video_processing_pv">
         <source>Video Processing pv.mp4</source>
-        <translation>動画処理 pv.mp4</translation>
+        <translation>動画処理</translation>
     </message>
     <message id="menu.clear_elements">
         <source>Clear Elements</source>
@@ -4326,6 +4386,14 @@ Error: %1</source>
         <translation>タイムライン</translation>
     </message>
 
+    <message id="net.ui.query_options">
+        <source>Search options</source>
+        <translation>検索オプション</translation>
+    </message>
+    <message id="net.ui.queue_hint">
+        <source>Choose a chart folder and add it to the queue.</source>
+        <translation>譜面フォルダーを選び、キューに追加してください。</translation>
+    </message>
     <message id="net.ui.download_page">
         <source>Majdata Net</source>
         <translation>譜面ダウンロード</translation>
@@ -5190,6 +5258,56 @@ Error: %1</source>
 <message id="tools.bpm.import_preview"><source>Chart preview after applying BPM</source><translation>BPM 適用後の譜面プレビュー</translation></message>
 <message id="tools.bpm.back_export"><source>Back to export</source><translation>書き出しに戻る</translation></message>
 <message id="tools.bpm.import_subdivisions"><source>Keeping note times requires subdivisions %1; check chart-converter compatibility.</source><translation>元の時刻を維持するため分拍 %1 を使用します。譜面変換時の互換性をご確認ください。</translation></message>
+    <message id="dialog.preferences.font.family">
+        <source>Chart text font</source>
+        <translation>譜面テキストのフォント</translation>
+    </message>
+    <message id="dialog.preferences.font.search">
+        <source>Search installed fonts…</source>
+        <translation>インストール済みフォントを検索…</translation>
+    </message>
+    <message id="dialog.preferences.font.default_suffix"><source>Default</source><translation>既定</translation></message>
+    <message id="dialog.preferences.font.default">
+        <source>Default font</source>
+        <translation>既定のフォント</translation>
+    </message>
+    <message id="dialog.preferences.font.monospace">
+        <source>Monospace</source>
+        <translation>等幅</translation>
+    </message>
+    <message id="dialog.preferences.font.reset">
+        <source>Restore default</source>
+        <translation>既定に戻す</translation>
+    </message>
+    <message id="dialog.preferences.font.sample">
+        <source>Example chart comment</source>
+        <translation>譜面のコメント例</translation>
+    </message>
+    <message id="dialog.preferences.theme.midnight">
+        <source>Midnight</source>
+        <translation>ミッドナイト</translation>
+    </message>
+    <message id="dialog.preferences.theme.forest">
+        <source>Forest</source>
+        <translation>フォレスト</translation>
+    </message>
+    <message id="dialog.preferences.theme.paper">
+        <source>Warm Paper</source>
+        <translation>ウォームペーパー</translation>
+    </message>
+    <message id="dialog.preferences.theme.lavender">
+        <source>Lavender</source>
+        <translation>ラベンダー</translation>
+    </message>
+    <message id="dialog.preferences.theme.comment_sample">
+        <source>Comment</source>
+        <translation>コメント</translation>
+    </message>
+    <message id="dialog.preferences.theme.yuzu"><source>Yuzu</source><translation>ゆず</translation></message>
+    <message id="dialog.preferences.theme.sky"><source>Sky Blue</source><translation>空色</translation></message>
+    <message id="dialog.preferences.theme.dracula"><source>Dracula</source><translation>ドラキュラ</translation></message>
+    <message id="dialog.preferences.theme.tokyo_night"><source>Tokyo Night</source><translation>東京の夜</translation></message>
+    <message id="dialog.preferences.theme.noah"><source>Noa</source><translation>ノア</translation></message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the

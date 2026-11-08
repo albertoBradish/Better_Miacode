@@ -18,7 +18,6 @@
 #include "export/video_export/VideoExportAudioRenderPlan.h"
 #include "export/video_export/FontLibrary.h"
 #include "app/services/UserFontLibrary.h"
-#include "app/services/ExportIntroPreferences.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "core/chart/IntroConfig.h"
 #include "core/video/AssetPaths.h"
@@ -133,6 +132,11 @@ ExportSession::ExportSession(miacode::ShellNotifications& notifications,
             singleCoverJob_.discard(generation);
         });
     });
+    connect(&notifications, &miacode::ShellNotifications::videoExportCompleted, this, [this]() {
+        if (!batchExportRunning_ && exportRunning_) {
+            resetIntroSelection();
+        }
+    });
     connect(&notifications, &miacode::ShellNotifications::previewRenderSettingsChanged, this, [this]() {
         if (pageSessionActive_ && !pushingSharedSettings_) {
             adoptPreviewRenderSettings();
@@ -143,9 +147,6 @@ ExportSession::ExportSession(miacode::ShellNotifications& notifications,
     // another transport action); it announces that through the presentation.
     connect(&notifications, &miacode::ShellNotifications::presentationChanged,
             this, &ExportSession::introPreviewStateChanged);
-    introPvStartSaveTimer_.setSingleShot(true);
-    introPvStartSaveTimer_.setInterval(400);
-    connect(&introPvStartSaveTimer_, &QTimer::timeout, this, &ExportSession::flushIntroPvStart);
     connect(this, &ExportSession::rangeChanged, this, &ExportSession::outputChanged);
     connect(this, &ExportSession::introChanged, this, &ExportSession::outputChanged);
     connect(this, &ExportSession::videoChanged, this, &ExportSession::outputChanged);
@@ -479,7 +480,6 @@ void ExportSession::leave()
     emit pageSessionActiveChanged();
     emit rangePlaybackStateChanged();
     savePreferences();
-    flushIntroPvStart();
     introPvSegmentDragging_ = false;
     emit introPreviewStateChanged();
     hasSeededTask_ = false;
@@ -490,7 +490,6 @@ void ExportSession::leave()
 void ExportSession::replaceDocument(int preferredDifficultyId)
 {
     invalidateSingleCoverPreparation();
-    flushIntroPvStart();
     setRangePlaybackEnabled(false);
     ++pagePrepareGeneration_;
     stopAudition();
@@ -686,8 +685,6 @@ void ExportSession::seedFromDifficulty(int difficultyId)
         return;
     }
     setUnavailableReason(QString());
-    // The seed re-reads the chart's stored PV start; write a pending drag first.
-    flushIntroPvStart();
     VideoExportTask seededTask = engine()->buildSeedTask(difficultyId);
     detectedIntroMode_ = normalizedIntroBannerMode(seededTask.intro.mode);
     if (hasSeededTask_) {
@@ -778,6 +775,7 @@ void ExportSession::adoptPreviewRenderSettings()
     task_.backgroundScaleMode = static_cast<PreviewBackgroundScaleMode>(
         values.value(QStringLiteral("scaleMode"), static_cast<int>(task_.backgroundScaleMode)).toInt());
     task_.fireworkBrightness = miacode::preview_video::normalizedFireworkBrightness(fromPercent("fireworkBrightness", task_.fireworkBrightness));
+    task_.fireworkStyle = static_cast<PreviewFireworkStyle>(values.value(QStringLiteral("fireworkStyle"), static_cast<int>(task_.fireworkStyle)).toInt());
     task_.smoothBrightness = values.value(QStringLiteral("smoothBrightness"), task_.smoothBrightness).toBool();
     task_.showTimestamp = values.value(QStringLiteral("showTimestamp"), task_.showTimestamp).toBool();
     task_.showBpmHud = values.value(QStringLiteral("showBpmHud"), task_.showBpmHud).toBool();
@@ -909,6 +907,9 @@ void ExportSession::startExport()
         batchExportRunning_ = false;
         exportRunning_ = false;
         emit exportRunningChanged();
+        if (launched && result.successCount > 0) {
+            resetIntroSelection();
+        }
         const miacode::LocalizedText batchTitle = miacode::localizedText("action.batch_export");
         if (!launched) {
             uiRequests_->postNotice(
@@ -1509,7 +1510,6 @@ void ExportSession::setIntroEnabled(bool value)
 {
     task_.intro.enabled = value;
     emit introChanged();
-    savePreferences();
     if (engine() != nullptr) {
         engine()->refreshIntroState();
     }
@@ -1631,7 +1631,6 @@ void ExportSession::setIntroPvPreview(bool value)
     }
     task_.intro.pvPreview = value;
     emit introChanged();
-    savePreferences();
     if (engine() != nullptr) {
         engine()->refreshIntroState();
     }
@@ -1649,9 +1648,6 @@ void ExportSession::setIntroPvStartSeconds(double seconds)
     }
     task_.intro.pvPreviewStartSeconds = seconds;
     introAuditionFromHead_ = true;
-    pendingIntroPvStartChartPath_ = task_.chartPath;
-    pendingIntroPvStartSeconds_ = seconds;
-    introPvStartSaveTimer_.start();
     emit introChanged();
     if (engine() != nullptr) {
         engine()->refreshIntroState();
@@ -1715,15 +1711,18 @@ void ExportSession::setIntroAuditionLoop(bool loop)
     emit introPreviewStateChanged();
 }
 
-void ExportSession::flushIntroPvStart()
+void ExportSession::resetIntroSelection()
 {
-    introPvStartSaveTimer_.stop();
-    if (pendingIntroPvStartChartPath_.isEmpty()) {
-        return;
+    task_.intro.enabled = true;
+    task_.intro.pvPreview = false;
+    task_.intro.pvPreviewStartSeconds = 0.0;
+    introPvSegmentDragging_ = false;
+    introAuditionFromHead_ = true;
+    emit introChanged();
+    emit introPreviewStateChanged();
+    if (engine() != nullptr) {
+        engine()->refreshIntroState();
     }
-    miacode::export_intro_preferences::savePvPreviewStartSeconds(
-        pendingIntroPvStartChartPath_, pendingIntroPvStartSeconds_);
-    pendingIntroPvStartChartPath_.clear();
 }
 
 void ExportSession::resetIntroFonts()

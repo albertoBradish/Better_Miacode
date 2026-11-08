@@ -86,6 +86,7 @@ void PreviewStageMediaHost::preparePlaybackStart(double seconds, quint64 transac
     const qint64 targetMs = qMax<qint64>(0, qRound64((clampedSecond + timelineOffsetSeconds_) * 1000.0));
     preparedPlaybackTargetMs_ = targetMs;
     preparedPlaybackPending_ = true;
+    sealPendingVideoFrameDelivery();
     player_->pause();
     const bool decodedFrameCoversTarget =
         lastVideoFrame_.isValid()
@@ -118,6 +119,7 @@ void PreviewStageMediaHost::preparePlaybackStart(double seconds, quint64 transac
         return;
     }
     lastSeekMs_ = targetMs;
+    sealPendingVideoFrameDelivery();
     player_->seek(targetMs);
     schedulePreparedPlaybackTimeout(transactionId, targetMs);
     emit diagnosticsChanged();
@@ -128,8 +130,8 @@ void PreviewStageMediaHost::preparePlaybackStart(double seconds, quint64 transac
 void PreviewStageMediaHost::commitPreparedPlaybackStart(double currentTimelineSecond)
 {
     initializeBackendObjects();
+    transportPlaying_ = true;
     if (mediaKind_ != MediaKind::Video || player_ == nullptr) {
-        transportPlaying_ = true;
         return;
     }
 
@@ -140,6 +142,7 @@ void PreviewStageMediaHost::commitPreparedPlaybackStart(double currentTimelineSe
     if (rawSecond < 0.0) {
         // Timeline still ahead of the clip's in-point (negative offset): hold
         // paused until the playhead reaches second 0 of the media.
+        sealPendingVideoFrameDelivery();
         player_->pause();
         videoPlaybackPendingStart_ = true;
         videoPlaybackActive_ = false;
@@ -175,6 +178,7 @@ void PreviewStageMediaHost::commitPreparedPlaybackStart(double currentTimelineSe
         && qAbs(targetMs - preparedPlaybackTargetMs_) <= kSeekCoalesceToleranceMs;
     if (!preparedLandingMatchesCommit) {
         lastSeekMs_ = targetMs;
+        sealPendingVideoFrameDelivery();
         player_->seek(targetMs);
     }
     if (videoFrameElapsed_.isValid()) {
@@ -276,6 +280,7 @@ void PreviewStageMediaHost::setPlayheadSeconds(double seconds)
         return;
     }
     lastSeekMs_ = targetMs;
+    sealPendingVideoFrameDelivery();
     player_->seek(targetMs);
     emit diagnosticsChanged();
 }
@@ -313,10 +318,12 @@ void PreviewStageMediaHost::startPlayback(double seconds)
     const double rawSecond = seconds + timelineOffsetSeconds_;
     const qint64 targetMs = qMax<qint64>(0, qRound64(rawSecond * 1000.0));
     lastSeekMs_ = targetMs;
+    sealPendingVideoFrameDelivery();
     player_->seek(targetMs);
     if (rawSecond < 0.0) {
         // Negative offset: timeline is ahead of the clip in-point — hold the
         // first media frame paused until the playhead reaches media second 0.
+        sealPendingVideoFrameDelivery();
         player_->pause();
         videoPlaybackPendingStart_ = true;
         videoPlaybackActive_ = false;
@@ -403,6 +410,7 @@ void PreviewStageMediaHost::submitPausedSeek(double seconds, quint64 generation)
         return;
     }
     lastSeekMs_ = targetMs;
+    sealPendingVideoFrameDelivery();
     player_->seek(targetMs);
     schedulePausedSeekTimeout(generation, targetMs);
     emit diagnosticsChanged();
@@ -423,6 +431,12 @@ void PreviewStageMediaHost::syncPlayback(double seconds)
     }
 
     lastTimelineSecond_ = qMax(0.0, seconds);
+    // Only an explicit start may resume a paused or naturally ended PV.
+    if (!transportPlaying_ || staleEndOfMediaResumePending_
+        || player_->mediaStatus() == QAVPlayer::EndOfMedia) {
+        updateClockDelta();
+        return;
+    }
     if (!videoPlaybackPendingStart_) {
         if (!videoPlaybackActive_) {
             startPlayback(seconds);
@@ -456,6 +470,7 @@ void PreviewStageMediaHost::syncPlayback(double seconds)
 
     const qint64 targetMs = qMax<qint64>(0, qRound64(rawSecond * 1000.0));
     lastSeekMs_ = targetMs;
+    sealPendingVideoFrameDelivery();
     player_->seek(targetMs);
     if (videoFrameElapsed_.isValid()) {
         videoFrameElapsed_.restart();
@@ -480,20 +495,23 @@ void PreviewStageMediaHost::syncPlayback(double seconds)
 
 void PreviewStageMediaHost::pausePlayback()
 {
+    transportPlaying_ = false;
+    // Cancel a recovery before pause() can release another seek acknowledgement.
+    staleEndOfMediaResumePending_ = false;
+    ++staleEndOfMediaResumeSerial_;
     if (mediaKind_ == MediaKind::Video && player_ != nullptr) {
         observedPlayheadSecond_ = currentPlaybackSecond();
     }
     recordPvMemoryBoundary(PvMemoryBoundary::Pause);
     if (mediaKind_ == MediaKind::Video && player_ != nullptr) {
-        player_->pause();
+        sealPendingVideoFrameDelivery();
+        // QAVPlayer::pause() seeks to zero after EOF; keep the final frame instead.
+        if (player_->mediaStatus() != QAVPlayer::EndOfMedia) {
+            player_->pause();
+        }
     }
     // 暂停保留执行中的 seek 及其超时确认，上层等待完成后提交最新目标。
-    // A stale-EndOfMedia recovery seek may still be in flight; its `seeked` handler
-    // would otherwise resume playback and undo this pause.
-    staleEndOfMediaResumePending_ = false;
-    ++staleEndOfMediaResumeSerial_;
     videoPlaybackActive_ = false;
-    transportPlaying_ = false;
     videoPlaybackPendingStart_ = false;
     videoPlaybackActiveElapsed_.invalidate();
     preparedPlaybackPending_ = false;

@@ -8,6 +8,7 @@ AppDialog {
     id: root
 
     required property var preferencesModel
+    required property var previewSettings
     required property var shortcuts
     required property var preferences
     required property var appBackground
@@ -97,6 +98,7 @@ AppDialog {
     footer: null
 
     property int currentPageIndex: 0
+    property int versionTapCount: 0
     property string capturingId: ""
 
     Binding {
@@ -130,6 +132,7 @@ AppDialog {
             completionCustomizer.expanded = false
     }
     onAboutToShow: {
+        root.versionTapCount = 0
         root.capturingId = ""
         completionCustomizer.expanded = false
         root.refreshShortcuts()
@@ -406,7 +409,16 @@ AppDialog {
                         }
 
                         PreferenceCombo {
+                            objectName: "preferencesUiScaleCombo"
+                            label: qsTrId("dialog.preferences.ui_scale")
+                            options: root.preferencesModel.uiScaleOptions
+                            currentValue: root.preferencesModel.uiScalePercent
+                            onPicked: value => root.preferencesModel.uiScalePercent = value
+                        }
+
+                        ThemePicker {
                             objectName: "preferencesLightThemeCombo"
+                            darkPalette: false
                             visible: root.preferencesModel.themeModeToken !== "dark"
                             label: qsTrId("dialog.preferences.theme.light_palette")
                             options: root.preferencesModel.themePaletteOptions
@@ -414,8 +426,9 @@ AppDialog {
                             onPicked: function(value) { root.preferencesModel.lightThemeToken = value }
                         }
 
-                        PreferenceCombo {
+                        ThemePicker {
                             objectName: "preferencesDarkThemeCombo"
+                            darkPalette: true
                             visible: root.preferencesModel.themeModeToken !== "light"
                             label: qsTrId("dialog.preferences.theme.dark_palette")
                             options: root.preferencesModel.themePaletteOptions
@@ -439,20 +452,44 @@ AppDialog {
                             }
                         }
 
-                        PreferenceCombo {
-                            objectName: "preferencesSidebarModeCombo"
-                            label: qsTrId("dialog.preferences.sidebar_mode")
-                            options: root.preferencesModel.sidebarModeOptions
-                            currentValue: root.preferences.efficientSidebarEnabled
-                            onPicked: value => root.preferences.efficientSidebarEnabled = value
-                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 5
 
-                        PreferenceCombo {
-                            objectName: "preferencesUiScaleCombo"
-                            label: qsTrId("dialog.preferences.ui_scale")
-                            options: root.preferencesModel.uiScaleOptions
-                            currentValue: root.preferencesModel.uiScalePercent
-                            onPicked: value => root.preferencesModel.uiScalePercent = value
+                            Text {
+                                Layout.preferredWidth: root.settingsLabelWidth
+                                Layout.alignment: Qt.AlignTop
+                                Layout.topMargin: Math.round((Theme.controlMinHeight - implicitHeight) / 2)
+                                text: qsTrId("dialog.preferences.sidebar_mode")
+                                color: Theme.colors.text.secondary
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                wrapMode: Text.WordWrap
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.topMargin: Theme.chromeInsetY
+                                spacing: 12
+
+                                SidebarModeCard {
+                                    objectName: "preferencesStandardSidebarCard"
+                                    Layout.fillWidth: true
+                                    Layout.maximumWidth: 200
+                                    classic: false
+                                    selected: !root.preferences.efficientSidebarEnabled
+                                    onClicked: root.preferences.efficientSidebarEnabled = false
+                                }
+                                SidebarModeCard {
+                                    objectName: "preferencesClassicSidebarCard"
+                                    Layout.fillWidth: true
+                                    Layout.maximumWidth: 200
+                                    classic: true
+                                    selected: root.preferences.efficientSidebarEnabled
+                                    onClicked: root.preferences.efficientSidebarEnabled = true
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
                         }
 
                         RowLayout {
@@ -592,6 +629,74 @@ AppDialog {
                             title: qsTrId("dialog.preferences.group.typography")
                             first: true
 
+                            AppTextField {
+                                id: fontSearch
+                                objectName: "preferencesFontSearch"
+                                Layout.fillWidth: true
+                                placeholderText: qsTrId("dialog.preferences.font.search")
+                                Accessible.name: placeholderText
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                PreferenceCombo {
+                                    objectName: "preferencesFontFamilyCombo"
+                                    label: qsTrId("dialog.preferences.font.family")
+                                    options: {
+                                        const selected = root.preferencesModel.editorFontFamily
+                                        return root.preferencesModel.editorFontOptions(fontSearch.text)
+                                    }
+                                    currentValue: root.preferencesModel.editorFontFamily
+                                    fontFamilyRole: "family"
+                                    defaultFontFamily: Theme.codeFont.family
+                                    onPicked: function(value) { root.preferencesModel.editorFontFamily = value }
+                                }
+                                AppButton {
+                                    objectName: "preferencesResetFontButton"
+                                    text: qsTrId("dialog.preferences.font.reset")
+                                    enabled: root.preferencesModel.editorFontFamily.length > 0
+                                    onClicked: root.preferencesModel.editorFontFamily = ""
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: fontPreview.implicitHeight + 24
+                                radius: Theme.controlRadius
+                                color: Theme.colors.background.surface
+                                border.color: Theme.colors.border.normal
+                                FontMetrics {
+                                    id: fontPreviewMetrics
+                                    font: Theme.codeFont
+                                }
+                                Text {
+                                    id: fontPreview
+                                    objectName: "preferencesFontPreview"
+                                    x: 12
+                                    y: 12
+                                    width: parent.width - 24
+                                    text: {
+                                        const keyword = Theme.colors.syntax.keyword
+                                        const beat = Theme.colors.syntax.beat || keyword
+                                        const note = Theme.colors.syntax.note || Theme.colors.text.editor
+                                        const duration = Theme.colors.syntax.duration
+                                        const comment = Theme.colors.syntax.comment
+                                        const sample = qsTrId("dialog.preferences.font.sample")
+                                            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                                        return "<font color='" + keyword + "'>(180)</font><font color='" + beat + "'>{4}</font><font color='" + note + "'>1</font>,<font color='" + note + "'>2</font>,<font color='" + note + "'>3</font>,<font color='" + note + "'>4</font>,<br>"
+                                            + "<font color='" + note + "'>1-5</font><font color='" + duration + "'>[4:1]</font>,<font color='" + note + "'>2h</font>"
+                                            + "<font color='" + duration + "'>[8:1]</font>,<font color='" + note + "'>B1</font>,<br>"
+                                            + "<font color='" + comment + "'>|| " + sample + "</font>"
+                                    }
+                                    textFormat: Text.StyledText
+                                    font: Theme.codeFont
+                                    lineHeightMode: Text.FixedHeight
+                                    lineHeight: fontPreviewMetrics.height + Theme.codeBlockSpacing
+                                    color: Theme.colors.text.editor
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
                             PreferenceSlider {
                                 objectName: "preferencesFontSizeSlider"
                                 label: qsTrId("dialog.preferences.editor_font_size")
@@ -627,6 +732,13 @@ AppDialog {
                                 options: root.preferencesModel.inputHandlingOptions
                                 currentValue: root.preferencesModel.editorInputHandlingMode
                                 onPicked: function(value) { root.preferencesModel.editorInputHandlingMode = value }
+                            }
+
+                            PreferenceSwitch {
+                                objectName: "preferencesTouchPadAuthoringSwitch"
+                                text: root.previewSettings.labels.touchPadAuthoringShortcut || ""
+                                checked: root.previewSettings.values.touchPadAuthoringShortcut === true
+                                onToggled: root.previewSettings.setValue("touchPadAuthoringShortcut", checked)
                             }
 
                             PreferenceSwitch {
@@ -974,16 +1086,28 @@ AppDialog {
                         ColumnLayout {
                             spacing: 2
                             Text {
-                                text: "MiaCode"
+                                text: Theme.brandDisplayText
+                                textFormat: Text.StyledText
+                                Accessible.name: Theme.brandName
                                 color: Theme.colors.text.active
                                 font.family: Theme.uiFont
                                 font.pixelSize: Theme.uiFontSize + 6
                                 font.bold: true
                             }
-                            Text {
+                            ChromeRow {
                                 objectName: "aboutVersion"
                                 text: "v" + root.aboutInfo.version
-                                color: Theme.colors.text.secondary
+                                leftPadding: Theme.chromePadding
+                                rightPadding: Theme.chromePadding
+                                implicitHeight: Theme.controlMinHeight
+                                Accessible.name: text
+                                onClicked: {
+                                    root.versionTapCount += 1
+                                    if (root.versionTapCount >= 10) {
+                                        root.versionTapCount = 0
+                                        Theme.miaMiaCode = true
+                                    }
+                                }
                             }
                             Text {
                                 objectName: "aboutUpdateHint"

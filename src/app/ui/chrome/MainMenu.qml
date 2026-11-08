@@ -292,6 +292,7 @@ Item {
         height: 0
 
         AppMenu {
+            retainBackdrop: true
             id: fileMenu
             title: root.menuTitle(qsTrId("menu.file"))
             // 新建 / 打开 keep v1's Ctrl+Shift+N / Ctrl+Shift+O rather than the
@@ -319,6 +320,7 @@ Item {
                 onTriggered: root.commands.openRequested()
             }
             AppMenu {
+                retainBackdrop: true
                 id: recentMenu
                 title: qsTrId("cover.open_recent")
                 enabled: root.commandsEnabled
@@ -349,6 +351,7 @@ Item {
                 }
             }
             AppMenu {
+                retainBackdrop: true
                 id: restoreBackupMenu
                 title: qsTrId("qml.restore_backup")
                 enabled: root.commandsEnabled
@@ -411,6 +414,7 @@ Item {
         }
 
         AppMenu {
+            retainBackdrop: true
             id: editMenu
             title: root.menuTitle(qsTrId("metadata.edit_e"))
             AppMenuAction {
@@ -469,11 +473,7 @@ Item {
                 enabled: root.commandsEnabled && root.editorCommandsEnabled
                 onTriggered: root.commands.selectCurrentLineRequested()
             }
-        }
-
-        AppMenu {
-            id: toolsMenu
-            title: root.menuTitle(qsTrId("menu.tools"))
+            AppMenuSeparator {}
             AppMenuAction {
                 text: qsTrId("tools.dx_loss.title")
                 enabled: root.commandsEnabled && root.documentAvailable
@@ -490,6 +490,12 @@ Item {
                 enabled: root.commandsEnabled && root.toolCommandsEnabled
                 onTriggered: root.commands.metadataRequested()
             }
+        }
+
+        AppMenu {
+            retainBackdrop: true
+            id: toolsMenu
+            title: root.menuTitle(qsTrId("menu.tools"))
             AppMenuAction {
                 text: qsTrId("qml.latency_calibration")
                 enabled: root.commandsEnabled && root.toolCommandsEnabled
@@ -518,6 +524,7 @@ Item {
         }
 
         AppMenu {
+            retainBackdrop: true
             id: adjustMenu
             objectName: "adjustMenu"
             title: root.menuTitle(qsTrId("menu.transform"))
@@ -595,6 +602,7 @@ Item {
             }
 
             AppMenu {
+                retainBackdrop: true
                 id: adjustMoreMenu
                 objectName: "adjustMoreMenu"
                 enabled: root.commandsEnabled && root.chartCommandsEnabled
@@ -624,6 +632,7 @@ Item {
         }
 
         AppMenu {
+            retainBackdrop: true
             id: previewMenu
             title: root.menuTitle(qsTrId("metadata.preview_p"))
             // The native menu owns these bindings on macOS so Cocoa can render
@@ -667,6 +676,7 @@ Item {
         }
 
         AppMenu {
+            retainBackdrop: true
             id: extrasMenu
             title: root.menuTitle(qsTrId("menu.extras"))
             // Cocoa guesses action roles from the leading word (About / Config /
@@ -690,6 +700,7 @@ Item {
 
     // Overflowed top-level AppMenus are inserted via addMenu() as submenus.
     AppMenu {
+        retainBackdrop: true
         id: overflowMenu
     }
 }

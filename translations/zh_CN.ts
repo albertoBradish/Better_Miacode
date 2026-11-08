@@ -3,6 +3,26 @@
 <TS version="2.1" language="zh_CN">
 <context>
     <name></name>
+    <message id="toast.operation_failed">
+        <source>%1 failed: %2.</source>
+        <translation>%1失败，%2。</translation>
+    </message>
+    <message id="toast.operation_partially_failed">
+        <source>%1 partially failed: %2.</source>
+        <translation>%1部分失败，%2。</translation>
+    </message>
+    <message id="toast.selection_required">
+        <source>Select the chart text whose subdivision you want to adjust</source>
+        <translation>请选择需要调整分音的谱面</translation>
+    </message>
+    <message id="toast.subdivision_incompatible">
+        <source>The selected chart cannot be adjusted by this subdivision ratio</source>
+        <translation>选中片段无法按此分音比例调整</translation>
+    </message>
+    <message id="toast.subdivision_limit">
+        <source>The subdivision value exceeds the supported range</source>
+        <translation>分音数值超出支持范围</translation>
+    </message>
     <message id="setup.completion_hint">
         <source>Customize completion candidates in Preferences.</source>
         <translation>可在首选项中自定义补全候选列表。</translation>
@@ -1310,12 +1330,40 @@ Failed: %2</source>
         <translation>深色主题</translation>
     </message>
     <message id="dialog.preferences.theme.legacy">
+        <source>Classic</source>
+        <translation>经典</translation>
+    </message>
+    <message id="dialog.preferences.theme.default">
+        <source>Default</source>
+        <translation>默认</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_dark">
+        <source>Default Dark</source>
+        <translation>默认深色</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_light">
+        <source>Default Light</source>
+        <translation>默认浅色</translation>
+    </message>
+    <message id="dialog.preferences.theme.legacy_dark">
         <source>Classic Dark</source>
         <translation>经典深色</translation>
     </message>
     <message id="dialog.preferences.theme.legacy_light">
         <source>Classic Light</source>
         <translation>经典浅色</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_mocha">
+        <source>Catppuccin Mocha</source>
+        <translation>摩卡</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_latte">
+        <source>Catppuccin Latte</source>
+        <translation>拿铁</translation>
+    </message>
+    <message id="dialog.preferences.theme.nord">
+        <source>Nord</source>
+        <translation>北境</translation>
     </message>
     <message id="dialog.preferences.theme.light">
         <source>Light</source>
@@ -1620,6 +1668,18 @@ Failed: %2</source>
     <message id="dialog.render_settings.video.skin.standard">
         <source>SD</source>
         <translation>SD</translation>
+    </message>
+    <message id="dialog.skin_settings.firework">
+        <source>Firework effect</source>
+        <translation>烟花效果</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.modern">
+        <source>Modern</source>
+        <translation>现代</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.standard">
+        <source>Standard</source>
+        <translation>标准</translation>
     </message>
     <message id="dialog.render_settings.video.firework_brightness">
         <source>Firework brightness</source>
@@ -2395,7 +2455,7 @@ File: </source>
     </message>
     <message id="media_tools.audio_processing_track">
         <source>Audio Processing track.mp3</source>
-        <translation>音频处理 track.mp3</translation>
+        <translation>音频处理</translation>
     </message>
     <message id="media_tools.audio_video_processing">
         <source>Audio/Video Processing</source>
@@ -2771,7 +2831,7 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="media_tools.video_processing_pv">
         <source>Video Processing pv.mp4</source>
-        <translation>视频处理 pv.mp4</translation>
+        <translation>视频处理</translation>
     </message>
     <message id="menu.clear_elements">
         <source>Clear Elements</source>
@@ -4326,6 +4386,14 @@ Error: %1</source>
         <translation>时间轴</translation>
     </message>
 
+    <message id="net.ui.query_options">
+        <source>Search options</source>
+        <translation>筛选选项</translation>
+    </message>
+    <message id="net.ui.queue_hint">
+        <source>Choose a chart folder and add it to the queue.</source>
+        <translation>选择谱面文件夹，添加到上传队列。</translation>
+    </message>
     <message id="net.ui.download_page">
         <source>Majdata Net</source>
         <translation>谱面下载</translation>
@@ -5190,6 +5258,56 @@ Error: %1</source>
 <message id="tools.bpm.import_preview"><source>Chart preview after applying BPM</source><translation>应用后的谱面预览</translation></message>
 <message id="tools.bpm.back_export"><source>Back to export</source><translation>返回导出</translation></message>
 <message id="tools.bpm.import_subdivisions"><source>Keeping note times requires subdivisions %1; check chart-converter compatibility.</source><translation>保持原时间需使用分音 %1；转谱兼容性请先核对。</translation></message>
+    <message id="dialog.preferences.font.family">
+        <source>Chart text font</source>
+        <translation>谱面文本字体</translation>
+    </message>
+    <message id="dialog.preferences.font.search">
+        <source>Search installed fonts…</source>
+        <translation>搜索已安装字体…</translation>
+    </message>
+    <message id="dialog.preferences.font.default_suffix"><source>Default</source><translation>默认</translation></message>
+    <message id="dialog.preferences.font.default">
+        <source>Default font</source>
+        <translation>默认字体</translation>
+    </message>
+    <message id="dialog.preferences.font.monospace">
+        <source>Monospace</source>
+        <translation>等宽</translation>
+    </message>
+    <message id="dialog.preferences.font.reset">
+        <source>Restore default</source>
+        <translation>恢复默认</translation>
+    </message>
+    <message id="dialog.preferences.font.sample">
+        <source>Example chart comment</source>
+        <translation>谱面注释示例</translation>
+    </message>
+    <message id="dialog.preferences.theme.midnight">
+        <source>Midnight</source>
+        <translation>午夜蓝</translation>
+    </message>
+    <message id="dialog.preferences.theme.forest">
+        <source>Forest</source>
+        <translation>森林绿</translation>
+    </message>
+    <message id="dialog.preferences.theme.paper">
+        <source>Warm Paper</source>
+        <translation>暖纸</translation>
+    </message>
+    <message id="dialog.preferences.theme.lavender">
+        <source>Lavender</source>
+        <translation>柔紫</translation>
+    </message>
+    <message id="dialog.preferences.theme.comment_sample">
+        <source>Comment</source>
+        <translation>注释</translation>
+    </message>
+    <message id="dialog.preferences.theme.yuzu"><source>Yuzu</source><translation>柚子</translation></message>
+    <message id="dialog.preferences.theme.sky"><source>Sky Blue</source><translation>天蓝</translation></message>
+    <message id="dialog.preferences.theme.dracula"><source>Dracula</source><translation>德古拉</translation></message>
+    <message id="dialog.preferences.theme.tokyo_night"><source>Tokyo Night</source><translation>东京之夜</translation></message>
+    <message id="dialog.preferences.theme.noah"><source>Noa</source><translation>诺亚</translation></message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the

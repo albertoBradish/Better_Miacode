@@ -235,7 +235,13 @@ Item {
     // projection in step with it even when a page is opened by a runtime signal
     // (for example, exporting a selection from the source editor).
     function syncSidebarViewToPage() {
-        state.activeSidebarView = root.pages.activePageId === "export" ? "export" : "chart"
+        const page = root.pages.activePageId
+        if (page === "export")
+            state.activeSidebarView = "export"
+        else if (page.startsWith("net-"))
+            state.activeSidebarView = "network"
+        else if (state.activeSidebarView !== "tools")
+            state.activeSidebarView = "chart"
     }
 
     function undo() {
@@ -264,6 +270,7 @@ Item {
     function showOpenFileDialog() {
         const location = root.documentSession.fileDialogLocation(false)
         openFileDialog.currentFolder = location.folder
+        openFileDialog.nameFilters = root.documentSession.openFileNameFilters()
         openFileDialog.selectedFile = ""
         openFileDialog.open()
     }
@@ -486,9 +493,8 @@ Item {
 
     FileDialog {
         id: openFileDialog
-        title: qsTrId("qml.open_simai_file")
+        title: qsTrId("action.open")
         fileMode: FileDialog.OpenFile
-        nameFilters: [qsTrId("qml.simai_files_txt_simai"), qsTrId("qml.all_files_2")]
         onAccepted: root.requestOpenFile(selectedFile)
     }
 
@@ -589,8 +595,8 @@ Item {
         target: state
 
         function onApplicationEditorActivationRequested(key) {
-            if (root.pages.activePageId !== key)
-                root.pages.openNetPage(key)
+            if (!root.pages.openNetPage(key))
+                state.cancelApplicationEditorActivation()
         }
 
         function onActiveEditorKeyChanged() {
@@ -631,7 +637,7 @@ Item {
         }
 
         function onNetPageActivated(page) {
-            state.openEditor(page)
+            state.confirmApplicationEditor(page)
         }
 
         function onActivePageIdChanged() {
@@ -649,6 +655,7 @@ Item {
         }
 
         function onNavigationRejected() {
+            state.cancelApplicationEditorActivation()
             root.pendingDifficultyActivation = 0
             root.syncSidebarViewToPage()
         }
@@ -898,6 +905,7 @@ Item {
         previewSession: root.previewSession
         onCompletionSettingsClosed: splitView.sourceEditorItem.focusEditor()
         preferencesModel: root.preferencesModel
+        previewSettings: root.applicationContext.previewSettings
         shortcuts: root.shortcutModel
         preferences: root.preferences
         appBackground: root.appBackground

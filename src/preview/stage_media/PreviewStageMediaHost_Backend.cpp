@@ -195,7 +195,7 @@ void PreviewStageMediaHost::initializeBackendObjects()
         const double mediaSecond = static_cast<double>(posMs) / 1000.0;
         lastTimelineSecond_ = qMax(0.0, mediaSecond - timelineOffsetSeconds_);
         settlePendingSeekAcks(mediaSecond, mediaSecond, false);
-        if (staleEndOfMediaResumePending_) {
+        if (staleEndOfMediaResumePending_ && transportPlaying_) {
             // The stale-EndOfMedia recovery seek landed, so the player's end-of-file
             // latch is cleared and play() will resume here instead of restarting the
             // clip from zero. See tryRecoverFromStaleEndOfMedia.
@@ -346,10 +346,12 @@ void PreviewStageMediaHost::maybeRetryWithSoftwareDecode()
     player_->setSource(QString());
     player_->setSource(mediaPath_);
     player_->setSpeed(static_cast<qreal>(playbackRate_));
+    sealPendingVideoFrameDelivery();
     player_->seek(resumeMs);
     if (resumePlaying) {
         player_->play();
     } else {
+        sealPendingVideoFrameDelivery();
         player_->pause();
     }
 }
@@ -381,10 +383,12 @@ void PreviewStageMediaHost::reloadVideoDecodeInPlace()
     player_->setSource(QString());
     player_->setSource(mediaPath_);
     player_->setSpeed(static_cast<qreal>(playbackRate_));
+    sealPendingVideoFrameDelivery();
     player_->seek(resumeMs);
     if (resumePlaying) {
         player_->play();
     } else {
+        sealPendingVideoFrameDelivery();
         player_->pause();
     }
 }

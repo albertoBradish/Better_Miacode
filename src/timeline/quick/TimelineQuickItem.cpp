@@ -1058,6 +1058,11 @@ int TimelineQuickItem::timelineTop() const
     return cachedTimelineTop_;
 }
 
+QRectF TimelineQuickItem::noteViewportRect() const
+{
+    return cachedNoteViewportRect_;
+}
+
 int TimelineQuickItem::minimumViewportHeight() const
 {
     return miacode::timeline::TimelineSceneStateBuilder::minimumViewportHeight();
@@ -1153,10 +1158,23 @@ void TimelineQuickItem::syncSourceState()
         cachedTimelineTop_ = nextTimelineTop;
         emit sceneMetricsChanged();
     }
+    syncNoteViewportRect();
     if (!canBecomeReady()) {
         updateReadyState(false);
     }
     update();
+}
+
+void TimelineQuickItem::syncNoteViewportRect()
+{
+    const QRectF nextRect = stateBridge_ != nullptr
+        ? stateBridge_->noteViewportRect().intersected(boundingRect())
+        : QRectF();
+    if (cachedNoteViewportRect_ == nextRect) {
+        return;
+    }
+    cachedNoteViewportRect_ = nextRect;
+    emit noteViewportRectChanged();
 }
 
 void TimelineQuickItem::updateReadyState(bool ready)
@@ -1454,14 +1472,11 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
                 miacode::debug_log::Channel::Runtime,
                 QStringLiteral("timeline/texture_cache"),
                 QStringLiteral(
-                    "action=capacity_flush tex=%1 tex_bytes=%2 pixmaps=%3 tex_limit=%4 "
-                    "tex_byte_limit=%5 pixmap_limit=%6")
+                    "action=capacity_flush tex=%1 tex_bytes=%2 tex_limit=%3 tex_byte_limit=%4")
                     .arg(capacity.textureCount)
                     .arg(capacity.textureBytes)
-                    .arg(capacity.pixmapCount)
                     .arg(capacity.textureCountLimit)
-                    .arg(capacity.textureByteLimit)
-                    .arg(capacity.pixmapCountLimit));
+                    .arg(capacity.textureByteLimit));
         }
         textures_->invalidateAll();
         pendingDprInvalidation_ = false;
@@ -1585,21 +1600,20 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
                 layerGeomKb[i] = layerStats.geomBytes / 1024;
             }
             int texCount = 0;
-            int texPixCount = 0;
             int texHoldCount = 0;
             int texRotCount = 0;
             quint64 texCreateTotal = 0;
             if (textures_) {
                 textures_->debugCacheStats(
-                    &texCount, &texPixCount, &texHoldCount, &texRotCount, &texCreateTotal);
+                    &texCount, &texHoldCount, &texRotCount, &texCreateTotal);
             }
             miacode::debug_log::appendLine(
                 miacode::debug_log::Channel::Runtime,
                 QStringLiteral("timeline/leak_gauge"),
                 QStringLiteral(
                     "txn=%1 priv_present_mb=%2 d_render_kb=%3 gpu_kb=%4 nodes=%5 gbytes_kb=%6 "
-                    "geom_create=%7 tex=%8 tex_pix=%9 tex_hold=%10 tex_rot=%11 tex_create=%12 "
-                    "layer_nodes=%13 layer_gkb=%14")
+                    "geom_create=%7 tex=%8 tex_hold=%9 tex_rot=%10 tex_create=%11 "
+                    "layer_nodes=%12 layer_gkb=%13")
                     .arg(gaugeTxn)
                     .arg(presentPrivBytes >= 0 ? presentPrivBytes / (1024 * 1024) : -1)
                     .arg((presentPrivBytes >= 0 && pausePrivBytes >= 0)
@@ -1610,7 +1624,6 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
                     .arg(total.geomBytes / 1024)
                     .arg(timelineQuickGeometryCreateTotal())
                     .arg(texCount)
-                    .arg(texPixCount)
                     .arg(texHoldCount)
                     .arg(texRotCount)
                     .arg(texCreateTotal)
@@ -1644,6 +1657,8 @@ void TimelineQuickItem::updatePolish()
     if (stateBridge_ != nullptr) {
         stateBridge_->setQuickViewportSize(pendingViewportSize_);
     }
+    // Fractional size changes can keep the same rounded render viewport.
+    syncNoteViewportRect();
 }
 
 void TimelineQuickItem::itemChange(ItemChange change, const ItemChangeData& value)

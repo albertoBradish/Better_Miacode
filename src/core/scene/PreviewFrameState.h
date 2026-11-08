@@ -24,6 +24,8 @@ namespace miacode::slide_judge { class LaunchBeatIndex; }
 
 namespace miacode::preview::scene {
 
+class PreviewStandardFireworkEffect;
+
 struct PreviewSkinAssets {
     QImage tapImage;
     QImage tapEachImage;
@@ -143,6 +145,14 @@ struct PreviewJudgeOverlayAssets {
     PreviewJudgeDirectionalSpriteSet miss;
 };
 
+struct PreviewStandardFireworkAssets {
+    QImage starImage;
+    QImage raysImage;
+    QImage ringMaskImage;
+    QImage ringColorImage;
+    std::shared_ptr<const PreviewStandardFireworkEffect> effect;
+};
+
 struct PreviewJudgeEffectAssets {
     QImage tapImage;
     QRectF tapSourceRect;
@@ -156,8 +166,9 @@ struct PreviewJudgeEffectAssets {
     QImage touchPart01Image;
     QImage touchPart02Image;
     QImage touchPart02DxImage;
-    QImage fireworkColorBallImage;
-    QRectF fireworkColorBallSourceRect;
+    QImage modernFireworkColorBallImage;
+    QRectF modernFireworkColorBallSourceRect;
+    PreviewStandardFireworkAssets standardFirework;
 };
 
 enum class PreviewStageMediaPresentationMode {
@@ -225,6 +236,7 @@ struct PreviewRenderState {
     double backgroundBrightnessInner = miacode::preview_video::kBackgroundBrightnessInnerDefault;
     double layoutSquareScale = miacode::preview_video::kLayoutSquareScaleDefault;
     double fireworkBrightness = miacode::preview_video::kFireworkBrightnessDefault;
+    PreviewFireworkStyle fireworkStyle = PreviewFireworkStyle::Standard;
     bool smoothBrightness = miacode::preview_video::kSmoothBrightnessDefault;
     PreviewBackgroundScaleMode backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
     double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;

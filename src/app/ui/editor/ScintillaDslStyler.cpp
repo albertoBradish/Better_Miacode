@@ -55,6 +55,9 @@ void ScintillaDslStyler::setAppearance(const QFont& font, const QVariantMap& pal
     editor_.send(SCI_STYLESETFORE, 1, color(palette, "keyword"));
     editor_.send(SCI_STYLESETFORE, 2, color(palette, "duration"));
     editor_.send(SCI_STYLESETFORE, 3, color(palette, "comment"));
+    editor_.send(SCI_STYLESETFORE, 4, color(palette, palette.contains("beat") ? "beat" : "keyword"));
+    editor_.send(SCI_STYLESETFORE, 5, color(palette, palette.contains("note") ? "note" : "text"));
+    editor_.send(SCI_STYLESETFORE, 6, color(palette, palette.contains("directive") ? "directive" : "keyword"));
     editor_.send(SCI_STYLESETFORE, STYLE_LINENUMBER, color(palette, "lineNumber"));
     editor_.send(SCI_STYLESETBACK, STYLE_LINENUMBER, color(palette, "background"));
     editor_.send(SCI_SETFOLDMARGINCOLOUR, 1, color(palette, "background"));
@@ -72,8 +75,8 @@ void ScintillaDslStyler::setAppearance(const QFont& font, const QVariantMap& pal
         editor_.send(SCI_SETELEMENTCOLOUR, element, rgba("selection"));
     for (int element : {SC_ELEMENT_SELECTION_TEXT, SC_ELEMENT_SELECTION_ADDITIONAL_TEXT, SC_ELEMENT_SELECTION_INACTIVE_TEXT})
         editor_.send(SCI_RESETELEMENTCOLOUR, element);
-    editor_.send(SCI_MARKERSETFORE, bookmarkMarker, color(palette, "accent"));
-    editor_.send(SCI_MARKERSETBACK, bookmarkMarker, color(palette, "accent"));
+    editor_.send(SCI_MARKERSETFORE, bookmarkMarker, color(palette, palette.contains("bookmark") ? "bookmark" : "accent"));
+    editor_.send(SCI_MARKERSETBACK, bookmarkMarker, color(palette, palette.contains("bookmark") ? "bookmark" : "accent"));
     editor_.send(SCI_INDICSETFORE, errorIndicator, color(palette, "error"));
     editor_.send(SCI_INDICSETFORE, warningIndicator, color(palette, "warning"));
     editor_.send(SCI_INDICSETFORE, muriIndicator, color(palette, "error"));
@@ -135,21 +138,25 @@ void ScintillaDslStyler::style()
             if (ch == '\n' || ch == '\r') comment = false;
             if (ch == '|' && i + 1 < text.size() && text[i + 1] == '|') comment = true;
             if (comment) { styles[i] = 3; continue; }
-            styles[i] = stack.isEmpty() ? 0 : stack.back() == ']' ? 2 : 1;
+            const bool noteCharacter = (ch >= '0' && ch <= '9')
+                || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+                || QByteArrayLiteral("-^<>*").contains(ch);
+            styles[i] = stack.isEmpty() ? (noteCharacter ? 5 : 0)
+                : stack.back() == ']' ? 2 : stack.back() == '}' ? 4 : 1;
             if (ch == '<' && text.mid(i + 1, 3) == "HS*") {
                 const int close = text.indexOf('>', i + 1);
                 const int newline = text.indexOf('\n', i + 1);
                 if (close >= 0 && (newline < 0 || close < newline)) {
-                    for (; i <= close; ++i) styles[i] = 1;
+                    for (; i <= close; ++i) styles[i] = 6;
                     --i;
                     continue;
                 }
             }
             if (ch == '(' || ch == '{' || ch == '[') {
                 stack.append(ch == '(' ? ')' : ch == '{' ? '}' : ']');
-                styles[i] = ch == '[' ? 2 : 1;
+                styles[i] = ch == '[' ? 2 : ch == '{' ? 4 : 1;
             } else if (ch == ')' || ch == '}' || ch == ']') {
-                styles[i] = ch == ']' ? 2 : 1;
+                styles[i] = ch == ']' ? 2 : ch == '}' ? 4 : 1;
                 const int matching = stack.lastIndexOf(ch);
                 if (matching >= 0) stack.truncate(matching);
             }
@@ -187,7 +194,7 @@ void ScintillaDslStyler::fill(int indicator, int start, int end)
     editor_.send(SCI_SETINDICATORCURRENT, indicator);
     editor_.send(SCI_INDICATORFILLRANGE, first, last - first);
 }
-void ScintillaDslStyler::diagnostics(const QVariantList& rows, bool isMuri)
+void ScintillaDslStyler::diagnostics(const QVector<AnalysisDecoration>& rows, bool isMuri)
 {
     auto& cached = isMuri ? muri_ : validation_;
     auto& dirty = isMuri ? muriDirty_ : validationDirty_;
@@ -198,15 +205,14 @@ void ScintillaDslStyler::diagnostics(const QVariantList& rows, bool isMuri)
         editor_.send(SCI_SETINDICATORCURRENT, indicator);
         editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
     }
-    for (const auto& value : rows) {
-        const auto row = value.toMap();
-        const int line = row.value(QStringLiteral("line")).toInt() - 1;
+    for (const auto& row : rows) {
+        const int line = row.line - 1;
         if (line < 0 || line >= editor_.send(SCI_GETLINECOUNT)) continue;
         const int lineStart = document_.utf16Position(editor_.send(SCI_POSITIONFROMLINE, line));
         const int lineEnd = document_.utf16Position(editor_.send(SCI_GETLINEENDPOSITION, line));
-        const int start = qBound(lineStart, lineStart + qMax(0, row.value(QStringLiteral("column")).toInt() - 1), lineEnd);
-        const int end = qBound(start, lineStart + qMax(row.value(QStringLiteral("endColumn")).toInt(), row.value(QStringLiteral("column")).toInt()), lineEnd);
-        const int indicator = isMuri ? muriIndicator : row.value(QStringLiteral("severity")) == QStringLiteral("warning") ? warningIndicator : errorIndicator;
+        const int start = qBound(lineStart, lineStart + qMax(0, row.column - 1), lineEnd);
+        const int end = qBound(start, lineStart + qMax(row.endColumn, row.column), lineEnd);
+        const int indicator = isMuri ? muriIndicator : row.warning ? warningIndicator : errorIndicator;
         fill(indicator, start, end);
     }
 }

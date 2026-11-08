@@ -3,6 +3,26 @@
 <TS version="2.1" language="en_US">
 <context>
     <name></name>
+    <message id="toast.operation_failed">
+        <source>%1 failed: %2.</source>
+        <translation>%1 failed: %2.</translation>
+    </message>
+    <message id="toast.operation_partially_failed">
+        <source>%1 partially failed: %2.</source>
+        <translation>%1 partially failed: %2.</translation>
+    </message>
+    <message id="toast.selection_required">
+        <source>Select the chart text whose subdivision you want to adjust</source>
+        <translation>Select the chart text whose subdivision you want to adjust</translation>
+    </message>
+    <message id="toast.subdivision_incompatible">
+        <source>The selected chart cannot be adjusted by this subdivision ratio</source>
+        <translation>The selected chart cannot be adjusted by this subdivision ratio</translation>
+    </message>
+    <message id="toast.subdivision_limit">
+        <source>The subdivision value exceeds the supported range</source>
+        <translation>The subdivision value exceeds the supported range</translation>
+    </message>
     <message id="setup.completion_hint">
         <source>Customize completion candidates in Preferences.</source>
         <translation>Customize completion candidates in Preferences.</translation>
@@ -1310,12 +1330,40 @@ Failed: %2</translation>
         <translation>Dark theme</translation>
     </message>
     <message id="dialog.preferences.theme.legacy">
+        <source>Classic</source>
+        <translation>Classic</translation>
+    </message>
+    <message id="dialog.preferences.theme.default">
+        <source>Default</source>
+        <translation>Default</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_dark">
+        <source>Default Dark</source>
+        <translation>Default Dark</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_light">
+        <source>Default Light</source>
+        <translation>Default Light</translation>
+    </message>
+    <message id="dialog.preferences.theme.legacy_dark">
         <source>Classic Dark</source>
         <translation>Classic Dark</translation>
     </message>
     <message id="dialog.preferences.theme.legacy_light">
         <source>Classic Light</source>
         <translation>Classic Light</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_mocha">
+        <source>Catppuccin Mocha</source>
+        <translation>Mocha</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_latte">
+        <source>Catppuccin Latte</source>
+        <translation>Latte</translation>
+    </message>
+    <message id="dialog.preferences.theme.nord">
+        <source>Nord</source>
+        <translation>Nord</translation>
     </message>
     <message id="dialog.preferences.theme.light">
         <source>Light</source>
@@ -1620,6 +1668,18 @@ Failed: %2</translation>
     <message id="dialog.render_settings.video.skin.standard">
         <source>SD</source>
         <translation>SD</translation>
+    </message>
+    <message id="dialog.skin_settings.firework">
+        <source>Firework effect</source>
+        <translation>Firework effect</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.modern">
+        <source>Modern</source>
+        <translation>Modern</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.standard">
+        <source>Standard</source>
+        <translation>Standard</translation>
     </message>
     <message id="dialog.render_settings.video.firework_brightness">
         <source>Firework brightness</source>
@@ -2395,7 +2455,7 @@ File: </translation>
     </message>
     <message id="media_tools.audio_processing_track">
         <source>Audio Processing track.mp3</source>
-        <translation>Audio Processing track.mp3</translation>
+        <translation>Audio Processing</translation>
     </message>
     <message id="media_tools.audio_video_processing">
         <source>Audio/Video Processing</source>
@@ -2771,7 +2831,7 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="media_tools.video_processing_pv">
         <source>Video Processing pv.mp4</source>
-        <translation>Video Processing pv.mp4</translation>
+        <translation>Video Processing</translation>
     </message>
     <message id="menu.clear_elements">
         <source>Clear Elements</source>
@@ -4326,6 +4386,14 @@ Error: %1</translation>
         <translation>Timeline</translation>
     </message>
 
+    <message id="net.ui.query_options">
+        <source>Search options</source>
+        <translation>Search options</translation>
+    </message>
+    <message id="net.ui.queue_hint">
+        <source>Choose a chart folder and add it to the queue.</source>
+        <translation>Choose a chart folder and add it to the queue.</translation>
+    </message>
     <message id="net.ui.download_page">
         <source>Majdata Net</source>
         <translation>Chart download</translation>
@@ -5190,6 +5258,56 @@ Error: %1</translation>
 <message id="tools.bpm.import_preview"><source>Chart preview after applying BPM</source><translation>Chart preview after applying BPM</translation></message>
 <message id="tools.bpm.back_export"><source>Back to export</source><translation>Back to export</translation></message>
 <message id="tools.bpm.import_subdivisions"><source>Keeping note times requires subdivisions %1; check chart-converter compatibility.</source><translation>Keeping note times requires subdivisions %1; check chart-converter compatibility.</translation></message>
+    <message id="dialog.preferences.font.family">
+        <source>Chart text font</source>
+        <translation>Chart text font</translation>
+    </message>
+    <message id="dialog.preferences.font.search">
+        <source>Search installed fonts…</source>
+        <translation>Search installed fonts…</translation>
+    </message>
+    <message id="dialog.preferences.font.default_suffix"><source>Default</source><translation>Default</translation></message>
+    <message id="dialog.preferences.font.default">
+        <source>Default font</source>
+        <translation>Default font</translation>
+    </message>
+    <message id="dialog.preferences.font.monospace">
+        <source>Monospace</source>
+        <translation>Monospace</translation>
+    </message>
+    <message id="dialog.preferences.font.reset">
+        <source>Restore default</source>
+        <translation>Restore default</translation>
+    </message>
+    <message id="dialog.preferences.font.sample">
+        <source>Example chart comment</source>
+        <translation>Example chart comment</translation>
+    </message>
+    <message id="dialog.preferences.theme.midnight">
+        <source>Midnight</source>
+        <translation>Midnight</translation>
+    </message>
+    <message id="dialog.preferences.theme.forest">
+        <source>Forest</source>
+        <translation>Forest</translation>
+    </message>
+    <message id="dialog.preferences.theme.paper">
+        <source>Warm Paper</source>
+        <translation>Warm Paper</translation>
+    </message>
+    <message id="dialog.preferences.theme.lavender">
+        <source>Lavender</source>
+        <translation>Lavender</translation>
+    </message>
+    <message id="dialog.preferences.theme.comment_sample">
+        <source>Comment</source>
+        <translation>Comment</translation>
+    </message>
+    <message id="dialog.preferences.theme.yuzu"><source>Yuzu</source><translation>Yuzu</translation></message>
+    <message id="dialog.preferences.theme.sky"><source>Sky Blue</source><translation>Sky Blue</translation></message>
+    <message id="dialog.preferences.theme.dracula"><source>Dracula</source><translation>Dracula</translation></message>
+    <message id="dialog.preferences.theme.tokyo_night"><source>Tokyo Night</source><translation>Tokyo Night</translation></message>
+    <message id="dialog.preferences.theme.noah"><source>Noa</source><translation>Noa</translation></message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the

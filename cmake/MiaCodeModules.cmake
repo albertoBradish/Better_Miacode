@@ -106,6 +106,7 @@ miacode_add_module(miacode_analysis
         src/core/analysis/MuriAnalyzerGeometry.h
         src/core/analysis/MuriAnalyzerInternal.h
         src/core/analysis/MuriAnalyzerModel.h
+        src/core/analysis/MuriTimeIndex.h
         src/core/analysis/MuriConfig.h
         src/core/analysis/MuriDiagnosticCollector.cpp
         src/core/analysis/MuriDiagnosticCollector.h
@@ -171,6 +172,8 @@ miacode_add_module(miacode_scene
         src/core/scene/PreviewJudgeEffectLayerState.h
         src/core/scene/PreviewJudgeFireworkLayerState.cpp
         src/core/scene/PreviewJudgeFireworkLayerState.h
+        src/core/scene/PreviewStandardFirework.cpp
+        src/core/scene/PreviewStandardFirework.h
         src/core/scene/PreviewJudgeOverlayShared.cpp
         src/core/scene/PreviewJudgeOverlayShared.h
         src/core/scene/PreviewLayerOrder.h
@@ -412,10 +415,12 @@ miacode_add_module(miacode_preview_quick
         src/preview/quick_scene/PreviewQuickHudLayer.h
         src/preview/quick_scene/PreviewQuickJudgeEffectLayer.cpp
         src/preview/quick_scene/PreviewQuickJudgeEffectLayer.h
-        src/preview/quick_scene/PreviewFireworkPostProcess.cpp
-        src/preview/quick_scene/PreviewFireworkPostProcess.h
+        src/preview/quick_scene/PreviewModernFireworkPostProcess.cpp
+        src/preview/quick_scene/PreviewModernFireworkPostProcess.h
         src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.cpp
         src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.h
+        src/preview/quick_scene/PreviewStandardFireworkNode.cpp
+        src/preview/quick_scene/PreviewStandardFireworkNode.h
         src/preview/quick_scene/PreviewQuickMaimuriDxJudgeLayer.cpp
         src/preview/quick_scene/PreviewQuickMaimuriDxJudgeLayer.h
         src/preview/quick_scene/PreviewQuickMuriActionLayer.cpp
@@ -480,11 +485,15 @@ qt_add_shaders(miacode_preview_quick "preview_sprite_shaders"
         src/preview/quick_scene/shaders/PreviewStageDimMaterial.frag
         src/preview/quick_scene/shaders/PreviewMeasureRing.vert
         src/preview/quick_scene/shaders/PreviewMeasureRing.frag
-        src/preview/quick_scene/shaders/PreviewFireworkMaterial.vert
-        src/preview/quick_scene/shaders/PreviewFireworkMaterial.frag
-        src/preview/quick_scene/shaders/PreviewFireworkPost.vert
-        src/preview/quick_scene/shaders/PreviewFireworkPost.frag
-        src/preview/quick_scene/shaders/PreviewFireworkStar.frag
+        src/preview/quick_scene/shaders/PreviewModernFireworkMaterial.vert
+        src/preview/quick_scene/shaders/PreviewModernFireworkMaterial.frag
+        src/preview/quick_scene/shaders/PreviewModernFireworkPost.vert
+        src/preview/quick_scene/shaders/PreviewModernFireworkPost.frag
+        src/preview/quick_scene/shaders/PreviewModernFireworkStar.frag
+        src/preview/quick_scene/shaders/PreviewStandardFirework.vert
+        src/preview/quick_scene/shaders/PreviewStandardFireworkSprite.frag
+        src/preview/quick_scene/shaders/PreviewStandardFireworkRainbow.frag
+        src/preview/quick_scene/shaders/PreviewStandardFireworkOutput.frag
 )
 qt_add_qml_module(miacode_preview_quick
     URI MiaCode.Preview
@@ -565,6 +574,10 @@ miacode_add_module(miacode_export
         src/export/cover_export/CoverPvFrameSource.h
         src/export/cover_export/SceneFrameRenderer.cpp
         src/export/cover_export/SceneFrameRenderer.h
+        src/export/session/ExportQuickBackgroundItem.cpp
+        src/export/session/ExportQuickBackgroundItem.h
+        src/export/video_export/VideoExportStageMediaSource.cpp
+        src/export/video_export/VideoExportStageMediaSource.h
         src/export/session/PreviewQuickD3D11ExportSession.cpp
         src/export/session/PreviewQuickD3D11ExportSession.h
         src/export/session/PreviewQuickExportSession.cpp
@@ -589,9 +602,8 @@ miacode_add_module(miacode_export
         src/export/video_export/VideoExportEstimateHistory.cpp
         src/export/video_export/VideoExportEstimateHistory.h
         src/export/video_export/VideoExportEncoder.cpp
+        src/export/video_export/VideoExportEncodingParameters.cpp
         src/export/video_export/VideoExportFrameRender.cpp
-        src/export/video_export/VideoExportMediaTimeline.cpp
-        src/export/video_export/VideoExportMediaTimeline.h
         src/export/video_export/VideoExportPendingFrameRedraw.h
         src/export/video_export/VideoExportPipeline.cpp
         src/export/video_export/VideoExportPreparedTask.cpp
@@ -606,6 +618,13 @@ miacode_add_module(miacode_export
     PUBLIC miacode_audio_bass miacode_preview_quick Qt6::Quick Qt6::Qml
     QRC resources/intro.qrc
 )
+if (WIN32 OR APPLE)
+    target_include_directories(miacode_export PRIVATE "${MIACODE_FFMPEG_DEV_DIR}/include")
+else()
+    target_include_directories(miacode_export PRIVATE ${MIACODE_FFMPEG_INCLUDE_DIRS})
+endif()
+target_link_libraries(miacode_export PRIVATE
+    ${AVFORMAT_LIBRARY} ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY} ${SWSCALE_LIBRARY})
 if (WIN32)
     target_link_libraries(miacode_export PRIVATE
         d3d11        # D3D11 export session

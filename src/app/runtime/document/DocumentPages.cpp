@@ -7,7 +7,6 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -243,6 +242,16 @@ bool miacode::runtime::DocumentSessionHost::switchToWelcomePage()
     session_.clearValidationDecorations();
     updateDirtyState();
     session_.updateWindowTitle();
+    return true;
+}
+
+bool miacode::runtime::DocumentSessionHost::enterApplicationPage()
+{
+    // Audition pages own temporary scenes; restore the chart before leaving.
+    if (state_.activeOutlineKey_ == QLatin1String("latency")
+        || state_.activeOutlineKey_ == QLatin1String("export")) {
+        return switchToMetadataField();
+    }
     return true;
 }
 

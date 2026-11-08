@@ -6,7 +6,6 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -485,6 +484,7 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("layoutSquareScaleStep"), percentOf(kLayoutSquareScaleStep)},
         {QStringLiteral("scaleMode"), static_cast<int>(state_.previewBackgroundScaleMode_)},
         {QStringLiteral("fireworkBrightness"), percentOf(state_.previewFireworkBrightness_)},
+        {QStringLiteral("fireworkStyle"), static_cast<int>(state_.previewFireworkStyle_)},
         {QStringLiteral("smoothBrightness"), state_.previewSmoothBrightness_},
         {QStringLiteral("showTimestamp"), state_.previewShowTimestamp_},
         {QStringLiteral("showBpmHud"), state_.previewShowBpmHud_},
@@ -550,6 +550,11 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
         applyPreviewStageMediaRouteVisualSettings();
         if (canvas != nullptr) {
             canvas->setBackgroundScaleMode(mode);
+        }
+    } else if (key == QLatin1String("fireworkStyle")) {
+        state_.previewFireworkStyle_ = value.toInt() == 1 ? PreviewFireworkStyle::Modern : PreviewFireworkStyle::Standard;
+        if (canvas != nullptr) {
+            canvas->setFireworkStyle(state_.previewFireworkStyle_);
         }
     } else if (key == QLatin1String("fireworkBrightness")) {
         state_.previewFireworkBrightness_ = miacode::preview_video::normalizedFireworkBrightness(value.toDouble() / 100.0);

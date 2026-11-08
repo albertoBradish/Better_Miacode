@@ -220,6 +220,7 @@ void PreviewStageMediaHost::handleVideoEndOfMedia(bool wasPlaybackActive)
 
     const EndOfMediaClass classification = classifyEndOfMedia(facts);
     const bool recoverable = wasPlaybackActive
+        && transportPlaying_
         && !shuttingDown_
         && mediaKind_ == MediaKind::Video
         && endOfMediaShouldRecover(facts);
@@ -273,7 +274,7 @@ void PreviewStageMediaHost::resetStaleEndOfMediaRecovery()
 
 bool PreviewStageMediaHost::tryRecoverFromStaleEndOfMedia(double targetSecond)
 {
-    if (shuttingDown_ || player_ == nullptr || mediaKind_ != MediaKind::Video
+    if (shuttingDown_ || !transportPlaying_ || player_ == nullptr || mediaKind_ != MediaKind::Video
         || mediaPath_.isEmpty()) {
         return false;
     }
@@ -305,6 +306,7 @@ bool PreviewStageMediaHost::tryRecoverFromStaleEndOfMedia(double targetSecond)
         player_->setSource(mediaPath_);
         player_->setSpeed(static_cast<qreal>(playbackRate_));
         lastSeekMs_ = targetMs;
+        sealPendingVideoFrameDelivery();
         player_->seek(targetMs);
         player_->play();
         videoPlaybackActive_ = true;
@@ -325,6 +327,7 @@ bool PreviewStageMediaHost::tryRecoverFromStaleEndOfMedia(double targetSecond)
     staleEndOfMediaResumeSecond_ = clampedSecond;
     const quint64 serial = ++staleEndOfMediaResumeSerial_;
     lastSeekMs_ = targetMs;
+    sealPendingVideoFrameDelivery();
     player_->seek(targetMs);
     QTimer::singleShot(kStaleEndOfMediaResumeTimeoutMs, this, [this, serial, clampedSecond]() {
         if (serial != staleEndOfMediaResumeSerial_ || !staleEndOfMediaResumePending_) {

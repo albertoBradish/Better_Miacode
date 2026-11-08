@@ -394,53 +394,31 @@ void PreviewRuntime::setStageMediaPresentationMode(
     }
 }
 
-void PreviewRuntime::setExternalStageMediaDebugState(
-    miacode::preview::scene::PreviewExternalStageMediaType mediaType,
-    bool videoPlaybackActive,
-    double playbackSecond,
-    double clockDeltaSeconds,
-    qint64 videoFrameAgeMs,
-    bool videoFrameStalled,
-    bool requestUpdate)
+void PreviewRuntime::setExternalStageMediaState(const ExternalStageMediaState& state, bool requestUpdate)
 {
-    frameState_.media.externalMediaType = mediaType;
-    frameState_.media.externalVideoPlaybackActive = videoPlaybackActive;
-    frameState_.media.externalPlaybackSecond = qMax(0.0, playbackSecond);
-    frameState_.media.externalClockDeltaSeconds = clockDeltaSeconds;
-    frameState_.media.externalVideoFrameAgeMs = videoFrameAgeMs;
-    frameState_.media.externalVideoFrameStalled = videoFrameStalled;
+    frameState_.media.externalMediaType = state.mediaType;
+    frameState_.media.externalVideoPlaybackActive = state.videoPlaybackActive;
+    frameState_.media.externalPlaybackSecond = qMax(0.0, state.playbackSecond);
+    frameState_.media.externalClockDeltaSeconds = state.clockDeltaSeconds;
+    frameState_.media.externalVideoFrameAgeMs = state.videoFrameAgeMs;
+    frameState_.media.externalVideoFrameStalled = state.videoFrameStalled;
+    externalStageMediaSeparateSurfaceActive_ = state.separateSurfaceActive;
+    externalStageMediaHasResolvedMedia_ = state.hasResolvedMedia;
+    externalStageMediaHasVideoMedia_ = state.hasVideoMedia;
+    externalStageMediaMediaTypeName_ = state.mediaTypeName.trimmed().isEmpty()
+        ? QStringLiteral("none")
+        : state.mediaTypeName.trimmed();
+    frameState_.media.externalVideoFrameCountTotal = qMax<qint64>(0, state.videoFrameCountTotal);
+    frameState_.media.externalVideoFrameRate = qMax(0.0, state.videoFrameRate);
+    frameState_.media.externalVideoFrameIntervalAvgMs = qMax(0.0, state.videoFrameIntervalAvgMs);
+    frameState_.media.externalVideoFrameIntervalMaxMs = qMax(0.0, state.videoFrameIntervalMaxMs);
+    frameState_.media.externalVideoFrameStallCount = qMax<qint64>(0, state.videoFrameStallCount);
+    frameState_.media.externalVideoDecodeDesc = state.videoDecodeDesc;
     if (requestUpdate) {
         update();
     } else {
         publishFrameStateSnapshot();
     }
-}
-
-void PreviewRuntime::setExternalStageMediaProfileSummary(
-    bool separateSurfaceActive,
-    bool hasResolvedMedia,
-    bool hasVideoMedia,
-    const QString& mediaTypeName,
-    qint64 videoFrameCountTotal,
-    double videoFrameRate,
-    double videoFrameIntervalAvgMs,
-    double videoFrameIntervalMaxMs,
-    qint64 videoFrameStallCount,
-    const QString& videoDecodeDesc)
-{
-    externalStageMediaSeparateSurfaceActive_ = separateSurfaceActive;
-    externalStageMediaHasResolvedMedia_ = hasResolvedMedia;
-    externalStageMediaHasVideoMedia_ = hasVideoMedia;
-    externalStageMediaMediaTypeName_ = mediaTypeName.trimmed().isEmpty()
-        ? QStringLiteral("none")
-        : mediaTypeName.trimmed();
-    frameState_.media.externalVideoFrameCountTotal = qMax<qint64>(0, videoFrameCountTotal);
-    frameState_.media.externalVideoFrameRate = qMax(0.0, videoFrameRate);
-    frameState_.media.externalVideoFrameIntervalAvgMs = qMax(0.0, videoFrameIntervalAvgMs);
-    frameState_.media.externalVideoFrameIntervalMaxMs = qMax(0.0, videoFrameIntervalMaxMs);
-    frameState_.media.externalVideoFrameStallCount = qMax<qint64>(0, videoFrameStallCount);
-    frameState_.media.externalVideoDecodeDesc = videoDecodeDesc;
-    publishFrameStateSnapshot();
 }
 
 void PreviewRuntime::setFramePacingDebugState(
@@ -809,6 +787,17 @@ void PreviewRuntime::setBackgroundBrightnessInner(double brightness)
 void PreviewRuntime::setLayoutSquareScale(double scale)
 {
     frameState_.render.layoutSquareScale = miacode::preview_video::normalizedLayoutSquareScale(scale);
+    update();
+}
+
+void PreviewRuntime::setFireworkStyle(PreviewFireworkStyle style)
+{
+    if (frameState_.render.fireworkStyle == style) return;
+    frameState_.render.fireworkStyle = style;
+    removeFireworkWarmupMarkers();
+    fireworkWarmupArmed_ = false;
+    fireworkWarmupDone_ = false;
+    armFireworkPsoWarmupIfReady();
     update();
 }
 
@@ -2155,15 +2144,12 @@ void PreviewRuntime::armFireworkPsoWarmupIfReady()
     if (fireworkWarmupDone_ || fireworkWarmupArmed_) {
         return;
     }
-    // Need the core skin AND the firework colour-ball image present, so the
-    // layer takes the textured colour-ball branch — that's what forces Qt
-    // RHI to compile the firework material pipeline *and* upload the texture.
-    // (populateJudgeEffectAssets always supplies a procedural fallback ball,
-    // so this is non-null whenever core assets have loaded; the guard is
-    // belt-and-suspenders against an empty/uninitialised asset state.)
-    if (assets_ == nullptr || !assets_->hasCoreSkinAssetsLoaded()
-        || frameState_.judgeEffect.fireworkColorBallImage.isNull()) {
-        return;  // retried on the next assetsChanged / visible-window bind
+    // Warm the selected style after its textures and particle data are available.
+    const bool fireworkAssetsReady = frameState_.render.fireworkStyle == PreviewFireworkStyle::Standard
+        ? frameState_.judgeEffect.standardFirework.effect != nullptr
+        : !frameState_.judgeEffect.modernFireworkColorBallImage.isNull();
+    if (assets_ == nullptr || !assets_->hasCoreSkinAssetsLoaded() || !fireworkAssetsReady) {
+        return;
     }
     fireworkWarmupArmed_ = true;
     fireworkWarmupArmPresentCount_ = presentedFrameCountTotal_;

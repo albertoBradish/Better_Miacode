@@ -29,6 +29,18 @@ enum class ThemePalette {
     Dark,
     Legacy,
     LegacyLight,
+    Midnight,
+    Forest,
+    Paper,
+    Lavender,
+    CatppuccinMocha,
+    CatppuccinLatte,
+    Nord,
+    Noah,
+    Yuzu,
+    Sky,
+    Dracula,
+    TokyoNight,
 };
 
 struct LanguageOption {

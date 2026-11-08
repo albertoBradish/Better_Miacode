@@ -47,23 +47,13 @@ Item {
     readonly property real analysisListLeftInset:
         Math.max(0, analysisTextLeftInset - Theme.rowPaddingX)
     readonly property real analysisVerticalSpacing: Theme.chromeInsetY
-    readonly property int muriWarningCount: countMuriRows("warning")
-    readonly property int muriIssueCount: countMuriRows("muri")
+    readonly property int muriWarningCount: root.analysisSession.muriWarningCount
+    readonly property int muriIssueCount: root.analysisSession.muriIssueCount
 
     Timer {
         id: timelineThemeRefresh
         interval: 0
         onTriggered: timelineItem.refreshTheme()
-    }
-
-    function countMuriRows(alert) {
-        const rows = analysisSession.muriRows
-        let count = 0
-        for (let index = 0; index < rows.length; ++index) {
-            if (rows[index].alert === alert)
-                ++count
-        }
-        return count
     }
 
     component AnalysisIssueRow: ChromeRow {
@@ -260,7 +250,7 @@ Item {
 
             Label {
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.analysisSession.pending
+                text: root.analysisSession.validationPending
                     ? qsTrId("qml.analyzing")
                     : qsTrId("qml.1_errors_2_warnings")
                         .arg(root.documentSession.syntaxErrorCount)
@@ -298,7 +288,7 @@ Item {
         Label {
             anchors.centerIn: parent
             visible: root.analysisSession.validationRows.length === 0
-            text: root.analysisSession.pending
+            text: root.analysisSession.validationPending
                 ? qsTrId("qml.analyzing")
                 : qsTrId("validation.no_syntax_errors_detected")
             color: Theme.colors.text.secondary
@@ -362,7 +352,7 @@ Item {
         }
         Label {
             anchors.centerIn: parent
-            visible: root.analysisSession.muriRows.length === 0
+            visible: root.analysisSession.muriRowCount === 0
             text: root.analysisSession.pending
                 ? qsTrId("qml.analyzing")
                 : qsTrId("validation.no_muri_issues_detected")
@@ -372,16 +362,15 @@ Item {
         }
     }
 
-    // The playback-rate HUD sits over the timeline, not over the preview stage:
-    // while editing, the timeline is where the eyes already are, and the canvas
-    // stays unobscured. Declared last so it paints above every bottom tab —
-    // QML stacking is declaration order — and anchored to the panel body rather
-    // than to timelineItem so it still shows while 语法 or 无理 is in front.
+    // The panel bounds let the HUD extend above a compact note viewport.
+    // Keep it above every bottom tab so tab switches preserve the notification.
     PreviewRateToast {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: tabs.bottom
-        anchors.bottom: parent.bottom
+        anchors.fill: parent
+        noteViewportRect: Qt.rect(
+            timelineItem.x + timelineItem.noteViewportRect.x,
+            timelineItem.y + timelineItem.noteViewportRect.y,
+            timelineItem.noteViewportRect.width,
+            timelineItem.noteViewportRect.height)
         previewSession: root.previewSession
     }
 

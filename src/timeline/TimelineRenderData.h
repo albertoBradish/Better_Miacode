@@ -117,7 +117,7 @@ struct TimelineRenderSnapshot {
 };
 
 inline constexpr double kTimelineFireworkDurationSeconds =
-    miacode::preview_gameplay::kJudgeEffectFireworkDurationSeconds;
+    miacode::preview_gameplay::kFireworkMaxDurationSeconds;
 
 inline bool timelineRenderFlagSet(const TimelineRenderNote& note, TimelineRenderNoteFlag flag)
 {

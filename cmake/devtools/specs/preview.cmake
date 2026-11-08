@@ -236,14 +236,6 @@ miacode_add_dev_tool(pv_memory_diagnostics_spec TEST
 )
 target_compile_definitions(pv_memory_diagnostics_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
-
-miacode_add_dev_tool(quickshell_preview_surface_policy_spec TEST
-    SOURCES
-        src/tools/preview/QuickShellPreviewSurfacePolicySpec.cpp
-        src/app/quick_shell/QuickShellPreviewSurfacePolicy.h
-    LIBS Qt6::Core
-    INCLUDES src
-)
 miacode_add_dev_tool(preview_note_selection_interaction_spec TEST
     SOURCES src/tools/preview/PreviewNoteSelectionInteractionSpec.cpp
     LIBS miacode_preview_quick Qt6::Core Qt6::Gui Qt6::Quick Qt6::Test

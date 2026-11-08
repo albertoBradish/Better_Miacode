@@ -439,7 +439,6 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/cli_video_export_worker.cpp
     src/app/quick_shell/QuickShellPreviewCompositeSurface.h
     src/app/quick_shell/QuickShellPreviewCompositeSurface.cpp
-    src/app/quick_shell/QuickShellPreviewSurfacePolicy.h
     src/app/runtime/Session.h
     src/app/runtime/SessionLifecycle.cpp
     src/app/runtime/RuntimeContext.h
@@ -547,8 +546,6 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/ProjectPreferences.h
     src/app/services/ProjectPreferences.cpp
     src/app/services/ChartBannerData.h
-    src/app/services/ExportIntroPreferences.h
-    src/app/services/ExportIntroPreferences.cpp
     src/app/runtime/latency/LatencyAnalysis.h
     src/app/runtime/latency/LatencyAnalysis.cpp
     src/app/runtime/latency/LatencyTestChartBuilder.h
@@ -615,11 +612,20 @@ endif()
 
 # Default UI (v2).
 # QTP0001 NEW embeds this module at :/qt/qml/MiaCode/UI/.
+# QML and native windows consume the same checked-in palette data.
+set(MIACODE_THEME_PALETTE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/resources/themes/palettes.json")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MIACODE_THEME_PALETTE_DATA}")
+file(READ "${MIACODE_THEME_PALETTE_DATA}" MIACODE_THEME_PALETTE_JSON)
+set(MIACODE_THEME_PALETTE_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/generated/ThemePalettes.js")
+file(WRITE "${MIACODE_THEME_PALETTE_SCRIPT}" ".pragma library\nvar catalog = ${MIACODE_THEME_PALETTE_JSON};\n")
+set_source_files_properties("${MIACODE_THEME_PALETTE_SCRIPT}" PROPERTIES QT_RESOURCE_ALIAS "ThemePalettes.js")
 set(MIACODE_UI_QML_FILES
     src/app/ui/tools/DxScoreLossWindow.qml
     src/app/ui/tools/BpmExportWindow.qml
     src/app/ui/tools/ScoringObjectIcon.qml
     src/app/ui/net/NetDownloadPage.qml
+    src/app/ui/net/NetFormField.qml
+    src/app/ui/net/NetPageButton.qml
     src/app/ui/net/NetUploadPage.qml
     src/app/ui/net/NetResultTable.qml
     src/app/ui/components/AppDateField.qml
@@ -670,6 +676,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/components/AppMenuItem.qml
     src/app/ui/components/AppMenuSeparator.qml
     src/app/ui/components/UiRequestHost.qml
+    src/app/ui/components/AppToast.qml
     src/app/ui/components/DialogFooter.qml
     src/app/ui/components/ChoiceDialog.qml
     src/app/ui/components/EditableValue.qml
@@ -700,6 +707,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/sidebar/ChartFieldSidebar.qml
     src/app/ui/sidebar/DifficultyList.qml
     src/app/ui/sidebar/ExportSidebarPage.qml
+    src/app/ui/sidebar/UtilitySidebarPage.qml
     src/app/ui/export/ExportRangeSelector.qml
     src/app/ui/export/ExportVideoPage.qml
     src/app/ui/export/CoverExportPage.qml
@@ -717,6 +725,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/media/PvBatchCompressionDialog.qml
     src/app/ui/media/PrependBlankDialog.qml
     src/app/ui/preferences/PreferencesDialog.qml
+    src/app/ui/preferences/ThemePicker.qml
     src/app/ui/preferences/CompletionCandidateList.qml
     src/app/ui/preferences/CompletionCandidatesEditor.qml
     src/app/ui/pet/PetOverlay.qml
@@ -780,6 +789,10 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/folder-open.svg
     src/app/ui/resources/icons/folder-arrow-right.svg
     src/app/ui/resources/icons/globe.svg
+    src/app/ui/resources/icons/download.svg
+    src/app/ui/resources/icons/download-fill.svg
+    src/app/ui/resources/icons/upload.svg
+    src/app/ui/resources/icons/upload-fill.svg
     src/app/ui/resources/icons/wand.svg
     src/app/ui/resources/icons/save.svg
     src/app/ui/resources/icons/save-multiple.svg
@@ -811,6 +824,7 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/volume-2.svg
     src/app/ui/resources/icons/volume-x.svg
     src/app/ui/resources/icons/close.svg
+    src/app/ui/resources/icons/toast-error.svg
     src/app/ui/resources/icons/more.svg
     src/app/ui/resources/icons/metadata.svg
     src/app/ui/resources/icons/metronome.svg
@@ -861,6 +875,7 @@ qt_add_qml_module(MiaCode
         src/app/ui/document/DocumentModel.cpp
         src/app/ui/document/DocumentModel.h
         src/app/ui/document/AnalysisModel.cpp
+        src/app/ui/document/AnalysisDecoration.h
         src/app/ui/document/AnalysisModel.h
         src/app/ui/preview/PreviewModel.cpp
         src/app/ui/preview/PreviewModel.h
@@ -907,6 +922,7 @@ qt_add_qml_module(MiaCode
     RESOURCES
         ${MIACODE_UI_ICON_FILES}
         ${MIACODE_PET_ASSET_FILES}
+        ${MIACODE_THEME_PALETTE_SCRIPT}
 )
 
 set(MIACODE_TRANSLATION_TS_FILES

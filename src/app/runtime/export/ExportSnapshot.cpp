@@ -2,7 +2,6 @@
 #include "app/runtime/Shared.h"
 
 #include "app/services/PlaybackStateAuthority.h"
-#include "app/services/ExportIntroPreferences.h"
 #include "app/services/ChartBannerData.h"
 #include "app/services/HudFontPreferences.h"
 
@@ -57,9 +56,6 @@ IntroBannerSpec buildIntroBannerSpec(
     intro.jacketPath = chartPath.isEmpty()
         ? QString()
         : miacode::chart_assets::resolveDisplayBackgroundImagePath(chartPath);
-    // The PV-preview segment is chosen per song, so every export of this chart
-    // (single, batch item, any difficulty) uses the start its project stored.
-    intro.pvPreviewStartSeconds = miacode::export_intro_preferences::pvPreviewStartSeconds(chartPath);
     return intro;
 }
 
@@ -495,6 +491,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     built.backgroundBrightnessInner = requestedTask.backgroundBrightnessInner;
     built.layoutSquareScale = requestedTask.layoutSquareScale;
     built.fireworkBrightness = requestedTask.fireworkBrightness;
+    built.fireworkStyle = requestedTask.fireworkStyle;
     built.smoothBrightness = requestedTask.smoothBrightness;
     built.outlineVariant = requestedTask.outlineVariant;
     built.outlineImagePath = session_.resolvePreviewCustomOutlinePath();
@@ -716,6 +713,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.backgroundBrightnessInner = requestedTask.backgroundBrightnessInner;
     built.layoutSquareScale = requestedTask.layoutSquareScale;
     built.fireworkBrightness = requestedTask.fireworkBrightness;
+    built.fireworkStyle = requestedTask.fireworkStyle;
     built.smoothBrightness = requestedTask.smoothBrightness;
     built.outlineVariant = requestedTask.outlineVariant;
     built.outlineImagePath = session_.resolvePreviewCustomOutlinePath();
@@ -944,6 +942,7 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     task.backgroundBrightnessInner = request.backgroundBrightnessInner;
     task.layoutSquareScale = request.layoutSquareScale;
     task.fireworkBrightness = request.fireworkBrightness;
+    task.fireworkStyle = request.fireworkStyle;
     task.smoothBrightness = request.smoothBrightness;
     task.outlineVariant = request.outlineVariant;
     task.outlineImagePath = session_.resolvePreviewCustomOutlinePath();
