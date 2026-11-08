@@ -8,9 +8,22 @@ ColumnLayout {
     required property var documentSession
     property int difficultyId: documentSession.currentDifficultyId > 0 ? documentSession.currentDifficultyId : 5
     property string errorText: ""
-    readonly property var groups: {
-        const generation = documentSession.documentOpenGeneration
-        return documentSession.advancedMetadataGroups(difficultyId)
+    property var groups: []
+    property var groupsGeneration: -1
+    function refreshGroups() {
+        if (!documentSession)
+            return
+        groupsGeneration = documentSession.documentOpenGeneration
+        groups = documentSession.advancedMetadataGroups(difficultyId)
+    }
+    onDifficultyIdChanged: refreshGroups()
+    Component.onCompleted: refreshGroups()
+    Connections {
+        target: root.documentSession
+        function onDocumentStateChanged() {
+            if (root.groupsGeneration !== root.documentSession.documentOpenGeneration)
+                root.refreshGroups()
+        }
     }
     spacing: Theme.settingsRowSpacing
 
@@ -50,7 +63,7 @@ ColumnLayout {
             id: groupSection
             required property var modelData
             Layout.fillWidth: true
-            title: modelData.title
+            title: qsTrId(modelData.titleKey)
             Label {
                 Layout.fillWidth: true
                 visible: groupSection.modelData.id === "metadata.advanced.compatibility"
@@ -77,7 +90,7 @@ ColumnLayout {
                     }
                     Label {
                         Layout.fillWidth: true
-                        text: fieldRow.modelData.label + "  (&" + fieldRow.modelData.key + ")"
+                        text: qsTrId(fieldRow.modelData.labelKey) + "  (&" + fieldRow.modelData.key + ")"
                         color: Theme.colors.text.secondary
                         wrapMode: Text.WordWrap
                     }

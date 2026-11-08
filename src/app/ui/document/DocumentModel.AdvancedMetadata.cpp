@@ -34,12 +34,13 @@ QVariantList DocumentModel::advancedMetadataGroups(int difficultyId) const
             if (groups.at(i).toMap().value(QStringLiteral("id")).toString() == groupKey) { index = i; break; }
         if (index < 0) {
             index = groups.size();
-            groups.append(QVariantMap{{QStringLiteral("id"), groupKey}, {QStringLiteral("title"), qtTrId(field.group)},
+            groups.append(QVariantMap{{QStringLiteral("id"), groupKey}, {QStringLiteral("title"), qtTrId(field.group)}, {QStringLiteral("titleKey"), groupKey},
                                      {QStringLiteral("fields"), QVariantList{}}});
         }
         auto group = groups.at(index).toMap();
         auto fields = group.value(QStringLiteral("fields")).toList();
         fields.append(QVariantMap{{QStringLiteral("key"), field.key}, {QStringLiteral("label"), qtTrId(field.label)},
+            {QStringLiteral("labelKey"), QString::fromLatin1(field.label)},
             {QStringLiteral("value"), miacode::metadata::fieldValue(workspace_->document(), field.key)},
             {QStringLiteral("multiline"), field.multiline}});
         group.insert(QStringLiteral("fields"), fields);
