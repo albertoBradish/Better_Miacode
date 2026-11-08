@@ -19,6 +19,7 @@ struct TimelineSceneBuildRequest {
     TimelineAxisMode axisMode = TimelineAxisMode::Horizontal;
     TimelineLaneOrder laneOrder = TimelineLaneOrder::Natural;
     TimelineRenderSnapshot snapshot;
+    TimelineDropRegion dropRegion;
     QSet<quint64> selectedNoteLocations;
     std::shared_ptr<const miacode::waveform::WaveformData> waveformData;
     QHash<quint64, QVector<TimelineMuriMarkerPlacement>> muriMarkersByLocation;

@@ -72,6 +72,8 @@ public:
     void setAxisMode(const QString& mode);
     const QString& laneOrder() const { return laneOrder_; }
     void setLaneOrder(const QString& order);
+    const miacode::timeline::TimelineDropRegion& dropRegion() const { return dropRegion_; }
+    Q_INVOKABLE void setDropRegion(double start, double end, const QString& label);
     double zoomScale() const;
     void setZoomScale(double scale);
     QVector<double> zoomPresets() const;
@@ -192,6 +194,7 @@ private:
     QStringList zoomOutWheelShortcuts_{QStringLiteral("Ctrl+WheelDown")};
     QString axisMode_ = QStringLiteral("horizontal");
     QString laneOrder_ = QStringLiteral("natural");
+    miacode::timeline::TimelineDropRegion dropRegion_;
     double zoomScale_ = 0.5;
     double horizontalScrollValue_ = 0.0;
     bool playbackCadenceActive_ = false;

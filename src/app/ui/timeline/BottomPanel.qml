@@ -15,6 +15,27 @@ Item {
     required property var previewSession
     property bool guideSettingsActive: false
     property bool verticalTimeline: false
+    readonly property var structure: root.previewSession?.structure ?? null
+    readonly property string dropLabel: qsTrId("timeline.drop_region")
+
+    function syncDropRegion() {
+        const bridge = root.timelineSession?.stateBridge
+        if (!bridge)
+            return
+        const valid = root.structure && root.structure.dropAvailable
+        bridge.setDropRegion(valid ? root.structure.dropStartSeconds : -1,
+                             valid ? root.structure.dropEndSeconds : -1,
+                             root.dropLabel)
+    }
+
+    Component.onCompleted: syncDropRegion()
+    onStructureChanged: syncDropRegion()
+    onDropLabelChanged: syncDropRegion()
+
+    Connections {
+        target: root.structure
+        function onChanged() { root.syncDropRegion() }
+    }
     readonly property bool guideSettingsAvailable: root.guideSettingsActive
         && root.visible && timelineItem.visible
     readonly property Item timelineGuideItem: timelineItem

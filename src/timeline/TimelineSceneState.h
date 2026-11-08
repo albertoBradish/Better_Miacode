@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <QColor>
 #include <QFont>
 #include <QPointF>
@@ -51,6 +53,15 @@ struct TimelineAxisProjection {
         if (!vertical()) return {};
         return QTransform(0, direction(), 1, 0, 0, mode == TimelineAxisMode::Falling ? timeExtent : 0.0);
     }
+};
+
+struct TimelineDropRegion {
+    double start = -1.0;
+    double end = -1.0;
+    QString label;
+
+    bool valid() const { return qIsFinite(start) && qIsFinite(end) && start >= 0.0 && end > start; }
+    bool operator==(const TimelineDropRegion&) const = default;
 };
 
 enum class TimelineLaneOrder {
@@ -223,6 +234,8 @@ struct TimelineSceneState {
     QVector<TimelineSceneRect> laneOverlayRects;
     QVector<TimelineSceneRect> waveformBars;
     QVector<TimelineSceneLine> gridLines;
+    QVector<TimelineSceneRect> dropRegionRects;
+    std::optional<TimelineSceneTextLabel> dropRegionLabel;
     QVector<TimelineSceneRect> frameRects;
     QVector<TimelineSceneLine> frameLines;
     QVector<TimelineSceneTextLabel> laneLabels;

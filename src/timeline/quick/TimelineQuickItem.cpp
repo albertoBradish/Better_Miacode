@@ -1279,6 +1279,7 @@ miacode::timeline::TimelineSceneState TimelineQuickItem::currentSceneState() con
         timer.start();
         miacode::timeline::TimelineSceneBuildRequest request;
         request.snapshot = stateBridge_->renderSnapshot();
+        request.dropRegion = stateBridge_->dropRegion();
         request.waveformData = stateBridge_->waveformData();
         request.muriMarkersByLocation = stateBridge_->muriMarkersByLocation();
         request.muriMarkerTooltips = stateBridge_->muriMarkerTooltips();

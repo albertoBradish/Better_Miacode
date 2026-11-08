@@ -390,6 +390,19 @@ void TimelineQuickStateBridge::setLaneOrder(const QString& order)
     emit renderStateChanged();
 }
 
+void TimelineQuickStateBridge::setDropRegion(double start, double end, const QString& label)
+{
+    using miacode::timeline::TimelineDropRegion;
+    const TimelineDropRegion next{start, end, label};
+    const auto normalized = next.valid() ? next : TimelineDropRegion{};
+    if (dropRegion_ == normalized) {
+        return;
+    }
+    dropRegion_ = normalized;
+    ++gridRevision_;
+    emit renderStateChanged();
+}
+
 double TimelineQuickStateBridge::zoomScale() const
 {
     return zoomScale_;
