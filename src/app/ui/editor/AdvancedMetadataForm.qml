@@ -97,6 +97,8 @@ ColumnLayout {
                     AppTextField {
                         id: singleInput
                         Layout.fillWidth: true
+                        outlined: true
+                        Accessible.name: qsTrId(fieldRow.modelData.labelKey)
                         visible: !fieldRow.modelData.multiline
                         text: fieldRow.modelData.value
                         selectByMouse: true
@@ -108,6 +110,8 @@ ColumnLayout {
                     AppTextArea {
                         id: multilineInput
                         Layout.fillWidth: true
+                        outlined: true
+                        Accessible.name: qsTrId(fieldRow.modelData.labelKey)
                         Layout.preferredHeight: 90
                         visible: fieldRow.modelData.multiline
                         text: fieldRow.modelData.value
