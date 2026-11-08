@@ -23,7 +23,7 @@ void ExportQuickBackgroundItem::setFrameState(
         state_.render.backgroundBrightnessOuter = 1.0;
         state_.render.backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
     }
-    stage_->setBackgroundColor(state.media.stageMediaAvailable ? QColor(Qt::black)
+    stage_->setBackgroundColor(fullFrame || state.media.stageMediaAvailable ? QColor(Qt::black)
                                                               : QColor(QStringLiteral("#1F2833")));
     stage_->setVisible(usesBackgroundMedia(state_.render.backgroundPolicy));
     stage_->setOpacity(brightness);

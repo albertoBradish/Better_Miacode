@@ -50,6 +50,7 @@ class PreviewQuickSceneRoot : public QQuickItem
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(QObject* runtime READ runtimeObject WRITE setRuntimeObject NOTIFY runtimeChanged)
+    Q_PROPERTY(bool stageBackgroundEnabled READ stageBackgroundEnabled WRITE setStageBackgroundEnabled NOTIFY stageBackgroundEnabledChanged)
     Q_PROPERTY(QColor backgroundColor READ backgroundColor WRITE setBackgroundColor NOTIFY backgroundColorChanged)
 
 public:
@@ -61,6 +62,8 @@ public:
     void setRuntimeObject(QObject* runtimeObject);
     void setFrameState(const miacode::preview::scene::PreviewFrameState* frameState);
     void setLayerFlags(miacode::preview::scene::PreviewRenderLayerFlags layerFlags);
+    bool stageBackgroundEnabled() const { return stageBackgroundEnabled_; }
+    void setStageBackgroundEnabled(bool enabled);
     QColor backgroundColor() const { return backgroundColor_; }
     void setBackgroundColor(const QColor& color);
 
@@ -70,6 +73,7 @@ public:
 signals:
     void runtimeChanged();
     void backgroundColorChanged();
+    void stageBackgroundEnabledChanged();
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* updatePaintNodeData) override;
@@ -95,6 +99,7 @@ private:
     void logNoteLayersEmptyAnomaly(const miacode::preview::scene::PreviewFrameState& state);
 
     QPointer<PreviewRuntime> runtime_;
+    bool stageBackgroundEnabled_ = true;
     QColor backgroundColor_{QStringLiteral("#191A1B")};
     Qt::MouseButton touchPadAuthoringPressedButton_ = Qt::NoButton;
     bool selectionDragActive_ = false;

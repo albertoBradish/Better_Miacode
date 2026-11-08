@@ -196,6 +196,17 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
         QStringLiteral("2000")
     ));
 
+    parser.addOption(QCommandLineOption(QStringLiteral("size-preset"),
+        QStringLiteral("Output budget: standard, 30mb, 100mb, 200mb or custom."), QStringLiteral("preset")));
+    parser.addOption(QCommandLineOption(QStringLiteral("video-bitrate"),
+        QStringLiteral("Target video bitrate in Mbps (0.1–100); selects the custom budget."), QStringLiteral("Mbps")));
+    parser.addOption(QCommandLineOption(QStringLiteral("no-pv"),
+        QStringLiteral("Use the static background in place of the PV.")));
+    parser.addOption(QCommandLineOption(QStringLiteral("debug-render"),
+        QStringLiteral("Render the chart on opaque black without background media.")));
+    parser.addOption(QCommandLineOption(QStringLiteral("intro-chart-preview"),
+        QStringLiteral("Show a chart preview alongside the intro card.")));
+
     if (!parser.parse(app.arguments())) {
         if (errorMessage != nullptr) {
             *errorMessage = parser.errorText();
@@ -344,7 +355,36 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
         }
     }
 
+    const bool customBitrate = parser.isSet(QStringLiteral("video-bitrate"));
+    const QString presetToken = parser.value(QStringLiteral("size-preset")).trimmed().toLower();
+    const QHash<QString, VideoExportSizePreset> sizePresets{
+        {QStringLiteral("standard"), VideoExportSizePreset::Standard},
+        {QStringLiteral("30mb"), VideoExportSizePreset::Target30Mb},
+        {QStringLiteral("100mb"), VideoExportSizePreset::Target100Mb},
+        {QStringLiteral("200mb"), VideoExportSizePreset::Target200Mb},
+        {QStringLiteral("custom"), VideoExportSizePreset::Custom},
+    };
+    if ((parser.isSet(QStringLiteral("size-preset")) && !sizePresets.contains(presetToken))
+        || (customBitrate && !presetToken.isEmpty() && presetToken != QLatin1String("custom"))) {
+        if (errorMessage) *errorMessage = QStringLiteral("Invalid or conflicting --size-preset and --video-bitrate values.");
+        return 2;
+    }
     Session::CliVideoExportRequest request;
+    request.sizePreset = customBitrate ? VideoExportSizePreset::Custom
+        : sizePresets.value(presetToken, VideoExportSizePreset::Standard);
+    if (customBitrate) {
+        bool bitrateOk = false;
+        const double bitrate = parser.value(QStringLiteral("video-bitrate")).toDouble(&bitrateOk);
+        if (!bitrateOk || !std::isfinite(bitrate)
+            || bitrate != miacode::video_export::normalizedCustomVideoBitrateMbps(bitrate)) {
+            if (errorMessage) *errorMessage = QStringLiteral("--video-bitrate requires a value between 0.1 and 100 Mbps.");
+            return 2;
+        }
+        request.targetVideoBitrateMbps = bitrate;
+    }
+    request.includePv = !parser.isSet(QStringLiteral("no-pv"));
+    request.debugRendering = parser.isSet(QStringLiteral("debug-render"));
+    request.introChartPreview = parser.isSet(QStringLiteral("intro-chart-preview"));
     request.chartPathOrDirectory = chartInput;
     request.difficulty = parser.value(QStringLiteral("difficulty")).trimmed();
     const QString userOutput = parser.value(QStringLiteral("output")).trimmed();
@@ -378,7 +418,7 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     request.showTimestamp = !parser.isSet(QStringLiteral("hide-timestamp"));
     request.showObjectStatsHud = parser.isSet(QStringLiteral("show-object-stats"));
     request.showChartInfoHud = parser.isSet(QStringLiteral("show-chart-info"));
-    request.addIntro = parser.isSet(QStringLiteral("intro")) || introPvPreview;
+    request.addIntro = parser.isSet(QStringLiteral("intro")) || introPvPreview || request.introChartPreview;
     request.introCardShadow = parser.isSet(QStringLiteral("intro-card-shadow"));
     request.introPvPreview = introPvPreview;
     request.introPvStartSeconds = introPvStartSeconds;

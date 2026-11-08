@@ -210,6 +210,15 @@ void appendClockCountPlaybacks(
 
 namespace miacode::video_export {
 
+double videoExportAlignedDurationSeconds(const VideoExportTask& task)
+{
+    const double lead = task.fullRangeExport ? kLeadInSeconds : kPartialRangePreloadSeconds;
+    const double intro = task.fullRangeExport && task.intro.enabled ? introDurationSeconds(task.intro) : 0.0;
+    const double total = qMax(0.0, task.contentDurationSeconds) + lead + intro;
+    const int fps = qMax(1, task.fps);
+    return static_cast<double>(qMax(1, qRound(total * fps))) / fps;
+}
+
 bool buildVideoExportAudioRenderPlan(
     const VideoExportTask& task,
     VideoExportAudioRenderPlan* plan,
@@ -256,8 +265,8 @@ bool buildVideoExportAudioRenderPlan(
     built.timelineOriginSecond =
         built.segmentStartSecond - built.leadInSeconds - built.introLeadSeconds;
     built.totalSeconds = built.introLeadSeconds + built.leadInSeconds + segmentDurationSeconds;
-    built.frameCount = qMax(1, qRound(built.totalSeconds * qMax(1, task.fps)));
-    built.alignedTotalSeconds = static_cast<double>(built.frameCount) / qMax(1, task.fps);
+    built.alignedTotalSeconds = videoExportAlignedDurationSeconds(task);
+    built.frameCount = qRound(built.alignedTotalSeconds * qMax(1, task.fps));
     built.sfxDirectory = resolveSfxDirectory();
     built.exportMarkers = filteredMarkersForRange(
         task.noteMarkers,
@@ -312,8 +321,7 @@ bool buildVideoExportAudioRenderPlan(
             introPlan.gain = built.backgroundTrack.gain;
             introPlan.sourceStartSecond = qMax(0.0, task.intro.pvPreviewStartSeconds);
             introPlan.mixStartSecond = 0.0;
-            introPlan.durationSeconds =
-                miacode::intro::kPvPreviewHoldSeconds + miacode::intro::kPvPreviewAudioTailSeconds;
+            introPlan.durationSeconds = introPreviewMusicSeconds(task.intro);
             introPlan.fadeInSeconds = miacode::intro::kPvPreviewAudioFadeInSeconds;
             introPlan.fadeOutSeconds = miacode::intro::kPvPreviewAudioFadeOutSeconds;
             built.introPreviewTrack = introPlan;

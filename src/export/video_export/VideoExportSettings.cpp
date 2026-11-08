@@ -63,24 +63,19 @@ VideoExportSizePreset videoExportSizePresetFromPreference(
     const QJsonValue& value,
     VideoExportSizePreset fallback)
 {
-    const QString token = value.toString().trimmed();
-    if (token.compare(QStringLiteral("target_30mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target30Mb;
-    if (token.compare(QStringLiteral("target_100mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target100Mb;
-    if (token.compare(QStringLiteral("target_200mb"), Qt::CaseInsensitive) == 0) return VideoExportSizePreset::Target200Mb;
-
-    if (token.compare(QStringLiteral("compact"), Qt::CaseInsensitive) == 0) {
-        return VideoExportSizePreset::Compact;
+    if (value.isDouble()) {
+        switch (value.toInt(-1)) {
+        case 0: return VideoExportSizePreset::Standard;
+        case 1: return VideoExportSizePreset::Compact;
+        case 2: return VideoExportSizePreset::UltraCompactWithPv;
+        case 3: return VideoExportSizePreset::UltraCompact;
+        case 4: return VideoExportSizePreset::Target30Mb;
+        case 5: return VideoExportSizePreset::Target100Mb;
+        case 6: return VideoExportSizePreset::Target200Mb;
+        default: return fallback;
+        }
     }
-    if (token.compare(QStringLiteral("ultra_compact"), Qt::CaseInsensitive) == 0) {
-        return VideoExportSizePreset::UltraCompact;
-    }
-    if (token.compare(QStringLiteral("ultra_compact_with_pv"), Qt::CaseInsensitive) == 0) {
-        return VideoExportSizePreset::UltraCompactWithPv;
-    }
-    if (token.compare(QStringLiteral("standard"), Qt::CaseInsensitive) == 0) {
-        return VideoExportSizePreset::Standard;
-    }
-    return fallback;
+    return videoExportSizePresetFromToken(value.toString(), fallback);
 }
 
 void applyVideoExportPreferences(const QJsonObject& settings, VideoExportTask* task)
@@ -102,11 +97,26 @@ void applyVideoExportPreferences(const QJsonObject& settings, VideoExportTask* t
     task->preset = videoExportPresetFromPreference(settings.value(QStringLiteral("preset")), task->preset);
     task->sizePreset = videoExportSizePresetFromPreference(
         settings.value(QStringLiteral("size_preset")), task->sizePreset);
+    task->targetVideoBitrateMbps = normalizedCustomVideoBitrateMbps(
+        settings.value(QStringLiteral("target_video_bitrate_mbps")).toDouble(task->targetVideoBitrateMbps));
+    if (settings.contains(QStringLiteral("include_pv"))) {
+        task->includePv = settings.value(QStringLiteral("include_pv")).toBool(task->includePv);
+    } else if (settings.contains(QStringLiteral("size_preset"))) {
+        task->includePv = !legacySizePresetOmitsPv(task->sizePreset);
+    }
+    const double legacyBitrate = legacySizePresetVideoBitrateMbps(
+        task->sizePreset, task->outputWidth, task->outputHeight, task->fps);
+    if (legacyBitrate > 0.0) {
+        task->targetVideoBitrateMbps = legacyBitrate;
+        task->audioBitrateKbps = effectiveVideoExportAudioBitrateKbps(task->sizePreset, task->audioBitrateKbps);
+        task->sizePreset = VideoExportSizePreset::Custom;
+    }
     task->clockCountEnabled = settings.value(QStringLiteral("clock_count_enabled"))
                                   .toBool(task->clockCountEnabled);
     // Intro selection belongs to one export, not to saved preferences.
     task->intro.enabled = true;
     task->intro.pvPreview = false;
+    task->intro.chartPreview = false;
     task->intro.pvPreviewStartSeconds = 0.0;
     task->intro.pvPreviewBrightness = qBound(
         0.0, settings.value(QStringLiteral("intro_pv_brightness")).toDouble(task->intro.pvPreviewBrightness), 1.0);
@@ -142,6 +152,8 @@ void appendVideoExportPreferences(QJsonObject* settings, const VideoExportTask& 
     settings->insert(QStringLiteral("output_mode"), videoExportOutputModeToken(task.outputMode));
     settings->insert(QStringLiteral("preset"), videoExportPreferencePresetToken(task.preset));
     settings->insert(QStringLiteral("size_preset"), videoExportSizePresetToken(task.sizePreset));
+    settings->insert(QStringLiteral("target_video_bitrate_mbps"), task.targetVideoBitrateMbps);
+    settings->insert(QStringLiteral("include_pv"), task.includePv);
     settings->insert(QStringLiteral("clock_count_enabled"), task.clockCountEnabled);
     settings->remove(QStringLiteral("add_intro"));
     settings->remove(QStringLiteral("intro_style"));
@@ -191,6 +203,11 @@ QJsonObject videoExportTemplateSettings(const VideoExportTask& task)
     settings.insert(QStringLiteral("judgeEffectStyle"), static_cast<int>(task.judgeEffectStyle));
     settings.insert(QStringLiteral("centerDisplayMode"), static_cast<int>(task.centerDisplayMode));
     settings.insert(QStringLiteral("intro_pv_brightness"), task.intro.pvPreviewBrightness);
+    settings.insert(QStringLiteral("intro_style"), task.intro.pvPreview
+        ? (task.intro.chartPreview ? QStringLiteral("chart_preview") : QStringLiteral("pv_preview"))
+        : QStringLiteral("classic"));
+    settings.insert(QStringLiteral("intro_follow_drop"),
+        task.intro.previewWindowMode == miacode::chart_preview::IntroWindowMode::FollowDrop);
     return settings;
 }
 
@@ -199,8 +216,18 @@ bool applyVideoExportTemplateSettings(const QJsonObject& settings, VideoExportTa
     if (!task || settings.isEmpty()) return false;
     for (const char* key : {"resolution_width", "resolution_height", "fps"})
         if (!settings.value(QLatin1String(key)).isDouble()) return false;
+    const QJsonValue includePv = settings.value(QStringLiteral("include_pv"));
+    if (!includePv.isUndefined() && !includePv.isBool()) return false;
+    const QJsonValue bitrate = settings.value(QStringLiteral("target_video_bitrate_mbps"));
+    if (!bitrate.isUndefined() && (!bitrate.isDouble()
+        || bitrate.toDouble() != normalizedCustomVideoBitrateMbps(bitrate.toDouble()))) return false;
     VideoExportTask candidate = *task;
     applyVideoExportPreferences(settings, &candidate);
+    const QString introStyle = settings.value(QStringLiteral("intro_style")).toString();
+    candidate.intro.chartPreview = introStyle == QLatin1String("chart_preview");
+    candidate.intro.pvPreview = candidate.intro.chartPreview || introStyle == QLatin1String("pv_preview");
+    candidate.intro.previewWindowMode = settings.value(QStringLiteral("intro_follow_drop")).toBool()
+        ? miacode::chart_preview::IntroWindowMode::FollowDrop : miacode::chart_preview::IntroWindowMode::Automatic;
     if (settings.contains(QStringLiteral("smoothBrightness"))) { if (!settings.value(QStringLiteral("smoothBrightness")).isBool()) return false; candidate.smoothBrightness = settings.value(QStringLiteral("smoothBrightness")).toBool(); }
     if (settings.contains(QStringLiteral("showTimestamp"))) { if (!settings.value(QStringLiteral("showTimestamp")).isBool()) return false; candidate.showTimestamp = settings.value(QStringLiteral("showTimestamp")).toBool(); }
     if (settings.contains(QStringLiteral("showMeasureLines"))) { if (!settings.value(QStringLiteral("showMeasureLines")).isBool()) return false; candidate.showMeasureLines = settings.value(QStringLiteral("showMeasureLines")).toBool(); }
@@ -242,11 +269,6 @@ bool applyVideoExportTemplateSettings(const QJsonObject& settings, VideoExportTa
         || candidate.fireworkBrightness < 0.5 || candidate.fireworkBrightness > 1.2
         || candidate.intro.pvPreviewBrightness < 0 || candidate.intro.pvPreviewBrightness > 1
         || candidate.measureLineMode < 0 || candidate.measureLineMode > 2) return false;
-    if (candidate.sizePreset == VideoExportSizePreset::Target30Mb) {
-        candidate.outputWidth = qMax(480, qRound(480.0 * candidate.outputWidth / candidate.outputHeight / 2) * 2);
-        candidate.outputHeight = 480;
-        candidate.intro.pvPreview = false;
-    }
     *task = std::move(candidate);
     return true;
 }
@@ -323,6 +345,8 @@ void copyVideoExportUserSettings(const VideoExportTask& source, VideoExportTask*
     target->outputMode = source.outputMode;
     target->preset = source.preset;
     target->sizePreset = source.sizePreset;
+    target->targetVideoBitrateMbps = source.targetVideoBitrateMbps;
+    target->includePv = source.includePv;
     target->backgroundBrightnessOuter = source.backgroundBrightnessOuter;
     target->backgroundBrightnessInner = source.backgroundBrightnessInner;
     target->layoutSquareScale = source.layoutSquareScale;
@@ -349,7 +373,11 @@ void copyVideoExportUserSettings(const VideoExportTask& source, VideoExportTask*
     target->clockCountEnabled = source.clockCountEnabled;
     target->intro.enabled = source.intro.enabled;
     target->intro.pvPreview = source.intro.pvPreview;
+    target->intro.chartPreview = source.intro.chartPreview;
     target->intro.pvPreviewStartSeconds = source.intro.pvPreviewStartSeconds;
+    target->intro.pvPreviewEndSeconds = source.intro.pvPreviewEndSeconds;
+    target->intro.previewWindowMode = source.intro.previewWindowMode;
+    target->intro.previewWindowSource = source.intro.previewWindowSource;
     target->intro.pvPreviewBrightness = source.intro.pvPreviewBrightness;
     target->intro.backgroundMode = source.intro.backgroundMode;
     target->intro.customBackgroundPath = source.intro.customBackgroundPath;

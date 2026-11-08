@@ -126,6 +126,7 @@ private:
     void resetReadbackRing();
     void applyFrameSize();
     void applyIntroGeometry();
+    void applyChartGeometry();
     void destroyIntroOverlay();
     void applyFrameState();
     void bindFrameStateIfNeeded();
@@ -149,6 +150,7 @@ private:
     QQmlEngine* qmlEngine_ = nullptr;
     QQuickItem* introItem_ = nullptr;
     bool introActive_ = false;
+    bool introChartPreviewSplit_ = false;
     std::unique_ptr<D3dObjects> d3d_;
     static constexpr int kReadbackRingSize = 8;
     QImage readbackRing_[kReadbackRingSize];

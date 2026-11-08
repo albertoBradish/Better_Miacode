@@ -44,7 +44,6 @@
 namespace miacode::ui {
 namespace {
 
-constexpr auto kBatchOutputDirectoryKey = "last_batch_output_directory";
 QString legacyBatchExportDirectory(const char* key)
 {
     QSettings settings(miacode::runtime_paths::configFile("export-session.ini"), QSettings::IniFormat);
@@ -56,6 +55,10 @@ inline constexpr auto& kFpsOptions = miacode::video_export::kVideoExportFpsOptio
 inline constexpr auto& kAudioBitrateOptions =
     miacode::video_export::kVideoExportAudioBitrateOptionsKbps;
 constexpr double kMinimumExportRangeSeconds = 5.0;
+constexpr std::array kSizePresets{
+    VideoExportSizePreset::Standard, VideoExportSizePreset::Target30Mb,
+    VideoExportSizePreset::Target100Mb, VideoExportSizePreset::Target200Mb, VideoExportSizePreset::Custom,
+};
 
 double minimumExportRangeSecondsForChart(double chartDurationSeconds)
 {
@@ -141,6 +144,7 @@ ExportSession::ExportSession(miacode::ShellNotifications& notifications,
         if (pageSessionActive_ && !pushingSharedSettings_) {
             adoptPreviewRenderSettings();
             emit videoChanged();
+            emit introChanged();
         }
     });
     // The audition ends inside the playback coordinator (music faded out,
@@ -155,6 +159,98 @@ ExportSession::ExportSession(miacode::ShellNotifications& notifications,
             emit playbackRangeRequested(true, exportStartSeconds(), exportEndSeconds());
         }
     });
+}
+
+void ExportSession::setChartPreviewContextProvider(ChartPreviewContextProvider provider)
+{
+    chartPreviewContextProvider_ = std::move(provider);
+    chartPreviewContextChanged();
+}
+
+void ExportSession::chartPreviewContextChanged()
+{
+    updateBatchOutputDirectory();
+    emit dropChanged();
+    refreshIntroWindow();
+}
+
+ExportSession::ChartPreviewContext ExportSession::chartPreviewContext() const
+{
+    return chartPreviewContextProvider_
+        ? chartPreviewContextProvider_(selectedDifficultyId_) : ChartPreviewContext{};
+}
+
+void ExportSession::updateBatchOutputDirectory()
+{
+    const QString chartPath = chartPreviewContextProvider_ ? chartPreviewContext().chartPath : task_.chartPath;
+    if (batchOutputChartPath_ == chartPath) return;
+    batchOutputChartPath_ = chartPath;
+    batchOutputDirectory_ = chartPath.isEmpty() ? QString() : QFileInfo(chartPath).absolutePath();
+    emit batchChanged();
+}
+
+std::optional<miacode::chart_preview::DropSelection> ExportSession::currentDrop() const
+{
+    const auto context = chartPreviewContext();
+    return context.document && context.chartPath == task_.chartPath ? context.drop : std::nullopt;
+}
+
+bool ExportSession::dropAvailable() const
+{
+    const auto drop = currentDrop();
+    return drop && drop->range.isValid() && drop->range.endSeconds <= chartDurationSeconds_ + 0.001;
+}
+
+double ExportSession::dropStartSeconds() const
+{
+    const auto drop = currentDrop();
+    return drop ? drop->range.startSeconds : 0.0;
+}
+
+double ExportSession::dropEndSeconds() const
+{
+    const auto drop = currentDrop();
+    return drop ? drop->range.endSeconds : 0.0;
+}
+
+void ExportSession::adoptDropRange()
+{
+    if (!dropAvailable()) return;
+    applyExportRangeSeconds(dropStartSeconds(), dropEndSeconds(), 0.0);
+}
+
+double ExportSession::introMediaDuration() const
+{
+    const auto context = chartPreviewContext();
+    return context.document && context.chartPath == task_.chartPath && context.mediaDuration > 0.0
+        ? context.mediaDuration : chartDurationSeconds_;
+}
+
+void ExportSession::refreshIntroWindow(bool requestPreview)
+{
+    using namespace miacode::chart_preview;
+    const auto context = chartPreviewContext();
+    if (introDocumentGeneration_ != context.documentGeneration) {
+        introDocumentGeneration_ = context.documentGeneration;
+        introExplicitRange_.reset();
+    }
+    IntroWindow window;
+    if (context.document && context.chartPath == task_.chartPath) {
+        const double duration = context.mediaDuration > 0.0 ? context.mediaDuration : chartDurationSeconds_;
+        window = resolveIntroWindow(*context.document, selectedDifficultyId_, introExplicitRange_,
+            task_.intro.previewWindowMode, duration, context.dropFingerprint, context.drop, true);
+    } else {
+        window = {introExplicitRange_.value_or(MediaRange{0.0, miacode::intro::kPvPreviewHoldSeconds}),
+                  introExplicitRange_ ? IntroWindowSource::Explicit : IntroWindowSource::Default};
+    }
+    if (!window.range.isValid()) return;
+    const bool changed = task_.intro.pvPreviewStartSeconds != window.range.startSeconds
+        || task_.intro.pvPreviewEndSeconds != window.range.endSeconds || task_.intro.previewWindowSource != window.source;
+    freezeIntroPreviewWindow(task_.intro, window);
+    if (changed && requestPreview) {
+        emit introChanged();
+        if (pageSessionActive_ && engine()) engine()->refreshIntroState();
+    }
 }
 
 void ExportSession::setRangePlaybackEnabled(bool enabled)
@@ -235,31 +331,25 @@ QVariantList ExportSession::presetOptions() const
 
 QVariantList ExportSession::sizePresetOptions() const
 {
-    QVariantList options;
-    const double pixels = static_cast<double>(task_.outputWidth) * task_.outputHeight * task_.fps;
-    for (int i = 0; i < 7; ++i) {
-        const auto preset = static_cast<VideoExportSizePreset>(i);
+    QVariantList options{qtTrId("dialog.video_export.size_preset.standard")};
+    const double duration = miacode::video_export::videoExportAlignedDurationSeconds(buildRequestedTask());
+    constexpr std::array labels{"video_size.target30", "video_size.target100", "video_size.target200"};
+    for (size_t i = 0; i < labels.size(); ++i) {
+        const auto preset = kSizePresets[i + 1];
         const int audio = miacode::video_export::effectiveVideoExportAudioBitrateKbps(preset, task_.audioBitrateKbps);
-        if (i >= 4) {
-            VideoExportTask candidate = buildRequestedTask();
-            candidate.sizePreset = preset;
-            if (preset == VideoExportSizePreset::Target30Mb) candidate.intro.pvPreview = false;
-            miacode::video_export::VideoExportAudioRenderPlan plan;
-            const double duration = miacode::video_export::buildVideoExportAudioRenderPlan(candidate, &plan)
-                ? plan.alignedTotalSeconds : qMax(0.001, exportEndSeconds() - exportStartSeconds());
-            const auto bitrate = miacode::video_export::videoExportTargetBitrateKbps(preset, duration, audio);
-            options.append(qtTrId(i == 4 ? "video_size.target30" : i == 5 ? "video_size.target100" : "video_size.target200").arg(bitrate).arg(audio));
-        } else {
-            const auto policy = miacode::video_export::videoExportSizePolicy(preset);
-            const bool high = task_.preset == VideoExportPreset::HighQuality;
-            const qint64 bitrate = i == 0 ? qBound<qint64>(high ? 2600LL : 2200LL, qRound64(pixels * (high ? 0.090 : 0.075) / 1000), high ? 10500LL : 8500LL)
-                : qBound<qint64>(policy.minBitrateKbps, qRound64(pixels * policy.bitrateCoefficient / 1000), policy.maxBitrateKbps);
-            const char* key = i == 0 ? "dialog.video_export.size_preset.standard" : i == 1 ? "dialog.video_export.size_preset.compact"
-                : i == 2 ? "dialog.video_export.size_preset.ultra_compact_with_pv" : "dialog.video_export.size_preset.ultra_compact";
-            options.append(qtTrId(key) + qtTrId(i == 0 ? "video_size.adaptive_parameters" : "video_size.parameters").arg(bitrate).arg(audio));
-        }
+        const auto bitrate = miacode::video_export::videoExportTargetBitrateKbps(preset, duration, audio);
+        options.append(qtTrId(labels[i]).arg(bitrate).arg(audio));
     }
+    options.append(qtTrId("video_size.custom"));
     return options;
+}
+
+double ExportSession::estimatedCustomSizeMb() const
+{
+    const double duration = miacode::video_export::videoExportAlignedDurationSeconds(buildRequestedTask());
+    const double audioMbps = task_.audioBitrateKbps / 1000.0;
+    // Reserve the same mux allowance as the target-size presets.
+    return (task_.targetVideoBitrateMbps + audioMbps + 0.016) * duration / (8.0 * 0.975);
 }
 
 int ExportSession::presetIndex() const
@@ -269,7 +359,9 @@ int ExportSession::presetIndex() const
 
 int ExportSession::sizePresetIndex() const
 {
-    return static_cast<int>(task_.sizePreset);
+    for (size_t i = 0; i < kSizePresets.size(); ++i)
+        if (task_.sizePreset == kSizePresets[i]) return static_cast<int>(i);
+    return 0;
 }
 
 int ExportSession::introBackgroundModeIndex() const
@@ -371,7 +463,9 @@ double ExportSession::exportEndSeconds() const
 
 double ExportSession::minimumExportRangeSeconds() const
 {
-    return minimumExportRangeSecondsForChart(chartDurationSeconds_);
+    const double duration = exportEndSeconds() - exportStartSeconds();
+    const double minimum = minimumExportRangeSecondsForChart(chartDurationSeconds_);
+    return duration > 0.0 ? qMin(duration, minimum) : minimum;
 }
 
 IntroBannerSpec ExportSession::previewIntroSpec() const
@@ -680,8 +774,10 @@ void ExportSession::seedFromDifficulty(int difficultyId)
         clearPendingSelectionRangeExport();
         emit outputChanged();
         emit videoChanged();
+        updateBatchOutputDirectory();
         emit introChanged();
         emit rangeChanged();
+        emit dropChanged();
         return;
     }
     setUnavailableReason(QString());
@@ -702,12 +798,9 @@ void ExportSession::seedFromDifficulty(int difficultyId)
     if (batchSelectedDifficultyIds_.isEmpty()) {
         batchSelectedDifficultyIds_.append(difficultyId);
     }
-    if (batchOutputDirectory_.isEmpty()) {
-        const QJsonObject preferences = miacode::app_preferences::loadDialogPreferences();
-        batchOutputDirectory_ = preferences.contains(QLatin1String(kBatchOutputDirectoryKey))
-            ? miacode::file_dialog_preferences::validDirectory(preferences.value(QLatin1String(kBatchOutputDirectoryKey)).toString())
-            : legacyBatchExportDirectory("last_output_directory");
-    }
+    updateBatchOutputDirectory();
+    refreshIntroWindow(false);
+    emit dropChanged();
     adoptPreviewRenderSettings();
     emit outputChanged();
     emit videoChanged();
@@ -785,6 +878,10 @@ void ExportSession::adoptPreviewRenderSettings()
 
     task_.tapFlowSpeed = values.value(QStringLiteral("tapFlowSpeed"), task_.tapFlowSpeed).toDouble();
     task_.touchFlowSpeed = values.value(QStringLiteral("touchFlowSpeed"), task_.touchFlowSpeed).toDouble();
+    task_.slideTimingFromLaunchBeat =
+        values.value(QStringLiteral("slideTimingFromLaunchBeat"), task_.slideTimingFromLaunchBeat).toBool();
+    task_.slideTimingEarlyPerfectFromHead =
+        values.value(QStringLiteral("slideTimingEarlyPerfectFromHead"), task_.slideTimingEarlyPerfectFromHead).toBool();
 }
 
 void ExportSession::stopAudition()
@@ -834,6 +931,10 @@ void ExportSession::startExport()
     }
     adoptPreviewRenderSettings();
     if (activeTab_ == QLatin1String("batch")) {
+        if (batchOutputDirectory_.isEmpty() || !QDir::isAbsolutePath(batchOutputDirectory_)) {
+            browseBatchOutputDirectory();
+            return;
+        }
         savePreferences();
         batchCancellationRequested_ = false;
         batchExportRunning_ = true;
@@ -1249,10 +1350,14 @@ void ExportSession::setExportEndToCurrentPreview()
 
 void ExportSession::setExportRangeSeconds(double start, double end)
 {
+    applyExportRangeSeconds(start, end, minimumExportRangeSeconds());
+}
+
+void ExportSession::applyExportRangeSeconds(double start, double end, double minimumDuration)
+{
     if (!qIsFinite(start) || !qIsFinite(end)) {
         return;
     }
-    const double minimumDuration = minimumExportRangeSeconds();
     const double boundedStart = qBound(0.0, start, qMax(0.0, chartDurationSeconds_ - minimumDuration));
     const double boundedEnd = qBound(boundedStart + minimumDuration, end, chartDurationSeconds_);
     if (boundedStart == task_.exportStartSeconds && boundedEnd == exportEndSeconds()) {
@@ -1346,11 +1451,6 @@ void ExportSession::setResolutionIndex(int index)
     if (index < 0 || index >= static_cast<int>(std::size(kResolutionPresets)) || resolutionIndex_ == index) {
         return;
     }
-    if (task_.sizePreset == VideoExportSizePreset::Target30Mb && kResolutionPresets[index].height != 480) {
-        const double aspect = kResolutionPresets[index].aspectRatio;
-        for (int i = 0; i < static_cast<int>(std::size(kResolutionPresets)); ++i)
-            if (kResolutionPresets[i].height == 480 && qAbs(kResolutionPresets[i].aspectRatio - aspect) < 1e-6) { index = i; break; }
-    }
     resolutionIndex_ = index;
     task_.outputWidth = kResolutionPresets[index].width;
     task_.outputHeight = kResolutionPresets[index].height;
@@ -1394,17 +1494,40 @@ void ExportSession::setPresetIndex(int index)
 
 void ExportSession::setSizePresetIndex(int index)
 {
-    if (index < 0 || index > 6) return;
-    task_.sizePreset = static_cast<VideoExportSizePreset>(index);
+    if (index < 0 || index >= static_cast<int>(kSizePresets.size()) || sizePresetIndex() == index) return;
+    task_.sizePreset = kSizePresets[index];
     if (task_.sizePreset == VideoExportSizePreset::Target30Mb) {
-        const double aspect = static_cast<double>(task_.outputWidth) / task_.outputHeight;
-        const int width = qMax(480, qRound(480 * aspect / 2) * 2);
-        for (int i = 0; i < static_cast<int>(std::size(kResolutionPresets)); ++i)
-            if (kResolutionPresets[i].width == width && kResolutionPresets[i].height == 480) setResolutionIndex(i);
-        setIntroPvPreview(false);
+        const double aspect = kResolutionPresets[resolutionIndex_].aspectRatio;
+        for (int i = 0; i < static_cast<int>(kResolutionPresets.size()); ++i) {
+            if (kResolutionPresets[i].height == 480 && qAbs(kResolutionPresets[i].aspectRatio - aspect) < 1e-6) {
+                setResolutionIndex(i);
+                break;
+            }
+        }
     }
     emit outputChanged();
     savePreferences();
+}
+
+void ExportSession::setTargetVideoBitrateMbps(double value)
+{
+    if (!std::isfinite(value)) return;
+    const double bitrate = miacode::video_export::normalizedCustomVideoBitrateMbps(value);
+    if (qFuzzyCompare(task_.targetVideoBitrateMbps, bitrate)) return;
+    task_.targetVideoBitrateMbps = bitrate;
+    emit outputChanged();
+    savePreferences();
+}
+
+void ExportSession::setIncludePv(bool include)
+{
+    if (task_.includePv == include) return;
+    task_.includePv = include;
+    emit outputChanged();
+    emit introChanged();
+    savePreferences();
+    applyLivePreviewSettings();
+    if (engine()) engine()->refreshIntroState();
 }
 
 void ExportSession::setShowObjectStatsHud(bool value)
@@ -1609,49 +1732,83 @@ void ExportSession::setIntroFontBodyPath(const QString& path)
 
 double ExportSession::introPvSegmentSeconds() const
 {
-    return miacode::intro::kPvPreviewHoldSeconds;
+    const double duration = task_.intro.pvPreviewEndSeconds - task_.intro.pvPreviewStartSeconds;
+    return duration > 0.0 ? duration : miacode::intro::kPvPreviewHoldSeconds;
 }
 
 double ExportSession::introPvMusicSeconds() const
 {
-    return miacode::intro::kPvPreviewHoldSeconds + miacode::intro::kPvPreviewAudioTailSeconds;
+    return introPreviewMusicSeconds(task_.intro);
 }
 
 bool ExportSession::introPvVideoAvailable() const
 {
-    return miacode::chart_assets::isVideoBackgroundPath(task_.backgroundMediaPath)
+    return task_.includePv && (engine() == nullptr || engine()->muriRenderOptions().renderMode != RenderMode::Debug)
+        && miacode::chart_assets::isVideoBackgroundPath(task_.backgroundMediaPath)
         && QFileInfo::exists(task_.backgroundMediaPath);
+}
+
+QString ExportSession::introSourceLabel() const
+{
+    using Source = miacode::chart_preview::IntroWindowSource;
+    switch (task_.intro.previewWindowSource) {
+    case Source::Explicit: return qtTrId("video_export.intro_source_manual");
+    case Source::Demo: return qtTrId("video_export.intro_source_demo");
+    case Source::Drop: return qtTrId("video_export.intro_source_drop");
+    case Source::Default: return qtTrId("video_export.intro_source_default");
+    }
+    return {};
+}
+
+int ExportSession::introWindowModeIndex() const
+{
+    return task_.intro.previewWindowMode == miacode::chart_preview::IntroWindowMode::FollowDrop ? 1 : 0;
+}
+
+void ExportSession::setIntroWindowModeIndex(int index)
+{
+    if (index < 0 || index > 1) return;
+    task_.intro.previewWindowMode = index == 1 ? miacode::chart_preview::IntroWindowMode::FollowDrop
+                                              : miacode::chart_preview::IntroWindowMode::Automatic;
+    clearIntroWindowOverride();
+}
+
+void ExportSession::clearIntroWindowOverride()
+{
+    introExplicitRange_.reset();
+    introAuditionFromHead_ = true;
+    refreshIntroWindow(false);
+    emit introChanged();
+    if (engine()) engine()->refreshIntroState();
+}
+
+void ExportSession::setIntroStyleIndex(int index)
+{
+    if (index < 0 || index > 2 || introStyleIndex() == index) return;
+    task_.intro.pvPreview = index != 0;
+    task_.intro.chartPreview = index == 2;
+    refreshIntroWindow(false);
+    emit introChanged();
+    if (engine()) engine()->refreshIntroState();
 }
 
 void ExportSession::setIntroPvPreview(bool value)
 {
-    if (task_.sizePreset == VideoExportSizePreset::Target30Mb) value = false;
-    if (task_.intro.pvPreview == value) {
-        return;
-    }
-    task_.intro.pvPreview = value;
-    emit introChanged();
-    if (engine() != nullptr) {
-        engine()->refreshIntroState();
-    }
+    setIntroStyleIndex(value ? 1 : 0);
 }
 
 void ExportSession::setIntroPvStartSeconds(double seconds)
 {
-    if (!std::isfinite(seconds)) {
-        return;
-    }
-    const double latestStart = qMax(0.0, chartDurationSeconds_ - miacode::intro::kPvPreviewHoldSeconds);
-    seconds = qBound(0.0, seconds, latestStart);
-    if (qAbs(seconds - task_.intro.pvPreviewStartSeconds) < 1e-6) {
-        return;
-    }
-    task_.intro.pvPreviewStartSeconds = seconds;
+    if (!std::isfinite(seconds)) return;
+    const double duration = introMediaDuration();
+    const double latestStart = qMax(0.0, duration - introPvSegmentSeconds());
+    const double start = qBound(0.0, seconds, latestStart);
+    if (introExplicitRange_ && qAbs(introExplicitRange_->startSeconds - start) < 1e-6) return;
+    introExplicitRange_ = miacode::chart_preview::MediaRange{start, start + introPvSegmentSeconds()};
     introAuditionFromHead_ = true;
+    refreshIntroWindow(false);
     emit introChanged();
-    if (engine() != nullptr) {
-        engine()->refreshIntroState();
-    }
+    if (engine()) engine()->refreshIntroState();
 }
 
 bool ExportSession::introAuditionPlaying() const
@@ -1715,7 +1872,9 @@ void ExportSession::resetIntroSelection()
 {
     task_.intro.enabled = true;
     task_.intro.pvPreview = false;
-    task_.intro.pvPreviewStartSeconds = 0.0;
+    task_.intro.chartPreview = false;
+    introExplicitRange_.reset();
+    refreshIntroWindow(false);
     introPvSegmentDragging_ = false;
     introAuditionFromHead_ = true;
     emit introChanged();
@@ -1816,10 +1975,7 @@ void ExportSession::setBatchOutputDirectory(const QString& path)
     if (batchOutputDirectory_ == path) {
         return;
     }
-    batchOutputDirectory_ = path;
-    QJsonObject preferences = miacode::app_preferences::loadDialogPreferences();
-    preferences.insert(QLatin1String(kBatchOutputDirectoryKey), path);
-    miacode::app_preferences::saveDialogPreferences(preferences);
+    batchOutputDirectory_ = path.trimmed();
     emit batchChanged();
 }
 
@@ -1864,6 +2020,8 @@ bool ExportSession::applyTemplateSettings(const QJsonObject& settings)
     if (!skin.isEmpty() && (skin.contains(QLatin1Char('/')) || skin.contains(QLatin1Char('\\'))
         || !QFileInfo::exists(miacode::assets::assetPath(QStringLiteral("skin/") + skin + QStringLiteral("/tap.png"))))) return false;
     task_ = std::move(candidate);
+    introExplicitRange_.reset();
+    refreshIntroWindow(false);
     if (!skin.isEmpty()) appearance_->setSkinDirectory(skin);
     const auto covers = [&settings](const char* key) {
         QStringList result;
@@ -1941,15 +2099,23 @@ void ExportSession::exportVideoTemplate()
     FileRequest request;
     request.title = miacode::localizedText("video_template.export");
     request.saveMode = true;
-    request.startPath = QStringLiteral("video-template.miacode.json");
-    request.nameFilters = {QStringLiteral("MiaCode video template (*.json)")};
+    request.startPath = QStringLiteral("video-template.miatemplate");
+    request.defaultSuffix = QStringLiteral("miatemplate");
+    request.nameFilters = {miacode::localizedText("video_template.file_filter")};
     const QJsonObject object{{QStringLiteral("kind"), QStringLiteral("better-miacode-video-template")},
         {QStringLiteral("version"), 1}, {QStringLiteral("settings"), currentTemplateSettings()}};
     QPointer<ExportSession> guard(this);
     uiRequests_->requestFile(request, [guard, object](const QString& path) {
         if (!guard || path.isEmpty()) return;
         const QByteArray bytes = QJsonDocument(object).toJson();
-        QSaveFile file(path);
+        const QString suffix = QStringLiteral(".miatemplate");
+        const QString targetPath = path.endsWith(suffix, Qt::CaseInsensitive) ? path : path + suffix;
+        if (targetPath != path && QFileInfo::exists(targetPath)) {
+            guard->uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+                miacode::localizedText("video_template.title"), miacode::localizedText("video_template.path_exists"), targetPath);
+            return;
+        }
+        QSaveFile file(targetPath);
         if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
             guard->uiRequests_->postNotice(miacode::NoticeSeverity::Error, miacode::localizedText("video_template.title"), miacode::LocalizedText(file.errorString()));
     });
@@ -1959,7 +2125,7 @@ void ExportSession::importVideoTemplate()
 {
     FileRequest request;
     request.title = miacode::localizedText("video_template.import");
-    request.nameFilters = {QStringLiteral("MiaCode video template (*.json)")};
+    request.nameFilters = {miacode::localizedText("video_template.compatible_file_filter")};
     QPointer<ExportSession> guard(this);
     uiRequests_->requestFile(request, [guard](const QString& path) {
         if (!guard || path.isEmpty()) return;

@@ -8,13 +8,14 @@
 namespace miacode::video_export {
 
 enum class VideoExportSizePreset {
-    Standard,
-    Compact,
-    UltraCompactWithPv,
-    UltraCompact,
-    Target30Mb,
-    Target100Mb,
-    Target200Mb,
+    Standard = 0,
+    Compact = 1,
+    UltraCompactWithPv = 2,
+    UltraCompact = 3,
+    Target30Mb = 4,
+    Target100Mb = 5,
+    Target200Mb = 6,
+    Custom = 7,
 };
 
 constexpr int kVideoExportWorkerMaxCrashRetries = 1;
@@ -30,12 +31,20 @@ struct VideoExportSizePolicy {
     // A size preset adjusts the quality tier selected by Fast/HighQuality;
     // it never replaces that tier's base CRF.
     int x264CrfAdjustment = 0;
-    bool disableVideoBackground = false;
     bool usePeakConstrainedVbr = false;
 };
 
+inline constexpr double kCustomVideoBitrateMinMbps = 0.1;
+inline constexpr double kCustomVideoBitrateMaxMbps = 100.0;
+inline constexpr double kCustomVideoBitrateDefaultMbps = 8.0;
+
+double normalizedCustomVideoBitrateMbps(double value);
+double legacySizePresetVideoBitrateMbps(VideoExportSizePreset preset, int width, int height, int fps);
+bool legacySizePresetOmitsPv(VideoExportSizePreset preset);
 VideoExportSizePolicy videoExportSizePolicy(VideoExportSizePreset preset);
 QString videoExportSizePresetToken(VideoExportSizePreset preset);
+VideoExportSizePreset videoExportSizePresetFromToken(const QString& token,
+    VideoExportSizePreset fallback = VideoExportSizePreset::Standard);
 qint64 videoExportTargetBytes(VideoExportSizePreset preset);
 qint64 videoExportTargetBitrateKbps(VideoExportSizePreset preset, double seconds, int audioKbps);
 int effectiveVideoExportAudioBitrateKbps(VideoExportSizePreset preset, int requestedKbps);

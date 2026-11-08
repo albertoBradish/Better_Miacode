@@ -134,6 +134,23 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     appendUiRuntimeLog(QStringLiteral("backend_ready"));
 
     applicationContext_ = std::make_unique<ApplicationContext>(*applicationServices_, this);
+    if (auto* exportSession = qobject_cast<ExportSession*>(applicationServices_->exportPageSession())) {
+        const auto& workspace = applicationServices_->workspace();
+        const auto& structure = applicationContext_->chartStructureModel();
+        exportSession->setChartPreviewContextProvider(
+            [context = QPointer<ApplicationContext>(applicationContext_.get()), &workspace](int difficulty) {
+            if (!context) return ExportSession::ChartPreviewContext{};
+            const auto& currentStructure = context->chartStructureModel();
+            const auto state = workspace.snapshot();
+            return ExportSession::ChartPreviewContext{state.filePath, state.documentOpenGeneration,
+                &workspace.document(), currentStructure.inputFingerprintForDifficulty(difficulty),
+                currentStructure.effectiveDropForDifficulty(difficulty), currentStructure.mediaDuration()};
+        });
+        QObject::connect(&workspace, &miacode::ChartWorkspace::changed,
+            exportSession, &ExportSession::chartPreviewContextChanged);
+        QObject::connect(&structure, &ChartStructureModel::changed,
+            exportSession, &ExportSession::chartPreviewContextChanged);
+    }
     QObject::connect(static_cast<PageHost*>(applicationContext_->pages()),
         &PageHost::coverWindowRequested, this, &Bootstrap::openCoverExportWindow);
     auto* const document = static_cast<DocumentModel*>(applicationContext_->document());

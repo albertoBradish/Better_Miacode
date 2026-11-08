@@ -59,6 +59,10 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(QVariantList presetOptions READ presetOptions NOTIFY localeLabelsChanged)
     Q_PROPERTY(int sizePresetIndex READ sizePresetIndex WRITE setSizePresetIndex NOTIFY outputChanged)
     Q_PROPERTY(QVariantList sizePresetOptions READ sizePresetOptions NOTIFY outputChanged)
+    Q_PROPERTY(bool customBitrate READ customBitrate NOTIFY outputChanged)
+    Q_PROPERTY(double targetVideoBitrateMbps READ targetVideoBitrateMbps WRITE setTargetVideoBitrateMbps NOTIFY outputChanged)
+    Q_PROPERTY(double estimatedCustomSizeMb READ estimatedCustomSizeMb NOTIFY outputChanged)
+    Q_PROPERTY(bool includePv READ includePv WRITE setIncludePv NOTIFY outputChanged)
 
     Q_PROPERTY(bool showObjectStatsHud READ showObjectStatsHud WRITE setShowObjectStatsHud NOTIFY videoChanged)
     Q_PROPERTY(bool showChartInfoHud READ showChartInfoHud WRITE setShowChartInfoHud NOTIFY videoChanged)
@@ -90,11 +94,14 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(QString introFontBodyPath READ introFontBodyPath WRITE setIntroFontBodyPath NOTIFY introChanged)
     // PV-preview selection is temporary for the next export; its length is fixed.
     Q_PROPERTY(bool introPvPreview READ introPvPreview WRITE setIntroPvPreview NOTIFY introChanged)
+    Q_PROPERTY(int introStyleIndex READ introStyleIndex WRITE setIntroStyleIndex NOTIFY introChanged)
+    Q_PROPERTY(QString introSourceLabel READ introSourceLabel NOTIFY introChanged)
+    Q_PROPERTY(int introWindowModeIndex READ introWindowModeIndex WRITE setIntroWindowModeIndex NOTIFY introChanged)
     Q_PROPERTY(double introPvStartSeconds READ introPvStartSeconds WRITE setIntroPvStartSeconds NOTIFY introChanged)
     Q_PROPERTY(double introPvBrightness READ introPvBrightness WRITE setIntroPvBrightness NOTIFY introChanged)
-    Q_PROPERTY(double introPvSegmentSeconds READ introPvSegmentSeconds CONSTANT)
+    Q_PROPERTY(double introPvSegmentSeconds READ introPvSegmentSeconds NOTIFY introChanged)
     // How long the segment's music plays into the intro (it fades out under the wipe).
-    Q_PROPERTY(double introPvMusicSeconds READ introPvMusicSeconds CONSTANT)
+    Q_PROPERTY(double introPvMusicSeconds READ introPvMusicSeconds NOTIFY introChanged)
     Q_PROPERTY(bool introPvVideoAvailable READ introPvVideoAvailable NOTIFY introChanged)
     // Preview-only state of the PV segment picker: dragging its window fades the
     // card; 试听 plays the intro to the end of its music and returns.
@@ -108,6 +115,9 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(QString introSoundImportLabel READ introSoundImportLabel NOTIFY localeLabelsChanged)
 
     // Range
+    Q_PROPERTY(bool dropAvailable READ dropAvailable NOTIFY dropChanged)
+    Q_PROPERTY(double dropStartSeconds READ dropStartSeconds NOTIFY dropChanged)
+    Q_PROPERTY(double dropEndSeconds READ dropEndSeconds NOTIFY dropChanged)
     Q_PROPERTY(double exportStartSeconds READ exportStartSeconds WRITE setExportStartSeconds NOTIFY rangeChanged)
     Q_PROPERTY(double exportEndSeconds READ exportEndSeconds WRITE setExportEndSeconds NOTIFY rangeChanged)
     Q_PROPERTY(double contentDurationSeconds READ contentDurationSeconds NOTIFY rangeChanged)
@@ -132,6 +142,21 @@ public:
                      miacode::PreviewSurface*& previewSlot,
                      QObject* parent = nullptr);
 
+    struct ChartPreviewContext {
+        QString chartPath;
+        quint64 documentGeneration = 0;
+        const SimaiDocument* document = nullptr;
+        QString dropFingerprint;
+        std::optional<miacode::chart_preview::DropSelection> drop;
+        double mediaDuration = 0.0;
+    };
+    using ChartPreviewContextProvider = std::function<ChartPreviewContext(int)>;
+    void setChartPreviewContextProvider(ChartPreviewContextProvider provider);
+    void chartPreviewContextChanged();
+    bool dropAvailable() const;
+    double dropStartSeconds() const;
+    double dropEndSeconds() const;
+    Q_INVOKABLE void adoptDropRange();
     QObject* uiRequests() { return uiRequests_; }
     bool pageSessionActive() const override { return pageSessionActive_; }
     bool rangePreviewAvailable() const
@@ -175,6 +200,12 @@ public:
     QVariantList presetOptions() const;
     int sizePresetIndex() const;
     QVariantList sizePresetOptions() const;
+    bool customBitrate() const { return task_.sizePreset == VideoExportSizePreset::Custom; }
+    double targetVideoBitrateMbps() const { return task_.targetVideoBitrateMbps; }
+    double estimatedCustomSizeMb() const;
+    bool includePv() const { return task_.includePv; }
+    void setTargetVideoBitrateMbps(double value);
+    void setIncludePv(bool include);
 
     bool showObjectStatsHud() const { return task_.showObjectStatsHud; }
     bool showChartInfoHud() const { return task_.showChartInfoHud; }
@@ -207,6 +238,12 @@ public:
     QString introFontDisplayPath() const { return task_.intro.fontDisplayPath; }
     QString introFontBodyPath() const { return task_.intro.fontBodyPath; }
     bool introPvPreview() const { return task_.intro.pvPreview; }
+    int introStyleIndex() const { return introPvPreview() ? (task_.intro.chartPreview ? 2 : 1) : 0; }
+    void setIntroStyleIndex(int index);
+    QString introSourceLabel() const;
+    int introWindowModeIndex() const;
+    void setIntroWindowModeIndex(int index);
+    Q_INVOKABLE void clearIntroWindowOverride();
     double introPvStartSeconds() const { return task_.intro.pvPreviewStartSeconds; }
     double introPvBrightness() const { return task_.intro.pvPreviewBrightness; }
     double introPvSegmentSeconds() const;
@@ -330,6 +367,7 @@ signals:
     void introChanged();
     void introSoundOptionsChanged();
     void rangeChanged();
+    void dropChanged();
     void rangePlaybackStateChanged();
     void playbackRangeRequested(bool enabled, double startSecond, double endSecond);
     void batchChanged();
@@ -354,6 +392,12 @@ private:
     VideoExportTask buildRequestedTask() const;
     void applyOwnerLiveFields(VideoExportTask* task) const;
     void invalidateSingleCoverPreparation();
+    std::optional<miacode::chart_preview::DropSelection> currentDrop() const;
+    void refreshIntroWindow(bool requestPreview = true);
+    void updateBatchOutputDirectory();
+    ChartPreviewContext chartPreviewContext() const;
+    void applyExportRangeSeconds(double start, double end, double minimumDuration);
+    double introMediaDuration() const;
     void applyIntroSoundImport(const QString& selectedPath);
     void applyFontImport(const QString& selectedPath);
     void addChartDirectory(const QString& path);
@@ -415,6 +459,10 @@ private:
     QStringList chartDirectories_;
     QList<int> batchSelectedDifficultyIds_;
     QString batchOutputDirectory_;
+    QString batchOutputChartPath_;
+    ChartPreviewContextProvider chartPreviewContextProvider_;
+    quint64 introDocumentGeneration_ = 0;
+    std::optional<miacode::chart_preview::MediaRange> introExplicitRange_;
     QString singleCoverPreset_;
     QStringList singleCoverPresets_;
     QStringList batchCoverPresets_;

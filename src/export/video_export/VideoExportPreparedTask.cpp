@@ -347,13 +347,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
 )
 {
     VideoExportTask task = requestedTask;
-    if (task.sizePreset == VideoExportSizePreset::Target30Mb) {
-        const double aspect = static_cast<double>(task.outputWidth) / qMax(1, task.outputHeight);
-        task.outputHeight = 480;
-        task.outputWidth = qMax(480, qRound(480 * aspect / 2) * 2);
-        // Cover/still backgrounds remain available; video PV is disabled below.
-        task.intro.pvPreview = false;
-    }
     MC_OP("VideoExportController::exportPreparedTask");
     _mc_op_.note(QStringLiteral("output=%1 chart=%2 size=%3x%4 fps=%5")
                      .arg(task.outputPath, task.chartPath)
@@ -452,9 +445,8 @@ VideoExportResult VideoExportController::exportPreparedTask(
     const int frameWidth = qMax(1, task.outputWidth);
     const int frameHeight = qMax(1, task.outputHeight);
     const QSize frameSize(frameWidth, frameHeight);
-    const QString explicitMediaPath = normalizePath(task.backgroundMediaPath);
-    const miacode::video_export::VideoExportSizePolicy sizePolicy =
-        miacode::video_export::videoExportSizePolicy(task.sizePreset);
+    const auto sizePolicy = miacode::video_export::videoExportSizePolicy(task.sizePreset);
+    const bool includeBackground = usesBackgroundMedia(backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode));
     // Phase 4c — `task.backgroundMediaPath` is filled by the snapshot
     // builder using `resolveChartVideoPath` (`&video=` override first,
     // then sibling fallback). Trust that as the final choice when it
@@ -462,15 +454,15 @@ VideoExportResult VideoExportController::exportPreparedTask(
     // path inverts the priority (sibling first), which would silently
     // override the chart-author's explicit `&video=` choice.
     QString mediaPath;
-    const bool includeVideoBackground = !sizePolicy.disableVideoBackground;
-    if (miacode::chart_assets::isSupportedBackgroundMediaPath(
-            explicitMediaPath, includeVideoBackground)) {
-        mediaPath = explicitMediaPath;
-    } else {
-        mediaPath = miacode::chart_assets::resolvePreferredBackgroundMediaPath(
-            task.chartPath,
-            explicitMediaPath,
-            includeVideoBackground);
+    const bool includeVideoBackground = includeBackground && task.includePv;
+    if (includeBackground) {
+        const QString explicitMediaPath = normalizePath(task.backgroundMediaPath);
+        if (miacode::chart_assets::isSupportedBackgroundMediaPath(explicitMediaPath, includeVideoBackground)) {
+            mediaPath = explicitMediaPath;
+        } else {
+            mediaPath = miacode::chart_assets::resolvePreferredBackgroundMediaPath(
+                task.chartPath, explicitMediaPath, includeVideoBackground);
+        }
     }
     const bool hasMedia = !mediaPath.isEmpty();
     const bool mediaIsImage = hasMedia && isImageMediaPath(mediaPath);
@@ -479,10 +471,14 @@ VideoExportResult VideoExportController::exportPreparedTask(
         : QString();
     const bool hasTrack = !trackPath.isEmpty();
     const QVector<TimelineNoteMarker>& exportMarkers = audioRenderPlan.exportMarkers;
-    const MuriAnalysisReport exportMuriAnalysisReport = exportMarkers.isEmpty()
+    const bool chartPreviewIntro = task.fullRangeExport && task.intro.enabled
+        && task.intro.pvPreview && task.intro.chartPreview;
+    // Keep notes that began before the selected intro window, including active holds and slides.
+    const QVector<TimelineNoteMarker>& sceneMarkers = chartPreviewIntro ? task.noteMarkers : exportMarkers;
+    const MuriAnalysisReport exportMuriAnalysisReport = sceneMarkers.isEmpty()
         ? MuriAnalysisReport{}
         : MuriAnalyzer::analyze(
-              exportMarkers,
+              sceneMarkers,
               task.muriRenderOptions,
               task.staticTapOnSlideThresholdSeconds);
     appendVideoExportLog(
@@ -757,8 +753,11 @@ VideoExportResult VideoExportController::exportPreparedTask(
     const qint64 targetBytes = miacode::video_export::videoExportTargetBytes(task.sizePreset);
     qint64 targetVideoKbps = 0;
     VideoEncoderConfig encoderConfig;
-    if (targetBytes > 0) {
-        targetVideoKbps = miacode::video_export::videoExportTargetBitrateKbps(
+    const bool customBitrate = task.sizePreset == VideoExportSizePreset::Custom;
+    if (targetBytes > 0 || customBitrate) {
+        targetVideoKbps = customBitrate
+            ? qRound64(miacode::video_export::normalizedCustomVideoBitrateMbps(task.targetVideoBitrateMbps) * 1000.0)
+            : miacode::video_export::videoExportTargetBitrateKbps(
             task.sizePreset, alignedTotalSeconds,
             miacode::video_export::effectiveVideoExportAudioBitrateKbps(task.sizePreset, task.audioBitrateKbps));
         if (targetVideoKbps < 64) {
@@ -769,9 +768,11 @@ VideoExportResult VideoExportController::exportPreparedTask(
         encoderConfig.extraArgs = {
             QStringLiteral("-preset"), QStringLiteral("veryfast"),
             QStringLiteral("-b:v"), QStringLiteral("%1k").arg(targetVideoKbps),
-            QStringLiteral("-maxrate"), QStringLiteral("%1k").arg(targetVideoKbps),
-            QStringLiteral("-bufsize"), QStringLiteral("%1k").arg(targetVideoKbps * 2)
         };
+        if (!customBitrate) {
+            encoderConfig.extraArgs << QStringLiteral("-maxrate") << QStringLiteral("%1k").arg(targetVideoKbps)
+                                    << QStringLiteral("-bufsize") << QStringLiteral("%1k").arg(targetVideoKbps * 2);
+        }
     } else {
         QString encoderProbeLog;
         encoderConfig = chooseVideoEncoder(ffmpegPath, frameWidth, frameHeight, task.fps, exportConfig, &encoderProbeLog);
@@ -844,7 +845,7 @@ VideoExportResult VideoExportController::exportPreparedTask(
     if (!exportCanvas.bootstrap(
             task,
             mediaPath,
-            exportMarkers,
+            sceneMarkers,
             exportMuriAnalysisReport,
             frameSize,
             &quickBootstrapError)) {
@@ -955,7 +956,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
         && task.fullRangeExport
         && audioRenderPlan.introFrameCount > 0;
     const int introHudRevealFrame = introDurationFrames(task.intro);
-    const int introPvHoldFrames = miacode::intro::kPvPreviewHoldFrames;
     if (introEnabled) {
         QString introError;
         if (!exportCanvas.setupIntro(task.intro, introPvUnderlay, &introError)) {
@@ -1892,13 +1892,11 @@ VideoExportResult VideoExportController::exportPreparedTask(
             introEnabled && introAuthoringFrame < introHudRevealFrame;
         if (introEnabled) {
             exportCanvas.setIntroFrame(introAuthoringFrame, inIntroWindow, outputSecond);
-            // The PV-preview hold leaves the overlay transparent around the card;
-            // the chart (still frozen at its lead-in) must not show over the PV.
-            exportCanvas.setChartLayersVisible(
-                !(task.intro.pvPreview && introAuthoringFrame < introPvHoldFrames));
         }
-        const bool showTimestampThisFrame = task.showTimestamp && !inIntroCover;
-        const bool showObjectStatsThisFrame = task.showObjectStatsHud && !inIntroCover;
+        const bool splitIntro = inIntroWindow && chartPreviewIntro
+            && introAuthoringFrame < miacode::intro::kPvPreviewHoldFrames;
+        const bool showTimestampThisFrame = task.showTimestamp && (!inIntroCover || splitIntro);
+        const bool showObjectStatsThisFrame = task.showObjectStatsHud && (!inIntroCover || splitIntro);
         QVector<ObjectTraceItem> traceItems;
         if (diagObjectTraceEnabled || diagObjectHashEnabled) {
             traceItems = collectVisibleObjectTrace(

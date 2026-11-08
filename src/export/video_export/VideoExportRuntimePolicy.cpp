@@ -3,6 +3,29 @@
 
 namespace miacode::video_export {
 
+double normalizedCustomVideoBitrateMbps(double value)
+{
+    return std::isfinite(value)
+        ? qBound(kCustomVideoBitrateMinMbps, value, kCustomVideoBitrateMaxMbps)
+        : kCustomVideoBitrateDefaultMbps;
+}
+
+bool legacySizePresetOmitsPv(VideoExportSizePreset preset)
+{
+    return preset == VideoExportSizePreset::Target30Mb || preset == VideoExportSizePreset::UltraCompact;
+}
+
+double legacySizePresetVideoBitrateMbps(VideoExportSizePreset preset, int width, int height, int fps)
+{
+    const auto policy = videoExportSizePolicy(preset);
+    const double pixelsPerSecond = static_cast<double>(width) * height * fps;
+    return policy.bitrateCoefficient > 0.0
+        ? qBound(policy.minBitrateKbps,
+                 qRound64(pixelsPerSecond * policy.bitrateCoefficient / 1000.0),
+                 policy.maxBitrateKbps) / 1000.0
+        : 0.0;
+}
+
 VideoExportSizePolicy videoExportSizePolicy(VideoExportSizePreset preset)
 {
     VideoExportSizePolicy policy;
@@ -11,7 +34,6 @@ VideoExportSizePolicy videoExportSizePolicy(VideoExportSizePreset preset)
     case VideoExportSizePreset::Target100Mb:
     case VideoExportSizePreset::Target200Mb:
         policy.maxAudioBitrateKbps = preset == VideoExportSizePreset::Target30Mb ? 128 : 192;
-        policy.disableVideoBackground = preset == VideoExportSizePreset::Target30Mb;
         policy.usePeakConstrainedVbr = true;
         return policy;
     case VideoExportSizePreset::Compact:
@@ -35,7 +57,6 @@ VideoExportSizePolicy videoExportSizePolicy(VideoExportSizePreset preset)
         policy.gopSeconds = 6;
         policy.maxAudioBitrateKbps = 128;
         policy.x264CrfAdjustment = 3;
-        policy.disableVideoBackground = preset == VideoExportSizePreset::UltraCompact;
         policy.usePeakConstrainedVbr = true;
         return policy;
     case VideoExportSizePreset::Standard:
@@ -50,6 +71,7 @@ QString videoExportSizePresetToken(VideoExportSizePreset preset)
     case VideoExportSizePreset::Target30Mb: return QStringLiteral("target_30mb");
     case VideoExportSizePreset::Target100Mb: return QStringLiteral("target_100mb");
     case VideoExportSizePreset::Target200Mb: return QStringLiteral("target_200mb");
+    case VideoExportSizePreset::Custom: return QStringLiteral("custom");
     case VideoExportSizePreset::Compact:
         return QStringLiteral("compact");
     case VideoExportSizePreset::UltraCompact:
@@ -60,6 +82,18 @@ QString videoExportSizePresetToken(VideoExportSizePreset preset)
     default:
         return QStringLiteral("standard");
     }
+}
+
+VideoExportSizePreset videoExportSizePresetFromToken(const QString& token, VideoExportSizePreset fallback)
+{
+    const QString normalized = token.trimmed().toLower();
+    for (const auto preset : {VideoExportSizePreset::Standard, VideoExportSizePreset::Compact,
+            VideoExportSizePreset::UltraCompactWithPv, VideoExportSizePreset::UltraCompact,
+            VideoExportSizePreset::Target30Mb, VideoExportSizePreset::Target100Mb,
+            VideoExportSizePreset::Target200Mb, VideoExportSizePreset::Custom}) {
+        if (normalized == videoExportSizePresetToken(preset)) return preset;
+    }
+    return fallback;
 }
 
 qint64 videoExportTargetBytes(VideoExportSizePreset preset)

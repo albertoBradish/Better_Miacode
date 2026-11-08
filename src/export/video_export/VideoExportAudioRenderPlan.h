@@ -69,6 +69,9 @@ struct VideoExportAudioRenderPlan {
     QVector<TouchholdSpanRenderPlan> touchholdSpanPlaybacks;
 };
 
+// Frame-aligned container duration, including intro and lead-in.
+double videoExportAlignedDurationSeconds(const VideoExportTask& task);
+
 bool buildVideoExportAudioRenderPlan(
     const VideoExportTask& task,
     VideoExportAudioRenderPlan* plan,

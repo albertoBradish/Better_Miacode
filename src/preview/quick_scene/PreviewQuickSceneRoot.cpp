@@ -634,6 +634,14 @@ void PreviewQuickSceneRoot::setLayerFlags(miacode::preview::scene::PreviewRender
     update();
 }
 
+void PreviewQuickSceneRoot::setStageBackgroundEnabled(bool enabled)
+{
+    if (stageBackgroundEnabled_ == enabled) return;
+    stageBackgroundEnabled_ = enabled;
+    emit stageBackgroundEnabledChanged();
+    update();
+}
+
 void PreviewQuickSceneRoot::setBackgroundColor(const QColor& color)
 {
     if (backgroundColor_ == color)
@@ -1082,7 +1090,8 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     int slotIndex = 0;
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::StageBackgroundLayer),
+        stageBackgroundEnabled_ && miacode::preview::scene::previewRenderLayerEnabled(
+            layerFlags_, miacode::preview::scene::StageBackgroundLayer),
         "stage_background",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {

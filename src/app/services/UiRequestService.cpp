@@ -125,6 +125,7 @@ QString UiRequestService::requestFileSelection(const FileRequest& request, Files
     QVariantList filters;
     for (const auto& filter : request.nameFilters) filters.append(filter.variant());
     payload.insert(QStringLiteral("nameFilters"), filters);
+    payload.insert(QStringLiteral("defaultSuffix"), request.defaultSuffix);
     payload.insert(QStringLiteral("saveMode"), request.saveMode);
     payload.insert(QStringLiteral("selectFolder"), request.selectFolder);
     payload.insert(QStringLiteral("selectMultiple"), request.selectMultiple);

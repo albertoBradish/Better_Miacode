@@ -31,6 +31,7 @@ struct FileRequest {
     // folder a previous, unrelated pick happened to end in.
     QString startPath;
     LocalizedTextList nameFilters;
+    QString defaultSuffix;
     bool saveMode = false;
     bool selectFolder = false;
     bool selectMultiple = false;

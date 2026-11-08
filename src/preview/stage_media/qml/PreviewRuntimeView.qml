@@ -5,16 +5,24 @@ Rectangle {
     id: root
 
     property var runtime: null
+    readonly property var introStyle: runtime ? runtime.introBannerStyle : null
+    readonly property bool chartPreviewStyle: !!introStyle && !!introStyle.chartPreviewMode
+    readonly property bool chartPreviewSplit: chartPreviewStyle && runtime.introOverlayActive
+        && runtime.introOverlayFrame < introStyle.pvPreviewHoldFrames
 
-    color: "#191A1B"
+    color: root.chartPreviewSplit ? "black" : "#191A1B"
     implicitWidth: 480
     implicitHeight: 480
 
     PreviewQuickSceneRoot {
         id: previewQuickSceneRoot
         objectName: "previewQuickSceneRoot"
-        anchors.fill: parent
+        x: root.chartPreviewSplit ? parent.width * 0.5 : 0
+        width: parent.width - x
+        height: parent.height
+        clip: root.chartPreviewSplit
         z: 1
+        stageBackgroundEnabled: !root.chartPreviewSplit
         opacity: root.runtime && root.runtime.introHidesChart ? 0 : 1
         runtime: root.runtime
     }
@@ -22,7 +30,10 @@ Rectangle {
     PreviewQuickHudLayer {
         id: previewQuickHudLayer
         objectName: "previewQuickHudLayer"
-        anchors.fill: parent
+        x: root.chartPreviewSplit ? parent.width * 0.5 : 0
+        width: parent.width - x
+        height: parent.height
+        clip: root.chartPreviewSplit
         z: 2
         opacity: root.runtime && root.runtime.introHidesChart ? 0 : 1
         runtime: root.runtime
@@ -63,10 +74,12 @@ Rectangle {
             id: introOverlayLoader
             active: introOverlayLayer.visible
             source: "qrc:/intro/qml/IntroOverlay.qml"
-            width: 1920
+            width: root.chartPreviewStyle ? Math.max(1, introOverlayLayer.width * height
+                / Math.max(1, introOverlayLayer.height)) : 1920
             height: 1080
             transformOrigin: Item.Center
-            scale: Math.max(introOverlayLayer.width / width, introOverlayLayer.height / height)
+            scale: root.chartPreviewStyle ? introOverlayLayer.height / height
+                : Math.max(introOverlayLayer.width / width, introOverlayLayer.height / height)
             x: introOverlayLayer.width / 2 - width / 2
             y: introOverlayLayer.height / 2 - height / 2
             onLoaded: {

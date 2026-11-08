@@ -98,6 +98,7 @@ Item {
         parentWindow: root.Window.window
         modality: Qt.WindowModal
         title: root.fileRequest.title || ""
+        defaultSuffix: root.fileRequest.defaultSuffix || ""
         nameFilters: root.fileRequest.nameFilters && root.fileRequest.nameFilters.length > 0
                      ? root.fileRequest.nameFilters : [qsTrId("qml.all_files")]
         onAccepted: {

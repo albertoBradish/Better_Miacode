@@ -67,9 +67,8 @@ double smoothstep01(double t)
 // The export's music envelope (VideoExportAudioRenderPlan / BassExportAudioBackend)
 // at `elapsedSeconds` into the intro: fade in from 0, fade out ending when the
 // wipe fully covers the screen.
-double pvSegmentTrackGain(double elapsedSeconds)
+double pvSegmentTrackGain(double elapsedSeconds, double endSeconds)
 {
-    const double endSeconds = miacode::intro::kPvPreviewHoldSeconds + miacode::intro::kPvPreviewAudioTailSeconds;
     const double fadeIn = smoothstep01(elapsedSeconds / miacode::intro::kPvPreviewAudioFadeInSeconds);
     const double fadeOut = 1.0 - smoothstep01(
         (elapsedSeconds - (endSeconds - miacode::intro::kPvPreviewAudioFadeOutSeconds))
@@ -131,7 +130,9 @@ void miacode::runtime::PlaybackCoordinator::setupExportIntroOverlayData()
     // map (introBannerStyleMap → backdropImage/backdropBlurEnabled/cardShadowEnabled).
     // Passing the custom backdrop as backgroundImage (the old behavior) wrongly
     // replaced the card jacket and ignored the blur toggle.
-    const QUrl jacketUrl = miacode::chart_assets::displayBackgroundImageUrl(spec.jacketPath);
+    const auto policy = backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode);
+    const QUrl jacketUrl = usesBackgroundMedia(policy)
+        ? miacode::chart_assets::displayBackgroundImageUrl(spec.jacketPath) : QUrl();
     // Overlay the dialog's difficulty-card custom fonts onto the lead-in template
     // copy so the main-timeline audition matches the export (same FontLibrary
     // override as the export mount + the dialog preview).
@@ -139,7 +140,7 @@ void miacode::runtime::PlaybackCoordinator::setupExportIntroOverlayData()
     miacode::video_export::applyBannerFontOverride(templateMap, spec.fontDisplayPath, spec.fontBodyPath);
     // The preview's own stage PV plays under the PV-preview hold, as the export
     // composites its PV segment under the overlay.
-    QVariantMap style = introBannerStyleMap(spec, previewStageMediaRouteHasVideo());
+    QVariantMap style = introBannerStyleMap(spec, previewStageMediaRouteHasVideo(), policy);
     // Preview only: dragging the PV segment window fades the card so the PV
     // under it stays readable.
     style.insert(QStringLiteral("cardDimmed"), ui_.qmlExportSession_->introPvSegmentDragging());
@@ -166,7 +167,7 @@ void miacode::runtime::PlaybackCoordinator::renderExportIntroFrame(double positi
     state_.scene_->setIntroStillFrame(
         !state_.exportIntroPvSegmentActive_ && !state_.exportIntroLeadInActive_);
     state_.scene_->setIntroOverlayFrame(frame, true);
-    state_.scene_->setIntroHidesChart(pvPreview && frame < miacode::intro::kPvPreviewHoldFrames);
+    state_.scene_->setIntroHidesChart(pvPreview && !spec.chartPreview && frame < miacode::intro::kPvPreviewHoldFrames);
 }
 
 void miacode::runtime::PlaybackCoordinator::enterExportIntroRegion(double positionSeconds)
@@ -193,7 +194,7 @@ void miacode::runtime::PlaybackCoordinator::enterExportIntroRegion(double positi
     // during the PV-preview hold (its stage PV is on screen), else at chart 0.
     const double elapsedSeconds = state_.exportIntroPlayheadSeconds_ + durationSeconds;
     const double parkSecond = spec.pvPreview && elapsedSeconds < miacode::intro::kPvPreviewHoldSeconds
-        ? spec.pvPreviewStartSeconds + elapsedSeconds
+        ? introPreviewMediaSecond(spec, elapsedSeconds)
         : 0.0;
     if (firstEntry || qAbs(parkSecond - state_.exportIntroParkedChartSecond_) > 1e-4) {
         requestPausedPreviewSeek(parkSecond, false, true);
@@ -273,7 +274,7 @@ void miacode::runtime::PlaybackCoordinator::startExportIntroAdvance(double fromP
     // PV preview: the song + PV segment runs on the real transport until its
     // music has faded out under the wipe; the timer below covers the rest.
     if (spec.pvPreview
-        && elapsedSeconds < miacode::intro::kPvPreviewHoldSeconds + miacode::intro::kPvPreviewAudioTailSeconds) {
+        && elapsedSeconds < introPreviewMusicSeconds(spec)) {
         startExportIntroPvSegment(spec.pvPreviewStartSeconds, elapsedSeconds);
         if (state_.exportIntroPvSegmentActive_) {
             return;
@@ -333,7 +334,9 @@ void miacode::runtime::PlaybackCoordinator::startExportIntroPvSegment(double sta
 {
     state_.exportIntroPvSegmentActive_ = true;
     state_.exportIntroPvSegmentStartSeconds_ = qMax(0.0, startSeconds);
-    state_.exportIntroPvSegmentTrackGain_ = pvSegmentTrackGain(elapsedSeconds);
+    IntroBannerSpec spec;
+    currentExportIntroLeadInSpec(&spec);
+    state_.exportIntroPvSegmentTrackGain_ = pvSegmentTrackGain(elapsedSeconds, introPreviewMusicSeconds(spec));
     state_.exportIntroParkedChartSecond_ = -1.0;
     // startQtPreviewPlayback re-applies the levels, now in the intro-segment
     // mode (note SFX silent, song on the fade envelope). A start exactly at
@@ -360,18 +363,24 @@ void miacode::runtime::PlaybackCoordinator::tickExportIntroPvSegment(double char
 {
     syncPreviewStageMediaRoutePlayback(chartSecond);
     setPreviewStageMediaRouteObservedPlayheadSecond(chartSecond);
-    const double durationSeconds = exportIntroDurationSeconds();
+    IntroBannerSpec spec;
+    if (!currentExportIntroLeadInSpec(&spec)) return;
+    const double durationSeconds = introDurationSeconds(spec);
     const double elapsedSeconds = chartSecond - state_.exportIntroPvSegmentStartSeconds_;
+    const double musicSeconds = introPreviewMusicSeconds(spec);
     state_.exportIntroPlayheadSeconds_ = qBound(-durationSeconds, elapsedSeconds - durationSeconds, 0.0);
+    if (spec.chartPreview && state_.scene_ && elapsedSeconds < miacode::intro::kPvPreviewHoldSeconds) {
+        state_.scene_->setPlayheadSeconds(introPreviewMediaSecond(spec, elapsedSeconds), false);
+    }
     renderExportIntroFrame(state_.exportIntroPlayheadSeconds_);
     // Quantised so the level dispatch only runs when the envelope moves audibly.
-    const double gain = std::round(pvSegmentTrackGain(elapsedSeconds) * kPvSegmentGainSteps) / kPvSegmentGainSteps;
+    const double gain = std::round(pvSegmentTrackGain(elapsedSeconds, musicSeconds) * kPvSegmentGainSteps) / kPvSegmentGainSteps;
     if (gain != state_.exportIntroPvSegmentTrackGain_) {
         state_.exportIntroPvSegmentTrackGain_ = gain;
         preview_.applyPreviewAudioSettingsToRuntime();
     }
     publishPreviewPlayhead();
-    if (elapsedSeconds >= miacode::intro::kPvPreviewHoldSeconds + miacode::intro::kPvPreviewAudioTailSeconds) {
+    if (elapsedSeconds >= musicSeconds) {
         if (finishExportIntroAuditionIfDue(elapsedSeconds)) {
             return;
         }
@@ -447,8 +456,9 @@ void miacode::runtime::PlaybackCoordinator::setExportIntroAuditionPlaying(bool p
 
 bool miacode::runtime::PlaybackCoordinator::finishExportIntroAuditionIfDue(double elapsedSeconds)
 {
-    if (!state_.exportIntroAuditionActive_
-        || elapsedSeconds < miacode::intro::kPvPreviewHoldSeconds + miacode::intro::kPvPreviewAudioTailSeconds) {
+    IntroBannerSpec spec;
+    if (!state_.exportIntroAuditionActive_ || !currentExportIntroLeadInSpec(&spec)
+        || elapsedSeconds < introPreviewMusicSeconds(spec)) {
         return false;
     }
     const bool loop = ui_.qmlExportSession_ != nullptr && ui_.qmlExportSession_->introAuditionLoop();

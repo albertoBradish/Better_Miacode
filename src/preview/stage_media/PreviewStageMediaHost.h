@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "common/LogEmissionPolicy.h"
 #include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/video/PreviewRenderSettings.h"
@@ -61,6 +63,7 @@ public:
     bool hasVideoMedia() const;
     bool chartHasVideoBackground() const;
     void setBackgroundPolicy(BackgroundPolicy policy);
+    void setExportIncludePv(std::optional<bool> include);
     bool hidePv() const;
     void setHidePv(bool hide);
     void setMissingMediaFallbackEnabled(bool enabled);
@@ -257,6 +260,7 @@ private:
     bool mediaVisible_ = true;
     BackgroundPolicy backgroundPolicy_ = BackgroundPolicy::Normal;
     bool hidePv_ = false;
+    std::optional<bool> exportIncludePv_;
     bool missingMediaFallbackEnabled_ = false;
     PreviewBackgroundScaleMode backgroundScaleMode_ = PreviewBackgroundScaleMode::FillCrop;
     double layoutSquareScale_ = miacode::preview_video::kLayoutSquareScaleDefault;

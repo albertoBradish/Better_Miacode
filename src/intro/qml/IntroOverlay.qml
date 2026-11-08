@@ -63,6 +63,9 @@ Item {
 
     // ---- PV-preview style (IntroBannerSpec.pvPreview) ----
     property bool pvPreviewMode: false
+    property bool chartPreviewMode: false
+    property bool backgroundSuppressed: false
+    readonly property bool stagePreviewHold: pvPreviewMode && frame < hideAbs
     // Card + PV window [0, hold); also the cycle-2 start frame.
     property int pvPreviewHoldFrames: 510
     // true -> the caller composites the PV segment under this overlay, so the
@@ -174,14 +177,14 @@ Item {
     // downstream in the ffmpeg base, so the playfield/HUD here are unaffected.
     // The PV-preview hold keeps it off so the underlaid PV segment shows through.
     function baseOpacity() {
-        if (pvPreviewMode && pvPreviewVideoUnderlay && frame < hideAbs) return 0.0
+        if (stagePreviewHold && (pvPreviewVideoUnderlay || chartPreviewMode)) return 0.0
         return frame < revealStart ? 1.0 : 0.0
     }
 
     // PV preview opening: the PV (or its still fallback) fades in from black;
     // the card pops in on top of it.
     function pvFadeCoverOpacity() {
-        if (!pvPreviewMode || stillFrame) return 0.0
+        if (!pvPreviewMode || chartPreviewMode || stillFrame) return 0.0
         return 1.0 - easeOutCubic(frame / pvFadeInFrames)
     }
 
@@ -226,7 +229,7 @@ Item {
     Image {
         id: bgFill
         anchors.fill: parent
-        source: root.pvPreviewMode ? "" : root.effectiveBackdrop
+        source: root.pvPreviewMode || root.backgroundSuppressed ? "" : root.effectiveBackdrop
         fillMode: Image.PreserveAspectCrop
         visible: false
         asynchronous: false
@@ -263,7 +266,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: root.backdropColor
-        opacity: root.cardOpacity() * 0.45
+        opacity: root.backgroundSuppressed ? 0 : root.cardOpacity() * 0.45
         visible: opacity > 0
     }
 
@@ -271,7 +274,8 @@ Item {
     // stands in for the PV through the hold.
     Image {
         anchors.fill: parent
-        source: (root.pvPreviewMode && !root.pvPreviewVideoUnderlay) ? root.effectiveBackdrop : ""
+        source: root.pvPreviewMode && !root.pvPreviewVideoUnderlay && !root.chartPreviewMode
+            && !root.backgroundSuppressed ? root.effectiveBackdrop : ""
         fillMode: Image.PreserveAspectCrop
         visible: root.pvPreviewMode && !root.pvPreviewVideoUnderlay
                  && root.frame < root.hideAbs && status === Image.Ready
@@ -286,7 +290,7 @@ Item {
         anchors.fill: parent
         color: "#000000"
         opacity: 1.0 - root.clamp(root.pvPreviewBrightness, 0.0, 1.0)
-        visible: root.pvPreviewMode && root.frame < root.hideAbs && opacity > 0
+        visible: root.stagePreviewHold && !root.chartPreviewMode && opacity > 0
     }
 
     // PV-preview fade-in: black over the PV underneath (below the card, so the
@@ -316,9 +320,10 @@ Item {
 
     MaimaiBannerCard {
         id: cardImg
-        anchors.centerIn: parent
-        height: parent.height
-        width: parent.height
+        x: root.chartPreviewMode ? parent.width * 0.25 - width * 0.5 : (parent.width - width) * 0.5
+        y: (parent.height - height) * 0.5
+        height: root.chartPreviewMode ? Math.min(parent.height, parent.width * 0.5) : parent.height
+        width: height
         frame: root.frame
         fps: root.fps
         externalTemplate: root.bannerTemplateData
@@ -330,8 +335,8 @@ Item {
         // clears, so it's in view) — the master opacity here only gates presence +
         // the cycle-2 hard-cut, NOT the fade-in (else the two would multiply). The
         // blurred backdrop/dim use cardOpacity() (earlier, under the wipe).
-        revealStartFrame: root.pvPreviewMode && root.stillFrame ? -1 : root.cardRevealStart
-        opacity: ((root.frame >= root.cardRevealStart || (root.pvPreviewMode && root.stillFrame))
+        revealStartFrame: root.chartPreviewMode || (root.pvPreviewMode && root.stillFrame) ? -1 : root.cardRevealStart
+        opacity: ((root.chartPreviewMode || root.frame >= root.cardRevealStart || (root.pvPreviewMode && root.stillFrame))
                   && root.frame < root.hideAbs)
                  ? (root.cardDimmed ? 0.3 : 1.0) : 0.0
         visible: opacity > 0

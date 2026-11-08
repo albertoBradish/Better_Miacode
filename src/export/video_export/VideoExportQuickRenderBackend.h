@@ -146,8 +146,8 @@ private:
     QString stageMediaPath_;
     VideoExportStageMediaSource stageMedia_;
     bool backgroundFade_ = false;
-    bool introPvPreview_ = false;
-    double introPvStartSecond_ = 0.0;
+    IntroBannerSpec intro_;
+    bool introSegmentVisible() const;
     int introAuthoringFrame_ = 0;
     double introOutputSecond_ = 0.0;
     bool introActive_ = false;

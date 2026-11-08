@@ -50,6 +50,8 @@ struct VideoExportSnapshot {
     int audioBitrateKbps = 192;
     VideoExportPreset preset = VideoExportPreset::HighQuality;
     VideoExportSizePreset sizePreset = VideoExportSizePreset::Standard;
+    double targetVideoBitrateMbps = miacode::video_export::kCustomVideoBitrateDefaultMbps;
+    bool includePv = true;
     bool fullRangeExport = true;
     QString outputPath;
     VideoExportOutputMode outputMode = VideoExportOutputMode::Mp4;

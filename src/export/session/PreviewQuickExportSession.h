@@ -143,6 +143,7 @@ private:
     void clearOffscreenPboCapabilityCache();
     void applyFrameSize();
     void applyIntroGeometry();
+    void applyChartGeometry();
     void destroyIntroOverlay();
     void applyFrameState();
     void bindFrameStateIfNeeded();
@@ -168,6 +169,7 @@ private:
     QQmlEngine* qmlEngine_ = nullptr;
     QQuickItem* introItem_ = nullptr;
     bool introActive_ = false;
+    bool introChartPreviewSplit_ = false;
     QOffscreenSurface* offscreenSurface_ = nullptr;
     QOpenGLContext* context_ = nullptr;
     QOpenGLFramebufferObject* framebuffer_ = nullptr;

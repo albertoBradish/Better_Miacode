@@ -211,6 +211,11 @@ public:
         // PV-preview intro style (IntroBannerSpec::pvPreview) and its segment.
         bool introCardShadow = false;
         bool introPvPreview = false;
+        bool introChartPreview = false;
+        bool debugRendering = false;
+        bool includePv = true;
+        VideoExportSizePreset sizePreset = VideoExportSizePreset::Standard;
+        double targetVideoBitrateMbps = miacode::video_export::kCustomVideoBitrateDefaultMbps;
         double introPvStartSeconds = 0.0;
         double previewMaxOutputSeconds = 0.0;  // 0 = full; >0 caps output (intro preview)
         miacode::preview_gameplay::CenterDisplayMode centerDisplayMode =

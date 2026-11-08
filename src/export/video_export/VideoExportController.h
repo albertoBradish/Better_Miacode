@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/chart/IntroConfig.h"
+#include "core/chart/ChartPreviewRegion.h"
 #include "core/scene/PreviewHudState.h"
 
 #include <functional>
@@ -72,10 +73,37 @@ struct IntroBannerSpec {
     // the cycle-2 wipe hands off. A chart without a video PV shows the crisp 曲绘.
     // The style and segment start are selected for each export.
     bool pvPreview = false;
+    bool chartPreview = false;
     double pvPreviewStartSeconds = 0.0;
+    // Zero means the legacy fixed-length window.
+    double pvPreviewEndSeconds = 0.0;
+    miacode::chart_preview::IntroWindowMode previewWindowMode = miacode::chart_preview::IntroWindowMode::Automatic;
+    miacode::chart_preview::IntroWindowSource previewWindowSource = miacode::chart_preview::IntroWindowSource::Default;
     // Background-only gain, independent of the chart's normal PV brightness.
     double pvPreviewBrightness = 1.0;
 };
+
+inline double introPreviewMediaSecond(const IntroBannerSpec& intro, double elapsedSeconds)
+{
+    const double second = qMax(0.0, intro.pvPreviewStartSeconds) + qMax(0.0, elapsedSeconds);
+    return intro.pvPreviewEndSeconds > intro.pvPreviewStartSeconds
+        ? qMin(second, intro.pvPreviewEndSeconds) : second;
+}
+
+inline double introPreviewMusicSeconds(const IntroBannerSpec& intro)
+{
+    using namespace miacode::intro;
+    const double windowSeconds = intro.pvPreviewEndSeconds - intro.pvPreviewStartSeconds;
+    return windowSeconds > 0.0 && windowSeconds < kPvPreviewHoldSeconds - 1e-6
+        ? windowSeconds : kPvPreviewHoldSeconds + kPvPreviewAudioTailSeconds;
+}
+
+inline void freezeIntroPreviewWindow(IntroBannerSpec& intro, const miacode::chart_preview::IntroWindow& window)
+{
+    intro.pvPreviewStartSeconds = window.range.startSeconds;
+    intro.pvPreviewEndSeconds = window.range.endSeconds;
+    intro.previewWindowSource = window.source;
+}
 
 inline int introDurationFrames(const IntroBannerSpec& intro)
 {
@@ -180,7 +208,11 @@ inline void copyIntroStyling(const IntroBannerSpec& from, IntroBannerSpec* to)
     to->fontDisplayPath = from.fontDisplayPath;
     to->fontBodyPath = from.fontBodyPath;
     to->pvPreview = from.pvPreview;
+    to->chartPreview = from.chartPreview;
     to->pvPreviewStartSeconds = from.pvPreviewStartSeconds;
+    to->pvPreviewEndSeconds = from.pvPreviewEndSeconds;
+    to->previewWindowMode = from.previewWindowMode;
+    to->previewWindowSource = from.previewWindowSource;
     to->pvPreviewBrightness = from.pvPreviewBrightness;
 }
 
@@ -188,10 +220,11 @@ inline void copyIntroStyling(const IntroBannerSpec& from, IntroBannerSpec* to)
 // the 曲绘 backdrop), blur toggle, card drop shadow, PV-preview timeline.
 // `pvVideoUnderlay` says whether the caller composites the PV segment under the
 // overlay; without it the PV preview falls back to the crisp backdrop image.
-inline QVariantMap introBannerStyleMap(const IntroBannerSpec& intro, bool pvVideoUnderlay = false)
+inline QVariantMap introBannerStyleMap(const IntroBannerSpec& intro, bool pvVideoUnderlay = false,
+                                       BackgroundPolicy policy = BackgroundPolicy::Normal)
 {
     QUrl backdrop;
-    if (intro.backgroundMode == QStringLiteral("custom")
+    if (usesBackgroundMedia(policy) && intro.backgroundMode == QStringLiteral("custom")
         && !intro.customBackgroundPath.trimmed().isEmpty()
         && QFileInfo::exists(intro.customBackgroundPath)) {
         backdrop = QUrl::fromLocalFile(intro.customBackgroundPath);
@@ -201,6 +234,8 @@ inline QVariantMap introBannerStyleMap(const IntroBannerSpec& intro, bool pvVide
     style.insert(QStringLiteral("backdropBlurEnabled"), intro.blurBackground);
     style.insert(QStringLiteral("cardShadowEnabled"), intro.cardShadow);
     style.insert(QStringLiteral("pvPreviewMode"), intro.pvPreview);
+    style.insert(QStringLiteral("chartPreviewMode"), intro.pvPreview && intro.chartPreview);
+    style.insert(QStringLiteral("backgroundSuppressed"), !usesBackgroundMedia(policy));
     style.insert(QStringLiteral("pvPreviewHoldFrames"), miacode::intro::kPvPreviewHoldFrames);
     style.insert(QStringLiteral("pvPreviewVideoUnderlay"), intro.pvPreview && pvVideoUnderlay);
     style.insert(QStringLiteral("pvPreviewBrightness"), intro.pvPreviewBrightness);
@@ -258,6 +293,8 @@ struct VideoExportTask {
     // Encoding quality settings apply to the selected hardware or software codec.
     VideoExportPreset preset = VideoExportPreset::HighQuality;
     VideoExportSizePreset sizePreset = VideoExportSizePreset::Standard;
+    double targetVideoBitrateMbps = miacode::video_export::kCustomVideoBitrateDefaultMbps;
+    bool includePv = true;
     bool fullRangeExport = true;
     bool showTimestamp = true;
     bool showMeasureLines = false;

@@ -114,6 +114,14 @@ void PreviewStageMediaHost::setBackgroundPolicy(BackgroundPolicy policy)
     reloadCurrentMediaPreservingPlayback();
 }
 
+void PreviewStageMediaHost::setExportIncludePv(std::optional<bool> include)
+{
+    const bool previouslyIncluded = exportIncludePv_.value_or(!hidePv_);
+    exportIncludePv_ = include;
+    if (previouslyIncluded != exportIncludePv_.value_or(!hidePv_))
+        reloadCurrentMediaPreservingPlayback();
+}
+
 bool PreviewStageMediaHost::hidePv() const
 {
     return hidePv_;
@@ -464,7 +472,7 @@ QString PreviewStageMediaHost::resolveStageMediaPath(
             ? miacode::chart_assets::resolveDisplayBackgroundImagePath(chartPath)
             : QString();
     }
-    if (!hidePv_ && miacode::chart_assets::isVideoBackgroundPath(resolved)) {
+    if (exportIncludePv_.value_or(!hidePv_) && miacode::chart_assets::isVideoBackgroundPath(resolved)) {
         return resolved;
     }
     const QString imagePath = miacode::chart_assets::resolveUsableBackgroundImagePath(chartPath);
