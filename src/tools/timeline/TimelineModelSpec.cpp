@@ -829,8 +829,9 @@ int main(int argc, char** argv)
                    && !splitView.contains(QStringLiteral("maximumHeight: root.bottomPanelEffectivelyVisible ? 340 : 0")),
                QStringLiteral("divider release persists and restores independent horizontal height and vertical width ratios"));
         expect(panel.contains(QStringLiteral(
-                   "headerRightLimit: root.verticalTimeline ? 0 : Math.max(0, brightnessButton.x - 2)"))
-                   && panel.contains(QStringLiteral("headerMarkerRightLimit: headerRightLimit"))
+                   "timelineRulerRightLimit: verticalTimeline ? 0 : Math.max(0, brightnessButton.x - 2)"))
+                   && panel.contains(QStringLiteral("headerRightLimit: root.timelineRulerRightLimit"))
+                   && panel.contains(QStringLiteral("headerMarkerRightLimit: root.timelineRulerRightLimit"))
                    && panel.contains(QStringLiteral("timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)"))
                    && panel.contains(QStringLiteral("tabs.y + (tabs.height - height) / 2"))
                    && panel.contains(QStringLiteral(

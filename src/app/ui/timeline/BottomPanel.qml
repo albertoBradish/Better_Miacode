@@ -15,6 +15,7 @@ Item {
     required property var previewSession
     property bool guideSettingsActive: false
     property bool verticalTimeline: false
+    readonly property real timelineRulerRightLimit: verticalTimeline ? 0 : Math.max(0, brightnessButton.x - 2)
     readonly property var structure: root.previewSession?.structure ?? null
     readonly property string dropLabel: qsTrId("timeline.drop_region")
 
@@ -194,8 +195,8 @@ Item {
         enabled: visible
         stateBridge: root.timelineSession.stateBridge
         lowPerformanceMode: root.preferences.lowPerformanceMode ?? false
-        headerRightLimit: root.verticalTimeline ? 0 : Math.max(0, brightnessButton.x - 2)
-        headerMarkerRightLimit: headerRightLimit
+        headerRightLimit: root.timelineRulerRightLimit
+        headerMarkerRightLimit: root.timelineRulerRightLimit
         onHeaderNavigateRequested: second => root.timelineSession.headerNavigate(second)
         onTimelineWheelNavigateRequested: second => root.timelineSession.wheelNavigate(second)
         onCenterNavigateRequested: second => root.timelineSession.centerNavigate(second)
