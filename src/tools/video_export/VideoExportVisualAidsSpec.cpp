@@ -31,6 +31,7 @@ int main(int argc, char** argv)
     source.contentDurationSeconds = 2.0;
     source.exportStartSeconds = 1.5;
     source.fullRangeExport = false;
+    source.muriRenderOptions.renderMode = RenderMode::Debug;
     source.showMeasureLines = true;
     source.showJudgementSkeleton = true;
     source.showSlideJudgementTiming = true;
@@ -50,6 +51,8 @@ int main(int argc, char** argv)
     ok &= require(task.measureLineSeconds.size() == 3 && near(task.measureLineSeconds[0], 1.25)
         && near(task.measureLineSeconds[1], 2.375) && near(task.measureLineSeconds[2], 3.125),
         "partial export retains chart-zero beat phase, offset and BPM integration");
+    ok &= require(task.muriRenderOptions.renderMode == RenderMode::Debug,
+        "the worker retains black-background rendering");
     ok &= require(task.clockCount == 3 && !task.clockCountEnabled,
         "visual measure length leaves the existing count-in value and audio gate intact");
     VideoExportTask other;

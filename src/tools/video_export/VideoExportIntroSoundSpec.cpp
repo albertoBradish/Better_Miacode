@@ -100,7 +100,10 @@ bool verifySnapshotAndWorkerRoundTrip(QTextStream& err)
     source.introSoundFileName = QStringLiteral("../custom-start.flac");
     source.audioSettings.introVolume = 0.6;
     source.intro.pvPreview = true;
+    source.intro.chartPreview = true;
     source.intro.pvPreviewStartSeconds = 42.5;
+    source.intro.pvPreviewEndSeconds = 46.0;
+    source.intro.previewWindowSource = miacode::chart_preview::IntroWindowSource::Drop;
 
     QJsonObject json = source.toJson();
     QJsonObject pvIntro = json.value(QStringLiteral("intro")).toObject();
@@ -139,8 +142,12 @@ bool verifySnapshotAndWorkerRoundTrip(QTextStream& err)
         QStringLiteral("worker task receives the selected intro sound and the intro volume"),
         err);
     ok &= require(
-        workerTask.intro.pvPreview && nearlyEqual(workerTask.intro.pvPreviewStartSeconds, 42.5),
-        QStringLiteral("worker task receives the PV preview intro segment"),
+        workerTask.intro.pvPreview && workerTask.intro.chartPreview
+            && nearlyEqual(workerTask.intro.pvPreviewStartSeconds, 42.5)
+            && nearlyEqual(introPreviewMediaSecond(workerTask.intro, 9.0), 46.0)
+            && nearlyEqual(introPreviewMusicSeconds(workerTask.intro), 3.5)
+            && workerTask.intro.previewWindowSource == miacode::chart_preview::IntroWindowSource::Drop,
+        QStringLiteral("worker task receives the resolved chart intro and clips the selected window"),
         err);
     ok &= require(
         nearlyEqual(introBannerStyleMap(workerTask.intro)

@@ -4,6 +4,9 @@
 #include <optional>
 
 #include "export/video_export/VideoExportRuntimePolicy.h"
+#include "export/video_export/VideoExportSettings.h"
+#include "export/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportAudioRenderPlan.h"
 
 namespace {
 
@@ -31,10 +34,8 @@ bool verifyPolicy(QTextStream& err)
         && videoExportTargetBytes(VideoExportSizePreset::Target100Mb) == 100000000
         && videoExportTargetBytes(VideoExportSizePreset::Target200Mb) == 200000000
         && videoExportTargetBitrateKbps(VideoExportSizePreset::Target30Mb, 180, 128) == 1156
-        && videoExportTargetBitrateKbps(VideoExportSizePreset::Target30Mb, 0, 128) == 0
-        && videoExportSizePolicy(VideoExportSizePreset::Target30Mb).disableVideoBackground
-        && !videoExportSizePolicy(VideoExportSizePreset::Target100Mb).disableVideoBackground,
-        QStringLiteral("target sizes reserve audio/container bytes and constrain PV only at 30 MB"), err)) return false;
+        && videoExportTargetBitrateKbps(VideoExportSizePreset::Target30Mb, 0, 128) == 0,
+        QStringLiteral("target sizes reserve audio and container bytes"), err)) return false;
     const auto standard = videoExportSizePolicy(VideoExportSizePreset::Standard);
     const auto compact = videoExportSizePolicy(VideoExportSizePreset::Compact);
     const auto ultraWithPv = videoExportSizePolicy(VideoExportSizePreset::UltraCompactWithPv);
@@ -44,7 +45,6 @@ bool verifyPolicy(QTextStream& err)
                      && compact.minBitrateKbps <= compact.maxBitrateKbps
                      && ultra.minBitrateKbps <= ultra.maxBitrateKbps
                      && ultraWithPv.minBitrateKbps <= ultraWithPv.maxBitrateKbps
-                     && ultra.disableVideoBackground && !ultraWithPv.disableVideoBackground
                      && videoExportSizePresetToken(VideoExportSizePreset::UltraCompactWithPv)
                          != videoExportSizePresetToken(VideoExportSizePreset::UltraCompact),
                  QStringLiteral("size presets expose valid budgets and distinct PV behavior"), err)) {
@@ -59,6 +59,52 @@ bool verifyPolicy(QTextStream& err)
                              == qMin(320, policy.maxAudioBitrateKbps),
                      QStringLiteral("encoder settings apply the selected size policy"), err)) return false;
     }
+
+    for (const auto preset : {VideoExportSizePreset::Standard, VideoExportSizePreset::Target30Mb,
+                              VideoExportSizePreset::Target100Mb, VideoExportSizePreset::Target200Mb,
+                              VideoExportSizePreset::Custom}) {
+        for (bool includePv : {true, false}) {
+            VideoExportTask task;
+            task.sizePreset = preset;
+            task.targetVideoBitrateMbps = 7.125;
+            task.includePv = includePv;
+            task.intro.pvPreview = true;
+            task.intro.chartPreview = true;
+            VideoExportTask restored;
+            if (!require(applyVideoExportTemplateSettings(videoExportTemplateSettings(task), &restored)
+                    && restored.sizePreset == preset && restored.includePv == includePv
+                    && restored.targetVideoBitrateMbps == 7.125 && restored.intro.chartPreview,
+                QStringLiteral("the template preserves the PV toggle at every current preset"), err)) return false;
+            VideoExportSnapshot snapshot;
+            snapshot.chartTextUtf8 = QStringLiteral("&title=Codec spec\n&lv_5=13\n&inote_5=(120){4}1,\nE\n");
+            snapshot.difficultyId = 5;
+            snapshot.originalChartPath = QStringLiteral("C:/fixture/maidata.txt");
+            snapshot.outputPath = QStringLiteral("C:/fixture/video.mp4");
+            snapshot.contentDurationSeconds = 1.0;
+            snapshot.sizePreset = preset;
+            snapshot.includePv = includePv;
+            snapshot.targetVideoBitrateMbps = 7.125;
+            VideoExportSnapshot wire;
+            QString error;
+            if (!require(VideoExportSnapshot::fromJson(snapshot.toJson(), &wire, &error)
+                    && buildVideoExportTaskFromSnapshot(wire, &restored, &error)
+                    && restored.sizePreset == preset && restored.includePv == includePv
+                    && restored.targetVideoBitrateMbps == 7.125,
+                QStringLiteral("the worker receives size mode, target bitrate and independent PV: %1").arg(error), err))
+                return false;
+        }
+    }
+    VideoExportTask migrated;
+    QJsonObject legacy{{QStringLiteral("size_preset"), QStringLiteral("ultra_compact")}};
+    applyVideoExportPreferences(legacy, &migrated);
+    if (!require(migrated.sizePreset == VideoExportSizePreset::Custom && !migrated.includePv
+            && migrated.targetVideoBitrateMbps == 4.0 && migrated.audioBitrateKbps == 128,
+        QStringLiteral("the legacy compact preset retains its bitrate and PV setting"), err)) return false;
+    legacy.insert(QStringLiteral("size_preset"), QStringLiteral("target_30mb"));
+    legacy.insert(QStringLiteral("include_pv"), true);
+    applyVideoExportPreferences(legacy, &migrated);
+    if (!require(migrated.sizePreset == VideoExportSizePreset::Target30Mb && migrated.includePv,
+        QStringLiteral("an explicit PV selection takes precedence over the legacy 30 MB default"), err)) return false;
 
     if (!require(
             shouldRequestOffscreenPboReadback(std::nullopt, std::nullopt),

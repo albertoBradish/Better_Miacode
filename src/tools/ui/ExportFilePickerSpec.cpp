@@ -9,6 +9,7 @@
 #include "app/services/UiRequestService.h"
 #include "app/services/VideoExportPreferences.h"
 #include "common/RuntimePaths.h"
+#include "core/chart/document/SimaiDocument.h"
 #include "export/video_export/VideoExportSettings.h"
 #include <QFile>
 #include <QJsonDocument>
@@ -265,7 +266,8 @@ ApplicationWindow {
     const QString pvRoot = chosen("pv-root");
     const auto folder = [&] { return historyRequest.value("startFolder").toUrl().toLocalFile(); };
     Engine seed;
-    seed.task.chartPath = parent.filePath("Song #1/maidata.txt");
+    const QString seedDirectory = chosen("Song #1");
+    seed.task.chartPath = QDir(seedDirectory).filePath(QStringLiteral("maidata.txt"));
     seed.task.outputPath = QStringLiteral("test_MAS.mp4");
     miacode::ExportEngine* seedSlot = &seed;
     {
@@ -275,12 +277,12 @@ ApplicationWindow {
         session.browseOutputPath();
         expect(folder() == QFileInfo(seed.task.chartPath).absolutePath(), "relative video output starts beside the chart");
         historyRequests.cancelFileRequest(historyId);
-        expect(session.batchOutputDirectory().isEmpty(), "batch output stays empty without an explicit choice");
+        expect(session.batchOutputDirectory() == seedDirectory, "batch output defaults to the chart working directory");
         session.browseBatchOutputDirectory();
-        expect(folder() == QDir::homePath() && session.batchOutputDirectory().isEmpty(),
-               "opening the output picker does not default the output to the chart or working directory");
+        expect(folder() == seedDirectory && session.batchOutputDirectory() == seedDirectory,
+               "the batch output picker opens in the chart working directory");
         historyRequests.cancelFileRequest(historyId);
-        expect(session.batchOutputDirectory().isEmpty(), "cancelling leaves the output unset");
+        expect(session.batchOutputDirectory() == seedDirectory, "cancelling preserves the current output directory");
         session.browseBatchOutputDirectory();
         historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(fontSource));
         expect(session.batchOutputDirectory() == fontSource, "an explicit output directory is retained");
@@ -367,10 +369,23 @@ ApplicationWindow {
         miacode::ui::ExportSession session(notifications, historyRequests, progress, appearance, seedSlot, preview);
         session.enter(5);
         wait();
-        expect(session.batchOutputDirectory() == legacyRoot, "v1 batch output history survives the upgrade");
+        expect(session.batchOutputDirectory() == seedDirectory, "current chart directory overrides old output history");
         session.setBatchOutputDirectory(fontSource);
-        expect(miacode::app_preferences::loadDialogPreferences().value("last_batch_output_directory").toString() == fontSource,
-               "a new batch output choice is recorded in the dialog preferences");
+        expect(session.batchOutputDirectory() == fontSource, "the current session keeps an explicit directory choice");
+        session.leave();
+        seed.task.chartPath = QDir(legacyRoot).filePath(QStringLiteral("maidata.txt"));
+        session.enter(5);
+        wait();
+        expect(session.batchOutputDirectory() == legacyRoot, "switching charts reinitializes to the new working directory");
+        session.leave();
+        seed.task.chartPath.clear();
+        session.enter(5);
+        wait();
+        expect(session.batchOutputDirectory().isEmpty(), "unsaved charts must choose an output directory");
+        session.leave();
+        seed.task.chartPath = QDir(seedDirectory).filePath(QStringLiteral("maidata.txt"));
+        session.enter(5);
+        wait();
         expect(legacy.value(QStringLiteral("batch_video_export_dialog/last_output_directory")) == legacyRoot,
                "v1's native settings store is only read, never written");
         session.setBatchOutputDirectory({});
@@ -390,11 +405,19 @@ ApplicationWindow {
         session.setCoverPresetChecked(QStringLiteral("builtin:dual_chart_frames"), true, true);
         const int widescreen = 5;
         session.setResolutionIndex(widescreen);
-        session.setSizePresetIndex(4);
-        expect(session.outputWidth() == 854 && session.outputHeight() == 480 && !session.introPvPreview(), "30 MB enforces 480p with the selected aspect and no PV intro");
+        session.setIntroStyleIndex(2);
+        session.setIncludePv(true);
+        session.setSizePresetIndex(1);
+        expect(session.outputWidth() == 854 && session.outputHeight() == 480
+            && session.introStyleIndex() == 2 && session.includePv(),
+            "30 MB suggests 480p while keeping the chosen PV and chart preview");
         session.setResolutionIndex(8);
-        expect(session.outputHeight() == 480, "30 MB retains 480p when another height is selected");
-        session.setSizePresetIndex(5);
+        expect(session.outputHeight() == 1440, "30 MB lets the user override the suggested size");
+        session.setSizePresetIndex(4);
+        session.setTargetVideoBitrateMbps(6.25);
+        session.setIncludePv(false);
+        expect(session.customBitrate() && session.estimatedCustomSizeMb() > 48.0,
+            "custom size estimation includes the bitrate, audio and intro duration");
         session.setResolutionIndex(20);
         session.setShowCpsHud(true);
         session.saveVideoTemplate(QStringLiteral("Review 4K"));
@@ -415,14 +438,23 @@ ApplicationWindow {
             "applying a template preserves output and range while restoring multiple covers");
         session.renameVideoTemplate(QStringLiteral("Review 4K"), QStringLiteral("Archive 4K"));
         expect(session.videoTemplates().last().toMap().value("name").toString() == QLatin1String("Archive 4K"), "template rename persists");
-        const QString templatePath = parent.filePath(QStringLiteral("portable.miacode.json"));
-        session.exportVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(templatePath));
+        const QString templatePath = parent.filePath(QStringLiteral("portable.miatemplate"));
+        session.exportVideoTemplate();
+        historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(parent.filePath(QStringLiteral("portable"))));
         QFile portable(templatePath); expect(portable.open(QIODevice::ReadOnly), "template file is written");
         const auto wrapper = QJsonDocument::fromJson(portable.readAll()).object(); portable.close();
         expect(wrapper.value("version").toInt() == 1 && wrapper.value("kind").toString() == QLatin1String("better-miacode-video-template"), "template file has an explicit format and version");
         session.setResolutionIndex(0);
         session.importVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(templatePath));
-        expect(session.outputWidth() == 3840 && session.videoTemplates().size() >= 2, "portable template imports, applies and joins the saved list");
+        expect(session.outputWidth() == 3840 && session.videoTemplates().size() >= 2
+            && session.customBitrate() && session.targetVideoBitrateMbps() == 6.25 && !session.includePv()
+            && session.introStyleIndex() == 2,
+            "the portable template restores the custom bitrate, independent PV and intro style");
+        const QString legacyTemplatePath = parent.filePath(QStringLiteral("portable-legacy.json"));
+        expect(QFile::copy(templatePath, legacyTemplatePath), "legacy suffix fixture is created");
+        session.setResolutionIndex(0);
+        session.importVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(legacyTemplatePath));
+        expect(session.outputWidth() == 3840, "legacy JSON suffix remains importable");
         auto invalid = saved; invalid.insert("outlineVariant", 99);
         auto task = seed.task;
         expect(!miacode::video_export::applyVideoExportTemplateSettings(invalid, &task), "invalid enum values cannot enter a template task");
@@ -430,6 +462,38 @@ ApplicationWindow {
         expect(!miacode::app_preferences::loadDialogPreferences().value("templates").toObject().contains("Archive 4K"), "template deletion persists");
         for (const auto& row : session.singleCoverPresetOptions())
             expect(row.toMap().value("label").toString() != QLatin1String("dialog.batch_export.cover_none"), "cover-off label is translated");
+    }
+    {
+        seed.task.contentDurationSeconds = 120.0;
+        auto document = SimaiDocument::fromText(QStringLiteral(
+            "&title=Preview ranges\n&demo_seek=4\n&demo_len=6\n&inote_5=(120){4}1,\nE\n"));
+        using namespace miacode::chart_preview;
+        std::optional<DropSelection> drop = DropSelection{{30.0, 33.5}, DropSource::Manual, {}};
+        miacode::ui::ExportSession session(notifications, historyRequests, progress, appearance, seedSlot, preview);
+        session.setChartPreviewContextProvider([&](int) {
+            return miacode::ui::ExportSession::ChartPreviewContext{
+                seed.task.chartPath, 1, &document, {}, drop, 120.0};
+        });
+        session.enter(5); wait();
+        session.setIntroStyleIndex(2);
+        expect(session.previewIntroSpec().previewWindowSource == IntroWindowSource::Demo
+            && session.introPvStartSeconds() == 4.0 && session.introPvSegmentSeconds() == 6.0,
+            "the existing chart demo supplies the automatic intro window");
+        session.setIntroWindowModeIndex(1);
+        expect(session.previewIntroSpec().previewWindowSource == IntroWindowSource::Drop
+            && session.introPvStartSeconds() == 30.0 && session.introPvSegmentSeconds() == 3.5,
+            "following drop bypasses the existing demo and keeps the short range");
+        session.setIntroPvStartSeconds(12.0);
+        expect(session.previewIntroSpec().previewWindowSource == IntroWindowSource::Explicit,
+            "a custom start overrides the chosen automatic mode");
+        session.clearIntroWindowOverride();
+        expect(session.introPvStartSeconds() == 30.0, "clearing the override follows drop again");
+        expect(session.exportStartSeconds() == 0.0 && session.dropAvailable(),
+            "showing a drop does not replace the selected export range");
+        session.adoptDropRange();
+        expect(session.exportStartSeconds() == 30.0 && session.exportEndSeconds() == 33.5,
+            "the drop shortcut adopts both endpoints even below the usual five-second minimum");
+        session.leave();
     }
     {
         auto preferences = miacode::app_preferences::loadDialogPreferences();
