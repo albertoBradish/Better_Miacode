@@ -161,8 +161,14 @@ void miacode::runtime::ValidationHost::setMuriRenderMode(RenderMode mode, bool p
         applyMuriRenderOptions();
         return;
     }
+    const bool backgroundChanged = backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode)
+        != backgroundPolicyForRenderMode(mode);
     state_.muriRenderOptions_.renderMode = mode;
     applyMuriRenderOptions();
+    if (backgroundChanged && state_.exportPreviewActive_) {
+        session_.refreshExportIntroState();
+        emit session_.applicationServices_.shellNotifications().previewRenderSettingsChanged();
+    }
     if (persistState) {
         session_.savePortableState();
     }

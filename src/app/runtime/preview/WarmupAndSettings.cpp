@@ -615,12 +615,14 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
         state_.previewTouchPadAuthoringShortcutEnabled_ = value.toBool();
         applyEffectivePreviewOutlineVariantToCanvas();
     } else if (key == QLatin1String("showJudgeMarkers")) {
-        onToggleJudgeMarkers(value.toBool());
+        state_.showJudgeMarkers_ = value.toBool();
+        applyMuriRenderOptions();
     } else if (key == QLatin1String("showTouchTrail")) {
-        onToggleTouchTrail(value.toBool());
+        state_.showTouchTrail_ = value.toBool();
+        applyMuriRenderOptions();
     } else if (key == QLatin1String("labeledJudgeArea")) {
         applyPreviewOutlineVariant(value.toBool()
-            ? PreviewOutlineVariant::JudgeAreaLabeled : PreviewOutlineVariant::JudgeArea, false, true);
+            ? PreviewOutlineVariant::JudgeAreaLabeled : PreviewOutlineVariant::JudgeArea, false, false);
     } else if (key == QLatin1String("showDebugInfo")) {
         state_.previewShowDebugInfo_ = value.toBool();
         if (canvas != nullptr) {
