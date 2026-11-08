@@ -158,30 +158,6 @@ double maxNavigableSecond(const TimelineSceneBuildRequest& request)
     if (request.playheadUpperLimitSeconds > 0.0) {
         maxSecond = qMax(maxSecond, request.playheadUpperLimitSeconds);
     }
-    if (request.dropRegion.valid() && state.timelineHeight > 0.0) {
-        const qreal start = secondToSceneXExact(state, request.dropRegion.start);
-        const qreal end = secondToSceneXExact(state, request.dropRegion.end);
-        const QColor marker = theme.base.lightnessF() < 0.5
-            ? QColor(255, 214, 112, 165) : QColor(140, 94, 0, 175);
-        state.dropRegionRects = {
-            {QRectF(start, state.timelineTop, end - start, state.timelineHeight), QColor(255, 212, 108, 58)},
-            {QRectF(start, state.timelineTop, 1, state.timelineHeight), marker},
-            {QRectF(end, state.timelineTop, 1, state.timelineHeight), marker},
-        };
-        const QString& text = request.dropRegion.label;
-        const QSizeF size = timelineTextLogicalSize(laneLabelFont, text);
-        const bool vertical = state.axisProjection().vertical();
-        const qreal timeSize = vertical ? size.height() : size.width();
-        const qreal crossSize = vertical ? size.width() : size.height();
-        if (!text.isEmpty() && end - start >= timeSize + 8 && state.timelineHeight >= crossSize + 6) {
-            const QPointF center((start + end) * 0.5, state.timelineTop + crossSize * 0.5 + 3);
-            state.dropRegionLabel = TimelineSceneTextLabel{
-                text, center - QPointF(size.width() * 0.5, size.height() * 0.5),
-                laneLabelFont, theme.label, size,
-            };
-        }
-    }
-
     if (request.waveformData && request.waveformData->durationSeconds > 0.0) {
         maxSecond = qMax(maxSecond, request.waveformData->durationSeconds);
     }
