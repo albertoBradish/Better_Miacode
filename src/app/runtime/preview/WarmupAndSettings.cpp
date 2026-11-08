@@ -504,7 +504,7 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("showJudgeMarkers"), state_.showJudgeMarkers_},
         {QStringLiteral("showTouchTrail"), state_.showTouchTrail_},
         {QStringLiteral("labeledJudgeArea"),
-            state_.previewOutlineVariant_ == PreviewOutlineVariant::JudgeAreaLabeled},
+            previewAppearanceValues_.outlineVariant == PreviewOutlineVariant::JudgeAreaLabeled},
         {QStringLiteral("forceLabeledJudgeLineWhenPaused"), state_.previewForceLabeledJudgeLineWhenPaused_},
         // 玩法
         {QStringLiteral("tapFlowSpeed"), snappedFlowSpeed(state_.previewTapFlowSpeed_)},
