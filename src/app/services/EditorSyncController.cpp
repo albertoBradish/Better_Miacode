@@ -122,18 +122,43 @@ EditorSelectionState EditorSyncController::editorSelection() const
     if (selection.ranges.isEmpty() && !contextNoteSelection_ && contextAnchor_ != contextPosition_)
         selection.ranges.append({qMin(contextAnchor_, contextPosition_), qMax(contextAnchor_, contextPosition_)});
     selection.noteSelection = contextNoteSelection_;
+    selection.objects = contextNoteObjects_;
     return selection;
 }
 
-void EditorSyncController::setNoteCatalogue(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges)
+void EditorSyncController::setNoteCatalogue(int difficultyId, quint64 revision,
+    const chart_selection::NoteRanges& ranges, const chart_selection::NoteObjects& objects)
 {
     catalogueDifficulty_ = difficultyId;
     catalogueRevision_ = revision;
     noteCatalogue_ = ranges;
+    noteObjectCatalogue_ = objects;
+    if (noteObjectCatalogue_.isEmpty()) {
+        for (const auto& range : ranges) noteObjectCatalogue_.append({range, range});
+    }
+}
+
+namespace {
+bool intersectsNoteRanges(const chart_selection::NoteRange& note, const chart_selection::NoteRanges& ranges)
+{
+    return std::any_of(ranges.cbegin(), ranges.cend(), [&](const auto& range) {
+        return range.start < note.end && note.start < range.end;
+    });
+}
 }
 
 bool EditorSyncController::requestNoteSelection(int difficultyId, quint64 revision,
     const chart_selection::NoteRanges& ranges, bool additive)
+{
+    chart_selection::NoteObjects selected;
+    for (const auto& object : noteObjectCatalogue_) {
+        if (intersectsNoteRanges(object.token, ranges)) selected.append(object);
+    }
+    return requestNoteObjects(difficultyId, revision, selected, additive);
+}
+
+bool EditorSyncController::requestNoteObjects(int difficultyId, quint64 revision,
+    const chart_selection::NoteObjects& objects, bool additive)
 {
     if (!readinessAccepts(difficultyId, revision) || catalogueDifficulty_ != difficultyId
         || catalogueRevision_ != revision) return false;
@@ -148,21 +173,22 @@ bool EditorSyncController::requestNoteSelection(int difficultyId, quint64 revisi
         deliveredNavigationSequence_ = 0;
     }
     const auto current = editorSelection();
-    const auto intersects = [](const auto& note, const auto& selected) {
-        return std::any_of(selected.cbegin(), selected.cend(), [&](const auto& range) {
-            return range.start < note.end && note.start < range.end;
-        });
-    };
-    // Shift gestures toggle complete note objects, including an existing text selection.
-    chart_selection::NoteRanges normalized;
-    for (const auto& note : noteCatalogue_) {
-        const bool hit = intersects(note, ranges);
-        const bool wasSelected = additive && current.valid && intersects(note, current.ranges);
-        if (hit != wasSelected) normalized.append(note);
+    chart_selection::NoteObjects next;
+    chart_selection::NoteRanges highlights;
+    for (const auto& object : noteObjectCatalogue_) {
+        const bool hit = objects.contains(object);
+        const bool wasSelected = additive && current.valid && (current.noteSelection
+            ? current.objects.contains(object)
+            : intersectsNoteRanges(object.token, current.ranges));
+        if (hit != wasSelected) {
+            next.append(object);
+            highlights.append(object.highlight);
+        }
     }
-    contextRanges_ = normalized; // Catalogue is already ordered and deduplicated.
+    contextRanges_ = highlights;
+    contextNoteObjects_ = next;
     contextNoteSelection_ = true;
-    emit noteSelectionRequested(difficultyId, revision, contextRanges_);
+    emit noteSelectionRequested(difficultyId, revision, next);
     scheduleEditorContextDelivery();
     return true;
 }
@@ -176,12 +202,14 @@ bool EditorSyncController::requestNoteSelectionAtPosition(int difficultyId, quin
 }
 
 void EditorSyncController::setEditorRanges(int difficultyId, quint64 revision,
-    const chart_selection::NoteRanges& ranges, bool noteSelection)
+    const chart_selection::NoteRanges& ranges, bool noteSelection, const chart_selection::NoteObjects& objects)
 {
     if (!readinessAccepts(difficultyId, revision)) return;
-    if (contextRanges_ == ranges && contextNoteSelection_ == noteSelection) return;
+    if (contextRanges_ == ranges && contextNoteSelection_ == noteSelection
+        && contextNoteObjects_ == objects) return;
     contextRanges_ = ranges;
     contextNoteSelection_ = noteSelection;
+    contextNoteObjects_ = objects;
     scheduleEditorContextDelivery();
 }
 
@@ -210,6 +238,7 @@ void EditorSyncController::setEditorReadiness(
     }
     if (changed) {
         contextRanges_.clear();
+        contextNoteObjects_.clear();
         contextNoteSelection_ = false;
         deliveredCaretValid_ = false;
     }
@@ -249,6 +278,7 @@ void EditorSyncController::setEditorContext(
     imeComposing_ = imeComposing;
     if (activityChanged || selectionChanged) {
         contextRanges_.clear();
+        contextNoteObjects_.clear();
         contextNoteSelection_ = false;
         scheduleEditorContextDelivery();
     }

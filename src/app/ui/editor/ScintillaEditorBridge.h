@@ -130,6 +130,7 @@ signals:
     void layoutChanged();
     void scenePositionChanged();
     void selectionChanged();
+    void noteComponentEditRejected();
     void cursorRectangleChanged();
     void currentLineRectangleChanged();
     void followVisualChanged();
@@ -180,8 +181,11 @@ private:
     void beginUserInteraction();
     void publishTouchUndoAnchor();
     miacode::chart_selection::NoteRanges selectionRanges() const;
-    void selectNoteRanges(int difficulty, quint64 revision, const miacode::chart_selection::NoteRanges& ranges);
+    void selectNoteObjects(int difficulty, quint64 revision, const miacode::chart_selection::NoteObjects& objects);
+    void clearNoteSelectionState();
+    bool containsPartialNoteSelection() const;
     bool deleteNoteSelection();
+    bool copyNoteSelection();
     miacode::chart_selection::NoteTimingState noteInitialTiming() const;
     ScintillaDocumentAdapter document_;
     ScintillaDslStyler styler_;
@@ -239,6 +243,7 @@ private:
     int reportedCaret_ = -1;
     miacode::chart_selection::NoteRanges reportedRanges_;
     bool noteSelection_ = false;
+    miacode::chart_selection::NoteObjects selectedNoteObjects_;
     qreal wheelRemainder_ = 0;
     int blockSpacing_ = 0;
     bool autoWrap_ = true;

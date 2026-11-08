@@ -19,6 +19,7 @@ struct EditorSelectionState {
     bool focused = false;
     bool valid = false;
     chart_selection::NoteRanges ranges;
+    chart_selection::NoteObjects objects;
     bool noteSelection = false;
 };
 
@@ -68,11 +69,14 @@ public:
     bool requestTouchPadAuthoring(const QString& pad, QChar separator);
     bool editorContextActive() const;
     EditorSelectionState editorSelection() const;
-    void setNoteCatalogue(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges);
+    void setNoteCatalogue(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges,
+        const chart_selection::NoteObjects& objects = {});
     const chart_selection::NoteRanges& noteCatalogue() const { return noteCatalogue_; }
     bool requestNoteSelection(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges, bool additive = false);
+    bool requestNoteObjects(int difficultyId, quint64 revision, const chart_selection::NoteObjects& objects, bool additive);
     bool requestNoteSelectionAtPosition(int difficultyId, quint64 revision, int position, bool additive);
-    void setEditorRanges(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges, bool noteSelection);
+    void setEditorRanges(int difficultyId, quint64 revision, const chart_selection::NoteRanges& ranges,
+        bool noteSelection, const chart_selection::NoteObjects& objects = {});
 
     Q_INVOKABLE void setEditorReadiness(int difficultyId, qulonglong revision,
                                         bool visible);
@@ -106,7 +110,7 @@ signals:
     void previewSeekPublished(int difficultyId, int line, int column);
     void selectionRangeExportRequested(int difficultyId, int selectionStart, int selectionEnd);
     void editorContextChanged();
-    void noteSelectionRequested(int difficultyId, qulonglong revision, const miacode::chart_selection::NoteRanges& ranges);
+    void noteSelectionRequested(int difficultyId, qulonglong revision, const miacode::chart_selection::NoteObjects& objects);
 
 private:
     struct NavigationState {
@@ -169,6 +173,8 @@ private:
     int contextPosition_ = 0;
     chart_selection::NoteRanges contextRanges_;
     chart_selection::NoteRanges noteCatalogue_;
+    chart_selection::NoteObjects noteObjectCatalogue_;
+    chart_selection::NoteObjects contextNoteObjects_;
     int catalogueDifficulty_ = -1;
     quint64 catalogueRevision_ = 0;
     bool contextNoteSelection_ = false;

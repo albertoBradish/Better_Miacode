@@ -41,8 +41,11 @@ void parseSlideToken(ParseState* state, const QString& token, int lineNumber, in
         const QChar startLane = token.at(0);
         const QStringList branches = noteCore.split(QChar('*'), Qt::KeepEmptyParts);
         bool flaggedInvalidBranch = false;
+        int trackColumn = column + 1 + modifierCount;
         for (int branchIndex = 0; branchIndex < branches.size(); ++branchIndex) {
             QString branch = branches.at(branchIndex);
+            const int branchColumn = trackColumn;
+            trackColumn += branch.size() + (branchIndex == 0 ? 0 : 1);
             if (branch.isEmpty()) {
                 if (state->strictMode && !flaggedInvalidBranch) {
                     appendTokenError(
@@ -75,7 +78,11 @@ void parseSlideToken(ParseState* state, const QString& token, int lineNumber, in
                 flaggedInvalidBranch = true;
             }
             const QString branchToken = prefix + branch.mid(1);
+            const qsizetype firstMarker = state->result.noteMarkers.size();
             parseSlideToken(state, branchToken, lineNumber, column, groupIndices);
+            for (qsizetype i = firstMarker; i < state->result.noteMarkers.size(); ++i) {
+                state->result.noteMarkers[i].slideTrackSourceCol = branchColumn;
+            }
         }
         return;
     }
@@ -178,6 +185,7 @@ void parseSlideToken(ParseState* state, const QString& token, int lineNumber, in
     marker.availableSecond = marker.second;
     marker.sourceLine = lineNumber;
     marker.sourceCol = qMax(1, column);
+    marker.slideTrackSourceCol = marker.sourceCol + 1 + modifierCount;
     marker.lane = lane;
     marker.type = sanitizedCore.contains('w', Qt::CaseInsensitive) ? "wifi" : "slide";
     marker.slideDisplayKey = normalizedSlideLookupKey(sanitizedCore);

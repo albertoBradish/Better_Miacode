@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/chart/transform/ChartNoteSelection.h"
+
 #include <algorithm>
 #include <limits>
 
@@ -48,6 +50,9 @@ struct TimelineRenderBeat {
 };
 
 struct TimelineRenderNote {
+    int slideTrackSourceCol = 0;
+    int slideHeadSourceLength = 0;
+    int slideTrackIndex = 0;
     double secondOffset = 0.0;
     double endSecondOffset = -1.0;
     double slideTraceSecondOffset = -1.0;
@@ -275,12 +280,15 @@ inline QVector<TimelineVisibleNoteRef> timelineRenderVisibleNotePaintOrder(
 
 inline quint64 timelineRenderLocationId(int lineNumber, int sourceCol)
 {
-    const quint32 linePart = static_cast<quint32>(lineNumber > 0 ? lineNumber : 0);
-    const quint32 colPart = static_cast<quint32>(sourceCol > 0 ? sourceCol : 0);
-    return (static_cast<quint64>(linePart) << 32) | static_cast<quint64>(colPart);
+    return miacode::chart_selection::sourceLocationId(lineNumber, sourceCol);
 }
 
 inline quint64 timelineRenderLocationId(const TimelineRenderLine& line, const TimelineRenderNote& note)
 {
     return timelineRenderLocationId(line.lineNumber, note.sourceCol);
+}
+
+inline quint64 timelineRenderTrackLocationId(const TimelineRenderLine& line, const TimelineRenderNote& note)
+{
+    return timelineRenderLocationId(line.lineNumber, qMax(note.sourceCol + 1, note.slideTrackSourceCol));
 }

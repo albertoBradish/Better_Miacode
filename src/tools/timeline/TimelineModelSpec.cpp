@@ -2397,6 +2397,8 @@ int main(int argc, char** argv)
                 QStringLiteral("every duration/modifier character selects the whole hold"));
         const int chain = chart.indexOf(QStringLiteral("1-5-3[4:4]"));
         const auto selectedChain = one(chain);
+        expect(selectedChain.locations.size() == 2,
+            QStringLiteral("text selection of a Slide projects its head and complete chain"));
         for (int i=0; i<QStringLiteral("1-5-3[4:4]").size(); ++i)
             expect(one(chain+i).locations == selectedChain.locations,
                 QStringLiteral("a chained slide stays one selected source object"));
@@ -2414,7 +2416,7 @@ int main(int argc, char** argv)
                     QStringLiteral("selection audition includes visible lead-in and the complete hold/effect tail across later notes"));
             }
         }
-        expect(model.resolveNoteSelection(first,chain+1).locations.size() == 7,
+        expect(model.resolveNoteSelection(first,chain+1).locations.size() == 8,
             QStringLiteral("selection crossing several independent notes returns only actual note objects"));
         model.updateFromText(QStringLiteral("\n")+chart,5.0,{});
         expect(model.resolveNoteSelection(hold+1,hold+2).locations

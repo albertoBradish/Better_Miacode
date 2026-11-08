@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/chart/transform/ChartNoteSelection.h"
 #include "core/scene/PreviewHeadLayerState.h"
 #include "core/scene/PreviewTrackLayerState.h"
 #include "core/scene/PreviewSlideMotionLayerState.h"
@@ -13,6 +14,22 @@
 #include <QTransform>
 
 namespace miacode::preview::selection {
+
+inline quint64 noteHeadLocation(const TimelineNoteMarker& marker)
+{
+    return chart_selection::sourceLocationId(marker.sourceLine, marker.sourceCol);
+}
+
+inline quint64 noteTrackLocation(const TimelineNoteMarker& marker)
+{
+    return chart_selection::sourceLocationId(marker.sourceLine,
+        marker.slideTrackSourceCol > marker.sourceCol ? marker.slideTrackSourceCol : marker.sourceCol + 1);
+}
+
+inline bool isSlideMarker(const TimelineNoteMarker& marker)
+{
+    return marker.type == QLatin1String("slide") || marker.type == QLatin1String("wifi");
+}
 
 struct NoteHitShape {
     quint64 location = 0;
@@ -56,10 +73,17 @@ inline QVector<NoteHitShape> visibleNoteHitShapes(const scene::PreviewFrameState
     PreviewPreparedSceneCache prepared;
     prepared.sync(state);
     QSet<int> active;
+    QHash<int, int> activeHeadEntries;
     const auto collect = [&](const PreviewPreparedLayerWindow<PreviewPreparedMarkerEntry>& layer) {
         PreviewLayerWindowCursor cursor;
         syncPreviewLayerWindowCursor(layer, state.playheadSeconds, &cursor);
-        for (int index : cursor.activePreparedIndices) active.insert(layer.entries[index].markerIndex);
+        for (int index : cursor.activePreparedIndices) {
+            const int markerIndex = layer.entries[index].markerIndex;
+            active.insert(markerIndex);
+            if (&layer == &prepared.headLayer()) {
+                activeHeadEntries.insert(markerIndex, index);
+            }
+        }
     };
     collect(prepared.headLayer()); collect(prepared.slideLikeLayer());
     collect(prepared.touchLayer()); collect(prepared.touchHoldLayer());
@@ -78,9 +102,25 @@ inline QVector<NoteHitShape> visibleNoteHitShapes(const scene::PreviewFrameState
         const auto append = [&](const PreviewSpriteDescriptors& sprites) {
             for (const auto& sprite : sprites) shape.addPath(geometry.shape(sprite));
         };
-        append(buildPreviewHeadLayerState(state, view, field, &headCache).sprites);
-        append(buildPreviewTrackLayerState(state, view, field).sprites);
-        append(buildPreviewSlideMotionLayerState(state, view, field).sprites);
+        const auto finishShape = [&](quint64 location) {
+            const auto clipped = shape.intersected(viewport);
+            if (!clipped.isEmpty()) result.append({location, clipped});
+            shape = QPainterPath();
+            shape.setFillRule(Qt::WindingFill);
+        };
+        if (const auto entry = activeHeadEntries.constFind(index); entry != activeHeadEntries.cend()) {
+            PreviewLayerWindowCursor cursor;
+            cursor.activePreparedIndices.append(entry.value());
+            const PreviewActiveMarkerView head(state.noteMarkers, prepared.headLayer(), cursor);
+            append(buildPreviewHeadLayerState(state, head, field, &headCache).sprites);
+        }
+        if (isSlideMarker(marker)) {
+            finishShape(noteHeadLocation(marker));
+            append(buildPreviewTrackLayerState(state, view, field).sprites);
+            append(buildPreviewSlideMotionLayerState(state, view, field).sprites);
+            finishShape(noteTrackLocation(marker));
+            continue;
+        }
         append(buildPreviewTouchLayerState(state, view, field).sprites);
         const auto hold = buildPreviewTouchHoldLayerState(state, view, field);
         append(hold.sprites);
@@ -95,9 +135,7 @@ inline QVector<NoteHitShape> visibleNoteHitShapes(const scene::PreviewFrameState
             wedge.closeSubpath();
             shape.addPath(geometry.shape(sprite).intersected(wedge));
         }
-        shape = shape.intersected(viewport);
-        if (!shape.isEmpty()) result.append({
-            (quint64(quint32(marker.sourceLine)) << 32) | quint32(marker.sourceCol), shape});
+        finishShape(noteHeadLocation(marker));
     }
     return result;
 }

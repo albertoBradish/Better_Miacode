@@ -418,6 +418,7 @@ Rectangle {
     }
     ScintillaEditor {
         id: sourceArea
+        onNoteComponentEditRejected: ToolTip.show(qsTrId("editor.slide_component_edit_rejected"), 3500)
         objectName: "sourceArea"
         property bool reservesPlainSpace: true
         anchors.left: parent.left

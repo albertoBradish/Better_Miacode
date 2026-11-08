@@ -34,6 +34,8 @@ struct TimelineBeatMarker {
 };
 
 struct TimelineNoteMarker {
+    // Source column of this branch's path, separate from the token/head column.
+    int slideTrackSourceCol = 0;
     double second = 0.0;
     double endSecond = -1.0;
     double slideTraceSecond = -1.0;

@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     const auto chain = range(QStringLiteral("1-5-3[4:4]"));
     const NoteRanges selected{{first.start + 2, first.start + 3}, hold, chain};
     const auto resolved = model.resolveNoteSelection(selected);
-    expect(resolved.locations.size() == 3, "noncontiguous collection excludes intervening notes");
+    expect(resolved.locations.size() == 4, "a text selection projects the Slide head and track without intervening notes");
     expect(model.noteSourceRanges(&resolved.locations) == selected, "source locations round trip complete Slide tokens");
     const QString copied = copySelectedNotes(text, selected, all);
     const auto parsedCopy = SimaiParser::validateSyntax(copied + QStringLiteral("E"));
@@ -110,6 +110,67 @@ int main(int argc, char** argv)
         const auto parsedInsertion = SimaiParser::validateSyntax(insertion.text);
         expect(insertion.error.isEmpty() && parsedInsertion.ok && parsedInsertion.noteMarkers.size() == 5,
             "pasting at separators, within tokens, after notes or in comments preserves original tokens and remains valid");
+    }
+    const QString slideText = QStringLiteral("(120){4}1bx-5[4:1]*-3[8:1]/3,1?w5[8:1],\nE");
+    TimelineQuickModel slideModel;
+    slideModel.rebuildFromText(slideText, 0);
+    const auto slideObjects = slideModel.noteObjects();
+    const auto slideNotes = slideModel.noteSourceRanges();
+    expect(slideObjects.size() == 5
+        && slideObjects.value(0).component == NoteComponent::SlideHead
+        && slideObjects.value(1).component == NoteComponent::SlideTrack && slideObjects.value(1).trackIndex == 0
+        && slideObjects.value(2).component == NoteComponent::SlideTrack && slideObjects.value(2).trackIndex == 1
+        && slideObjects.value(4).component == NoteComponent::SlideTrack,
+        "same-head branches have one head and distinct track identities, while headless WiFi has only a track");
+    if (slideObjects.size() == 5) {
+        const auto parsed = SimaiParser::parseForTimeline(slideText);
+        expect(parsed.noteMarkers.size() == 4
+            && sourceLocationId(parsed.noteMarkers[0].sourceLine, parsed.noteMarkers[0].slideTrackSourceCol) == slideObjects[1].location
+            && sourceLocationId(parsed.noteMarkers[1].sourceLine, parsed.noteMarkers[1].slideTrackSourceCol) == slideObjects[2].location,
+            "preview and timeline publish the same branch source identities");
+
+        const NoteObjects head{slideObjects[0]}, firstTrack{slideObjects[1]}, secondTrack{slideObjects[2]};
+        const auto deleteHead = deleteSelectedNoteObjects(slideText, head, slideNotes);
+        expect(deleteHead.supported && deleteHead.text.contains(QStringLiteral("1?-5[4:1]*-3[8:1]/3"))
+            && SimaiParser::validateSyntax(deleteHead.text).ok,
+            "deleting the head preserves both tracks using valid headless syntax");
+        const auto deleteBranch = deleteSelectedNoteObjects(slideText, firstTrack, slideNotes);
+        expect(deleteBranch.supported && deleteBranch.text.contains(QStringLiteral("1bx-3[8:1]/3"))
+            && SimaiParser::validateSyntax(deleteBranch.text).ok,
+            "deleting one track preserves the original EX/Break head and the other track");
+        const auto deleteTracks = deleteSelectedNoteObjects(slideText, {slideObjects[1], slideObjects[2]}, slideNotes);
+        expect(deleteTracks.supported && deleteTracks.text.contains(QStringLiteral("1bx$$/3"))
+            && SimaiParser::validateSyntax(deleteTracks.text).ok,
+            "deleting all tracks preserves a standalone Break EX star");
+        const auto headFragment = copySelectedNoteObjects(slideText, head, slideNotes);
+        const auto trackFragment = copySelectedNoteObjects(slideText, secondTrack, slideNotes);
+        expect(headFragment.supported && headFragment.text.contains(QStringLiteral("1bx$$,"))
+            && !headFragment.text.contains(QStringLiteral("-5"))
+            && trackFragment.supported && trackFragment.text.contains(QStringLiteral("1?-3[8:1],"))
+            && SimaiParser::validateSyntax(trackFragment.text + QStringLiteral("E")).ok,
+            "component clipboard fragments retain only the selected semantic parts");
+        const auto pastedTrack = pasteNoteFragment(slideText, 0, 0, trackFragment.text, {}, slideNotes, {}, head);
+        expect(!pastedTrack.error.isEmpty() && pastedTrack.text == slideText,
+            "contextual paste refuses to shift an unselected track by replacing its head");
+        const auto insertedTrack = pasteNoteFragment(slideText, slideText.indexOf(QLatin1Char('E')),
+            slideText.indexOf(QLatin1Char('E')), trackFragment.text, {}, slideNotes);
+        expect(insertedTrack.error.isEmpty() && SimaiParser::validateSyntax(insertedTrack.text).ok,
+            "a copied track can be pasted as a headless fragment at a caret");
+
+        const auto token = QStringView(slideText).sliced(head.first().token.start,
+            head.first().token.end - head.first().token.start);
+        const auto toggleHeadEx = transformSlideComponents(token, head, u"transform.toggle_ex");
+        const auto toggleTrackBreak = transformSlideComponents(token, secondTrack, u"transform.toggle_break");
+        const auto partialRotate = transformSlideComponents(token, firstTrack, u"transform.rotate_cw_45");
+        expect(toggleHeadEx.supported && toggleHeadEx.text == QLatin1String("1b-5[4:1]*-3[8:1]")
+            && toggleTrackBreak.supported && toggleTrackBreak.text == QLatin1String("1bx-5[4:1]*-3b[8:1]"),
+            "partial modifier changes leave the other components byte-for-byte intact");
+        expect(!partialRotate.supported && partialRotate.text == token,
+            "a partial spatial transform refuses to move the shared start lane");
+        const auto headRange = slideModel.resolveNoteObjects(head, 6.0, 6.0);
+        const auto trackRange = slideModel.resolveNoteObjects(firstTrack, 6.0, 6.0);
+        expect(headRange.resolved() && trackRange.resolved() && headRange.endSecond < trackRange.endSecond,
+            "auditioning only the head excludes the track's tail");
     }
     return failures == 0 ? 0 : 1;
 }

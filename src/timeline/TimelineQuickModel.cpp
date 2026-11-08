@@ -414,50 +414,102 @@ TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteSelection(
 miacode::chart_selection::NoteRanges TimelineQuickModel::noteSourceRanges(const QSet<quint64>* locations) const
 {
     miacode::chart_selection::NoteRanges ranges;
+    if (locations != nullptr) {
+        for (const auto& object : noteObjects(locations)) ranges.append(object.token);
+        return miacode::chart_selection::normalizedNoteRanges(ranges, sourceText_.size());
+    }
     for (const auto& line : lines_) for (const auto& note : line.render.notes) {
-        if (locations && !locations->contains(timelineRenderLocationId(line.lineNumber, note.sourceCol))) continue;
         const int start = line.startPosition + note.sourceCol - 1;
         ranges.append({start, start + note.sourceLength});
     }
     return miacode::chart_selection::normalizedNoteRanges(ranges, sourceText_.size());
 }
 
+miacode::chart_selection::NoteObjects TimelineQuickModel::noteObjects(const QSet<quint64>* locations) const
+{
+    using namespace miacode::chart_selection;
+    NoteObjects result;
+    QSet<quint64> seen;
+    for (const auto& line : lines_) {
+        for (const auto& note : line.render.notes) {
+            const int start = line.startPosition + note.sourceCol - 1;
+            const int end = qMin(int(sourceText_.size()), start + note.sourceLength);
+            const NoteRange token{start, end};
+            const auto append = [&](NoteRange highlight, NoteComponent part, int branch, quint64 location) {
+                if (highlight.end <= highlight.start || seen.contains(location)
+                    || (locations != nullptr && !locations->contains(location))) return;
+                seen.insert(location);
+                result.append({token, highlight, part, branch, location});
+            };
+            const auto headLocation = timelineRenderLocationId(line.render, note);
+            const bool slide = note.kind == TimelineRenderNoteKind::Slide || note.kind == TimelineRenderNoteKind::Wifi;
+            if (!slide) {
+                append(token, NoteComponent::Whole, -1, headLocation);
+                continue;
+            }
+            if (timelineRenderFlagSet(note, TimelineRenderFlagHasHeadStar)) {
+                append({start, qMin(end, start + note.slideHeadSourceLength)}, NoteComponent::SlideHead, -1, headLocation);
+            }
+            const int trackStart = line.startPosition + note.slideTrackSourceCol - 1;
+            if (trackStart > start && trackStart < end) {
+                const auto next = QStringView(sourceText_).sliced(trackStart, end - trackStart).indexOf(u'*');
+                const int trackEnd = next >= 0 ? trackStart + int(next) : end;
+                append({trackStart, trackEnd}, NoteComponent::SlideTrack, note.slideTrackIndex,
+                    timelineRenderTrackLocationId(line.render, note));
+            }
+        }
+    }
+    return result;
+}
+
 TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteSelection(
     const miacode::chart_selection::NoteRanges& inputRanges, double tapFlowSpeed, double touchFlowSpeed) const
 {
-    NoteSelection result;
     const auto ranges = miacode::chart_selection::normalizedNoteRanges(inputRanges, sourceText_.size());
-    if (ranges.isEmpty()) return result;
+    if (ranges.isEmpty()) return {};
+    auto objects = noteObjects();
+    objects.removeIf([&](const auto& object) {
+        const auto range = std::lower_bound(ranges.cbegin(), ranges.cend(), object.token.start,
+            [](const auto& candidate, int position) { return candidate.end <= position; });
+        return range == ranges.cend() || range->start >= object.token.end;
+    });
+    return resolveNoteObjects(objects, tapFlowSpeed, touchFlowSpeed);
+}
+
+TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteObjects(
+    const miacode::chart_selection::NoteObjects& objects, double tapFlowSpeed, double touchFlowSpeed) const
+{
+    NoteSelection result;
+    for (const auto& object : objects) result.locations.insert(object.location);
+    if (result.locations.isEmpty()) return result;
     double visibleStart = std::numeric_limits<double>::infinity();
     double visualEnd = -std::numeric_limits<double>::infinity();
     for (const auto& line : lines_) {
         for (const auto& note : line.render.notes) {
-            const int noteStart = line.startPosition + note.sourceCol - 1;
-            const int noteEnd = noteStart + note.sourceLength;
-            const auto range = std::lower_bound(ranges.cbegin(), ranges.cend(), noteStart,
-                [](const miacode::chart_selection::NoteRange& range, int position) { return range.end <= position; });
-            if (range == ranges.cend() || range->start >= noteEnd) continue;
-            result.locations.insert(timelineRenderLocationId(line.lineNumber, note.sourceCol));
+            const bool slide = note.kind == TimelineRenderNoteKind::Slide || note.kind == TimelineRenderNoteKind::Wifi;
+            const bool head = result.locations.contains(timelineRenderLocationId(line.render, note));
+            const bool track = slide && result.locations.contains(timelineRenderTrackLocationId(line.render, note));
+            if (!head && !track) continue;
             const bool touch = note.kind == TimelineRenderNoteKind::Touch
                 || note.kind == TimelineRenderNoteKind::TouchHold;
             const double speed = qMax(0.0001, qAbs((touch ? touchFlowSpeed : tapFlowSpeed) * note.hsMultiplier));
             const double frames = miacode::preview_gameplay::kPreviewTimingBaseFrames
                 + miacode::preview_gameplay::kPreviewTimingFlowFramesNumerator / speed;
-            // Full original scene context stays active. Do not clip this lead-in
-            // at earlier unselected notes, or clip selected tails at following notes.
             const double lead = miacode::preview_gameplay::previewTimingSecondsFromFramesAt120Fps(
                 qMax(frames * 2.0, frames + 2.0));
-            visibleStart = qMin(visibleStart,
-                timelineRenderAbsoluteSecond(line.render, note.secondOffset) - lead);
-            visualEnd = qMax(visualEnd, timelineRenderNoteExportVisualEndSecond(line.render, note, true));
-            visualEnd = qMax(visualEnd, timelineRenderNoteBodyEndSecond(line.render, note, true)
-                + miacode::preview::scene::kMaimuriDxJudgeMaxLifetimeSeconds);
+            const double start = timelineRenderAbsoluteSecond(line.render, note.secondOffset);
+            visibleStart = qMin(visibleStart, start - lead);
+            if (slide && !track) {
+                visualEnd = qMax(visualEnd, start + miacode::preview::scene::kMaimuriDxJudgeMaxLifetimeSeconds);
+            } else {
+                visualEnd = qMax(visualEnd, timelineRenderNoteExportVisualEndSecond(line.render, note, true));
+                visualEnd = qMax(visualEnd, timelineRenderNoteBodyEndSecond(line.render, note, true)
+                    + miacode::preview::scene::kMaimuriDxJudgeMaxLifetimeSeconds);
+            }
         }
     }
-    if (!result.locations.isEmpty()) {
-        result.startSecond = qMax(0.0, visibleStart);
-        result.endSecond = qMax(result.startSecond, visualEnd + 1.0 / 60.0);
-    }
+    result.startSecond = qMax(0.0, visibleStart);
+    result.endSecond = qMax(result.startSecond, visualEnd + 1.0 / 60.0);
     return result;
 }
 

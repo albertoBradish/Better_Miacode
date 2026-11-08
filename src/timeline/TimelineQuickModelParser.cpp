@@ -919,9 +919,11 @@ bool TimelineQuickModel::parseNoteToken(
             const QString prefix = token.left(1) + modifierState.rawModifiers;
             const QChar startLane = token.at(0);
             const QStringList branches = core.split(QLatin1Char('*'), Qt::KeepEmptyParts);
-            const int firstBranchNote = lineState->render.notes.size();
-            for (const QString& branchRaw : branches) {
-                QString branch = branchRaw;
+            int trackColumn = column + 1 + modifierCount;
+            for (int branchIndex = 0; branchIndex < branches.size(); ++branchIndex) {
+                QString branch = branches.at(branchIndex);
+                const int branchColumn = trackColumn;
+                trackColumn += branch.size() + (branchIndex == 0 ? 0 : 1);
                 if (branch.isEmpty()) {
                     continue;
                 }
@@ -929,12 +931,17 @@ bool TimelineQuickModel::parseNoteToken(
                     branch.prepend(startLane);
                 }
                 const QString branchToken = prefix + branch.mid(1);
+                const qsizetype firstBranchNote = lineState->render.notes.size();
                 if (!parseNoteToken(lineState, state, branchToken, lineNumber, column, groupIndices)) {
                     return false;
                 }
+                for (qsizetype index = firstBranchNote; index < lineState->render.notes.size(); ++index) {
+                    auto& note = lineState->render.notes[index];
+                    note.sourceLength = token.size();
+                    note.slideTrackSourceCol = branchColumn;
+                    note.slideTrackIndex = branchIndex;
+                }
             }
-            for (int index = firstBranchNote; index < lineState->render.notes.size(); ++index)
-                lineState->render.notes[index].sourceLength = token.size();
             return true;
         }
         if (slideCoreHasDisallowedModifiers(core)) {
@@ -969,6 +976,8 @@ bool TimelineQuickModel::parseNoteToken(
         note.secondOffset = currentSecond - lineBaseSecond;
         note.sourceCol = qMax(1, column);
         note.lane = token.at(0).digitValue();
+        note.slideHeadSourceLength = 1 + modifierCount;
+        note.slideTrackSourceCol = note.sourceCol + note.slideHeadSourceLength;
         note.endLane = inferSlideEndLane(sanitizedCore, note.lane);
         note.kind = sanitizedCore.contains(QLatin1Char('w'), Qt::CaseInsensitive)
             ? TimelineRenderNoteKind::Wifi

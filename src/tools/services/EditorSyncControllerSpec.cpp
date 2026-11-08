@@ -333,6 +333,18 @@ bool verifyNoteCollectionsAreRevisionBound(QTextStream& err)
     ok &= require(controller.requestNoteSelection(kDifficulty, kRevision, {}, false)
         && controller.editorSelection().ranges.isEmpty(),
         QStringLiteral("an empty replacement selection clears the collection"), err);
+    using namespace miacode::chart_selection;
+    const NoteObject head{{14, 27}, {14, 15}, NoteComponent::SlideHead, -1, 15};
+    const NoteObject track{{14, 27}, {15, 27}, NoteComponent::SlideTrack, 0, 16};
+    controller.setNoteCatalogue(kDifficulty, kRevision, {{14, 27}}, {head, track});
+    ok &= require(controller.requestNoteObjects(kDifficulty, kRevision, {head}, false)
+        && controller.editorSelection().objects == NoteObjects{head},
+        QStringLiteral("the head can be selected without its coincident track range"), err);
+    ok &= require(controller.requestNoteObjects(kDifficulty, kRevision, {track}, true)
+        && controller.editorSelection().objects == NoteObjects{head, track}
+        && controller.requestNoteObjects(kDifficulty, kRevision, {head}, true)
+        && controller.editorSelection().objects == NoteObjects{track},
+        QStringLiteral("head and track toggle independently under one parent token"), err);
     controller.setEditorReadiness(kDifficulty, kRevision + 1, true);
     ok &= require(!controller.requestNoteSelectionAtPosition(kDifficulty, kRevision, 8, true)
         && !controller.requestNoteSelectionAtPosition(kDifficulty, kRevision + 1, 8, true)

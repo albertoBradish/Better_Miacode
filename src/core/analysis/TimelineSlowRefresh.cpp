@@ -23,6 +23,8 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
         signature.append('|');
         signature.append(QByteArray::number(marker.sourceCol));
         signature.append('|');
+        signature.append(QByteArray::number(marker.slideTrackSourceCol));
+        signature.append('|');
         signature.append(QByteArray::number(marker.lane));
         signature.append('|');
         signature.append(QByteArray::number(marker.endLane));

@@ -1083,7 +1083,8 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         const bool isHold = note.kind == TimelineRenderNoteKind::Hold && endSecond >= startSecond;
         const bool isTouchHold = note.kind == TimelineRenderNoteKind::TouchHold && endSecond > startSecond;
         const bool isSlideLike = note.kind == TimelineRenderNoteKind::Slide || note.kind == TimelineRenderNoteKind::Wifi;
-        const bool isSlideTrack = isSlideLike && traceSecond > startSecond && endSecond > traceSecond;
+        const bool isSlideTrack = isSlideLike && traceSecond >= startSecond && endSecond > traceSecond;
+        const quint64 trackLocation = timelineRenderTrackLocationId(line, note);
 
         const int x = secondToSceneX(state, startSecond);
         const int holdEndX = isHold ? secondToSceneX(state, endSecond) : x;
@@ -1259,9 +1260,9 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                     trackScale,
                     angleDegrees,
                     forward);
-                if (selected) state.trackSprites.last().selected = true;
+                if (request.selectedNoteLocations.contains(trackLocation)) state.trackSprites.last().selected = true;
                 TimelineSceneGlyph hit;
-                hit.locationId = locationId;
+                hit.locationId = trackLocation;
                 const qreal hitSize = qMax(trackTargetSize.width(), trackTargetSize.height());
                 hit.rect = QRectF(cx - hitSize / 2, cy - hitSize / 2, hitSize, hitSize);
                 state.noteHitAreas.append(hit);

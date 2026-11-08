@@ -7,6 +7,7 @@
 #include "core/scene/PreviewTouchLayerState.h"
 #include "core/scene/PreviewTouchHoldLayerState.h"
 #include "core/scene/PreviewSceneGeometry.h"
+#include "preview/quick_scene/PreviewNoteHitTest.h"
 #include "preview/quick_scene/PreviewQuickSpriteNodes.h"
 #include <QSGNode>
 
@@ -19,13 +20,16 @@ public:
         const QSize& renderSize, QQuickWindow* window, PreviewTextureRepository* textures)
     {
         using namespace miacode::preview::scene;
+        using namespace miacode::preview::selection;
         if (state.selectedNoteLocations.isEmpty()) { delete oldNode; return nullptr; }
         if (sourceRevision_ != state.sceneContentRevision || sourceStorage_ != state.sceneStorageGeneration
             || locations_ != state.selectedNoteLocations) {
             selectedMarkers_.clear();
             for (const auto& marker : state.noteMarkers) {
-                const quint64 location = (quint64(quint32(marker.sourceLine)) << 32) | quint32(marker.sourceCol);
-                if (state.selectedNoteLocations.contains(location)) selectedMarkers_.append(marker);
+                if (state.selectedNoteLocations.contains(noteHeadLocation(marker))
+                    || (isSlideMarker(marker) && state.selectedNoteLocations.contains(noteTrackLocation(marker)))) {
+                    selectedMarkers_.append(marker);
+                }
             }
             sourceRevision_ = state.sceneContentRevision;
             sourceStorage_ = state.sceneStorageGeneration;
@@ -42,8 +46,18 @@ public:
         syncPreviewLayerWindowCursor(prepared_.slideLikeLayer(), state.playheadSeconds, &trackCursor_);
         syncPreviewLayerWindowCursor(prepared_.touchLayer(), state.playheadSeconds, &touchCursor_);
         syncPreviewLayerWindowCursor(prepared_.touchHoldLayer(), state.playheadSeconds, &holdCursor_);
-        const PreviewActiveMarkerView heads(selected.noteMarkers, prepared_.headLayer(), headCursor_);
-        const PreviewActiveMarkerView tracks(selected.noteMarkers, prepared_.slideLikeLayer(), trackCursor_);
+        const auto filter = [&](const auto& layer, const PreviewLayerWindowCursor& cursor, auto location) {
+            PreviewLayerWindowCursor filtered;
+            for (int index : cursor.activePreparedIndices) {
+                const auto& marker = selected.noteMarkers.at(layer.entries.at(index).markerIndex);
+                if (locations_.contains(location(marker))) filtered.activePreparedIndices.append(index);
+            }
+            return filtered;
+        };
+        const auto selectedHeads = filter(prepared_.headLayer(), headCursor_, noteHeadLocation);
+        const auto selectedTracks = filter(prepared_.slideLikeLayer(), trackCursor_, noteTrackLocation);
+        const PreviewActiveMarkerView heads(selected.noteMarkers, prepared_.headLayer(), selectedHeads);
+        const PreviewActiveMarkerView tracks(selected.noteMarkers, prepared_.slideLikeLayer(), selectedTracks);
         const PreviewActiveMarkerView touches(selected.noteMarkers, prepared_.touchLayer(), touchCursor_);
         const PreviewActiveMarkerView holds(selected.noteMarkers, prepared_.touchHoldLayer(), holdCursor_);
         const auto field = playfieldRectForStage(stageRectForSize(renderSize), state.render.layoutSquareScale);
