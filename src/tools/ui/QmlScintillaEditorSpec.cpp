@@ -286,6 +286,44 @@ bool testLineNumberMargin(QTextStream& out)
     return passed;
 }
 
+bool testEditorWindowReparent(QTextStream& out)
+{
+    QQuickWindow mainWindow;
+    QQuickWindow floatingWindow;
+    mainWindow.resize(440, 320);
+    floatingWindow.resize(440, 320);
+    floatingWindow.setTransientParent(&mainWindow);
+    ScintillaQuick_item editor(mainWindow.contentItem());
+    editor.setSize({400, 260});
+    editor.sends(SCI_SETTEXT, 0, "(120){4}1,");
+    editor.send(SCI_EMPTYUNDOBUFFER);
+    editor.send(SCI_BEGINUNDOACTION);
+    editor.sends(SCI_APPENDTEXT, 2, "2,");
+    editor.send(SCI_ENDUNDOACTION);
+    editor.send(SCI_GOTOPOS, editor.send(SCI_GETLENGTH));
+
+    mainWindow.show();
+    floatingWindow.show();
+    editor.setParentItem(floatingWindow.contentItem());
+    floatingWindow.requestActivate();
+    editor.forceActiveFocus();
+    QCoreApplication::processEvents();
+    QKeyEvent key(QEvent::KeyPress, Qt::Key_3, Qt::NoModifier, QStringLiteral("3"));
+    QCoreApplication::sendEvent(&floatingWindow, &key);
+    const bool editedInFloat = editor.window() == &floatingWindow
+        && editor.property("text").toString() == QStringLiteral("(120){4}1,2,3");
+
+    editor.setParentItem(mainWindow.contentItem());
+    editor.send(SCI_UNDO);
+    const bool floatEditUndoable = editor.property("text").toString() == QStringLiteral("(120){4}1,2,");
+    editor.send(SCI_UNDO);
+    const bool mainEditUndoable = editor.window() == &mainWindow
+        && editor.property("text").toString() == QStringLiteral("(120){4}1,");
+    const bool passed = editedInFloat && floatEditUndoable && mainEditUndoable;
+    out << "native_editor_window_reparent=" << (passed ? "PASS" : "FAIL") << Qt::endl;
+    return passed;
+}
+
 bool testNativeNoteCollectionUndo(QTextStream& out)
 {
     ScintillaQuick_item editor;
@@ -387,7 +425,8 @@ int main(int argc, char** argv)
     QTextStream out(stdout);
     const bool passed = testUndoSelection(out)
         && testEditor(out, argc > 1 ? QString::fromLocal8Bit(argv[1]) : QString{})
-        && testLineNumberMargin(out) && testWindowLayout(out) && testNativeNoteCollectionUndo(out);
+        && testLineNumberMargin(out) && testWindowLayout(out)
+        && testEditorWindowReparent(out) && testNativeNoteCollectionUndo(out);
     out << (passed ? "PASS" : "FAIL") << Qt::endl;
     return passed ? 0 : 1;
 }

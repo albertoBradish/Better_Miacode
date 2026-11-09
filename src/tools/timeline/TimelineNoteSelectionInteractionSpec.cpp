@@ -68,6 +68,8 @@ int main(int argc, char** argv)
         request.viewportSize = TimelineAxisProjection{request.axisMode}.axisSize(window.size());
         request.laneOrder = timelineLaneOrderForToken(bridge.laneOrder());
         request.zoomScale = bridge.zoomScale();
+        request.noteScale = bridge.noteScale();
+        request.playheadSeconds = bridge.playheadSeconds();
         request.horizontalScrollValue = bridge.horizontalScrollValue();
         request.playheadUpperLimitSeconds = bridge.playheadUpperLimitSeconds();
         return TimelineSceneStateBuilder::build(request);
@@ -82,10 +84,28 @@ int main(int argc, char** argv)
         {8, 7, 6, 5, 4, 3, 2, 1},
         {4, 3, 2, 1, 8, 7, 6, 5},
     }};
+    const auto normalSize = buildState().noteHitAreas.first().rect.size();
+    bridge.setNoteScale(3.0);
+    const auto largeSize = buildState().noteHitAreas.first().rect.size();
+    expect(largeSize.width() > normalSize.width() && largeSize.height() > normalSize.height(),
+        "note scale increases rendered hit geometry independently of time zoom");
+    const auto largeZoom = bridge.zoomScale();
+    bridge.setZoomScale(largeZoom * 2.0);
+    expect(buildState().noteHitAreas.first().rect.size() == largeSize,
+        "time zoom leaves glyph dimensions unchanged");
+    bridge.setZoomScale(largeZoom);
+
     QSignalSpy seeks(&item, &TimelineQuickItem::headerNavigateRequested);
     for (const auto& mode : {QStringLiteral("horizontal"), QStringLiteral("falling"), QStringLiteral("rising")}) {
         bridge.setAxisMode(mode);
-        bridge.setPlayheadSeconds(0.5, true);
+        bridge.setPlayheadSeconds(0.1, true);
+        const auto anchoredScene = buildState();
+        const auto screenPosition = anchoredScene.axisProjection().toScreenTransform().map(anchoredScene.playheadLine.start);
+        const double expectedTimePosition = mode == QLatin1String("falling") ? window.height() * 0.88
+            : mode == QLatin1String("rising") ? window.height() * 0.12 : window.width() * 0.5;
+        const double actualTimePosition = mode == QLatin1String("horizontal") ? screenPosition.x() : screenPosition.y();
+        expect(anchoredScene.hasPlayheadLine && qAbs(expectedTimePosition - actualTimePosition) <= 0.5,
+            "playhead follows the viewport centre or the corresponding vertical judgement edge");
         for (std::size_t index = 0; index < orders.size(); ++index) {
             bridge.setLaneOrder(orders.at(index));
             const auto scene = buildState();

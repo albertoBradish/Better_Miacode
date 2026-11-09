@@ -7,6 +7,7 @@ AppStickyPopup {
 
     required property var stateBridge
     required property var timelineSession
+    required property var preferences
     openAbove: true
 
     readonly property int brightnessPercentMin: 20
@@ -132,6 +133,18 @@ AppStickyPopup {
             stepSize: root.brightnessPercentStep
             value: root.percentFromBrightness(brightness)
             onEdited: value => root.stateBridge.measureLineBrightness = value / 100
+        }
+
+        ParameterItem {
+            width: parent.width
+            text: qsTrId("timeline.note_scale")
+            readonly property int percent: Math.round(root.preferences.timelineNoteScale * 100)
+            valueText: qsTrId("qml.1").arg(percent)
+            from: 50
+            to: 300
+            stepSize: 5
+            value: percent
+            onEdited: value => root.preferences.timelineNoteScale = value / 100
         }
 
         AppMenuSeparator { width: parent.width }

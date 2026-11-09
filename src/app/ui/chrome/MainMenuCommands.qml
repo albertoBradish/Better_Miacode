@@ -7,6 +7,7 @@ import QtQuick
 QtObject {
     id: root
 
+    property var workspace
     property bool canUndo: false
     property bool canRedo: false
     property bool canCut: false

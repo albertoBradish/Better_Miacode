@@ -35,8 +35,8 @@ Item {
     readonly property int overflowButtonWidth: 30
     readonly property real fullWidth: fileButton.implicitWidth + editButton.implicitWidth
         + adjustButton.implicitWidth + toolsButton.implicitWidth + previewButton.implicitWidth
-        + majnetButton.implicitWidth + extrasButton.implicitWidth
-    property int visibleCount: 7
+        + majnetButton.implicitWidth + extrasButton.implicitWidth + workspaceButton.implicitWidth
+    property int visibleCount: 8
     property bool layoutReady: false
     property var _activeMenu: null
 
@@ -54,11 +54,11 @@ Item {
     }
 
     function topButtons() {
-        return [fileButton, editButton, adjustButton, toolsButton, previewButton, majnetButton, extrasButton]
+        return [fileButton, editButton, adjustButton, toolsButton, previewButton, workspaceButton, majnetButton, extrasButton]
     }
 
     function topMenus() {
-        return [fileMenu, editMenu, adjustMenu, toolsMenu, previewMenu, majnetMenu, extrasMenu]
+        return [fileMenu, editMenu, adjustMenu, toolsMenu, previewMenu, workspaceMenu, majnetMenu, extrasMenu]
     }
 
     function nativeMenus() {
@@ -254,15 +254,20 @@ Item {
             menuIndex: 4
         }
         TopLevelItem {
+            id: workspaceButton
+            menu: workspaceMenu
+            menuIndex: 5
+        }
+        TopLevelItem {
             id: majnetButton
             menu: majnetMenu
-            menuIndex: 5
+            menuIndex: 6
             enabled: root.commandsEnabled
         }
         TopLevelItem {
             id: extrasButton
             menu: extrasMenu
-            menuIndex: 6
+            menuIndex: 7
         }
         IconButton {
             id: moreButton
@@ -270,7 +275,7 @@ Item {
             width: root.overflowButtonWidth
             y: (root.height - height) / 2
             height: Math.min(Theme.controlMinHeight, root.height)
-            visible: root.visibleCount < 7
+            visible: root.visibleCount < root.topButtons().length
             iconSource: Qt.resolvedUrl("icons/more.svg")
             filledIconSource: Qt.resolvedUrl("icons/more-fill.svg")
             iconWidth: 16
@@ -672,6 +677,72 @@ Item {
                 text: qsTrId("action.video_settings")
                 enabled: root.commandsEnabled
                 onTriggered: root.commands.previewSettingsRequested()
+            }
+        }
+
+        AppMenu {
+            id: workspaceMenu
+            retainBackdrop: true
+            title: root.menuTitle(qsTrId("workspace.menu"))
+            readonly property var workspace: root.commands.workspace
+
+            AppMenuAction {
+                text: qsTrId("workspace.default")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("default")
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.editing")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("editing")
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.preview")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("preview")
+            }
+            AppMenuSeparator {}
+            AppMenuAction {
+                text: qsTrId("workspace.timeline")
+                enabled: !!workspaceMenu.workspace
+                checkable: true
+                checked: workspaceMenu.workspace?.preferences.timelinePanelVisible ?? false
+                onTriggered: workspaceMenu.workspace.preferences.timelinePanelVisible = checked
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.save")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: Qt.callLater(workspaceMenu.workspace.showSaveDialog)
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.reset")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("default")
+            }
+            AppMenu {
+                id: deleteLayouts
+                title: qsTrId("workspace.remove")
+                enabled: count > 0
+                Instantiator {
+                    model: workspaceMenu.workspace?.savedNames ?? []
+                    delegate: AppMenuItem {
+                        required property string modelData
+                        text: modelData
+                        onTriggered: workspaceMenu.workspace.preferences.removeWorkspaceLayout(modelData)
+                    }
+                    onObjectAdded: (index, object) => deleteLayouts.insertItem(index, object)
+                    onObjectRemoved: (index, object) => deleteLayouts.removeItem(object)
+                }
+            }
+            Instantiator {
+                model: workspaceMenu.workspace?.savedNames ?? []
+                delegate: AppMenuItem {
+                    required property string modelData
+                    text: modelData
+                    onTriggered: workspaceMenu.workspace.applySaved(modelData)
+                }
+                onObjectAdded: (index, object) => workspaceMenu.insertItem(3 + index, object)
+                onObjectRemoved: (index, object) => workspaceMenu.removeItem(object)
             }
         }
 

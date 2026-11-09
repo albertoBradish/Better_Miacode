@@ -662,9 +662,7 @@ void miacode::runtime::PlaybackCoordinator::setCurrentBottomTabsTabId(RuntimeCon
     }
     const RuntimeContext::BottomTabsTabId previousTabId = state_.currentBottomTabsTabId_;
     state_.currentBottomTabsTabId_ = tabId;
-    if (tabId == RuntimeContext::BottomTabsTabId::Timeline) {
-        flushDeferredTimelineBridgeState();
-    }
+    flushDeferredTimelineBridgeState();
     if (previousTabId != tabId) {
         emit services_.shellNotifications().presentationChanged();
     }

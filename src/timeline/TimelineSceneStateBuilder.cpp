@@ -383,9 +383,10 @@ TimelineSceneLayoutMetrics buildLayoutMetrics(const TimelineSceneBuildRequest& r
     metrics.displayStartSeconds =
         qMin(-kTimelineDisplayLeadInSeconds, request.snapshot.minimumSecond - kTimelineDisplayLeadInSeconds);
     metrics.displayEndSeconds = qMax(metrics.displayStartSeconds + 1.0, metrics.maxNavigableSecond + 1.0);
+    const qreal playheadAnchor = timelinePlayheadAnchor(request.axisMode, request.viewportSize.width(), metrics.timelineLeft);
     metrics.leadingCenteringPadding = qMax(
         0,
-        (request.viewportSize.width() / 2)
+        qCeil(playheadAnchor)
             - rawSecondToX(0.0, metrics.displayStartSeconds, metrics.pixelsPerSecond, metrics.timelineLeft));
     metrics.trailingCenteringPadding = qMax(
         0,
@@ -394,7 +395,7 @@ TimelineSceneLayoutMetrics buildLayoutMetrics(const TimelineSceneBuildRequest& r
             metrics.displayStartSeconds,
             metrics.pixelsPerSecond,
             metrics.timelineLeft)
-                + (request.viewportSize.width() / 2)
+                + qCeil(request.viewportSize.width() - playheadAnchor)
             - rawContentWidth(
                 metrics.displayStartSeconds,
                 metrics.displayEndSeconds,
@@ -594,14 +595,16 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         const qreal start = secondToSceneXExact(state, request.dropRegion.start);
         const qreal end = secondToSceneXExact(state, request.dropRegion.end);
         const QColor marker = theme.base.lightnessF() < 0.5
-            ? QColor(255, 214, 112, 165) : QColor(140, 94, 0, 175);
+            ? QColor(255, 214, 112, 65) : QColor(140, 94, 0, 70);
         state.dropRegionRects = {
-            {QRectF(start, state.timelineTop, end - start, state.timelineHeight), QColor(255, 212, 108, 58)},
+            {QRectF(start, state.timelineTop, end - start, state.timelineHeight), QColor(255, 212, 108, 18)},
             {QRectF(start, state.timelineTop, 1, state.timelineHeight), marker},
             {QRectF(end, state.timelineTop, 1, state.timelineHeight), marker},
         };
         const QString& text = request.dropRegion.label;
-        const QSizeF size = timelineTextLogicalSize(laneLabelFont, text);
+        QFont dropLabelFont(laneLabelFont);
+        dropLabelFont.setPixelSize(9);
+        const QSizeF size = timelineTextLogicalSize(dropLabelFont, text);
         const bool vertical = state.axisProjection().vertical();
         const qreal timeSize = vertical ? size.height() : size.width();
         const qreal crossSize = vertical ? size.width() : size.height();
@@ -609,7 +612,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
             const QPointF center((start + end) * 0.5, state.timelineTop + crossSize * 0.5 + 3);
             state.dropRegionLabel = TimelineSceneTextLabel{
                 text, center - QPointF(size.width() * 0.5, size.height() * 0.5),
-                laneLabelFont, theme.label, size,
+                dropLabelFont, theme.label, size,
             };
         }
     }
@@ -1039,6 +1042,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         return QStringLiteral("slide");
     };
 
+    const qreal baseIconScale = state.contentScale * request.noteScale;
     const auto appendNoteForRef = [&](const TimelineVisibleNoteRef& visibleRef, bool trackLayer) {
         const TimelineRenderLine& line = request.snapshot.lines.at(visibleRef.lineIndex);
         const TimelineRenderNote& note = line.notes.at(visibleRef.noteIndex);
@@ -1087,7 +1091,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                 extentRight = qMax(extentRight, markerX);
             }
         }
-        const int noteCullPadding = scaledMetric(kNoteSize, state.contentScale);
+        const int noteCullPadding = qCeil(kNoteSize * baseIconScale);
         if (extentRight < state.timelineLeft - noteCullPadding
             || extentLeft > state.contentWidth + noteCullPadding) {
             return;
@@ -1096,9 +1100,6 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         const int laneSlot = timelineSlotForLane(state.laneOrder, note.lane);
         const qreal rowTop = state.timelineTop + (laneSlot - 1) * state.laneHeight;
         const qreal rowCenterY = rowTop + (state.laneHeight / 2.0);
-        const qreal baseIconScale =
-            request.zoomScale <= 0.25 ? qMin<qreal>(0.5, state.contentScale)
-                                      : static_cast<qreal>(state.contentScale);
         QString iconType;
         switch (note.kind) {
         case TimelineRenderNoteKind::Tap:
@@ -1205,14 +1206,8 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
             } else if (timelineRenderFlagSet(note, TimelineRenderFlagSlideEach)) {
                 baseTrackType = QStringLiteral("slide_track_each");
             }
-            const qreal zoomTrackScale = qBound<qreal>(0.25, request.zoomScale, 1.0);
-            const qreal zoomAdjustedTrackScale = request.zoomScale <= 0.25
-                ? 0.5
-                : qBound<qreal>(
-                    0.5,
-                    zoomTrackScale * static_cast<qreal>(state.contentScale),
-                    1.0);
-            const qreal trackScale = qMin<qreal>(state.contentScale, zoomAdjustedTrackScale);
+            // Keep the path lighter than its head so dense tracks stay distinguishable.
+            const qreal trackScale = qMin<qreal>(1.65 * state.contentScale, baseIconScale * 0.75);
             const QSize trackTargetSize =
                 noteMetrics.value(baseTrackType, noteMetrics.value(QStringLiteral("tap"))).targetSize(trackScale);
             if (!trackTargetSize.isValid()) {
@@ -1391,9 +1386,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
 
     // Exact, like the scroll offset: these ride on top of a sub-pixel scroll now, and the
     // playhead in particular must stay pinned. With follow on, scroll is
-    // exactPlayheadX - viewportWidth/2, so an exact playheadX puts the line at exactly the
-    // viewport centre every frame; a rounded one would shimmer +-0.5px against content that
-    // is now moving smoothly underneath it.
+    // exactPlayheadX minus the viewport anchor. Rounding would make the line shimmer.
     const qreal entryX = secondToXExact(state, request.playbackEntrySeconds);
     if (entryX > state.timelineLeft && headerMarkerSpanFits(entryX, playbackMarkerHalfWidth)) {
         state.hasEntryMarker = true;
@@ -1435,7 +1428,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         };
     }
     if (request.dragActive) {
-        const qreal dragCenterX = request.viewportSize.width() / 2.0;
+        const qreal dragCenterX = timelinePlayheadAnchor(state.axisMode, request.viewportSize.width(), state.timelineLeft);
         if (dragCenterX > state.timelineLeft) {
             state.hasDragCenterLine = true;
             state.dragCenterLine = TimelineSceneLine{

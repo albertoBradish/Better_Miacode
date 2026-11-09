@@ -111,6 +111,7 @@ Item {
 
     MainMenuCommands {
         id: menuCommands
+        workspace: splitView.workspace
         netUploadEnabled: root.pages.netUploadEnabled
         commandsEnabled: !root.beginnerGuideActive
         canUndo: root.editorCommandsAvailable && splitView.canUndo
@@ -322,6 +323,12 @@ Item {
             Qt.callLater(setupWizard.open)
     }
 
+    Connections {
+        target: root.preferences
+        function onSidebarVisibleChanged() { state.sidebarVisible = root.preferences.sidebarVisible }
+        function onBottomPanelVisibleChanged() { state.bottomPanelVisible = root.preferences.bottomPanelVisible }
+    }
+
     onCompactChanged: state.compactPanel = ""
 
     Column {
@@ -390,7 +397,8 @@ Item {
                                ? state.compactPanel === "sidebar"
                                : state.sidebarVisible
                 bottomActive: (state.difficultyEditorActive || state.latencyEditorActive)
-                              && state.bottomPanelVisible && root.timelineSession.panelVisible
+                              && state.bottomPanelVisible
+                              && (root.timelineSession.validationTabVisible || root.timelineSession.muriTabVisible)
                 bottomPanelEnabled: state.difficultyEditorActive || state.latencyEditorActive
                 saveEnabled: root.currentEditorSaveEnabled
                 wholeDocumentSaveEnabled: root.wholeDocumentSaveEnabled && !root.beginnerGuideActive
@@ -425,9 +433,6 @@ Item {
                 anchors.fill: parent
                 timelineGuideActive: beginnerGuide.visible
                     && beginnerGuide.selectedSection.id === "timeline-options"
-                backgroundSource: root.backgroundSource
-                backgroundOffset: root.mapToItem(root.backgroundSource,
-                                                 mainViewHost.x, mainViewHost.y)
                 viewState: state
                 documentSession: root.documentSession
                 analysisSession: root.analysisSession
@@ -443,6 +448,21 @@ Item {
                 latency: root.latency
                 net: root.applicationContext.net
                 netUpload: root.applicationContext.netUpload
+                floatingEditorShortcuts: Component {
+                    DockEditorShortcuts {
+                        menuCommands: root.mainMenuCommands
+                        shortcutModel: root.shortcutModel
+                        commandService: root.commands
+                        previewSession: root.previewSession
+                        nativeMenuBar: root.platform.nativeMenuBar
+                        editorActive: root.editorActive
+                        saveEnabled: root.currentEditorSaveEnabled
+                        documentAvailable: root.documentSession.hasDocument
+                        chartEditorActive: root.chartEditorActive
+                        editorCommandsEnabled: root.editorCommandsAvailable
+                        onCloseEditorRequested: splitView.requestCloseActiveEditor()
+                    }
+                }
                 compact: root.compact
                 documentTitle: root.documentTitle
                 onOpenRequested: root.showOpenFileDialog()

@@ -304,7 +304,7 @@ void applyDynamicSceneState(
 
     const miacode::timeline::TimelineThemeColors theme = miacode::timeline::timelineThemeColors();
     // Cached-scene updates use the same sub-pixel coordinates as a full scene
-    // build and centerOnSecond(), so the followed playhead stays at the center.
+    // build and centerOnSecond(), so playback stays pinned to the viewport anchor.
     const qreal cursorX =
         miacode::timeline::TimelineSceneStateBuilder::secondToSceneXExact(*state, stateBridge->cursorSeconds());
     if (cursorX > state->timelineLeft) {
@@ -342,7 +342,8 @@ void applyDynamicSceneState(
     }
 
     if (dragActive) {
-        const qreal dragCenterX = state->viewportSize.width() / 2.0;
+        const qreal dragCenterX = miacode::timeline::timelinePlayheadAnchor(
+            state->axisMode, state->viewportSize.width(), state->timelineLeft);
         if (dragCenterX > state->timelineLeft) {
             state->hasDragCenterLine = true;
             state->dragCenterLine = miacode::timeline::TimelineSceneLine{
@@ -1095,6 +1096,11 @@ bool TimelineQuickItem::isReady() const
     return ready_;
 }
 
+static qreal viewportAnchor(const miacode::timeline::TimelineSceneState& state)
+{
+    return miacode::timeline::timelinePlayheadAnchor(state.axisMode, state.viewportSize.width(), state.timelineLeft);
+}
+
 void TimelineQuickItem::cycleZoomPreset()
 {
     if (stateBridge_ == nullptr) {
@@ -1102,7 +1108,7 @@ void TimelineQuickItem::cycleZoomPreset()
     }
     const miacode::timeline::TimelineSceneState state = currentSceneState();
     stateBridge_->cycleZoomPreset(
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, state.viewportSize.width() / 2.0));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)));
 }
 
 void TimelineQuickItem::stepZoomPreset(int deltaSteps)
@@ -1113,7 +1119,7 @@ void TimelineQuickItem::stepZoomPreset(int deltaSteps)
     const miacode::timeline::TimelineSceneState state = currentSceneState();
     stateBridge_->stepZoomPreset(
         deltaSteps,
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, state.viewportSize.width() / 2.0));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)));
 }
 
 void TimelineQuickItem::setZoomScale(qreal scale)
@@ -1124,7 +1130,7 @@ void TimelineQuickItem::setZoomScale(qreal scale)
     const miacode::timeline::TimelineSceneState state = currentSceneState();
     stateBridge_->setZoomScaleAnchored(
         static_cast<double>(scale),
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, state.viewportSize.width() / 2.0));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)));
 }
 
 void TimelineQuickItem::refreshTheme()
@@ -1298,6 +1304,7 @@ miacode::timeline::TimelineSceneState TimelineQuickItem::currentSceneState() con
             headerMarkerRightLimit_ > 0 ? headerMarkerRightLimit_ : request.viewportSize.width();
         request.zoomScale = stateBridge_->zoomScale();
         request.contentScale = stateBridge_->contentScale();
+        request.noteScale = stateBridge_->noteScale();
         request.fitViewportHeight = true;
         request.waveformBrightness = stateBridge_->waveformBrightness();
         request.measureLineBrightness = stateBridge_->measureLineBrightness();
@@ -1392,7 +1399,7 @@ double TimelineQuickItem::viewportCenterSecondForScroll(double horizontalScrollV
     miacode::timeline::TimelineSceneState state = currentSceneState();
     state.horizontalScrollValue = qMax(0.0, horizontalScrollValue);
     return clampSceneSecond(
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, state.viewportSize.width() / 2.0));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)));
 }
 
 bool TimelineQuickItem::playheadNearViewportCenter() const
@@ -1400,7 +1407,7 @@ bool TimelineQuickItem::playheadNearViewportCenter() const
     const miacode::timeline::TimelineSceneState state = currentSceneState();
     return qAbs(
                (stateBridge_ != nullptr ? stateBridge_->playheadSeconds() : 0.0)
-               - miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, state.viewportSize.width() / 2.0))
+               - miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)))
         <= (0.5 / qMax(1.0, state.pixelsPerSecond));
 }
 
@@ -1550,6 +1557,7 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
     updateLayerSlot(layerSlotAt(root, slotIndex++), [&](QSGNode* oldChild) {
         return headerLayer_->updateNode(oldChild, state, window());
     });
+    // The Drop wash is part of the grid, beneath the waveform and notes.
     updateLayerSlot(layerSlotAt(root, slotIndex++), [&](QSGNode* oldChild) {
         return gridLinesLayer_->updateNode(oldChild, state, window());
     });

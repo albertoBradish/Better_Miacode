@@ -469,7 +469,7 @@ double TimelineQuickStateBridge::viewportCenterSecond()
     }
     const double pixelsPerSecond = qMax(1e-9, layoutMetrics_.pixelsPerSecond);
     const double sceneX = horizontalScrollValue_
-        + (static_cast<double>(layoutMetrics_.viewportSize.width()) * 0.5);
+        + playheadAnchorPosition();
     return qMax(
         0.0,
         layoutMetrics_.displayStartSeconds
@@ -560,7 +560,7 @@ void TimelineQuickStateBridge::setZoomScale(double scale)
 
 void TimelineQuickStateBridge::setZoomScaleAnchored(double scale, double anchorSecond)
 {
-    applyZoomScale(scale, anchorSecond, effectiveViewportSize().width() * 0.5);
+    applyZoomScale(scale, anchorSecond, playheadAnchorPosition());
 }
 
 void TimelineQuickStateBridge::zoomAtViewportPosition(double scale, qreal timePosition)
@@ -602,9 +602,26 @@ void TimelineQuickStateBridge::cycleZoomPreset(double anchorSecond)
     setZoomScaleAnchored(zoomPresets_.first(), anchorSecond);
 }
 
+qreal TimelineQuickStateBridge::playheadAnchorPosition() const
+{
+    return miacode::timeline::timelinePlayheadAnchor(
+        miacode::timeline::timelineAxisModeForToken(axisMode_),
+        effectiveViewportSize().width(), layoutMetrics_.timelineLeft);
+}
+
+void TimelineQuickStateBridge::setNoteScale(double scale)
+{
+    if (!qIsFinite(scale)) return;
+    const double normalized = qBound(0.5, scale, 3.0);
+    if (qFuzzyCompare(noteScale_, normalized)) return;
+    noteScale_ = normalized;
+    bumpNotesRevision();
+    emit renderStateChanged();
+}
+
 bool TimelineQuickStateBridge::centerOnSecond(double second)
 {
-    return placeSecondAt(second, effectiveViewportSize().width() * 0.5);
+    return placeSecondAt(second, playheadAnchorPosition());
 }
 
 bool TimelineQuickStateBridge::placeSecondAt(double second, qreal position)

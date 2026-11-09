@@ -80,8 +80,7 @@ miacode::runtime::PlaybackCoordinator::PlaybackCoordinator(
 
 bool miacode::runtime::PlaybackCoordinator::timelineTabIsForeground() const
 {
-    return bottomTabsTabVisibleFromState(RuntimeContext::BottomTabsTabId::Timeline)
-        && state_.currentBottomTabsTabId_ == RuntimeContext::BottomTabsTabId::Timeline;
+    return bottomTabsTabVisibleFromState(RuntimeContext::BottomTabsTabId::Timeline);
 }
 
 bool miacode::runtime::PlaybackCoordinator::quickTimelineBridgeReady() const

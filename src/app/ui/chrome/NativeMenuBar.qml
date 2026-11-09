@@ -56,7 +56,7 @@ MenuBar {
         const menus = root.menuDefinitions.nativeMenus()
         menus[0].addAction(root.quitApplicationAction)
         menus[1].addAction(root.preferencesApplicationAction)
-        menus[6].addAction(root.aboutApplicationAction)
+        menus[menus.length - 1].addAction(root.aboutApplicationAction)
         for (let i = 0; i < menus.length; ++i) {
             root.addMenu(menus[i])
         }

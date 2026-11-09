@@ -11,6 +11,7 @@
 #include <QFontDatabase>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QScreen>
 #include <QDate>
 #include <QStringList>
 #include <QSettings>
@@ -21,6 +22,9 @@
 namespace miacode::ui {
 namespace {
 constexpr auto kUiSection = "ui";
+constexpr auto kWorkspaceLayout = "workspace_layout";
+constexpr auto kSavedWorkspaceLayouts = "saved_workspace_layouts";
+constexpr auto kTimelinePanelVisible = "timeline_panel_visible";
 constexpr auto kBlurMaterialsEnabled = "blur_materials_enabled";
 constexpr auto kEfficientSidebarEnabled = "efficient_sidebar_enabled";
 constexpr auto kSidebarVisible = "sidebar_visible";
@@ -132,6 +136,10 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     if (!QStringList{QStringLiteral("horizontal"), QStringLiteral("vertical_before_editor"), QStringLiteral("vertical_after_editor")}.contains(timelineLayoutMode_)) timelineLayoutMode_ = QStringLiteral("horizontal");
     timelineVerticalDirection_ = ui.value(QStringLiteral("timeline_vertical_direction")).toString(QStringLiteral("falling"));
     if (!QStringList{QStringLiteral("falling"), QStringLiteral("rising")}.contains(timelineVerticalDirection_)) timelineVerticalDirection_ = QStringLiteral("falling");
+    workspaceLayout_ = ui.value(QLatin1String(kWorkspaceLayout)).toObject().toVariantMap();
+    savedWorkspaceLayouts_ = ui.value(QLatin1String(kSavedWorkspaceLayouts)).toObject().toVariantMap();
+    timelinePanelVisible_ = ui.value(QLatin1String(kTimelinePanelVisible)).toBool(true);
+    timelineNoteScale_ = qBound(0.5, ui.value(QStringLiteral("timeline_note_scale")).toDouble(1.5), 3.0);
     timelineVerticalWidthRatio_ = qBound(0.2, ui.value(QStringLiteral("timeline_vertical_width_ratio")).toDouble(0.34), 0.6);
     timelineLaneOrder_ = ui.value(QStringLiteral("timeline_lane_order")).toString(QStringLiteral("natural"));
     if (!QStringList{QStringLiteral("natural"), QStringLiteral("rotated"), QStringLiteral("reversed"), QStringLiteral("rotated_reversed")}.contains(timelineLaneOrder_)) timelineLaneOrder_ = QStringLiteral("natural");
@@ -650,6 +658,61 @@ void WorkbenchSettings::setTimelineVerticalDirection(const QString& value)
     timelineVerticalDirection_ = value;
     storeUiValue("timeline_vertical_direction", value);
     emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setWorkspaceLayout(const QVariantMap& layout)
+{
+    if (workspaceLayout_ == layout) return;
+    workspaceLayout_ = layout;
+    storeUiValue(kWorkspaceLayout, QJsonObject::fromVariantMap(layout));
+    emit workspaceLayoutChanged();
+}
+
+void WorkbenchSettings::saveWorkspaceLayout(const QString& name, const QVariantMap& layout)
+{
+    const QString key = name.trimmed();
+    if (key.isEmpty() || key.size() > 48 || savedWorkspaceLayouts_.value(key).toMap() == layout) return;
+    savedWorkspaceLayouts_.insert(key, layout);
+    storeUiValue(kSavedWorkspaceLayouts, QJsonObject::fromVariantMap(savedWorkspaceLayouts_));
+    emit savedWorkspaceLayoutsChanged();
+}
+
+QRect WorkbenchSettings::boundedWorkspaceWindowGeometry(const QRect& rect) const
+{
+    QScreen* screen = QGuiApplication::screenAt(rect.topLeft() + QPoint(60, 15));
+    const bool reachable = screen != nullptr;
+    if (!screen) screen = QGuiApplication::primaryScreen();
+    if (!screen) return rect;
+    const QRect available = screen->availableGeometry();
+    const QSize size = rect.size().boundedTo(available.size());
+    if (!reachable) return QRect(available.center() - QPoint(size.width() / 2, size.height() / 2), size);
+    return QRect(QPoint(qBound(available.x(), rect.x(), available.x() + available.width() - size.width()),
+                        qBound(available.y(), rect.y(), available.y() + available.height() - size.height())), size);
+}
+
+void WorkbenchSettings::removeWorkspaceLayout(const QString& name)
+{
+    if (!savedWorkspaceLayouts_.remove(name)) return;
+    storeUiValue(kSavedWorkspaceLayouts, QJsonObject::fromVariantMap(savedWorkspaceLayouts_));
+    emit savedWorkspaceLayoutsChanged();
+}
+
+void WorkbenchSettings::setTimelinePanelVisible(bool value)
+{
+    if (timelinePanelVisible_ == value) return;
+    timelinePanelVisible_ = value;
+    storeUiValue(kTimelinePanelVisible, value);
+    emit timelinePanelVisibleChanged();
+}
+
+void WorkbenchSettings::setTimelineNoteScale(double value)
+{
+    if (!qIsFinite(value)) return;
+    value = qBound(0.5, value, 3.0);
+    if (qFuzzyCompare(timelineNoteScale_, value)) return;
+    timelineNoteScale_ = value;
+    storeUiValue("timeline_note_scale", value);
+    emit timelineNoteScaleChanged();
 }
 
 void WorkbenchSettings::setTimelineLaneOrder(const QString& value)

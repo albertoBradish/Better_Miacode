@@ -3,68 +3,25 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import MiaCode.UI
-import MiaCode.Timeline
 
 Item {
     id: root
 
-    required property var documentSession
     required property var analysisSession
-    required property var preferences
+    required property var documentSession
     required property var timelineSession
-    required property var previewSession
-    property bool guideSettingsActive: false
-    property bool verticalTimeline: false
-    readonly property real timelineRulerRightLimit: verticalTimeline ? 0 : Math.max(0, brightnessButton.x - 2)
-    readonly property var structure: root.previewSession?.structure ?? null
-    readonly property string dropLabel: qsTrId("timeline.drop_region")
-
-    function syncDropRegion() {
-        const bridge = root.timelineSession?.stateBridge
-        if (!bridge)
-            return
-        const valid = root.structure && root.structure.dropAvailable
-        bridge.setDropRegion(valid ? root.structure.dropStartSeconds : -1,
-                             valid ? root.structure.dropEndSeconds : -1,
-                             root.dropLabel)
-    }
-
-    Component.onCompleted: syncDropRegion()
-    onStructureChanged: syncDropRegion()
-    onDropLabelChanged: syncDropRegion()
-
-    Connections {
-        target: root.structure
-        function onChanged() { root.syncDropRegion() }
-    }
-    readonly property bool guideSettingsAvailable: root.guideSettingsActive
-        && root.visible && timelineItem.visible
-    readonly property Item timelineGuideItem: timelineItem
-    readonly property Item timelineSettingsGuideItem: settingsMenu.contentItem
+    readonly property string currentTabId: (timelineSession.currentTabId === "muri" && timelineSession.muriTabVisible)
+        || !timelineSession.validationTabVisible ? "muri" : "validation"
     signal analysisRowActivated(int difficultyId, var revision, int line, int column, int endColumn, double second)
 
-    onGuideSettingsAvailableChanged: {
-        // Let the menu's focus and close-policy bindings settle before opening.
-        if (root.guideSettingsAvailable)
-            Qt.callLater(root.openGuideSettingsMenu)
-        else
-            settingsMenu.close()
-    }
-
-    function openGuideSettingsMenu() {
-        if (root.guideSettingsAvailable)
-            settingsMenu.openAt(brightnessButton)
-    }
-
     Rectangle {
-        width: parent.width
-        height: timelineItem.visible ? tabs.height : parent.height
+        anchors.fill: parent
         color: Theme.surfaceColor(Theme.colors.background.panel)
     }
     clip: true
     readonly property int contentTopMargin: 0
-    readonly property real minimumHeight: tabs.implicitHeight + (verticalTimeline ? 100 : timelineItem.minimumViewportHeight)
-    readonly property real minimumWidth: verticalTimeline ? 168 : tabs.minimumWidth
+    readonly property real minimumHeight: tabs.implicitHeight + 38
+    readonly property real minimumWidth: tabs.minimumWidth
     readonly property real analysisTextLeftInset:
         Theme.panelPadding + Theme.chromePadding
     readonly property real analysisListLeftInset:
@@ -72,12 +29,6 @@ Item {
     readonly property real analysisVerticalSpacing: Theme.chromeInsetY
     readonly property int muriWarningCount: root.analysisSession.muriWarningCount
     readonly property int muriIssueCount: root.analysisSession.muriIssueCount
-
-    Timer {
-        id: timelineThemeRefresh
-        interval: 0
-        onTriggered: timelineItem.refreshTheme()
-    }
 
     component AnalysisIssueRow: ChromeRow {
         id: issueRow
@@ -128,133 +79,14 @@ Item {
     // Theme owns timeline surfaces; the palette's timeline group only supplies
     // content colors. The bridge exists before TimelineQuickItem so both sets
     // reach the C++ scene snapshot before its first frame.
-    TimelineThemeBridge {
-        id: timelineTheme
-        windowColor: Theme.surfaceColor(Theme.colors.background.surface)
-        headerColor: Theme.surfaceColor(Theme.colors.background.panel)
-        sidebarColor: Theme.surfaceColor(Theme.colors.background.panel)
-        baseColor: Theme.surfaceColor(Theme.colors.background.surface)
-        borderColor: Theme.colors.timeline.border
-        axisColor: Theme.colors.timeline.axis
-        gridMajorColor: Theme.colors.timeline.gridMajor
-        gridSubdivisionColor: Theme.colors.timeline.gridSubdivision
-        gridMinorColor: Theme.colors.timeline.gridMinor
-        laneEvenColor: Theme.contentOverlayColor(Theme.colors.timeline.laneEven)
-        laneOddColor: Theme.contentOverlayColor(Theme.colors.timeline.laneOdd)
-        labelColor: Theme.colors.timeline.label
-        textSecondaryColor: Theme.colors.timeline.textSecondary
-        waveStrokeColor: Theme.colors.timeline.waveStroke
-        onWindowColorChanged: timelineThemeRefresh.restart()
-        onHeaderColorChanged: timelineThemeRefresh.restart()
-        onSidebarColorChanged: timelineThemeRefresh.restart()
-        onBaseColorChanged: timelineThemeRefresh.restart()
-        onBorderColorChanged: timelineThemeRefresh.restart()
-        onAxisColorChanged: timelineThemeRefresh.restart()
-        onGridMajorColorChanged: timelineThemeRefresh.restart()
-        onGridSubdivisionColorChanged: timelineThemeRefresh.restart()
-        onGridMinorColorChanged: timelineThemeRefresh.restart()
-        onLaneEvenColorChanged: timelineThemeRefresh.restart()
-        onLaneOddColorChanged: timelineThemeRefresh.restart()
-        onLabelColorChanged: timelineThemeRefresh.restart()
-        onTextSecondaryColorChanged: timelineThemeRefresh.restart()
-        onWaveStrokeColorChanged: timelineThemeRefresh.restart()
-    }
-
     BottomTabBar {
         id: tabs
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        rightAccessoryWidth: root.verticalTimeline && timelineItem.visible ? brightnessButton.width : 0
-        documentSession: root.documentSession
+        currentTabId: root.currentTabId
         analysisSession: root.analysisSession
         timelineSession: root.timelineSession
-    }
-
-    Binding {
-        target: root.timelineSession.stateBridge
-        property: "laneOrder"
-        value: root.preferences.timelineLaneOrder ?? "natural"
-    }
-
-    Binding {
-        target: root.timelineSession.stateBridge
-        property: "axisMode"
-        value: root.verticalTimeline ? (root.preferences.timelineVerticalDirection ?? "falling") : "horizontal"
-    }
-
-    TimelineQuickItem {
-        id: timelineItem
-        objectName: "timelineQuickItem"
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: tabs.bottom
-        anchors.bottom: parent.bottom
-        visible: root.timelineSession.currentTabId === "timeline"
-        enabled: visible
-        stateBridge: root.timelineSession.stateBridge
-        lowPerformanceMode: root.preferences.lowPerformanceMode ?? false
-        headerRightLimit: root.timelineRulerRightLimit
-        headerMarkerRightLimit: root.timelineRulerRightLimit
-        onHeaderNavigateRequested: second => root.timelineSession.headerNavigate(second)
-        onTimelineWheelNavigateRequested: second => root.timelineSession.wheelNavigate(second)
-        onCenterNavigateRequested: second => root.timelineSession.centerNavigate(second)
-        onTimelineDragStarted: root.timelineSession.dragStarted()
-        onTimelineDragFinished: second => root.timelineSession.dragFinished(second)
-        onTimelineUserInteractionStarted: root.timelineSession.userInteractionStarted()
-        onTimelineSurfaceReady: root.timelineSession.surfaceReady()
-        onFollowPreviewToggled: enabled => root.timelineSession.followPreviewToggled(enabled)
-    }
-
-    Tooltip {
-        id: timelineMarkerTooltip
-        parent: Overlay.overlay
-        visible: timelineItem.hoverTooltipText.length > 0
-        text: timelineItem.hoverTooltipText
-        x: {
-            const position = timelineItem.mapToItem(parent, timelineItem.hoverTooltipPosition)
-            return position.x + 12
-        }
-        y: {
-            const position = timelineItem.mapToItem(parent, timelineItem.hoverTooltipPosition)
-            return position.y + 16
-        }
-    }
-
-    IconButton {
-        id: brightnessButton
-
-        width: implicitWidth
-        height: implicitHeight
-        x: root.width - tabs.edgePadding - width + horizontalInset
-        y: root.verticalTimeline
-            ? tabs.y + (tabs.height - height) / 2
-            : timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
-        visible: timelineItem.visible
-        iconSource: Qt.resolvedUrl("icons/sliders-horizontal.svg")
-        filledIconSource: Qt.resolvedUrl("icons/sliders-horizontal-fill.svg")
-        tooltip: qsTrId("qml.timeline_settings")
-        active: settingsMenu.active
-        Accessible.description: qsTrId("qml.open_timeline_settings")
-        onClicked: {
-            if (settingsMenu.active) {
-                settingsMenu.close()
-                return
-            }
-            settingsMenu.openAt(brightnessButton)
-        }
-    }
-
-    TimelineSettingsMenu {
-        id: settingsMenu
-        stateBridge: root.timelineSession.stateBridge
-        timelineSession: root.timelineSession
-        // The modal guide owns input and Escape while demonstrating this menu.
-        focus: !root.guideSettingsActive
-        closePolicy: root.guideSettingsActive ? Popup.NoAutoClose
-            : Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
-        z: root.guideSettingsActive ? 99 : 0
     }
 
     Item {
@@ -263,7 +95,7 @@ Item {
         anchors.top: tabs.bottom
         anchors.topMargin: root.contentTopMargin
         anchors.bottom: parent.bottom
-        visible: root.timelineSession.currentTabId === "validation"
+        visible: root.currentTabId === "validation"
 
         Row {
             id: summaryRow
@@ -329,7 +161,7 @@ Item {
         anchors.top: tabs.bottom
         anchors.topMargin: root.contentTopMargin
         anchors.bottom: parent.bottom
-        visible: root.timelineSession.currentTabId === "muri"
+        visible: root.currentTabId === "muri"
 
         Row {
             id: muriSummaryRow
@@ -386,18 +218,6 @@ Item {
             font.family: Theme.uiFont
             font.pixelSize: Theme.uiFontSize
         }
-    }
-
-    // The panel bounds let the HUD extend above a compact note viewport.
-    // Keep it above every bottom tab so tab switches preserve the notification.
-    PreviewRateToast {
-        anchors.fill: parent
-        noteViewportRect: Qt.rect(
-            timelineItem.x + timelineItem.noteViewportRect.x,
-            timelineItem.y + timelineItem.noteViewportRect.y,
-            timelineItem.noteViewportRect.width,
-            timelineItem.noteViewportRect.height)
-        previewSession: root.previewSession
     }
 
     Connections {

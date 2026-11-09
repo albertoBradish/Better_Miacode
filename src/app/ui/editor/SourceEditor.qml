@@ -13,6 +13,13 @@ Rectangle {
     required property var analysisSession
     property var preferences: null
     readonly property bool overviewRulerEnabled: preferences ? preferences.editorOverviewRulerEnabled : false
+    readonly property var sceneWindow: root.Window.window
+    onSceneWindowChanged: {
+        editorContextMenu?.close()
+        bookmarkMenu?.close()
+        completionPopup?.close()
+        ++editorRailSceneRevision
+    }
     property bool navigationVisible: false
     onNavigationVisibleChanged: {
         if (!navigationVisible) {
@@ -216,7 +223,7 @@ Rectangle {
                 executeOperation(operation)
             }
         }
-        parent: Overlay.overlay
+        parent: root.Overlay.overlay
 
         property rect placement: Qt.rect(0, 0, 0, 0)
         property int anchorPosition: 0
@@ -658,6 +665,7 @@ Rectangle {
     }
     CompletionPopup {
         id: completionPopup
+        parent: root.Overlay.overlay
         editor: sourceArea
         controller: root.editorController
         onSettingsRequested: function(group) { root.completionSettingsRequested(group) }
@@ -674,7 +682,7 @@ Rectangle {
     }
     AppMenu {
         id: bookmarkMenu
-        parent: Overlay.overlay
+        parent: root.Overlay.overlay
         modal: true
         dim: false
         property string pendingOperation: ""

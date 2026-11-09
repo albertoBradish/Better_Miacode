@@ -28,6 +28,13 @@ inline TimelineAxisMode timelineAxisModeForToken(QStringView token)
     return TimelineAxisMode::Horizontal;
 }
 
+inline qreal timelinePlayheadAnchor(TimelineAxisMode mode, qreal timeExtent, qreal timelineLeft)
+{
+    // Both vertical modes start time at the judgement edge. Falling mirrors Y.
+    if (mode == TimelineAxisMode::Horizontal) return timeExtent * 0.5;
+    return qMin(timeExtent, qMax(timelineLeft + 8.0, timeExtent * 0.12));
+}
+
 // Scene layers use (time, lane) coordinates. The projection maps them to the
 // item without changing source time or moving the surrounding QML controls.
 struct TimelineAxisProjection {

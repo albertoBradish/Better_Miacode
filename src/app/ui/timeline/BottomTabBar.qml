@@ -7,10 +7,9 @@ import MiaCode.UI
 Item {
     id: root
 
-    required property var documentSession
+    required property string currentTabId
     required property var analysisSession
     required property var timelineSession
-    property real rightAccessoryWidth: 0
 
     readonly property int edgePadding: 4
     readonly property int rowVerticalMargin:
@@ -19,7 +18,7 @@ Item {
         edgePadding - Theme.chromeInsetX
     implicitHeight: Theme.controlMinHeight + 2 * rowVerticalMargin
     readonly property real minimumWidth: tabLayout.implicitWidth
-        + 2 * rowHorizontalMargin + rightAccessoryWidth
+        + 2 * rowHorizontalMargin
 
     function revealTab(tab) {
         if (tab.x < tabScroll.contentX)
@@ -92,7 +91,7 @@ Item {
         anchors.topMargin: root.rowVerticalMargin
         anchors.bottomMargin: root.rowVerticalMargin
         anchors.leftMargin: root.rowHorizontalMargin
-        anchors.rightMargin: root.rowHorizontalMargin + root.rightAccessoryWidth
+        anchors.rightMargin: root.rowHorizontalMargin
         contentWidth: tabLayout.width
         contentHeight: height
         flickableDirection: Flickable.HorizontalFlick
@@ -106,24 +105,18 @@ Item {
             height: tabScroll.height
             spacing: 4
 
-            BottomTab {
-                visible: root.timelineSession.timelineTabVisible
-                text: root.timelineSession.timelineTabLabel
-                checked: root.timelineSession.currentTabId === "timeline"
-                onClicked: root.timelineSession.setCurrentTabId("timeline")
-            }
             AnalysisTab {
                 visible: root.timelineSession.validationTabVisible
                 text: root.timelineSession.validationTabLabel
                 issueCounts: root.countIssues(root.analysisSession.validationRows)
-                checked: root.timelineSession.currentTabId === "validation"
+                checked: root.currentTabId === "validation"
                 onClicked: root.timelineSession.setCurrentTabId("validation")
             }
             AnalysisTab {
                 visible: root.timelineSession.muriTabVisible
                 text: root.timelineSession.muriTabLabel
                 issueCounts: ({ errors: root.analysisSession.muriIssueCount, warnings: root.analysisSession.muriWarningCount })
-                checked: root.timelineSession.currentTabId === "muri"
+                checked: root.currentTabId === "muri"
                 onClicked: root.timelineSession.setCurrentTabId("muri")
             }
 

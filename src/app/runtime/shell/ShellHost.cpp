@@ -73,20 +73,27 @@ bool objectReservesPlainSpace(QObject* object)
     return false;
 }
 
-bool rootWindowReservesPlainSpace(QQuickWindow* window)
+bool windowReservesPlainSpace(QQuickWindow* window)
 {
-    return window->property("sourceEditorFocused").toBool()
-        || objectReservesPlainSpace(QGuiApplication::focusObject())
-        || objectReservesPlainSpace(window->activeFocusItem());
+    return objectReservesPlainSpace(QGuiApplication::focusObject())
+        || (window != nullptr && (window->property("sourceEditorFocused").toBool()
+                                  || objectReservesPlainSpace(window->activeFocusItem())));
+}
+
+bool timelineContainsPoint(QQuickItem* item, const QPointF& scenePoint)
+{
+    if (!item->isVisible()) return false;
+    if (item->objectName() == QLatin1String("timelineQuickItem"))
+        return item->contains(item->mapFromScene(scenePoint));
+    for (auto* child : item->childItems()) {
+        if (timelineContainsPoint(child, scenePoint)) return true;
+    }
+    return false;
 }
 
 bool pointerOverTimeline(QQuickWindow* window)
 {
-    if (!window) return false;
-    const QPointF scenePoint = window->mapFromGlobal(QCursor::pos());
-    for (auto* item : window->findChildren<QQuickItem*>(QStringLiteral("timelineQuickItem")))
-        if (item->window() == window && item->isVisible() && item->contains(item->mapFromScene(scenePoint))) return true;
-    return false;
+    return window != nullptr && timelineContainsPoint(window->contentItem(), window->mapFromGlobal(QCursor::pos()));
 }
 
 }  // namespace
@@ -143,7 +150,7 @@ bool Session::eventFilter(QObject*, QEvent* event)
             && keyEvent->key() == Qt::Key_Space
             && keyEvent->modifiers() == Qt::NoModifier
             && rootWindow->property("playbackCommandsEnabled").toBool()
-            && !rootWindowReservesPlainSpace(rootWindow)) {
+            && !windowReservesPlainSpace(qobject_cast<QQuickWindow*>(focusWindow))) {
             if (event->type() == QEvent::KeyPress
                 && !keyEvent->isAutoRepeat()
                 && playback_ != nullptr) {

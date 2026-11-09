@@ -701,6 +701,12 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/chrome/StatusBar.qml
     src/app/ui/layout/MainView.qml
     src/app/ui/layout/MainSplitView.qml
+    src/app/ui/layout/WorkbenchDock.qml
+    src/app/ui/layout/WorkbenchLayouts.js
+    src/app/ui/layout/DockNode.qml
+    src/app/ui/layout/DockPanelTab.qml
+    src/app/ui/layout/DockFloatWindow.qml
+    src/app/ui/layout/DockEditorShortcuts.qml
     src/app/ui/layout/WelcomePage.qml
     src/app/ui/layout/BeginnerGuideOverlay.qml
     src/app/ui/layout/SetupWizard.qml
@@ -740,6 +746,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/editor/BookmarkList.qml
     src/app/ui/timeline/TimelineLayoutPreview.qml
     src/app/ui/timeline/BottomPanel.qml
+    src/app/ui/timeline/TimelinePanel.qml
     src/app/ui/timeline/BottomTabBar.qml
     src/app/ui/timeline/TimelineSettingsMenu.qml
     src/app/ui/preview/PreviewPane.qml

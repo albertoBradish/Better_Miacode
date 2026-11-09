@@ -51,6 +51,7 @@ struct TimelineSceneBuildRequest {
     int horizontalCullPaddingPx = 0;
     double zoomScale = 0.5;
     double contentScale = 1.0;
+    double noteScale = 1.5;
     bool fitViewportHeight = false;
     double waveformBrightness = kTimelineWaveformBrightnessDefault;
     double measureLineBrightness = kTimelineMeasureLineBrightnessDefault;

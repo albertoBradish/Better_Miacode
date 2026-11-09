@@ -60,6 +60,12 @@ miacode_add_dev_tool(qml_scintilla_editor_spec TEST
         third_party/ScintillaQuick/src/render
 )
 set_tests_properties(qml_scintilla_editor_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+if(TARGET Qt6::qmltestrunner)
+    add_test(NAME qml_workbench_dock_spec COMMAND Qt6::qmltestrunner
+        -import "${MIACODE_QML_SPEC_IMPORT_ROOT}"
+        -input "${CMAKE_CURRENT_SOURCE_DIR}/src/tools/ui/tst_WorkbenchDock.qml")
+    set_tests_properties(qml_workbench_dock_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()
 target_compile_definitions(qml_scintilla_editor_spec PRIVATE
     "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\""
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
