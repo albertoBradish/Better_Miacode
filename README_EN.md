@@ -1,282 +1,98 @@
 # Better Miacode
 
-An independent usability-focused derivative of [Team-MiaCode/MiaCode](https://github.com/Team-MiaCode/MiaCode),
-based on upstream main. It contains no hand-order annotation or automatic hand-order experiments.
-See [the feature and acceptance specification](docs/BETTER_MIACODE_ZH.md).
+An independent enhancement fork of [MiaCode](https://github.com/Team-MiaCode/MiaCode). The list below covers only Better Miacode additions and improvements.
 
-**Download Better Miacode 2.0.0-better.9:** [GitHub Releases](https://github.com/albertoBradish/Better_Miacode/releases).
-This update adds Slide timing visualization that reaches full brightness at the earliest Perfect instant, preserves native track erasure, fixes overlapping pp/qq paths, and adds optional launch-beat timing with an early-Perfect bypass. Preview, video export and CLI share the same rules. See [the release notes](docs/releases/better_8.md) for platform verification details.
+Latest release: [2.0.1-better.11](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.11).
 
-The upstream introduction below is retained for attribution; official download links refer to upstream MiaCode.
+[Download](https://github.com/albertoBradish/Better_Miacode/releases) · [Release source](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.11) · [中文](README.md) · [Issues](https://github.com/albertoBradish/Better_Miacode/issues)
 
-<p align="center">
-  <img src="resources/icons/app.png" alt="MiaCode avatar" width="128">
-</p>
+## Selection & editing
 
-<h1 align="center">MiaCode</h1>
+1. **Line navigation and selection playback.** Jump from line numbers and pause, including blank/comment lines; play selections with note lead-in and long-note tails.
+2. **Linked object selection.** Synchronize source, timeline, and preview selections; Shift-select visible objects, with separate Slide heads and tracks.
+3. **Non-contiguous object editing.** Apply copy, cut, delete, and existing transforms to selected note objects without changing intervening notes; undo each operation.
+4. **Context-aware note clipboard.** Preserve BPM, subdivisions, HS, meter, and rests; align pasted fragments and restore the destination timing context.
 
-<p align="center">
-  <a href="https://miacode.net/en/"><img src="https://img.shields.io/badge/Website-miacode.net-3178C6?style=for-the-badge" alt="Website"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/releases/latest"><img src="https://img.shields.io/github/v/release/Team-MiaCode/MiaCode?style=for-the-badge&amp;label=Release&amp;logo=github&amp;color=24292F" alt="Latest release"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="https://img.shields.io/badge/Nightly-CI-2088FF?style=for-the-badge&amp;logo=githubactions&amp;logoColor=white" alt="Nightly CI"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/stargazers"><img src="https://img.shields.io/github/stars/Team-MiaCode/MiaCode?style=for-the-badge&amp;label=Stars" alt="GitHub stars"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge" alt="Source code license: GPLv3"></a>
-</p>
+## Timeline enhancements
 
-<p align="center">
-  <a href="README.md">中文</a> | <a href="README_EN.md">English</a>
-</p>
+5. **Continuous zoom.** Zoom continuously with Alt+wheel while retaining existing custom shortcuts.
+6. **Independent note size.** Enlarge note symbols up to 300%, independently of the time scale.
+7. **Vertical timeline.** Place it beside either edge of the editor, choose falling or rising flow, and keep the playhead near the corresponding edge.
+8. **Four lane orders.** Choose 12345678, 56781234, 87654321, or 43218765.
 
-MiaCode is a maimai chart authoring tool built with Qt 6 / C++ / QML, with editing, live preview, syntax and Muri checks, video export, and cover creation for Windows, Apple Silicon macOS, and Linux.
+## Workspace controls
 
-<table align="center" width="100%">
-  <tr>
-    <td align="center" width="50%"><img src="resources/screenshots/main-dark.png" alt="MiaCode dark theme with multiple tabs" width="640"></td>
-    <td align="center" width="50%"><img src="resources/screenshots/main-light.png" alt="MiaCode light theme with efficient sidebar and detached preview" width="640"></td>
-  </tr>
-  <tr>
-    <td align="center">Dark theme</td>
-    <td align="center">Light theme</td>
-  </tr>
-</table>
+9. **Docking and tab groups.** Rearrange and group panels without adding duplicate headings to single panels.
+10. **More detachable panels.** Manage the editor, outline, timeline, syntax, and Muri panels independently, including visibility and floating windows.
+11. **Named layouts.** Save, switch, and reset named workspaces, with layout presets in one menu.
+12. **Workspace shortcuts.** Open Workspace with Alt+W; maximize or restore the active panel with the backtick key.
 
-## Quick Start
+## Visual aids & rendering
 
-### Download
+13. **Measure guides.** Choose automatic detection, custom beats per measure, or source line starts.
+14. **Slide judgement skeletons.** Display judgement regions for chained Slides and WiFi branches.
+15. **Slide judgement timing.** Reveal tracks by the earliest Perfect instant, with launch-beat options and native track erasure.
+16. **Debug rendering and layer controls.** Add black-background debug rendering and no-guide mode, with debug settings isolated from normal rendering.
 
-<p align="center">
-  <a href="https://miacode.net/en/download.html"><img src="resources/readme/download-website-en.svg" alt="Official Download" width="264" height="88"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/releases"><img src="resources/readme/download-release.svg" alt="GitHub Releases" width="264" height="88"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="resources/readme/download-nightly.svg" alt="Nightly CI" width="264" height="88"></a>
-</p>
+## Preview information & metadata
 
-Packages are available for Windows and macOS.
+17. **Additional HUD information.** Toggle BPM, CPS, meter, and mods independently, with arbitrary-aspect preview layouts.
+18. **CPS and cleaner previews.** Count simultaneous Touch groups once in CPS and remove duplicated object statistics from the editor canvas.
+19. **Advanced metadata forms.** Edit IDs, version, level constants, demo windows, dates, and creator comments in dedicated fields.
+20. **DX score-loss allowances.** Calculate SSS/SSS+ budgets and Tap Great allowances, including Break details and EX constraints.
 
-Linux users can [build from source](#build).
+## Drop & pressure analysis
 
-- **Windows**: Double-click `MiaCode.exe` in the extracted folder.
-- **macOS**: Double-click `MiaCode.app`, or drag it into Applications. If macOS displays a security prompt, open Terminal in the extracted folder and run `xattr -dr com.apple.quarantine "MiaCode.app"`, then launch the app.
+21. **Drop recommendations.** Analyze audio and chart data to suggest preview regions.
+22. **Manual region editing.** Adjust regions, set them from source selections, clear them, and undo or redo edits.
+23. **Persistent regions.** Save regions in maidata, prioritize manual choices, and share them across markers, intros, and export ranges.
+24. **Seekable pressure heatmap.** Estimate movement, context, and sustained effort; keep rests at zero and click or drag to seek.
 
-See the [Quick Start](https://miacode.net/en/miacode/quick-start) for usage instructions.
+## Video export enhancements
 
-## Features
+25. **Video templates.** Save, apply, rename, import, and export .miatemplate files with legacy JSON compatibility.
+26. **Size and bitrate control.** Add 30/100/200 MB targets, custom Mbps, and an independent PV switch.
+27. **More resolutions.** Add 360p, 480p, 540p, and 4K across the existing export aspect ratios.
+28. **Chart-preview intro.** Place the information card beside the chart, inherit normal preview backgrounds, and hide editing overlays.
 
-### Highlights
+## Covers & BPM tools
 
-- Adjustable panel widths, with interchangeable editor and preview positions.
+29. **Multiple companion covers.** Combine built-in, saved, and layout presets; batch output defaults to the current chart directory.
+30. **Cover text effects.** Add configurable outlines and shadows, including color, width, opacity, blur, and offsets.
+31. **BPM import and application.** Import audio-time lists or empty maidata, preview the result, preserve note timing, and undo changes.
+32. **Three BPM export formats.** Preview, copy, or save ordered BPM values, audio-time lists, and empty maidata.
 
-- Dark and light themes, with Chinese, English, and Japanese interfaces and automatic system matching.
+## Editing workflow safeguards
 
-- Preview updates as you type. Scrub through the chart at any time, including while paused.
+33. **Automatic formatting and backups.** Format on first maidata open, ZIP packaging, and rendering, with original-file backups in .autosave.
+34. **Empty-difficulty warning.** Warn before ZIP packaging charts with empty difficulties; default to Cancel, with a preference to disable the warning.
+35. **Spacebar guard.** Use a single press for playback; triple-press to unlock text spaces and relock when focus leaves the editor.
+36. **Low-performance mode.** Prioritize basic 60 Hz preview and reduce effects and automatic timeline updates during playback.
 
-- Difficulty tabs, a source overview ruler, and customizable completion candidates.
+## Automation & reliability
 
-- Detachable preview windows and interface zoom.
-
-### Syntax and Muri Checks
-
-<table align="center" width="100%">
-  <tr>
-    <td align="center" width="50%"><img src="resources/screenshots/syntax.png" alt="Syntax check results" width="640"></td>
-    <td align="center" width="50%"><img src="resources/screenshots/muri.png" alt="Muri detection results" width="640"></td>
-  </tr>
-  <tr>
-    <td align="center">Syntax check</td>
-    <td align="center">Muri detection</td>
-  </tr>
-</table>
-
-Check chart syntax and detect Muri (physically unplayable patterns), with navigation to the relevant lines.
-
-### Video and Cover Export
-
-#### Export
-
-<p align="center">
-  <img src="resources/screenshots/video-export.png" alt="Video export interface" width="1280">
-</p>
-
-Export chart preview videos with an intro and full-background PV.
-
-Set a custom export range, or select a section in the editor and use it as the export range.
-
-Supports range playback, MP4 / WAV / MP4 + WAV output, and batch export of videos with preset covers.
-
-#### Covers
-
-<p align="center">
-  <img src="resources/screenshots/cover-editor.png" alt="Cover editor interface" width="1280">
-</p>
-
-Create covers for publishing chart videos.
-
-Customize fonts, backgrounds, and other visual elements, and overlay chart frame screenshots to showcase patterns.
-
-Supports difficulty card, chart frame, image, and text layers, with reusable layout presets.
-
-### Net Chart Download and Upload
-
-<p align="center">
-  <img src="resources/screenshots/net-download.png" alt="Net chart search results and online preview" width="1280">
-</p>
-
-Filter Majdata Net charts by user ID, tag, song title, and upload date. Select charts to download in batches to a chosen folder, with optional ZIP archives.
-
-Supports online preview, PV downloads, and batch upload of local charts after signing in to Majdata Net.
-
-### More Tools
-
-<table align="center" width="100%">
-  <tr>
-    <td align="center" width="50%"><img src="resources/screenshots/completion.png" alt="Note duration completion" width="640"></td>
-    <td align="center" width="50%"><img src="resources/screenshots/normalize.png" alt="Chart formatting" width="640"></td>
-  </tr>
-  <tr>
-    <td align="center">Note duration completion</td>
-    <td align="center">Chart formatting</td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2"><img src="resources/screenshots/media-tools.png" alt="Audio and video tools" width="1280"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2">Audio and video tools</td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2"><img src="resources/screenshots/latency.png" alt="BPM and latency detection" width="960"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2">BPM and latency detection</td>
-  </tr>
-</table>
-
-- Custom backgrounds
-
-- Disable IME input or convert full-width characters
-- Bookmark navigation
-- Quick Touch note authoring
-- Drag in audio to create a chart
-- Display the beat count of a selection
-- Reset tap note positions to lane 1
-- Note duration completion
-- One-click chart formatting
-
-- Audio and video tools
-- BPM and latency detection
+37. **Better command line.** Run statistics, video, cover, and BPM tasks with JSON requests and progress output.
+38. **Isolated runtime data.** Keep settings, caches, sessions, and logs separate from upstream MiaCode and HandOrder.
+39. **Fox rhythm animation.** Blink and nod outside Drop regions; dance with closed eyes during Drop, with smooth transitions.
+40. **Export and save fixes.** Fix lost final frames and CRLF save checks; preserve existing output on failure or cancellation.
 
 <details>
-<summary><h2 id="build">Build</h2></summary>
+<summary>Shareable update image</summary>
 
-### Requirements
-
-- CMake 3.21+
-- C++20 compiler
-- Qt 6.10+ with Qt Quick, Quick Controls 2, Multimedia, Shader Tools, Linguist Tools, and Gui and Multimedia private development headers
-
-See [scripts/README_EN.md](scripts/README_EN.md) for packaging details.
-
-### Windows
-
-Install the following build tools:
-
-- Visual Studio 2022 or Build Tools 2022 with the Desktop development with C++ workload
-- CMake 3.21+
-- Python 3 with pip
-
-Run the script to install Qt, prepare dependencies, build, and package the application:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build\build-win.ps1 -Toolchain msvc -BuildJobs 4
-```
-
-On an ARM64 host, use `-Toolchain msvc-arm64` with a separate build directory; see [scripts/README_EN.md](scripts/README_EN.md).
-
-### macOS
-
-Use an Apple Silicon Mac running macOS 13 or later. Install Xcode Command Line Tools, then install CMake and Python 3 with [Homebrew](https://brew.sh/):
-
-```bash
-xcode-select --install
-brew install cmake python
-```
-
-Install Qt 6.11.1 with Multimedia and Shader Tools, prepare the preview SDK and export FFmpeg, then build and package:
-
-```bash
-python3 -m pip install aqtinstall
-python3 -m aqt install-qt mac desktop 6.11.1 clang_64 --outputdir .qt \
-  --modules qtmultimedia qtshadertools
-bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh
-bash scripts/ffmpeg/ensure-macos-ffmpeg.sh
-bash scripts/build/build-macos-local.sh
-```
-
-Set `QT_ROOT` to reuse an existing Qt installation. The local script reuses dependencies and writes packages to `dist/`.
-
-### Linux (Advanced Users)
-
-Linux builds require manual setup. Install CMake 3.21+, a C++20 compiler, pkg-config, and Qt 6.10+ (including Qt Quick, Quick Controls 2, Multimedia, the Gui and Multimedia private development headers, Shader Tools, and Linguist Tools), along with development libraries for FFmpeg, VA-API, DRM, and OpenGL / EGL. The FFmpeg development libraries must include `libavfilter`, `libavcodec`, `libavformat`, `libavutil`, `libswresample`, and `libswscale`.
-
-Run the following commands from the repository root, replacing `[/path/to/Qt/6.x/gcc_64]` with your Qt installation directory:
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH="[/path/to/Qt/6.x/gcc_64]"
-cmake --build build --target MiaCode --parallel 4
-./build/bin/MiaCode
-```
-
-Audio/video processing and export use a separate `ffmpeg` executable. Install FFmpeg with H.264 / AAC encoding support.
+![Better Miacode updates](resources/demos/better11/updates-overview.png)
 
 </details>
 
-<details>
-<summary><h2 id="repository-layout">Repository Layout</h2></summary>
+## Use
 
-- [src](src): application source
-- [assets](assets): runtime assets and generated data
-- [resources](resources): Qt resource collections
-- [scripts](scripts): build and maintenance scripts
-- [third_party](third_party): third-party dependencies
-- [docs](docs): documentation
-- [samples](samples): sample resources for specification tests
+Extract the complete Windows package to a writable folder and launch the root `MiaCode.exe`. Keep the isolated `runtime/` directory when updating. Available platform packages are listed with each release.
 
-</details>
+Enable command-line integration in Preferences → About before using `better-miacode`. The spacebar guard, automatic formatting, and empty-difficulty warning are enabled by default; advanced metadata and low-performance mode are opt-in.
 
-<details>
-<summary><h2 id="license">License</h2></summary>
+Preview supports arbitrary aspect ratios. Video presets remain 1:1, 4:3, and 16:9; command-line video width must be at least its height. Pressure is an estimate, not an official level constant.
 
-Project code is licensed under [GPLv3](LICENSE). Third-party licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Better Miacode contains no hand-order annotation or automatic hand-order inference features.
 
-</details>
+## License
 
-## Maintenance and Feedback
-
-Browse [existing issues](https://github.com/Team-MiaCode/MiaCode/issues), or share errors and unexpected behavior there.
-
-When opening an [issue](https://github.com/Team-MiaCode/MiaCode/issues), include the state of the error or unexpected behavior, the preceding actions, reproduction steps, MiaCode version, environment, observed behavior, and relevant information.
-
-Logs and diagnostic information are important to us. See the [debugging guide](docs/ops/DEBUG_INDEX.md) for collection details.
-
-Code and documentation improvements are welcome through pull requests. Larger feature or architecture changes can be discussed in an issue first.
-
-## Acknowledgements
-
-Thanks to [Minepig/MaiMuriDX](https://github.com/Minepig/MaiMuriDX) for the Muri detection reference.
-
-Thanks to [gfdfdxc/maimai-transition](https://github.com/gfdfdxc/maimai-transition) for the intro animation reference.
-
-Thanks to [Majdata Net](https://majdata.net/) for the community chart platform.
-
-Thanks to [MaiViewer](https://www.maiviewer.net/) for the official chart transcription download site.
-
-Special thanks to hitomi for drawing the MiaCode logo free of charge.
-
-Thanks to everyone who offered suggestions, reproduced issues, and helped with debugging during internal testing; see [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).
-
-## Community
-
-Join the official MiaCode QQ group: 1095435375
-
-<p align="center">
-  <img src="resources/community/qq-group.png" alt="MiaCode QQ group QR code" width="360">
-</p>
+Based on Team-MiaCode/MiaCode; this is not an official Team-MiaCode release. Code uses GPLv3. See `LICENSE`, `THIRD_PARTY_NOTICES.md`, and `ACKNOWLEDGEMENTS.md` for licenses and credits.
