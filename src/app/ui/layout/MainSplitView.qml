@@ -54,6 +54,7 @@ Item {
     readonly property bool canCopy: editorPane.canCopy
     readonly property bool canPaste: editorPane.canPaste
     readonly property bool canTransform: editorPane.canTransform
+    readonly property bool normalizationAvailable: editorPane.normalizationAvailable
     readonly property string selectionBeatStatusText: editorPane.selectionBeatStatusText
     readonly property string selectionBeatTooltipText: editorPane.selectionBeatTooltipText
     readonly property bool chartPanelMode: root.viewState.difficultyEditorActive || root.viewState.latencyEditorActive
