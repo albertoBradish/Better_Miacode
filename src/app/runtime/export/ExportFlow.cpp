@@ -221,6 +221,11 @@ void miacode::runtime::VideoExportHost::applySharedExportTaskSettings(const Vide
     session_.previewShowTimestamp_ = task.showTimestamp;
     session_.state_.previewSlideTimingFromLaunchBeat_ = task.slideTimingFromLaunchBeat;
     session_.state_.previewSlideTimingEarlyPerfectFromHead_ = task.slideTimingEarlyPerfectFromHead;
+    session_.state_.previewShowMeasureLines_ = task.showMeasureLines;
+    session_.state_.previewShowJudgementSkeleton_ = task.showJudgementSkeleton;
+    session_.state_.previewShowSlideJudgementTiming_ = task.showSlideJudgementTiming;
+    session_.state_.previewMeasureLineMode_ = task.measureLineMode;
+    session_.state_.previewMeasureLineCustomBeats_ = task.measureLineCustomBeats;
     session_.previewShowObjectStatsHud_ = task.showObjectStatsHud;
     session_.exportShowObjectStatsHud_ = task.showObjectStatsHud;
     session_.previewShowChartInfoHud_ = task.showChartInfoHud;

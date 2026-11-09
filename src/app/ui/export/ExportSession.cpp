@@ -875,6 +875,13 @@ void ExportSession::adoptPreviewRenderSettings()
     task_.showCpsHud = values.value(QStringLiteral("showCpsHud"), task_.showCpsHud).toBool();
     task_.showMeterHud = values.value(QStringLiteral("showMeterHud"), task_.showMeterHud).toBool();
     task_.showModsHud = values.value(QStringLiteral("showModsHud"), task_.showModsHud).toBool();
+    task_.showObjectStatsHud = values.value(QStringLiteral("showObjectStatsHud"), task_.showObjectStatsHud).toBool();
+    task_.showChartInfoHud = values.value(QStringLiteral("showChartInfoHud"), task_.showChartInfoHud).toBool();
+    task_.showMeasureLines = values.value(QStringLiteral("showMeasureLines"), task_.showMeasureLines).toBool();
+    task_.showJudgementSkeleton = values.value(QStringLiteral("showJudgementSkeleton"), task_.showJudgementSkeleton).toBool();
+    task_.showSlideJudgementTiming = values.value(QStringLiteral("showSlideJudgementTiming"), task_.showSlideJudgementTiming).toBool();
+    task_.measureLineMode = values.value(QStringLiteral("measureLineMode"), task_.measureLineMode).toInt();
+    task_.measureLineCustomBeats = values.value(QStringLiteral("measureLineCustomBeats"), task_.measureLineCustomBeats).toInt();
 
     task_.tapFlowSpeed = values.value(QStringLiteral("tapFlowSpeed"), task_.tapFlowSpeed).toDouble();
     task_.touchFlowSpeed = values.value(QStringLiteral("touchFlowSpeed"), task_.touchFlowSpeed).toDouble();
@@ -1533,6 +1540,7 @@ void ExportSession::setIncludePv(bool include)
 void ExportSession::setShowObjectStatsHud(bool value)
 {
     task_.showObjectStatsHud = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showObjectStatsHud"), value);
     emit videoChanged();
     applyLivePreviewSettings();
 }
@@ -1576,6 +1584,7 @@ void ExportSession::setShowModsHud(bool value)
 void ExportSession::setShowChartInfoHud(bool value)
 {
     task_.showChartInfoHud = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showChartInfoHud"), value);
     emit videoChanged();
     applyLivePreviewSettings();
 }
@@ -1585,6 +1594,7 @@ void ExportSession::setShowMeasureLines(bool value)
 {
     if (task_.showMeasureLines == value) return;
     task_.showMeasureLines = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showMeasureLines"), value);
     emit videoChanged();
     applyLivePreviewSettings();
 }
@@ -1593,6 +1603,7 @@ void ExportSession::setSlideTimingFromLaunchBeat(bool value)
 {
     if (task_.slideTimingFromLaunchBeat == value) return;
     task_.slideTimingFromLaunchBeat = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("slideTimingFromLaunchBeat"), value);
     emit videoChanged();
     applyLivePreviewSettings();
 }
@@ -1601,6 +1612,7 @@ void ExportSession::setSlideTimingEarlyPerfectFromHead(bool value)
 {
     if (task_.slideTimingEarlyPerfectFromHead == value) return;
     task_.slideTimingEarlyPerfectFromHead = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("slideTimingEarlyPerfectFromHead"), value);
     emit videoChanged();
     applyLivePreviewSettings();
 }
@@ -1610,6 +1622,7 @@ void ExportSession::setShowSlideJudgementTiming(bool value)
 {
     if (task_.showSlideJudgementTiming == value) return;
     task_.showSlideJudgementTiming = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showSlideJudgementTiming"), value);
     emit videoChanged();
     applyLivePreviewSettings();
 }
@@ -1618,6 +1631,7 @@ void ExportSession::setShowJudgementSkeleton(bool value)
 {
     if (task_.showJudgementSkeleton == value) return;
     task_.showJudgementSkeleton = value;
+    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showJudgementSkeleton"), value);
     emit videoChanged();
     applyLivePreviewSettings();
 }

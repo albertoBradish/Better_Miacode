@@ -492,6 +492,8 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("showCpsHud"), state_.previewShowCpsHud_},
         {QStringLiteral("showMeterHud"), state_.previewShowMeterHud_},
         {QStringLiteral("showModsHud"), state_.previewShowModsHud_},
+        {QStringLiteral("showObjectStatsHud"), state_.previewShowObjectStatsHud_},
+        {QStringLiteral("showChartInfoHud"), state_.previewShowChartInfoHud_},
 
         {QStringLiteral("showMeasureLines"), state_.previewShowMeasureLines_},
         {QStringLiteral("showJudgementSkeleton"), state_.previewShowJudgementSkeleton_},
@@ -638,6 +640,12 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
     } else if (key == QLatin1String("showModsHud")) {
         state_.previewShowModsHud_ = state_.exportShowModsHud_ = value.toBool();
         if (canvas != nullptr) canvas->setShowModsHud(value.toBool());
+    } else if (key == QLatin1String("showObjectStatsHud")) {
+        state_.previewShowObjectStatsHud_ = state_.exportShowObjectStatsHud_ = value.toBool();
+        if (canvas != nullptr) canvas->setShowObjectStatsHud(value.toBool());
+    } else if (key == QLatin1String("showChartInfoHud")) {
+        state_.previewShowChartInfoHud_ = state_.exportShowChartInfoHud_ = value.toBool();
+        if (canvas != nullptr) canvas->setShowChartInfoHud(value.toBool());
     } else if (key == QLatin1String("showTimestamp")) {
         state_.previewShowTimestamp_ = value.toBool();
         if (canvas != nullptr) {
