@@ -4022,12 +4022,12 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>プレビューを停止または再生</translation>
     </message>
     <message id="shortcut.timeline.zoom_in">
-        <source>Timeline Zoom In</source>
-        <translation>Timeline を拡大</translation>
+        <source>Timeline zoom in</source>
+        <translation>タイムラインを拡大</translation>
     </message>
     <message id="shortcut.timeline.zoom_out">
-        <source>Timeline Zoom Out</source>
-        <translation>Timeline を縮小</translation>
+        <source>Timeline zoom out</source>
+        <translation>タイムラインを縮小</translation>
     </message>
     <message id="shortcut.transform.clear_complete_elements">
         <source>Clear Complete Elements</source>
@@ -5032,8 +5032,8 @@ Error: %1</source>
         <translation>小節線モード</translation>
     </message>
     <message id="preview.canvas.measure_chart_clock">
-        <source>Chart clock_count (default 4 beats)</source>
-        <translation>譜面 clock_count（既定 4 拍）</translation>
+        <source>Default (automatic)</source>
+        <translation>標準（自動検出）</translation>
     </message>
     <message id="preview.canvas.measure_custom_beats">
         <source>Custom beats per measure</source>
@@ -5048,20 +5048,20 @@ Error: %1</source>
         <translation>なし</translation>
     </message>
     <message id="dialog.video_export.option.show_bpm_hud">
-        <source>Show BPM (widescreen)</source>
-        <translation>BPM を表示（ワイド画面）</translation>
+        <source>Show BPM</source>
+        <translation>BPM を表示</translation>
     </message>
     <message id="dialog.video_export.option.show_cps_hud">
-        <source>Show CPS (widescreen)</source>
-        <translation>CPS を表示（ワイド画面）</translation>
+        <source>Show CPS</source>
+        <translation>CPS を表示</translation>
     </message>
     <message id="dialog.video_export.option.show_meter_hud">
-        <source>Show explicit meter (widescreen)</source>
-        <translation>明示された拍子を表示（ワイド画面）</translation>
+        <source>Show explicit meter</source>
+        <translation>拍子を表示</translation>
     </message>
     <message id="dialog.video_export.option.show_mods_hud">
-        <source>Show Mods (widescreen)</source>
-        <translation>Mods を表示（ワイド画面）</translation>
+        <source>Show Mods</source>
+        <translation>Mods を表示</translation>
     </message>
     <message id="tools.bpm.title">
         <source>Export BPM</source>
@@ -5492,12 +5492,12 @@ Error: %1</source>
         <translation>縦タイムラインの方向</translation>
     </message>
     <message id="timeline.layout.falling">
-        <source>Falling (later notes above)</source>
-        <translation>下落（上が後の時刻）</translation>
+        <source>Falling</source>
+        <translation>下落</translation>
     </message>
     <message id="timeline.layout.rising">
-        <source>Rising (later notes below)</source>
-        <translation>上昇（下が後の時刻）</translation>
+        <source>Rising</source>
+        <translation>上昇</translation>
     </message>
     <message id="timeline.layout.lane_order">
         <source>Lane order</source>
@@ -5505,7 +5505,7 @@ Error: %1</source>
     </message>
     <message id="timeline.drop_region">
         <source>Drop</source>
-        <translation>ドロップ区間</translation>
+        <translation>Drop</translation>
     </message>
     <message id="export.document_changed_retry">
         <source>The chart changed while the export dialog was open. Please export again.</source>
@@ -5660,12 +5660,14 @@ Error: %1</source>
         <translation>ドロップ…</translation>
     </message>
     <message id="structure.pressure_tooltip">
-        <source>%1 s · Relative chart pressure
-Density %2 · Simultaneous %3 · Held %4
-Slides %5 · Movement %6 · Rhythm %7</source>
-        <translation>%1 秒・相対譜面負荷
-密度 %2・同時 %3・保持 %4
-スライド %5・移動 %6・リズム %7</translation>
+        <source>%1 s · Chart pressure %2/100
+Judgement TPS %3 · Simultaneous %4
+Movement %5 · Rhythm %6 · Sustained load %7
+Held %8 · Slides %9 · Overlap %10</source>
+        <translation>%1 秒 · 譜面負荷 %2/100
+判定 TPS %3 · 同時入力 %4
+移動 %5 · リズム %6 · 持続負荷 %7
+ホールド %8 · スライド %9 · 重複 %10</translation>
     </message>
     <message id="structure.edit_title">
         <source>Edit drop range</source>
@@ -5726,6 +5728,58 @@ Slides %5 · Movement %6 · Rhythm %7</source>
     <message id="video_template.path_exists">
         <source>A template with that name already exists.</source>
         <translation>同じ名前のテンプレートが既に存在します。</translation>
+    </message>
+    <message id="timeline.note_scale">
+        <source>Note size</source>
+        <translation>ノーツの大きさ</translation>
+    </message>
+    <message id="workspace.menu">
+        <source>Workspace</source>
+        <translation>ワークスペース</translation>
+    </message>
+    <message id="workspace.default">
+        <source>Default layout</source>
+        <translation>標準レイアウト</translation>
+    </message>
+    <message id="workspace.editing">
+        <source>Editing layout</source>
+        <translation>編集レイアウト</translation>
+    </message>
+    <message id="workspace.preview">
+        <source>Preview layout</source>
+        <translation>プレビューレイアウト</translation>
+    </message>
+    <message id="workspace.save">
+        <source>Save current layout…</source>
+        <translation>現在のレイアウトを保存…</translation>
+    </message>
+    <message id="workspace.reset">
+        <source>Reset layout</source>
+        <translation>レイアウトをリセット</translation>
+    </message>
+    <message id="workspace.name">
+        <source>Layout name</source>
+        <translation>レイアウト名</translation>
+    </message>
+    <message id="workspace.remove">
+        <source>Delete saved layout</source>
+        <translation>保存済みレイアウトを削除</translation>
+    </message>
+    <message id="workspace.drag_panel">
+        <source>Drag a panel tab to dock, group, or float it</source>
+        <translation>パネルタブをドラッグしてドッキング、グループ化、フローティング</translation>
+    </message>
+    <message id="workspace.editor">
+        <source>Editor</source>
+        <translation>エディター</translation>
+    </message>
+    <message id="workspace.sidebar">
+        <source>Chart outline</source>
+        <translation>譜面アウトライン</translation>
+    </message>
+    <message id="workspace.preview_panel">
+        <source>Preview</source>
+        <translation>プレビュー</translation>
     </message>
 </context>
 <context>

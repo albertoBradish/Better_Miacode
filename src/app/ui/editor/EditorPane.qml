@@ -299,15 +299,15 @@ Item {
             anchors.leftMargin: Theme.panelPadding
             anchors.rightMargin: Theme.panelPadding
             readonly property real gap: 8
-            readonly property real normalizeButtonWidth: normalizeButton.implicitWidth
+            readonly property real metadataButtonWidth: metadataButton.implicitWidth
             readonly property real wideWidth:
                 levelField.implicitWidth + designerField.implicitWidth
-                + offsetField.implicitWidth + normalizeButtonWidth + 3 * gap
+                + offsetField.implicitWidth + metadataButtonWidth + 3 * gap
             readonly property real firstRowWidth:
                 levelField.implicitWidth + offsetField.implicitWidth + gap
             readonly property real twoRowWidth:
                 Math.max(firstRowWidth,
-                    designerField.implicitWidth + normalizeButtonWidth + gap)
+                    designerField.implicitWidth + metadataButtonWidth + gap)
             readonly property bool wide: width >= wideWidth
             readonly property bool twoRows: !wide && width >= twoRowWidth
 
@@ -336,10 +336,10 @@ Item {
                         : offsetField.y + offsetField.height + headerContent.gap
                 stacked: !headerContent.wide && !headerContent.twoRows
                     && headerContent.width < implicitWidth
-                // Leave roughly a third of the row for the normalize action.
+                // Leave roughly a third of the row for chart information.
                 width: Math.max(0, Math.min(
                     Math.floor((headerContent.width - x) * 2 / 3),
-                    headerContent.width - x - headerContent.normalizeButtonWidth - headerContent.gap))
+                    headerContent.width - x - headerContent.metadataButtonWidth - headerContent.gap))
                 labelText: qsTrId("net.designer")
                 value: root.documentSession.currentDifficultyDesigner
                 editorWidth: 100
@@ -348,15 +348,15 @@ Item {
             }
 
             IconButton {
-                id: normalizeButton
-                objectName: "normalizeChartButton"
+                id: metadataButton
+                objectName: "chartInformationButton"
                 anchors.right: parent.right
                 y: designerField.y + Math.max(0, (designerField.height - height) / 2)
-                iconSource: Qt.resolvedUrl("icons/wand.svg")
-                label: qsTrId("qml.normalize_whole_chart")
-                tooltip: qsTrId("qml.normalize_whole_chart")
-                enabled: root.normalizationAvailable
-                onClicked: root.pages.openNormalizeWholeChart()
+                iconSource: Qt.resolvedUrl("icons/metadata.svg")
+                label: qsTrId("dialog.unsaved_field_changes.field.metadata")
+                tooltip: qsTrId("dialog.unsaved_field_changes.field.metadata")
+                enabled: root.sourceVisible
+                onClicked: root.pages.activateMetadataPage()
             }
 
             DifficultyHeaderField {

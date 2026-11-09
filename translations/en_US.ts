@@ -4022,12 +4022,12 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>Stop or Play Preview</translation>
     </message>
     <message id="shortcut.timeline.zoom_in">
-        <source>Timeline Zoom In</source>
-        <translation>Timeline Zoom In</translation>
+        <source>Timeline zoom in</source>
+        <translation>Timeline zoom in</translation>
     </message>
     <message id="shortcut.timeline.zoom_out">
-        <source>Timeline Zoom Out</source>
-        <translation>Timeline Zoom Out</translation>
+        <source>Timeline zoom out</source>
+        <translation>Timeline zoom out</translation>
     </message>
     <message id="shortcut.transform.clear_complete_elements">
         <source>Clear Complete Elements</source>
@@ -5032,8 +5032,8 @@ Error: %1</translation>
         <translation>Measure Line Mode</translation>
     </message>
     <message id="preview.canvas.measure_chart_clock">
-        <source>Chart clock_count (default 4 beats)</source>
-        <translation>Chart clock_count (default 4 beats)</translation>
+        <source>Default (automatic)</source>
+        <translation>Default (automatic)</translation>
     </message>
     <message id="preview.canvas.measure_custom_beats">
         <source>Custom beats per measure</source>
@@ -5048,20 +5048,20 @@ Error: %1</translation>
         <translation>None</translation>
     </message>
     <message id="dialog.video_export.option.show_bpm_hud">
-        <source>Show BPM (widescreen)</source>
-        <translation>Show BPM (widescreen)</translation>
+        <source>Show BPM</source>
+        <translation>Show BPM</translation>
     </message>
     <message id="dialog.video_export.option.show_cps_hud">
-        <source>Show CPS (widescreen)</source>
-        <translation>Show CPS (widescreen)</translation>
+        <source>Show CPS</source>
+        <translation>Show CPS</translation>
     </message>
     <message id="dialog.video_export.option.show_meter_hud">
-        <source>Show explicit meter (widescreen)</source>
-        <translation>Show explicit meter (widescreen)</translation>
+        <source>Show explicit meter</source>
+        <translation>Show explicit meter</translation>
     </message>
     <message id="dialog.video_export.option.show_mods_hud">
-        <source>Show Mods (widescreen)</source>
-        <translation>Show Mods (widescreen)</translation>
+        <source>Show Mods</source>
+        <translation>Show Mods</translation>
     </message>
     <message id="tools.bpm.title">
         <source>Export BPM</source>
@@ -5492,12 +5492,12 @@ Error: %1</translation>
         <translation>Vertical note direction</translation>
     </message>
     <message id="timeline.layout.falling">
-        <source>Falling (later notes above)</source>
-        <translation>Falling (later notes above)</translation>
+        <source>Falling</source>
+        <translation>Falling</translation>
     </message>
     <message id="timeline.layout.rising">
-        <source>Rising (later notes below)</source>
-        <translation>Rising (later notes below)</translation>
+        <source>Rising</source>
+        <translation>Rising</translation>
     </message>
     <message id="timeline.layout.lane_order">
         <source>Lane order</source>
@@ -5660,12 +5660,14 @@ Error: %1</translation>
         <translation>Drop…</translation>
     </message>
     <message id="structure.pressure_tooltip">
-        <source>%1 s · Relative chart pressure
-Density %2 · Simultaneous %3 · Held %4
-Slides %5 · Movement %6 · Rhythm %7</source>
-        <translation>%1 s · Relative chart pressure
-Density %2 · Simultaneous %3 · Held %4
-Slides %5 · Movement %6 · Rhythm %7</translation>
+        <source>%1 s · Chart pressure %2/100
+Judgement TPS %3 · Simultaneous %4
+Movement %5 · Rhythm %6 · Sustained load %7
+Held %8 · Slides %9 · Overlap %10</source>
+        <translation>%1 s · Chart pressure %2/100
+Judgement TPS %3 · Simultaneous %4
+Movement %5 · Rhythm %6 · Sustained load %7
+Held %8 · Slides %9 · Overlap %10</translation>
     </message>
     <message id="structure.edit_title">
         <source>Edit drop range</source>
@@ -5726,6 +5728,58 @@ Slides %5 · Movement %6 · Rhythm %7</translation>
     <message id="video_template.path_exists">
         <source>A template with that name already exists.</source>
         <translation>A template with that name already exists.</translation>
+    </message>
+    <message id="timeline.note_scale">
+        <source>Note size</source>
+        <translation>Note size</translation>
+    </message>
+    <message id="workspace.menu">
+        <source>Workspace</source>
+        <translation>Workspace</translation>
+    </message>
+    <message id="workspace.default">
+        <source>Default layout</source>
+        <translation>Default layout</translation>
+    </message>
+    <message id="workspace.editing">
+        <source>Editing layout</source>
+        <translation>Editing layout</translation>
+    </message>
+    <message id="workspace.preview">
+        <source>Preview layout</source>
+        <translation>Preview layout</translation>
+    </message>
+    <message id="workspace.save">
+        <source>Save current layout…</source>
+        <translation>Save current layout…</translation>
+    </message>
+    <message id="workspace.reset">
+        <source>Reset layout</source>
+        <translation>Reset layout</translation>
+    </message>
+    <message id="workspace.name">
+        <source>Layout name</source>
+        <translation>Layout name</translation>
+    </message>
+    <message id="workspace.remove">
+        <source>Delete saved layout</source>
+        <translation>Delete saved layout</translation>
+    </message>
+    <message id="workspace.drag_panel">
+        <source>Drag a panel tab to dock, group, or float it</source>
+        <translation>Drag a panel tab to dock, group, or float it</translation>
+    </message>
+    <message id="workspace.editor">
+        <source>Editor</source>
+        <translation>Editor</translation>
+    </message>
+    <message id="workspace.sidebar">
+        <source>Chart outline</source>
+        <translation>Chart outline</translation>
+    </message>
+    <message id="workspace.preview_panel">
+        <source>Preview</source>
+        <translation>Preview</translation>
     </message>
 </context>
 <context>

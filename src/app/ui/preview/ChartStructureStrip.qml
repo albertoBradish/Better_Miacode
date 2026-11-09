@@ -286,7 +286,7 @@ Item {
         }
         footer: DialogFooter {
             acceptText: qsTrId("structure.apply_manual")
-            cancelText: qsTrId("qml.cancel")
+            cancelText: qsTrId("action.cancel")
             acceptEnabled: root.structure !== null && editor.start >= 0 && editor.end > editor.start
                 && editor.end <= root.structure.mediaDuration + 0.001
             onAccepted: {
