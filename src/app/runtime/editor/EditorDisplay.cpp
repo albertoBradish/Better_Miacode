@@ -9,6 +9,7 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/services/PreferenceDocument.h"
+#include "app/services/PreviewModePreferences.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
@@ -229,6 +230,7 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
     state_.previewAutoRestoreSquareAfterExport_ = false;
     state_.previewForceLabeledJudgeLineWhenPaused_ = true;
     state_.previewTouchPadAuthoringShortcutEnabled_ = true;
+    state_.previewModeProfiles_ = QJsonObject{};
     state_.previewShowDebugInfo_ = false;
     state_.previewShowTimestamp_ = true;
     state_.previewShowMeasureLines_ = false;
@@ -256,6 +258,7 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
 
 void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObject& preview)
 {
+    state_.previewModeProfiles_ = preview.value(QStringLiteral("render_mode_profiles")).toObject();
     if (preview.value("preview_playback_rate").isDouble()) {
         // Non-command write: restoring the persisted rate, same as the reset
         // above — see PlaybackStateAuthority.h. The 0.25 floor now lives in
@@ -585,6 +588,8 @@ void miacode::runtime::EditorHost::savePortableState() const
     preview.insert("show_touch_trail", state_.showTouchTrail_);
     preview.insert("static_tap_on_slide_threshold_ms", state_.staticTapOnSlideThresholdMs_);
     preview.insert("muri_render_mode", muriRenderModeToken(state_.muriRenderOptions_.renderMode));
+    preview.insert(QStringLiteral("render_mode_profiles"), miacode::preview_mode_preferences::withCurrent(
+        state_.previewModeProfiles_, state_.muriRenderOptions_.renderMode, session_.capturePreviewModeSettings()));
     preview.insert("show_chart_review_slide_judge_overlay", state_.muriRenderOptions_.showChartReviewSlideJudgeOverlay);
     preview.insert("show_chart_review_tap_judge_overlay", state_.muriRenderOptions_.showChartReviewTapJudgeOverlay);
     preview.insert("show_chart_review_break_judge_overlay", state_.muriRenderOptions_.showChartReviewBreakJudgeOverlay);

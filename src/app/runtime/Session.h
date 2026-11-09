@@ -323,6 +323,9 @@ public:
     // not restate limits the preview owns.
     QVariantMap previewRenderSettings() const override;
     void setPreviewRenderSetting(const QString& key, const QVariant& value) override;
+    QJsonObject capturePreviewModeSettings() const;
+    QJsonObject regularPreviewModeSettings() const;
+    void restorePreviewModeSettings(RenderMode mode);
 
     void setQmlChartTextHandler(std::function<bool(const QString&)> handler);
     DocumentValidationSnapshot documentValidationSnapshot() const;

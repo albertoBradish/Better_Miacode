@@ -420,6 +420,7 @@
         // deactivates, e.g. Alt+Tab). Set from Session::eventFilter via
         // Session::setPauseDisplayAltHoldActive.
         bool pauseDisplayAltHoldActive_ = false;
+        QJsonObject previewModeProfiles_;
         bool previewShowDebugInfo_ = false;
         bool previewShowTimestamp_ = true;
         bool previewShowMeasureLines_ = false;

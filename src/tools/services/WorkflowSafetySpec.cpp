@@ -2,12 +2,14 @@
 #include "app/services/ChartFileSafety.h"
 #include "app/services/PreferenceDocument.h"
 #include "app/services/ChartNormalizationPreferences.h"
+#include "app/services/PreviewModePreferences.h"
 #include "core/chart/document/AdvancedMetadata.h"
 #include "editor/SpaceInputGuard.h"
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QTextStream>
 
@@ -32,6 +34,40 @@ QByteArray read(const QString& path)
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
+    {
+        namespace profiles = miacode::preview_mode_preferences;
+        QJsonObject store;
+        QJsonObject regular = profiles::normalized({});
+        regular.insert("showTimestamp", false);
+        regular.insert("outlineVariant", static_cast<int>(PreviewOutlineVariant::Point));
+        regular.insert("outlineAutomatic", false);
+        regular.insert("outlineCustomFile", "custom.png");
+        store = profiles::withCurrent(store, RenderMode::Native, regular);
+        QJsonObject debug = profiles::restored(store, RenderMode::Debug);
+        check(debug.value("showTimestamp").toBool() && !debug.value("showBpmHud").toBool(),
+              "unused render modes start from independent defaults");
+        for (const char* key : {"showBpmHud", "showCpsHud", "showMeasureLines", "showJudgementSkeleton",
+                               "showSlideJudgementTiming", "showJudgeMarkers", "showTouchTrail"})
+            debug.insert(QString::fromLatin1(key), true);
+        debug.insert("outlineVariant", static_cast<int>(PreviewOutlineVariant::JudgeAreaLabeled));
+        store = profiles::withCurrent(store, RenderMode::Debug, debug);
+        check(profiles::restored(store, RenderMode::EraseByArea) == regular,
+              "leaving debug restores all regular flags and the exact custom outline");
+        QJsonObject muri = profiles::restored(store, RenderMode::MaimuriDxStyle);
+        check(!muri.value("showJudgementSkeleton").toBool() && !muri.value("showTouchTrail").toBool(),
+              "debug diagnostics never leak into an unused Muri profile");
+        muri.insert("showJudgeMarkers", true);
+        store = profiles::withCurrent(store, RenderMode::MaimuriDxStyle, muri);
+        const auto reloaded = QJsonDocument::fromJson(QJsonDocument(store).toJson()).object();
+        check(profiles::restored(reloaded, RenderMode::Debug) == debug
+              && profiles::restored(reloaded, RenderMode::Native) == regular
+              && profiles::restored(reloaded, RenderMode::MaimuriDxStyle) == muri,
+              "three rendering profiles survive a preference serialization round trip");
+        const auto malformed = profiles::normalized({{"showBpmHud", "true"}, {"outlineVariant", 99}});
+        check(!malformed.value("showBpmHud").toBool()
+              && malformed.value("outlineVariant").toInt() == static_cast<int>(PreviewOutlineVariant::Line),
+              "invalid profile flags and outline types fall back safely");
+    }
     using miacode::editor::SpaceInputGuard;
     SpaceInputGuard guard;
     check(guard.press(0, false) == SpaceInputGuard::Action::TogglePlayback, "single space plays immediately");

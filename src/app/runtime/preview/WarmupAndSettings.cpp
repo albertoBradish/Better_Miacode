@@ -11,6 +11,7 @@
 #include "common/DebugOptions.h"
 #include "core/scene/PreviewSfxAssets.h"
 #include "app/services/ProjectPreferences.h"
+#include "app/services/PreviewModePreferences.h"
 #include "core/video/AssetPaths.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/stage_media/PreviewStageMediaHost.h"
@@ -520,6 +521,61 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("centerDisplay"), static_cast<int>(previewAppearanceValues_.centerDisplayMode)},
         {QStringLiteral("tapJudgeTextDistance"), static_cast<int>(previewAppearanceValues_.tapJudgeTextDistance)},
     };
+}
+
+QJsonObject Session::capturePreviewModeSettings() const
+{
+    QJsonObject values = QJsonObject::fromVariantMap(previewRenderSettings());
+    values.insert(QStringLiteral("showObjectStatsHud"), state_.previewShowObjectStatsHud_);
+    values.insert(QStringLiteral("showChartInfoHud"), state_.previewShowChartInfoHud_);
+    values.insert(QStringLiteral("outlineVariant"), static_cast<int>(previewAppearanceValues_.outlineVariant));
+    values.insert(QStringLiteral("outlineAutomatic"), state_.previewOutlineVariantUsesAutoSelection_);
+    values.insert(QStringLiteral("outlineCustomFile"), state_.previewCustomOutlineFileName_);
+    return miacode::preview_mode_preferences::normalized(values);
+}
+
+QJsonObject Session::regularPreviewModeSettings() const
+{
+    const RenderMode mode = state_.muriRenderOptions_.renderMode;
+    return mode == RenderMode::Native || mode == RenderMode::EraseByArea
+        ? capturePreviewModeSettings()
+        : miacode::preview_mode_preferences::restored(state_.previewModeProfiles_, RenderMode::Native);
+}
+
+void Session::restorePreviewModeSettings(RenderMode mode)
+{
+    const QJsonObject values = miacode::preview_mode_preferences::restored(state_.previewModeProfiles_, mode);
+    const auto flag = [&values](const char* key) { return values.value(QString::fromLatin1(key)).toBool(); };
+    state_.previewShowTimestamp_ = flag("showTimestamp");
+    state_.previewShowBpmHud_ = state_.exportShowBpmHud_ = flag("showBpmHud");
+    state_.previewShowCpsHud_ = state_.exportShowCpsHud_ = flag("showCpsHud");
+    state_.previewShowMeterHud_ = state_.exportShowMeterHud_ = flag("showMeterHud");
+    state_.previewShowModsHud_ = state_.exportShowModsHud_ = flag("showModsHud");
+    state_.previewShowObjectStatsHud_ = state_.exportShowObjectStatsHud_ = flag("showObjectStatsHud");
+    state_.previewShowChartInfoHud_ = state_.exportShowChartInfoHud_ = flag("showChartInfoHud");
+    state_.previewShowMeasureLines_ = flag("showMeasureLines");
+    state_.previewShowJudgementSkeleton_ = flag("showJudgementSkeleton");
+    state_.previewShowSlideJudgementTiming_ = flag("showSlideJudgementTiming");
+    state_.previewShowDebugInfo_ = flag("showDebugInfo");
+    state_.showJudgeMarkers_ = flag("showJudgeMarkers");
+    state_.showTouchTrail_ = flag("showTouchTrail");
+    previewAppearanceValues_.outlineVariant = static_cast<PreviewOutlineVariant>(values.value(QStringLiteral("outlineVariant")).toInt());
+    state_.previewOutlineVariantUsesAutoSelection_ = flag("outlineAutomatic");
+    state_.previewCustomOutlineFileName_ = values.value(QStringLiteral("outlineCustomFile")).toString();
+    applyEffectivePreviewOutlineVariantToCanvas();
+    if (auto* canvas = state_.scene_; canvas != nullptr) {
+        canvas->setShowTimestamp(state_.previewShowTimestamp_);
+        canvas->setShowBpmHud(state_.previewShowBpmHud_);
+        canvas->setShowCpsHud(state_.previewShowCpsHud_);
+        canvas->setShowMeterHud(state_.previewShowMeterHud_);
+        canvas->setShowModsHud(state_.previewShowModsHud_);
+        canvas->setShowObjectStatsHud(state_.previewShowObjectStatsHud_);
+        canvas->setShowChartInfoHud(state_.previewShowChartInfoHud_);
+        canvas->setShowDebugInfo(state_.previewShowDebugInfo_);
+        canvas->setSlideJudgementTiming(state_.previewShowSlideJudgementTiming_);
+        canvas->setVisualAidSettings(state_.previewShowMeasureLines_, state_.previewShowJudgementSkeleton_,
+                                    state_.previewMeasureLineMode_, state_.previewMeasureLineCustomBeats_);
+    }
 }
 
 void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)

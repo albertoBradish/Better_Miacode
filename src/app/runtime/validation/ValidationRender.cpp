@@ -1,5 +1,6 @@
 #include "app/runtime/validation/ValidationHost.h"
 #include "app/runtime/Shared.h"
+#include "app/services/PreviewModePreferences.h"
 
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/stage_media/PreviewStageMediaHost.h"
@@ -161,10 +162,17 @@ void miacode::runtime::ValidationHost::setMuriRenderMode(RenderMode mode, bool p
         applyMuriRenderOptions();
         return;
     }
+    const bool modeChanged = state_.muriRenderOptions_.renderMode != mode;
+    if (modeChanged) {
+        state_.previewModeProfiles_ = miacode::preview_mode_preferences::withCurrent(
+            state_.previewModeProfiles_, state_.muriRenderOptions_.renderMode, session_.capturePreviewModeSettings());
+    }
     const bool backgroundChanged = backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode)
         != backgroundPolicyForRenderMode(mode);
     state_.muriRenderOptions_.renderMode = mode;
+    if (modeChanged) session_.restorePreviewModeSettings(mode);
     applyMuriRenderOptions();
+    if (modeChanged) emit session_.applicationServices_.shellNotifications().previewRenderSettingsChanged();
     if (backgroundChanged && state_.exportPreviewActive_) {
         session_.refreshExportIntroState();
         emit session_.applicationServices_.shellNotifications().previewRenderSettingsChanged();
