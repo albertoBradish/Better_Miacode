@@ -100,7 +100,9 @@ int main(int argc, char** argv)
         bridge.setAxisMode(mode);
         bridge.setPlayheadSeconds(0.1, true);
         const auto anchoredScene = buildState();
-        const auto screenPosition = anchoredScene.axisProjection().toScreenTransform().map(anchoredScene.playheadLine.start);
+        // The overlay removes time scroll from scene coordinates before projecting to the screen.
+        const auto viewportPosition = anchoredScene.playheadLine.start - QPointF(anchoredScene.horizontalScrollValue, 0);
+        const auto screenPosition = anchoredScene.axisProjection().toScreenTransform().map(viewportPosition);
         const double expectedTimePosition = mode == QLatin1String("falling") ? window.height() * 0.88
             : mode == QLatin1String("rising") ? window.height() * 0.12 : window.width() * 0.5;
         const double actualTimePosition = mode == QLatin1String("horizontal") ? screenPosition.x() : screenPosition.y();
