@@ -528,7 +528,6 @@ QVariantMap Session::previewRenderSettings() const
 QJsonObject Session::capturePreviewModeSettings() const
 {
     QJsonObject values = QJsonObject::fromVariantMap(previewRenderSettings());
-    values.insert(QStringLiteral("showChartInfoHud"), state_.previewShowChartInfoHud_);
     values.insert(QStringLiteral("outlineVariant"), static_cast<int>(previewAppearanceValues_.outlineVariant));
     values.insert(QStringLiteral("outlineAutomatic"), state_.previewOutlineVariantUsesAutoSelection_);
     values.insert(QStringLiteral("outlineCustomFile"), state_.previewCustomOutlineFileName_);
@@ -552,7 +551,6 @@ void Session::restorePreviewModeSettings(RenderMode mode)
     state_.previewShowCpsHud_ = state_.exportShowCpsHud_ = flag("showCpsHud");
     state_.previewShowMeterHud_ = state_.exportShowMeterHud_ = flag("showMeterHud");
     state_.previewShowModsHud_ = state_.exportShowModsHud_ = flag("showModsHud");
-    state_.previewShowChartInfoHud_ = state_.exportShowChartInfoHud_ = flag("showChartInfoHud");
     state_.previewShowDebugInfo_ = flag("showDebugInfo");
     state_.showJudgeMarkers_ = flag("showJudgeMarkers");
     state_.showTouchTrail_ = flag("showTouchTrail");
@@ -566,7 +564,6 @@ void Session::restorePreviewModeSettings(RenderMode mode)
         canvas->setShowCpsHud(state_.previewShowCpsHud_);
         canvas->setShowMeterHud(state_.previewShowMeterHud_);
         canvas->setShowModsHud(state_.previewShowModsHud_);
-        canvas->setShowChartInfoHud(state_.previewShowChartInfoHud_);
         canvas->setShowDebugInfo(state_.previewShowDebugInfo_);
         canvas->setSlideJudgementTiming(state_.previewShowSlideJudgementTiming_);
         canvas->setVisualAidSettings(state_.previewShowMeasureLines_, state_.previewShowJudgementSkeleton_,
@@ -639,8 +636,8 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
         state_.previewShowObjectStatsHud_ = false;
         if (canvas != nullptr && !state_.exportPreviewActive_) canvas->setSuppressObjectStatsHud(true);
     } else if (key == QLatin1String("showChartInfoHud")) {
-        state_.previewShowChartInfoHud_ = state_.exportShowChartInfoHud_ = value.toBool();
-        if (canvas != nullptr) canvas->setShowChartInfoHud(value.toBool());
+        state_.previewShowChartInfoHud_ = false;
+        if (canvas != nullptr && !state_.exportPreviewActive_) canvas->setShowChartInfoHud(false);
     } else if (key == QLatin1String("showTimestamp")) {
         state_.previewShowTimestamp_ = value.toBool();
         if (canvas != nullptr) {

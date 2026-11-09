@@ -228,7 +228,7 @@ void miacode::runtime::VideoExportHost::applySharedExportTaskSettings(const Vide
     session_.state_.previewMeasureLineCustomBeats_ = task.measureLineCustomBeats;
     session_.previewShowObjectStatsHud_ = false;
     session_.exportShowObjectStatsHud_ = task.showObjectStatsHud;
-    session_.previewShowChartInfoHud_ = task.showChartInfoHud;
+    session_.previewShowChartInfoHud_ = false;
     session_.previewShowBpmHud_ = task.showBpmHud;
     session_.previewShowCpsHud_ = task.showCpsHud;
     session_.previewShowMeterHud_ = task.showMeterHud;
@@ -502,7 +502,7 @@ void miacode::runtime::VideoExportHost::applyExportPreviewChartInfo(const VideoE
     // buildVideoExportSeedTask).
     session_.scene_->setChartInfo(
         task.chartTitle, task.chartArtist, task.chartDifficultyLabel, task.chartDesigner);
-    session_.scene_->setShowChartInfoHud(session_.previewShowChartInfoHud_);
+    session_.scene_->setShowChartInfoHud(task.showChartInfoHud);
     session_.scene_->setShowBpmHud(session_.previewShowBpmHud_);
     session_.scene_->setShowCpsHud(session_.previewShowCpsHud_);
     session_.scene_->setShowMeterHud(session_.previewShowMeterHud_);

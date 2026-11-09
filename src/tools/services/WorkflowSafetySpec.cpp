@@ -56,9 +56,11 @@ int main(int argc, char** argv)
         check(!muri.value("showTouchTrail").toBool(),
               "debug diagnostics never leak into an unused Muri profile");
         const auto legacyProfile = profiles::normalized({{"showMeasureLines", true},
-            {"showJudgementSkeleton", true}, {"showSlideJudgementTiming", true}, {"showObjectStatsHud", true}});
+            {"showJudgementSkeleton", true}, {"showSlideJudgementTiming", true},
+            {"showObjectStatsHud", true}, {"showChartInfoHud", true}});
         check(!legacyProfile.contains("showMeasureLines") && !legacyProfile.contains("showJudgementSkeleton")
-              && !legacyProfile.contains("showSlideJudgementTiming") && !legacyProfile.contains("showObjectStatsHud"),
+              && !legacyProfile.contains("showSlideJudgementTiming") && !legacyProfile.contains("showObjectStatsHud")
+              && !legacyProfile.contains("showChartInfoHud"),
               "mode profiles do not own shared visual aids or independent video statistics");
         muri.insert("showJudgeMarkers", true);
         store = profiles::withCurrent(store, RenderMode::MaimuriDxStyle, muri);

@@ -484,9 +484,7 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     previewAppearanceValues_.centerDisplayMode = miacode::preview_gameplay::centerDisplayModeFromToken(
         preview.value(QStringLiteral("center_display_mode")).toString(
             QString::fromLatin1(miacode::preview_gameplay::centerDisplayModeToken(previewAppearanceValues_.centerDisplayMode))));
-    if (preview.value("show_chart_info_preview").isBool()) {
-        state_.previewShowChartInfoHud_ = preview.value("show_chart_info_preview").toBool(false);
-    }
+    state_.previewShowChartInfoHud_ = false;
     if (preview.value("show_chart_info_export").isBool()) {
         state_.exportShowChartInfoHud_ = preview.value("show_chart_info_export").toBool(false);
     }
@@ -494,9 +492,6 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     state_.previewShowCpsHud_ = state_.exportShowCpsHud_ = preview.value("show_cps_hud").toBool(false);
     state_.previewShowMeterHud_ = state_.exportShowMeterHud_ = preview.value("show_meter_hud").toBool(false);
     state_.previewShowModsHud_ = state_.exportShowModsHud_ = preview.value("show_mods_hud").toBool(false);
-    const bool unifiedChartInfoHud = state_.previewShowChartInfoHud_ || state_.exportShowChartInfoHud_;
-    state_.previewShowChartInfoHud_ = unifiedChartInfoHud;
-    state_.exportShowChartInfoHud_ = unifiedChartInfoHud;
     if (preview.value("show_validation_summary").isBool()) {
         state_.previewShowValidationSummary_ = preview.value("show_validation_summary").toBool(true);
     }

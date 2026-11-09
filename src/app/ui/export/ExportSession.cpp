@@ -875,7 +875,6 @@ void ExportSession::adoptPreviewRenderSettings()
     task_.showCpsHud = values.value(QStringLiteral("showCpsHud"), task_.showCpsHud).toBool();
     task_.showMeterHud = values.value(QStringLiteral("showMeterHud"), task_.showMeterHud).toBool();
     task_.showModsHud = values.value(QStringLiteral("showModsHud"), task_.showModsHud).toBool();
-    task_.showChartInfoHud = values.value(QStringLiteral("showChartInfoHud"), task_.showChartInfoHud).toBool();
     task_.showMeasureLines = values.value(QStringLiteral("showMeasureLines"), task_.showMeasureLines).toBool();
     task_.showJudgementSkeleton = values.value(QStringLiteral("showJudgementSkeleton"), task_.showJudgementSkeleton).toBool();
     task_.showSlideJudgementTiming = values.value(QStringLiteral("showSlideJudgementTiming"), task_.showSlideJudgementTiming).toBool();
@@ -1582,7 +1581,6 @@ void ExportSession::setShowModsHud(bool value)
 void ExportSession::setShowChartInfoHud(bool value)
 {
     task_.showChartInfoHud = value;
-    if (preview() != nullptr) preview()->setRenderSetting(QStringLiteral("showChartInfoHud"), value);
     emit videoChanged();
     applyLivePreviewSettings();
 }

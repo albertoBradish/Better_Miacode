@@ -19,7 +19,7 @@ inline QJsonObject normalized(const QJsonObject& values)
     QJsonObject result;
     for (const char* key : {"showTimestamp", "showBpmHud", "showCpsHud", "showMeterHud", "showModsHud",
                            "showJudgeMarkers", "showTouchTrail", "showDebugInfo",
-                           "showChartInfoHud", "outlineAutomatic"}) {
+                           "outlineAutomatic"}) {
         const QString name = QString::fromLatin1(key);
         const bool defaultValue = name == QLatin1String("showTimestamp") || name == QLatin1String("outlineAutomatic");
         result.insert(name, values.value(name).toBool(defaultValue));
