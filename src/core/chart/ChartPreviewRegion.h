@@ -7,7 +7,7 @@ class SimaiDocument;
 
 namespace miacode::chart_preview {
 
-inline constexpr int kDropAlgorithmVersion = 1;
+inline constexpr int kDropAlgorithmVersion = 2;
 
 struct MediaRange {
     double startSeconds = 0.0;

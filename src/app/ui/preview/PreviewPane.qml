@@ -148,88 +148,135 @@ Rectangle {
             }
         }
 
-        Canvas {
+        Item {
             id: pressureOverlay
             objectName: "previewPressureOverlay"
             anchors.left: previewSurfaceLoader.left
             anchors.right: previewSurfaceLoader.right
             anchors.bottom: previewSurfaceLoader.bottom
-            anchors.leftMargin: 2
-            anchors.rightMargin: 2
             height: Math.min(36, previewSurfaceLoader.height * 0.075)
             visible: previewSurfaceLoader.active && root.documentAvailable && !root.latencyActive
-                && !root.exportPageActive && structure !== null && structure.available
+                && !root.exportPageActive && !root.exportSession.pageSessionActive
+                && !root.exportSession.introAuditionPlaying && !introActive
+                && structure !== null && structure.pressureAvailable && endSecond > 0
             readonly property var structure: root.previewSession.structure || null
-            readonly property real startSecond: transport.lowerBoundSeconds
-            readonly property real endSecond: transport.progressEndSeconds
+            readonly property bool introActive: root.previewSession.runtime
+                ? root.previewSession.runtime.introOverlayActive : false
+            readonly property real endSecond: root.previewSession.durationSeconds
 
-            onStartSecondChanged: requestPaint()
-            onEndSecondChanged: requestPaint()
-            onWidthChanged: requestPaint()
-            onHeightChanged: requestPaint()
-            onVisibleChanged: if (visible) requestPaint()
-            onPaint: {
-                const context = getContext("2d")
-                context.clearRect(0, 0, width, height)
-                if (!visible || width < 1 || endSecond <= startSecond)
-                    return
-                const columns = Math.max(32, Math.min(256, Math.ceil(width / 8)))
-                const samples = structure.heatmapSamples(startSecond, endSecond, columns)
-                if (samples.length < 2)
-                    return
-                // Smooth the display envelope only; tooltips retain original pressure values.
-                const points = []
-                const weights = [1, 2, 3, 2, 1]
-                for (let i = 0; i < samples.length; ++i) {
-                    let total = 0
-                    for (let j = -2; j <= 2; ++j) {
-                        const index = Math.max(0, Math.min(samples.length - 1, i + j))
-                        total += Math.max(0, Math.min(1, samples[index])) * weights[j + 2]
+            function secondAt(x) {
+                return Math.max(0, Math.min(1, x / Math.max(1, width))) * endSecond
+            }
+
+            onEndSecondChanged: pressureShape.requestPaint()
+            onVisibleChanged: if (visible) pressureShape.requestPaint()
+            Canvas {
+                id: pressureShape
+                anchors.fill: parent
+                opacity: pressureScrub.containsMouse || pressureScrub.pressed ? 0.28 : 0.16
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                onPaint: {
+                    const context = getContext("2d")
+                    context.clearRect(0, 0, width, height)
+                    if (!pressureOverlay.visible || width < 1)
+                        return
+                    const columns = Math.max(32, Math.min(256, Math.ceil(width / 8)))
+                    const samples = pressureOverlay.structure.heatmapSamples(0, pressureOverlay.endSecond, columns)
+                    if (samples.length < 2)
+                        return
+                    // Smooth the display envelope while keeping the tooltip at the pointer time.
+                    const points = []
+                    const weights = [1, 2, 3, 2, 1]
+                    for (let i = 0; i < samples.length; ++i) {
+                        let total = 0
+                        for (let j = -2; j <= 2; ++j) {
+                            const index = Math.max(0, Math.min(samples.length - 1, i + j))
+                            total += Math.max(0, Math.min(1, samples[index])) * weights[j + 2]
+                        }
+                        points.push({ x: i * width / (samples.length - 1), y: height - total / 9 * (height - 1) })
                     }
-                    points.push({ x: i * width / (samples.length - 1), y: height - total / 9 * (height - 1) })
+                    context.beginPath()
+                    context.moveTo(0, height)
+                    context.lineTo(points[0].x, points[0].y)
+                    for (let i = 1; i < points.length; ++i) {
+                        const previous = points[i - 1]
+                        const current = points[i]
+                        context.quadraticCurveTo(previous.x, previous.y,
+                            (previous.x + current.x) / 2, (previous.y + current.y) / 2)
+                    }
+                    const last = points[points.length - 1]
+                    context.quadraticCurveTo(last.x, last.y, width, last.y)
+                    context.lineTo(width, height)
+                    context.closePath()
+                    context.fillStyle = Qt.rgba(0.87, 0.87, 0.87, 1)
+                    context.fill()
                 }
-                context.beginPath()
-                context.moveTo(0, height)
-                context.lineTo(points[0].x, points[0].y)
-                for (let i = 1; i < points.length; ++i) {
-                    const previous = points[i - 1]
-                    const current = points[i]
-                    context.quadraticCurveTo(previous.x, previous.y,
-                        (previous.x + current.x) / 2, (previous.y + current.y) / 2)
-                }
-                const last = points[points.length - 1]
-                context.quadraticCurveTo(last.x, last.y, width, last.y)
-                context.lineTo(width, height)
-                context.closePath()
-                context.fillStyle = Qt.rgba(0.87, 0.87, 0.87, pressureHover.hovered ? 0.58 : 0.38)
-                context.fill()
             }
 
             Connections {
                 target: pressureOverlay.structure
                 function onChanged() {
                     if (pressureOverlay.visible)
-                        pressureOverlay.requestPaint()
+                        pressureShape.requestPaint()
                 }
             }
-            HoverHandler {
-                id: pressureHover
-                onHoveredChanged: pressureOverlay.requestPaint()
+
+            MouseArea {
+                id: pressureScrub
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                hoverEnabled: true
+                preventStealing: true
+                scrollGestureEnabled: false
+                cursorShape: pressed ? Qt.SizeHorCursor : Qt.PointingHandCursor
+                property bool resumePlaying: false
+
+                function scrubTo(x) {
+                    root.previewSession.updateScrub(pressureOverlay.secondAt(x))
+                }
+
+                onPressed: function(mouse) {
+                    resumePlaying = root.previewSession.playing
+                    root.previewSession.beginScrub()
+                    scrubTo(mouse.x)
+                }
+                onPositionChanged: function(mouse) {
+                    if (pressed)
+                        scrubTo(mouse.x)
+                }
+                onReleased: function(mouse) {
+                    const second = pressureOverlay.secondAt(mouse.x)
+                    root.previewSession.endScrub(second)
+                    if (resumePlaying && second < pressureOverlay.endSecond - 0.001) {
+                        // The paused transport state is published on the event queue.
+                        Qt.callLater(function() {
+                            if (pressureOverlay.visible && !pressureScrub.pressed)
+                                root.previewSession.playing = true
+                        })
+                    }
+                    resumePlaying = false
+                }
+                onCanceled: {
+                    root.previewSession.endScrub(root.previewSession.positionSeconds)
+                    resumePlaying = false
+                }
+                onWheel: function(wheel) { wheel.accepted = false }
             }
-            ToolTip.visible: pressureHover.hovered && ToolTip.text.length > 0
+            ToolTip.visible: pressureScrub.containsMouse && !pressureScrub.pressed && ToolTip.text.length > 0
             ToolTip.delay: 500
             ToolTip.text: {
-                if (!pressureOverlay.visible || !pressureHover.hovered || pressureOverlay.structure.pending)
+                if (!pressureOverlay.visible || !pressureScrub.containsMouse || pressureScrub.pressed)
                     return ""
-                const fraction = Math.max(0, Math.min(1, pressureHover.point.position.x / Math.max(1, width)))
-                const second = startSecond + fraction * (endSecond - startSecond)
+                const second = secondAt(pressureScrub.mouseX)
                 const p = structure.pressureAt(second)
                 if (p.density === undefined)
                     return ""
                 return qsTrId("structure.pressure_tooltip")
-                    .arg(second.toLocaleString(Qt.locale(), 'f', 3)).arg(p.density.toFixed(1))
-                    .arg(p.simultaneous.toFixed(1)).arg(p.held.toFixed(1)).arg(p.slides.toFixed(1))
-                    .arg(p.movement.toFixed(1)).arg(p.rhythm.toFixed(1))
+                    .arg(second.toLocaleString(Qt.locale(), 'f', 3)).arg(Math.round(p.strength * 100))
+                    .arg(p.density.toFixed(1)).arg(p.simultaneous.toFixed(1)).arg(p.movement.toFixed(1))
+                    .arg(p.rhythm.toFixed(1)).arg(p.endurance.toFixed(1)).arg(p.held.toFixed(1))
+                    .arg(p.slides.toFixed(1)).arg(p.hybrid.toFixed(1))
             }
         }
 

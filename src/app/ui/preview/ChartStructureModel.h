@@ -22,6 +22,7 @@ class ChartStructureModel final : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(bool available READ available NOTIFY changed)
+    Q_PROPERTY(bool pressureAvailable READ pressureAvailable NOTIFY changed)
     Q_PROPERTY(bool pending READ pending NOTIFY changed)
     Q_PROPERTY(bool dropAvailable READ dropAvailable NOTIFY changed)
     Q_PROPERTY(double dropStartSeconds READ dropStartSeconds NOTIFY changed)
@@ -38,6 +39,7 @@ public:
     ~ChartStructureModel() override;
 
     bool available() const;
+    bool pressureAvailable() const;
     bool pending() const;
     bool dropAvailable() const;
     double dropStartSeconds() const;

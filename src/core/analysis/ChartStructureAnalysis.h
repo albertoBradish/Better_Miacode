@@ -28,6 +28,8 @@ struct PressureFrame {
     double slides = 0.0;
     double movement = 0.0;
     double rhythm = 0.0;
+    double hybrid = 0.0;
+    double endurance = 0.0;
     double strength = 0.0;
 };
 
