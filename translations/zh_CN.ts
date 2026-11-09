@@ -5785,6 +5785,18 @@ Held %8 · Slides %9 · Overlap %10</source>
         <source>Show timeline</source>
         <translation>显示时间轴</translation>
     </message>
+    <message id="workspace.diagnostics">
+        <source>Diagnostics</source>
+        <translation>诊断</translation>
+    </message>
+    <message id="editor.set_selection_as_drop">
+        <source>Set selection as Drop</source>
+        <translation>将选区设为 Drop</translation>
+    </message>
+    <message id="editor.clear_drop">
+        <source>Clear Drop</source>
+        <translation>取消 Drop</translation>
+    </message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the

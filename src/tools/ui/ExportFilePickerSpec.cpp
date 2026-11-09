@@ -452,6 +452,17 @@ ApplicationWindow {
         QFile portable(templatePath); expect(portable.open(QIODevice::ReadOnly), "template file is written");
         const auto wrapper = QJsonDocument::fromJson(portable.readAll()).object(); portable.close();
         expect(wrapper.value("version").toInt() == 1 && wrapper.value("kind").toString() == QLatin1String("better-miacode-video-template"), "template file has an explicit format and version");
+        for (const QString& name : {QStringLiteral("double.miatemplate.json"), QStringLiteral("reverse.json.miatemplate")}) {
+            session.exportVideoTemplate();
+            historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(parent.filePath(name)));
+            const QString canonical = name.startsWith(QLatin1String("double"))
+                ? QStringLiteral("double.miatemplate") : QStringLiteral("reverse.miatemplate");
+            QFile savedTemplate(parent.filePath(canonical));
+            expect(savedTemplate.open(QIODevice::ReadOnly)
+                   && QJsonDocument::fromJson(savedTemplate.readAll()).object() == wrapper
+                   && !QFileInfo::exists(parent.filePath(name)),
+                   "video templates remove legacy JSON suffixes without changing their content");
+        }
         session.setResolutionIndex(0);
         session.importVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(templatePath));
         expect(session.outputWidth() == 3840 && session.videoTemplates().size() >= 2

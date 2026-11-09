@@ -2124,7 +2124,14 @@ void ExportSession::exportVideoTemplate()
         if (!guard || path.isEmpty()) return;
         const QByteArray bytes = QJsonDocument(object).toJson();
         const QString suffix = QStringLiteral(".miatemplate");
-        const QString targetPath = path.endsWith(suffix, Qt::CaseInsensitive) ? path : path + suffix;
+        QString targetPath = path;
+        // Older dialogs and user-entered names can carry either suffix order.
+        // Keep the JSON payload, but write exactly one application file suffix.
+        while (targetPath.endsWith(QStringLiteral(".json"), Qt::CaseInsensitive)
+               || targetPath.endsWith(suffix, Qt::CaseInsensitive)) {
+            targetPath.chop(targetPath.endsWith(suffix, Qt::CaseInsensitive) ? suffix.size() : 5);
+        }
+        targetPath += suffix;
         if (targetPath != path && QFileInfo::exists(targetPath)) {
             guard->uiRequests_->postNotice(miacode::NoticeSeverity::Error,
                 miacode::localizedText("video_template.title"), miacode::localizedText("video_template.path_exists"), targetPath);

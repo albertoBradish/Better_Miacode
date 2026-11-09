@@ -5785,6 +5785,18 @@ Held %8 · Slides %9 · Overlap %10</translation>
         <source>Show timeline</source>
         <translation>Show timeline</translation>
     </message>
+    <message id="workspace.diagnostics">
+        <source>Diagnostics</source>
+        <translation>Diagnostics</translation>
+    </message>
+    <message id="editor.set_selection_as_drop">
+        <source>Set selection as Drop</source>
+        <translation>Set selection as Drop</translation>
+    </message>
+    <message id="editor.clear_drop">
+        <source>Clear Drop</source>
+        <translation>Clear Drop</translation>
+    </message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the
