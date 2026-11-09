@@ -16,8 +16,8 @@ namespace {
 bool previewConsumesMuriAnalysisReport(const MuriRenderOptions& options)
 {
     return options.renderMode == RenderMode::MaimuriDxStyle
-        || options.showJudgeMarkers
-        || options.showTouchTrail;
+        || (renderModeAllowsDiagnosticContacts(options.renderMode)
+            && (options.showJudgeMarkers || options.showTouchTrail));
 }
 
 MuriAnalysisReport muriPromptReportForTimelineDots(

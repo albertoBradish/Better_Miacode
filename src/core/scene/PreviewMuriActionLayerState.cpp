@@ -38,7 +38,8 @@ PreviewMuriActionLayerState buildPreviewMuriActionLayerState(
 )
 {
     PreviewMuriActionLayerState layerState;
-    if (!state.muriRenderOptions.showTouchTrail || visibleIndices.isEmpty()) {
+    if (!renderModeAllowsDiagnosticContacts(state.muriRenderOptions.renderMode)
+        || !state.muriRenderOptions.showTouchTrail || visibleIndices.isEmpty()) {
         return layerState;
     }
 

@@ -15,7 +15,8 @@ PreviewMuriPadLayerState buildPreviewMuriPadLayerState(
 )
 {
     PreviewMuriPadLayerState layerState;
-    if (!state.muriRenderOptions.showJudgeMarkers) {
+    if (!renderModeAllowsDiagnosticContacts(state.muriRenderOptions.renderMode)
+        || !state.muriRenderOptions.showJudgeMarkers) {
         cache = {};
         return layerState;
     }

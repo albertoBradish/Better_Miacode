@@ -12,6 +12,13 @@ enum class RenderMode {
     Debug,
 };
 
+// Normal presentation never exposes diagnostic contacts, including when an
+// older preference file or export snapshot still has their flags enabled.
+constexpr bool renderModeAllowsDiagnosticContacts(RenderMode mode)
+{
+    return mode == RenderMode::Debug || mode == RenderMode::MaimuriDxStyle;
+}
+
 constexpr BackgroundPolicy backgroundPolicyForRenderMode(RenderMode mode)
 {
     return mode == RenderMode::Debug ? BackgroundPolicy::OpaqueBlack : BackgroundPolicy::Normal;

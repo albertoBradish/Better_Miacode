@@ -199,8 +199,10 @@ bool PreviewPreparedSceneCache::sync(const PreviewFrameState& state)
     nextKey.slideTimingEarlyPerfectFromHead = state.render.slideTimingEarlyPerfectFromHead;
     nextKey.slideTimingLaunchBeatIdentity = state.render.slideTimingFromLaunchBeat
         ? reinterpret_cast<quintptr>(state.slideTimingLaunchBeats.get()) : 0;
-    nextKey.showJudgeMarkers = state.muriRenderOptions.showJudgeMarkers;
-    nextKey.showTouchTrail = state.muriRenderOptions.showTouchTrail;
+    nextKey.showJudgeMarkers = renderModeAllowsDiagnosticContacts(state.muriRenderOptions.renderMode)
+        && state.muriRenderOptions.showJudgeMarkers;
+    nextKey.showTouchTrail = renderModeAllowsDiagnosticContacts(state.muriRenderOptions.renderMode)
+        && state.muriRenderOptions.showTouchTrail;
     nextKey.slideEarlierSecondAndTextOnTop = state.render.slideEarlierSecondAndTextOnTop;
     nextKey.tapJudgeTextDistance = state.render.tapJudgeTextDistance;
     nextKey.showChartReviewSlideJudgeOverlay = state.muriRenderOptions.showChartReviewSlideJudgeOverlay;
@@ -237,10 +239,10 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
 
     muriPadLayer_ = {};
     muriActionLayer_ = {};
-    if (state.muriRenderOptions.showJudgeMarkers) {
+    if (key_.showJudgeMarkers) {
         prepareIntervalBlocks(state.muriAnalysisReport.padWindows, 0.0, &muriPadLayer_);
     }
-    if (state.muriRenderOptions.showTouchTrail) {
+    if (key_.showTouchTrail) {
         prepareIntervalBlocks(state.muriAnalysisReport.actionTrails,
             actionTrailTailSeconds(state.muriRenderOptions.renderMode), &muriActionLayer_);
     }

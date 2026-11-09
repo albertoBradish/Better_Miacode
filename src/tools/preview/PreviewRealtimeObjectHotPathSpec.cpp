@@ -13,6 +13,7 @@
 #include "core/scene/PreviewFireworkWarmupPolicy.h"
 #include "core/scene/PreviewMarkerDrawOrder.h"
 #include "core/scene/PreviewMuriActionLayerState.h"
+#include "core/scene/PreviewMuriPadLayerState.h"
 #include "core/scene/PreviewNoteLayerAnomaly.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
 #include "core/scene/PreviewSceneConstants.h"
@@ -892,6 +893,52 @@ PreviewFrameState buildDxMuriActionState()
     return state;
 }
 
+bool verifyDiagnosticContactModeBoundary(QTextStream& err)
+{
+    using namespace miacode::preview::scene;
+    PreviewFrameState state = buildDxMuriActionState();
+    state.muriRenderOptions.showJudgeMarkers = true;
+    MuriPadWindow pad;
+    pad.pad = QStringLiteral("A1");
+    pad.startSecond = 1.0;
+    pad.endSecond = 2.0;
+    state.muriAnalysisReport.padWindows = {pad};
+    PreviewPreparedSceneCache prepared;
+    PreviewMuriPadLayerCache padCache;
+    const QRectF playfield(0, 0, kLogicalCanvasSize, kLogicalCanvasSize);
+    bool ok = true;
+    // Reuse both caches and keep persisted flags true across mode changes.
+    // Direct layer calls also receive stale visible indices to exercise the
+    // final render boundary independently of prepared-cache filtering.
+    for (const auto mode : {RenderMode::Debug, RenderMode::Native,
+                           RenderMode::MaimuriDxStyle, RenderMode::EraseByArea, RenderMode::Debug}) {
+        state.muriRenderOptions.renderMode = mode;
+        const bool visible = mode == RenderMode::Debug || mode == RenderMode::MaimuriDxStyle;
+        ok &= require(prepared.sync(state), QStringLiteral("mode change invalidates diagnostic caches"), err);
+        ok &= require(prepared.key().showJudgeMarkers == visible && prepared.key().showTouchTrail == visible,
+            QStringLiteral("prepared key records effective diagnostic flags"), err);
+        ok &= require(prepared.muriPadLayer().entries.isEmpty() != visible
+            && prepared.muriActionLayer().entries.isEmpty() != visible,
+            QStringLiteral("mode switch clears or rebuilds diagnostic intervals"), err);
+        const auto pads = buildPreviewMuriPadLayerState(state, playfield, {0}, padCache);
+        const auto actions = buildPreviewMuriActionLayerState(state, playfield, {0, 1, 2});
+        ok &= require(pads.circles.isEmpty() != visible && actions.circles.isEmpty() != visible,
+            QStringLiteral("only Debug and Muri render diagnostic contacts even with stale flags and indices"), err);
+        if (!visible) {
+            ok &= require(padCache.drawOrder.isEmpty() && padCache.insertionOrder.isEmpty(),
+                QStringLiteral("normal mode clears retained pad geometry"), err);
+        }
+    }
+    state.muriRenderOptions.showJudgeMarkers = false;
+    state.muriRenderOptions.showTouchTrail = false;
+    prepared.sync(state);
+    ok &= require(prepared.muriPadLayer().entries.isEmpty() && prepared.muriActionLayer().entries.isEmpty()
+        && buildPreviewMuriPadLayerState(state, playfield, {0}, padCache).circles.isEmpty()
+        && buildPreviewMuriActionLayerState(state, playfield, {0, 1, 2}).circles.isEmpty(),
+        QStringLiteral("Debug still respects disabled diagnostic toggles"), err);
+    return ok;
+}
+
 bool verifyDxMuriActionSweepLineMatchesNaiveReferenceForState(
     const PreviewFrameState& state,
     const QString& label,
@@ -1367,6 +1414,9 @@ int main(int argc, char* argv[])
         return 1;
     }
     if (!verifyTrackAndSlideMotionUseTextOrderForSameSecondSlides(err)) {
+        return 1;
+    }
+    if (!verifyDiagnosticContactModeBoundary(err)) {
         return 1;
     }
     if (!verifyDxMuriActionSweepLineMatchesNaiveReference(err)) {
