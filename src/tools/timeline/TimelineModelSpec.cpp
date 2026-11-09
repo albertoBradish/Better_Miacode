@@ -771,6 +771,7 @@ int main(int argc, char** argv)
         expect(QDir(QStringLiteral(MIACODE_SOURCE_ROOT)).exists(),
                QStringLiteral("timeline source-contract root is injected by CMake and exists"));
         const QString panel = qmlSource(QStringLiteral("src/app/ui/timeline/BottomPanel.qml"));
+        const QString timelinePanel = qmlSource(QStringLiteral("src/app/ui/timeline/TimelinePanel.qml"));
         const QString tabBar = qmlSource(QStringLiteral("src/app/ui/timeline/BottomTabBar.qml"));
         const QString splitView = qmlSource(QStringLiteral("src/app/ui/layout/MainSplitView.qml"));
         const QString viewState = qmlSource(QStringLiteral("src/app/ui/ViewState.qml"));
@@ -780,13 +781,13 @@ int main(int argc, char** argv)
         const QString editorDisplay = qmlSource(
             QStringLiteral("src/app/runtime/editor/EditorDisplay.cpp"));
         const QString settingsMenu = qmlSource(QStringLiteral("src/app/ui/timeline/TimelineSettingsMenu.qml"));
-        expect(!panel.isEmpty() && !tabBar.isEmpty() && !splitView.isEmpty()
+        expect(!panel.isEmpty() && !timelinePanel.isEmpty() && !tabBar.isEmpty() && !splitView.isEmpty()
                    && !viewState.isEmpty() && !timelineSession.isEmpty() && !timelineTick.isEmpty()
                    && !editorDisplay.isEmpty() && !settingsMenu.isEmpty(),
                QStringLiteral("v2 timeline control QML sources are available to the developer spec"));
-        const QString controls = panel + tabBar + settingsMenu;
-        expect(!panel.contains(QStringLiteral("TimelineZoomControl"))
-                   && !panel.contains(QStringLiteral("TimelineZoomMenu"))
+        const QString controls = timelinePanel + tabBar + settingsMenu;
+        expect(!timelinePanel.contains(QStringLiteral("TimelineZoomControl"))
+                   && !timelinePanel.contains(QStringLiteral("TimelineZoomMenu"))
                    && settingsMenu.contains(QStringLiteral("waveformBrightness"))
                    && settingsMenu.contains(QStringLiteral("measureLineBrightness"))
                    && controls.contains(QStringLiteral("followPreviewToggled")),
@@ -805,38 +806,15 @@ int main(int argc, char** argv)
                    && !splitView.contains(QStringLiteral("activeBottomTab"))
                    && !viewState.contains(QStringLiteral("activeBottomTab")),
                QStringLiteral("v2 bottom tabs select through the timeline session instead of ViewState"));
-        const int persistStart = splitView.indexOf(QStringLiteral("function persistBottomPanelSize("));
-        const int persistEnd = splitView.indexOf(QStringLiteral("function undo()"), persistStart);
-        const QString persistSize = persistStart >= 0 && persistEnd > persistStart
-            ? splitView.mid(persistStart, persistEnd - persistStart) : QString();
-        const int verticalWrite = persistSize.indexOf(QStringLiteral(
-            "root.preferences.timelineVerticalWidthRatio = finalSize / centerSplit.width"));
-        const int horizontalWrite = persistSize.indexOf(QStringLiteral("root.preferences.bottomPanelHeightRatio ="));
-        const int verticalReturn = persistSize.indexOf(QStringLiteral("return"), verticalWrite);
-        expect(persistSize.contains(QStringLiteral("if (root.verticalTimeline)"))
-                   && verticalWrite >= 0 && verticalReturn > verticalWrite && horizontalWrite > verticalReturn
-                   && persistSize.contains(QStringLiteral("height / centerSplit.height"))
-                   && splitView.contains(QStringLiteral("bottomPanelMinimumHeightRatio"))
-                   && splitView.contains(QStringLiteral("bottomPanelMaximumHeightRatio"))
-                   && splitView.contains(QStringLiteral("onReleased: bottomPanelSnap.finishDrag(true)"))
-                   && splitView.contains(QStringLiteral("root.persistBottomPanelSize(finalSize, sizeAtPress)"))
-                   && splitView.contains(QStringLiteral("centerSplit.height * root.preferences.bottomPanelHeightRatio"))
-                   && splitView.contains(QStringLiteral("centerSplit.width * (root.preferences.timelineVerticalWidthRatio"))
-                   && splitView.contains(QStringLiteral("when: !centerSplit.resizing && !root.verticalTimeline"))
-                   && splitView.contains(QStringLiteral("when: !centerSplit.resizing && root.verticalTimeline"))
-                   && !splitView.contains(QStringLiteral("queueBottomTabsHostHeight"))
-                   && !splitView.contains(QStringLiteral("bottomTabsHeightFeedback"))
-                   && !splitView.contains(QStringLiteral("maximumHeight: root.bottomPanelEffectivelyVisible ? 340 : 0")),
-               QStringLiteral("divider release persists and restores independent horizontal height and vertical width ratios"));
-        expect(panel.contains(QStringLiteral(
+        expect(splitView.contains(QStringLiteral("parent: workspaceDock.hostFor(\"timeline\")"))
+                   && splitView.contains(QStringLiteral("parent: workspaceDock.hostFor(\"diagnostics\")")),
+               QStringLiteral("timeline and diagnostics occupy independently dockable panels"));
+        expect(timelinePanel.contains(QStringLiteral(
                    "timelineRulerRightLimit: verticalTimeline ? 0 : Math.max(0, brightnessButton.x - 2)"))
-                   && panel.contains(QStringLiteral("headerRightLimit: root.timelineRulerRightLimit"))
-                   && panel.contains(QStringLiteral("headerMarkerRightLimit: root.timelineRulerRightLimit"))
-                   && panel.contains(QStringLiteral("timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)"))
-                   && panel.contains(QStringLiteral("tabs.y + (tabs.height - height) / 2"))
-                   && panel.contains(QStringLiteral(
-                       "rightAccessoryWidth: root.verticalTimeline && timelineItem.visible ? brightnessButton.width : 0")),
-               QStringLiteral("horizontal labels and markers avoid settings, which moves to reserved tab space in vertical mode"));
+                   && timelinePanel.contains(QStringLiteral("headerRightLimit: root.timelineRulerRightLimit"))
+                   && timelinePanel.contains(QStringLiteral("headerMarkerRightLimit: root.timelineRulerRightLimit"))
+                   && timelinePanel.contains(QStringLiteral("anchors.topMargin: root.verticalTimeline ? brightnessButton.height : 0")),
+               QStringLiteral("the ruler reserves space for the settings button in both orientations"));
         const int playingFlushStart = timelineTick.indexOf(
             QStringLiteral("void miacode::runtime::PlaybackCoordinator::flushQtPreviewTimelinePosition()"));
         const QString playingFlush = playingFlushStart >= 0
