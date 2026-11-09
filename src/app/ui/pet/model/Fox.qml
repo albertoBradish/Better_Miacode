@@ -10,40 +10,41 @@ PetModelNode {
     property real rhythmQuarterBeat: 0
     property real rhythmWeight: 0
     property real rhythmDropWeight: 0
-    // One relaxed left/right head circle spans two chart beats. These are
-    // analytic, periodic pose samples: no animation timer advances the beat.
+    // The jump and grounded pose share the transport phase for a continuous blend.
     readonly property real rhythmPhase: ((rhythmQuarterBeat % 2) + 2) % 2
     readonly property real rhythmStrength: Math.max(0, Math.min(1, rhythmWeight))
         * (1 - sittingWeight) * (1 - sleepingWeight)
     readonly property real jumpStrength: rhythmStrength * rhythmDropWeight
-    readonly property real headSwayStrength: rhythmStrength * (1 - 0.60 * rhythmDropWeight)
+    readonly property real groundedStrength: rhythmStrength - jumpStrength
     readonly property real bodyBeatAngle: rhythmPhase * Math.PI * 2
     readonly property real bodySwayAngle: rhythmPhase * Math.PI
     readonly property real headSwayAngle: (rhythmPhase - 0.10) * Math.PI
     readonly property real tailSwayAngle: (rhythmPhase - 0.24) * Math.PI
-    // Each jump lands at the transport beat. Outside the drop the body stays grounded.
-    readonly property real rhythmBodyLift: jumpStrength * 0.065 * (1 - Math.cos(bodyBeatAngle))
+    readonly property real rhythmBodyLift: jumpStrength * (0.030 - 0.038 * Math.cos(bodyBeatAngle))
     readonly property vector3d rhythmBodyOffset: Qt.vector3d(
         jumpStrength * 0.025 * Math.sin(bodySwayAngle), rhythmBodyLift,
         jumpStrength * 0.012 * Math.sin(bodyBeatAngle - 0.25))
     readonly property vector3d rhythmBodyRotation: Qt.vector3d(
         jumpStrength * 3.8 * Math.sin(bodyBeatAngle - 0.20),
-        jumpStrength * 6.0 * Math.sin(bodySwayAngle),
-        jumpStrength * 4.5 * Math.sin(bodySwayAngle + 0.35))
+        (jumpStrength * 6.0 + groundedStrength * 1.2) * Math.sin(bodySwayAngle),
+        (jumpStrength * 4.5 + groundedStrength * 0.8) * Math.sin(bodySwayAngle + 0.35))
     readonly property vector3d rhythmHeadOffset: Qt.vector3d(
-        headSwayStrength * 0.025 * Math.sin(headSwayAngle),
-        headSwayStrength * (0.020 + 0.020 * Math.cos(headSwayAngle)),
-        -headSwayStrength * 0.018 * Math.cos(headSwayAngle))
+        (jumpStrength * 0.025 + groundedStrength * 0.010) * Math.sin(headSwayAngle),
+        jumpStrength * (0.020 + 0.020 * Math.cos(headSwayAngle))
+            + groundedStrength * 0.006 * Math.sin(bodyBeatAngle - 0.55),
+        -(jumpStrength * 0.018 + groundedStrength * 0.008) * Math.cos(headSwayAngle))
     readonly property vector3d rhythmHeadRotation: Qt.vector3d(
-        headSwayStrength * (12.0 + 12.0 * Math.cos(headSwayAngle + 0.25)),
-        headSwayStrength * 38.0 * Math.sin(headSwayAngle),
-        headSwayStrength * 8.0 * Math.cos(headSwayAngle + 0.80))
-    readonly property real rhythmLegFlex: jumpStrength * 12.0 * Math.sin(bodyBeatAngle - 0.15)
-    readonly property real rhythmLegStretch: 1 - 0.28 * rhythmBodyLift
+        jumpStrength * (12.0 + 12.0 * Math.cos(headSwayAngle + 0.25))
+            + groundedStrength * (3.2 + 4.6 * Math.sin(headSwayAngle + 0.25)
+                + 1.25 * Math.sin(bodyBeatAngle - 0.8)),
+        (jumpStrength * 38.0 + groundedStrength * 14.0) * Math.sin(headSwayAngle),
+        (jumpStrength * 8.0 + groundedStrength * 3.3) * Math.cos(headSwayAngle + 0.80))
+    readonly property real rhythmLegFlex: jumpStrength * 6.0 * Math.sin(bodyBeatAngle - 0.15)
+    readonly property real rhythmLegStretch: 1 + rhythmBodyLift / 0.375
     readonly property vector3d rhythmTailRotation: Qt.vector3d(
-        jumpStrength * 7.0 * Math.cos(tailSwayAngle + 0.40),
-        jumpStrength * 18.0 * Math.sin(tailSwayAngle),
-        jumpStrength * 8.0 * Math.sin(tailSwayAngle - 0.45))
+        (jumpStrength * 7.0 + groundedStrength * 1.0) * Math.cos(tailSwayAngle + 0.40),
+        (jumpStrength * 18.0 + groundedStrength * 4.0) * Math.sin(tailSwayAngle),
+        (jumpStrength * 8.0 + groundedStrength * 1.5) * Math.sin(tailSwayAngle - 0.45))
     property real sleepTime: 0
     property real wiggleTime: 0
     onClipChanged: {
@@ -60,8 +61,10 @@ PetModelNode {
     property real wiggleWeight: clip === "animation.fox.wiggle" ? 1 : 0
     readonly property int transitionDuration: clip === "animation.fox.wiggle" ? 150 : 650
     readonly property bool sleeping: sleepingWeight > 0.5
-    readonly property real idleMotion: (1 - sleepingWeight) * (1 - wiggleWeight) * (1 - rhythmWeight)
-    readonly property real breathing: Math.sin(lifeTime * Math.PI / 2) * (1 - wiggleWeight) * (1 - rhythmWeight)
+    readonly property real idleMotion: (1 - sleepingWeight) * (1 - wiggleWeight)
+        * (1 - rhythmWeight + 0.25 * groundedStrength)
+    readonly property real breathing: Math.sin(lifeTime * Math.PI / 2) * (1 - wiggleWeight)
+        * (1 - rhythmWeight + 0.35 * groundedStrength)
     Behavior on sittingWeight { NumberAnimation { duration: fox.transitionDuration; easing.type: Easing.InOutSine } }
     Behavior on sleepingWeight { NumberAnimation { duration: fox.transitionDuration; easing.type: Easing.InOutSine } }
     Behavior on wiggleWeight { NumberAnimation { duration: fox.transitionDuration; easing.type: Easing.InOutSine } }

@@ -30,8 +30,7 @@ Window {
         const t = Math.min(1, Math.min(rhythmSecond - dropStart, dropEnd - rhythmSecond) / ramp)
         return t * t * (3 - 2 * t)
     }
-    property real dropWeight: dropEnvelope
-    Behavior on dropWeight { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+    property real dropWeight: 0
     NumberAnimation {
         id: phaseRecovery
         target: petWindow
@@ -127,6 +126,7 @@ Window {
     onVisibleChanged: {
         if (!visible) {
             stateTimer.stop()
+            dropWeight = 0
             return
         }
         correctPosition(false)
@@ -261,6 +261,10 @@ Window {
                 return
             petWindow.animationPhase += elapsed
             petWindow.lifeTime += elapsed
+            // Filter envelope jumps after seeks on the same cadence as pose rendering.
+            const remaining = petWindow.dropEnvelope - petWindow.dropWeight
+            petWindow.dropWeight += Math.abs(remaining) < 0.001 ? remaining
+                : remaining * (1 - Math.exp(-elapsed / 0.06))
             elapsed = 0
             petScene.advanceFrame()
         }
