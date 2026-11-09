@@ -1,6 +1,6 @@
 .pragma library
 
-var panels = ["editor", "timeline", "preview", "sidebar", "diagnostics"]
+var panels = ["editor", "timeline", "preview", "sidebar", "validation", "muri"]
 
 function group(tabs, selected) {
     return { tabs: tabs, selected: selected || tabs[0] }
@@ -18,21 +18,41 @@ function normalizedTree(tree) {
         if (!node || depth >= panels.length)
             return null
         if (node.tabs && Number.isInteger(node.tabs.length)) {
-            const tabs = Array.from(node.tabs).filter(id => {
+            const storedTabs = []
+            for (const id of Array.from(node.tabs)) {
+                if (id === "diagnostics") storedTabs.push("validation", "muri")
+                else storedTabs.push(id)
+            }
+            const tabs = storedTabs.filter(id => {
                 if (!panels.includes(id) || seen.includes(id))
                     return false
                 seen.push(id)
                 return true
             })
-            return tabs.length ? group(tabs, tabs.includes(node.selected) ? node.selected : tabs[0]) : null
+            const selected = node.selected === "diagnostics" ? "validation" : node.selected
+            return tabs.length ? group(tabs, tabs.includes(selected) ? selected : tabs[0]) : null
         }
         if (node.axis !== "horizontal" && node.axis !== "vertical")
             return null
-        const ratio = Number.isFinite(node.ratio) ? Math.min(0.90, Math.max(0.10, node.ratio)) : 0.5
+        const ratio = Number.isFinite(node.ratio) ? Math.min(0.95, Math.max(0.05, node.ratio)) : 0.5
         return split(node.axis, ratio, visit(node.first, depth + 1), visit(node.second, depth + 1))
     }
     const normalized = visit(tree, 0)
     return seen.length === panels.length ? normalized : null
+}
+
+function normalizedFloating(floating) {
+    const result = Object.assign({}, floating)
+    if (result.diagnostics && !result.validation)
+        result.validation = result.diagnostics
+    delete result.diagnostics
+    return result
+}
+
+function pathFor(node, id, path = "") {
+    if (node.tabs)
+        return node.tabs.includes(id) ? path : null
+    return pathFor(node.first, id, path + "0") ?? pathFor(node.second, id, path + "1")
 }
 
 function replace(node, path, change) {
@@ -52,11 +72,16 @@ function remove(node, id) {
     return split(node.axis, node.ratio, remove(node.first, id), remove(node.second, id))
 }
 
-function dock(node, id, path, edge) {
+function dock(node, id, path, edge, beforeTab = "") {
     if (edge === "center") {
         // Insert before removing the old copy, so collapsing a split cannot invalidate the target path.
         const tagged = id + "@"
-        const inserted = replace(node, path, target => group(target.tabs.concat(tagged), tagged))
+        const inserted = replace(node, path, target => {
+            const tabs = target.tabs.slice()
+            const index = tabs.indexOf(beforeTab)
+            tabs.splice(index < 0 ? tabs.length : index, 0, tagged)
+            return group(tabs, tagged)
+        })
         return renameTab(remove(inserted, id), tagged, id)
     }
     const tagged = id + "@"

@@ -38,6 +38,7 @@ public:
     Q_INVOKABLE void toggleMaximized();
     Q_INVOKABLE void handleTitleBarDoubleClick();
     Q_INVOKABLE void saveWindowState();
+    Q_INVOKABLE QRect normalWindowGeometry() const;
     qreal titleBarLeadingInset() const { return titleBarLeadingInset_; }
     qreal titleBarHeight() const { return titleBarHeight_; }
     bool nativeMaterialAvailable() const { return nativeMaterialAvailable_; }

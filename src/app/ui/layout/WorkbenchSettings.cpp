@@ -24,6 +24,7 @@ namespace {
 constexpr auto kUiSection = "ui";
 constexpr auto kWorkspaceLayout = "workspace_layout";
 constexpr auto kSavedWorkspaceLayouts = "saved_workspace_layouts";
+constexpr auto kWorkspaceHiddenPanels = "workspace_hidden_panels";
 constexpr auto kTimelinePanelVisible = "timeline_panel_visible";
 constexpr auto kBlurMaterialsEnabled = "blur_materials_enabled";
 constexpr auto kEfficientSidebarEnabled = "efficient_sidebar_enabled";
@@ -138,6 +139,7 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     if (!QStringList{QStringLiteral("falling"), QStringLiteral("rising")}.contains(timelineVerticalDirection_)) timelineVerticalDirection_ = QStringLiteral("falling");
     workspaceLayout_ = ui.value(QLatin1String(kWorkspaceLayout)).toObject().toVariantMap();
     savedWorkspaceLayouts_ = ui.value(QLatin1String(kSavedWorkspaceLayouts)).toObject().toVariantMap();
+    workspaceHiddenPanels_ = ui.value(QLatin1String(kWorkspaceHiddenPanels)).toObject().toVariantMap();
     timelinePanelVisible_ = ui.value(QLatin1String(kTimelinePanelVisible)).toBool(true);
     timelineNoteScale_ = qBound(0.5, ui.value(QStringLiteral("timeline_note_scale")).toDouble(1.5), 3.0);
     timelineVerticalWidthRatio_ = qBound(0.2, ui.value(QStringLiteral("timeline_vertical_width_ratio")).toDouble(0.34), 0.6);
@@ -675,6 +677,14 @@ void WorkbenchSettings::saveWorkspaceLayout(const QString& name, const QVariantM
     savedWorkspaceLayouts_.insert(key, layout);
     storeUiValue(kSavedWorkspaceLayouts, QJsonObject::fromVariantMap(savedWorkspaceLayouts_));
     emit savedWorkspaceLayoutsChanged();
+}
+
+void WorkbenchSettings::setWorkspaceHiddenPanels(const QVariantMap& panels)
+{
+    if (workspaceHiddenPanels_ == panels) return;
+    workspaceHiddenPanels_ = panels;
+    storeUiValue(kWorkspaceHiddenPanels, QJsonObject::fromVariantMap(panels));
+    emit workspaceHiddenPanelsChanged();
 }
 
 QRect WorkbenchSettings::boundedWorkspaceWindowGeometry(const QRect& rect) const

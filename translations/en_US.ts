@@ -46,16 +46,16 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>Welcome to Better Miacode</translation>
     </message>
     <message id="setup.configure">
-        <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
-        <translation>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</translation>
+        <source>Set up appearance and the editor. You can change these later in Preferences.</source>
+        <translation>Set up appearance and the editor. You can change these later in Preferences.</translation>
     </message>
     <message id="setup.imported">
-        <source>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</source>
-        <translation>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</translation>
+        <source>Settings from the previous version are in place. You can review appearance and editor settings in Preferences.</source>
+        <translation>Settings from the previous version are in place. You can review appearance and editor settings in Preferences.</translation>
     </message>
     <message id="setup.import_pending">
-        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</source>
-        <translation>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</translation>
+        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance and editor settings.</source>
+        <translation>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance and editor settings.</translation>
     </message>
     <message id="setup.wizard">
         <source>Setup wizard</source>
@@ -5734,8 +5734,12 @@ Held %8 · Slides %9 · Overlap %10</translation>
         <translation>Note size</translation>
     </message>
     <message id="workspace.menu">
-        <source>Workspace</source>
-        <translation>Workspace</translation>
+        <source>Workspace(&amp;W)</source>
+        <translation>Workspace(&amp;W)</translation>
+    </message>
+    <message id="workspace.panels">
+        <source>Panels</source>
+        <translation>Panels</translation>
     </message>
     <message id="workspace.default">
         <source>Default layout</source>
@@ -5748,6 +5752,14 @@ Held %8 · Slides %9 · Overlap %10</translation>
     <message id="workspace.preview">
         <source>Preview layout</source>
         <translation>Preview layout</translation>
+    </message>
+    <message id="workspace.maximize_panel">
+        <source>Maximize active panel</source>
+        <translation>Maximize active panel</translation>
+    </message>
+    <message id="workspace.restore_panel">
+        <source>Restore active panel</source>
+        <translation>Restore active panel</translation>
     </message>
     <message id="workspace.save">
         <source>Save current layout…</source>

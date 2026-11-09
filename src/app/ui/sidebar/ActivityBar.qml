@@ -8,18 +8,9 @@ Rectangle {
 
     property string activeView: "chart"
     property bool documentAvailable: true
-    property bool netUploadEnabled: false
-    property bool networkActive: false
     property bool toolsAvailable: true
-    readonly property bool toolsMenuActive: toolsPopup.active
     signal viewRequested(string viewId)
-    signal toolRequested(string toolId)
     signal settingsRequested()
-
-    function showMediaToolsMenu(anchorItem) {
-        if (root.toolsAvailable)
-            toolsPopup.popup(anchorItem || toolsButton, (anchorItem || toolsButton).width, 0)
-    }
 
     implicitWidth: Theme.activityButtonSize
     color: Theme.chromeSurfaceColor(Theme.colors.background.activityBar, false)
@@ -62,27 +53,6 @@ Rectangle {
             selected: root.activeView === "tools"
             onClicked: root.viewRequested("tools")
         }
-    }
-
-    AppMenu {
-        id: toolsPopup
-        hugContent: true
-
-        AudioProcessingMenu {
-            enabled: root.toolsAvailable
-            documentAvailable: root.documentAvailable
-            onToolRequested: toolId => root.toolRequested("media." + toolId)
-        }
-        VideoProcessingMenu {
-            enabled: root.toolsAvailable
-            documentAvailable: root.documentAvailable
-            onToolRequested: toolId => root.toolRequested("media." + toolId)
-        }
-    }
-
-    onToolsAvailableChanged: {
-        if (!toolsAvailable)
-            toolsPopup.close()
     }
 
     ActivityButton {

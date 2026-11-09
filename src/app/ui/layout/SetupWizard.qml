@@ -14,8 +14,6 @@ AppDialog {
     readonly property var titles: [
         qsTrId("setup.welcome"),
         qsTrId("dialog.preferences.group.appearance"),
-        qsTrId("dialog.preferences.interface_layout"),
-        qsTrId("dialog.preferences.sidebar_mode"),
         qsTrId("dialog.preferences.editor_group")
     ]
 
@@ -120,67 +118,9 @@ AppDialog {
             currentValue: root.preferencesModel.uiScalePercent
             onPicked: value => root.preferencesModel.uiScalePercent = value
         }
-        GridLayout {
-            objectName: "setupLayoutCards"
-            visible: root.step === 2
-            Layout.alignment: Qt.AlignHCenter
-            columns: 2
-            columnSpacing: 12
-
-            PreviewPositionCard {
-                objectName: "setupPreviewRightCard"
-                Layout.preferredWidth: Math.min(200,
-                    (root.width - 2 * Theme.dialogPadding - 12) / 2)
-                previewOnLeft: false
-                selected: !root.preferencesModel.previewOnLeft
-                onClicked: root.preferencesModel.previewOnLeft = false
-            }
-            PreviewPositionCard {
-                objectName: "setupPreviewLeftCard"
-                Layout.preferredWidth: Math.min(200,
-                    (root.width - 2 * Theme.dialogPadding - 12) / 2)
-                previewOnLeft: true
-                selected: root.preferencesModel.previewOnLeft
-                onClicked: root.preferencesModel.previewOnLeft = true
-            }
-        }
-        GridLayout {
-            objectName: "setupSidebarCards"
-            visible: root.step === 3
-            Layout.alignment: Qt.AlignHCenter
-            columns: 2
-            columnSpacing: 12
-
-            SidebarModeCard {
-                objectName: "setupSidebarStandardCard"
-                Layout.preferredWidth: Math.min(200,
-                    (root.width - 2 * Theme.dialogPadding - 12) / 2)
-                classic: false
-                selected: !root.preferences.efficientSidebarEnabled
-                onClicked: root.preferences.efficientSidebarEnabled = false
-            }
-            SidebarModeCard {
-                objectName: "setupSidebarClassicCard"
-                Layout.preferredWidth: Math.min(200,
-                    (root.width - 2 * Theme.dialogPadding - 12) / 2)
-                classic: true
-                selected: root.preferences.efficientSidebarEnabled
-                onClicked: root.preferences.efficientSidebarEnabled = true
-            }
-        }
-        Text {
-            visible: root.step === 3
-            Layout.fillWidth: true
-            text: qsTrId("setup.navigation_hint")
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
-            font.family: Theme.uiFont
-            font.pixelSize: Theme.secondaryFontSize
-            color: Theme.colors.text.secondary
-        }
         LabeledSlider {
             objectName: "setupEditorFontSize"
-            visible: root.step === 4
+            visible: root.step === 2
             label: qsTrId("dialog.preferences.editor_font_size")
             from: root.preferencesModel.editorFontSizeMinimum
             to: root.preferencesModel.editorFontSizeMaximum
@@ -190,7 +130,7 @@ AppDialog {
         }
         LabeledCombo {
             objectName: "setupEditorLineSpacing"
-            visible: root.step === 4
+            visible: root.step === 2
             label: qsTrId("dialog.preferences.editor_line_spacing")
             options: root.preferencesModel.lineSpacingOptions
             currentValue: root.preferencesModel.editorLineSpacing
@@ -198,7 +138,7 @@ AppDialog {
         }
         LabeledCombo {
             objectName: "setupInputHandling"
-            visible: root.step === 4
+            visible: root.step === 2
             label: qsTrId("preferences.input_handling")
             options: root.preferencesModel.inputHandlingOptions
             currentValue: root.preferencesModel.editorInputHandlingMode
@@ -206,14 +146,14 @@ AppDialog {
         }
         AppSwitch {
             objectName: "setupAutoCompletion"
-            visible: root.step === 4
+            visible: root.step === 2
             text: qsTrId("preferences.auto_completion")
             checked: root.preferencesModel.editorAutoCompletion
             onToggled: root.preferencesModel.editorAutoCompletion = checked
         }
         Text {
             objectName: "setupCompletionHint"
-            visible: root.step === 4
+            visible: root.step === 2
             Layout.fillWidth: true
             text: qsTrId("setup.completion_hint")
             wrapMode: Text.WordWrap

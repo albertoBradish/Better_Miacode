@@ -164,6 +164,13 @@ void WindowChrome::attach(QWindow* window, const QString& stateKey)
     connect(window, &QWindow::screenChanged, this, scheduleCapture);
 }
 
+QRect WindowChrome::normalWindowGeometry() const
+{
+    if (window_.isNull()) return {};
+    return window_->windowStates() == Qt::WindowNoState || !normalGeometry_.isValid()
+        ? window_->geometry() : normalGeometry_;
+}
+
 void WindowChrome::showRestored()
 {
     if (window_.isNull()) {

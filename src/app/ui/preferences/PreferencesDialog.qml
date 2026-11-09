@@ -436,11 +436,6 @@ AppDialog {
                             onPicked: function(value) { root.preferencesModel.darkThemeToken = value }
                         }
 
-                    }
-
-                    PreferenceGroup {
-                        title: qsTrId("dialog.preferences.group.workspace")
-
                         PreferenceCombo {
                             objectName: "preferencesLanguageCombo"
                             label: qsTrId("dialog.preferences.language")
@@ -452,127 +447,6 @@ AppDialog {
                             }
                         }
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 5
-
-                            Text {
-                                Layout.preferredWidth: root.settingsLabelWidth
-                                Layout.alignment: Qt.AlignTop
-                                Layout.topMargin: Math.round((Theme.controlMinHeight - implicitHeight) / 2)
-                                text: qsTrId("dialog.preferences.sidebar_mode")
-                                color: Theme.colors.text.secondary
-                                font.family: Theme.uiFont
-                                font.pixelSize: Theme.uiFontSize
-                                wrapMode: Text.WordWrap
-                            }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.topMargin: Theme.chromeInsetY
-                                spacing: 12
-
-                                SidebarModeCard {
-                                    objectName: "preferencesStandardSidebarCard"
-                                    Layout.fillWidth: true
-                                    Layout.maximumWidth: 200
-                                    classic: false
-                                    selected: !root.preferences.efficientSidebarEnabled
-                                    onClicked: root.preferences.efficientSidebarEnabled = false
-                                }
-                                SidebarModeCard {
-                                    objectName: "preferencesClassicSidebarCard"
-                                    Layout.fillWidth: true
-                                    Layout.maximumWidth: 200
-                                    classic: true
-                                    selected: root.preferences.efficientSidebarEnabled
-                                    onClicked: root.preferences.efficientSidebarEnabled = true
-                                }
-                                Item { Layout.fillWidth: true }
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 5
-
-                            Text {
-                                Layout.preferredWidth: root.settingsLabelWidth
-                                Layout.alignment: Qt.AlignTop
-                                Layout.topMargin: Math.round((Theme.controlMinHeight - implicitHeight) / 2)
-                                text: qsTrId("dialog.preferences.interface_layout")
-                                color: Theme.colors.text.secondary
-                                font.family: Theme.uiFont
-                                font.pixelSize: Theme.uiFontSize
-                                wrapMode: Text.WordWrap
-                            }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.topMargin: Theme.chromeInsetY
-                                spacing: 12
-
-                                PreviewPositionCard {
-                                    objectName: "preferencesPreviewRightCard"
-                                    Layout.fillWidth: true
-                                    Layout.maximumWidth: 200
-                                    previewOnLeft: false
-                                    selected: !root.preferencesModel.previewOnLeft
-                                    onClicked: root.preferencesModel.previewOnLeft = false
-                                }
-                                PreviewPositionCard {
-                                    objectName: "preferencesPreviewLeftCard"
-                                    Layout.fillWidth: true
-                                    Layout.maximumWidth: 200
-                                    previewOnLeft: true
-                                    selected: root.preferencesModel.previewOnLeft
-                                    onClicked: root.preferencesModel.previewOnLeft = true
-                                }
-                                Item { Layout.fillWidth: true }
-                            }
-                        }
-                    }
-                    PreferenceGroup {
-                        title: qsTrId("dialog.preferences.group.timeline")
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-                            Repeater {
-                                model: [
-                                    {value: "horizontal", label: qsTrId("timeline.layout.horizontal")},
-                                    {value: "vertical_before_editor", label: qsTrId("timeline.layout.before_editor")},
-                                    {value: "vertical_after_editor", label: qsTrId("timeline.layout.after_editor")}
-                                ]
-                                delegate: TimelineLayoutPreview {
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    layoutMode: modelData.value
-                                    layoutLabel: modelData.label
-                                    selected: root.preferences.timelineLayoutMode === modelData.value
-                                    onClicked: root.preferences.timelineLayoutMode = modelData.value
-                                }
-                            }
-                        }
-                        PreferenceCombo {
-                            label: qsTrId("timeline.layout.direction")
-                            options: [
-                                {value: "falling", label: qsTrId("timeline.layout.falling")},
-                                {value: "rising", label: qsTrId("timeline.layout.rising")}
-                            ]
-                            currentValue: root.preferences.timelineVerticalDirection
-                            onPicked: value => root.preferences.timelineVerticalDirection = value
-                        }
-                        PreferenceCombo {
-                            label: qsTrId("timeline.layout.lane_order")
-                            options: [
-                                {value: "natural", label: "1-2-3-4-5-6-7-8"},
-                                {value: "rotated", label: "5-6-7-8-1-2-3-4"},
-                                {value: "reversed", label: "8-7-6-5-4-3-2-1"},
-                                {value: "rotated_reversed", label: "4-3-2-1-8-7-6-5"}
-                            ]
-                            currentValue: root.preferences.timelineLaneOrder
-                            onPicked: value => root.preferences.timelineLaneOrder = value
-                        }
                     }
                     PreferenceGroup {
                         title: qsTrId("dialog.render_settings.preview_group")

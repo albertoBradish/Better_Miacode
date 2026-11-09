@@ -185,23 +185,12 @@ Item {
     }
 
     function toggleSidebar() {
-        if (root.compact) {
-            if (!state.sidebarVisible) {
-                state.sidebarVisible = true
-                root.preferences.sidebarVisible = true
-            }
-            state.compactPanel = state.compactPanel === "sidebar" ? "" : "sidebar"
-            return
-        }
-        state.sidebarVisible = !state.sidebarVisible
-        root.preferences.sidebarVisible = state.sidebarVisible
+        const workspace = splitView.workspace
+        workspace.setPanelShown("sidebar", !workspace.panelShown("sidebar"))
     }
 
     function showMediaToolsMenu() {
-        if (root.compact)
-            compactPanelLayer.showMediaToolsMenu()
-        else
-            splitView.showMediaToolsMenu()
+        splitView.showMediaToolsMenu()
     }
 
     function runMediaTool(toolId) {
@@ -393,12 +382,8 @@ Item {
                 integratedInTitleBar: root.platform.nativeMenuBar
                 titleBarLeadingInset: titleBar.leadingInset
                 previewSettingsVisible: !splitView.previewDetached
-                sidebarActive: root.compact
-                               ? state.compactPanel === "sidebar"
-                               : state.sidebarVisible
-                bottomActive: (state.difficultyEditorActive || state.latencyEditorActive)
-                              && state.bottomPanelVisible
-                              && (root.timelineSession.validationTabVisible || root.timelineSession.muriTabVisible)
+                sidebarActive: splitView.workspace.panelShown("sidebar")
+                bottomActive: splitView.bottomPanelEffectivelyVisible
                 bottomPanelEnabled: state.difficultyEditorActive || state.latencyEditorActive
                 saveEnabled: root.currentEditorSaveEnabled
                 wholeDocumentSaveEnabled: root.wholeDocumentSaveEnabled && !root.beginnerGuideActive
@@ -408,8 +393,10 @@ Item {
                 canRedo: menuCommands.canRedo
                 onToggleSidebarRequested: root.toggleSidebar()
                 onToggleBottomRequested: {
-                    state.bottomPanelVisible = !state.bottomPanelVisible
-                    root.preferences.bottomPanelVisible = state.bottomPanelVisible
+                    const show = !splitView.bottomPanelEffectivelyVisible
+                    root.preferences.bottomPanelVisible = show
+                    if (show && !splitView.bottomPanelEffectivelyVisible)
+                        splitView.workspace.setPanelShown("timeline", true)
                 }
                 onUndoRequested: root.undo()
                 onRedoRequested: root.redo()
@@ -431,8 +418,11 @@ Item {
             MainSplitView {
                 id: splitView
                 anchors.fill: parent
+                backgroundSource: root.backgroundSource
+                backgroundOffset: root.mapToItem(root.backgroundSource, mainViewHost.x, mainViewHost.y)
                 timelineGuideActive: beginnerGuide.visible
                     && beginnerGuide.selectedSection.id === "timeline-options"
+                workspaceShortcutsEnabled: !root.beginnerGuideActive
                 viewState: state
                 documentSession: root.documentSession
                 analysisSession: root.analysisSession
@@ -481,8 +471,7 @@ Item {
                 preferences: root.preferences
                 commands: root.commands
                 pages: root.pages
-                compact: root.compact
-                onSettingsRequested: preferencesDialog.open()
+                compact: root.compact && !splitView.workspace.isFloating("sidebar")
                 onMediaToolRequested: toolId => root.runMediaTool(toolId)
             }
         }

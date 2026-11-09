@@ -46,16 +46,16 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>欢迎使用 Better Miacode</translation>
     </message>
     <message id="setup.configure">
-        <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
-        <translation>接下来设置外观、布局、导航与编辑器，之后可在首选项中修改。</translation>
+        <source>Set up appearance and the editor. You can change these later in Preferences.</source>
+        <translation>接下来设置外观和编辑器，之后可在首选项中修改。</translation>
     </message>
     <message id="setup.imported">
-        <source>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</source>
-        <translation>旧版设置已迁入。接下来确认外观、布局、导航与编辑器，之后可在首选项中修改。</translation>
+        <source>Settings from the previous version are in place. You can review appearance and editor settings in Preferences.</source>
+        <translation>旧版设置已迁入。可在首选项中查看外观和编辑器设置。</translation>
     </message>
     <message id="setup.import_pending">
-        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</source>
-        <translation>旧版设置已读取，保存失败。请检查配置目录权限，并确认外观、布局、导航与编辑器。</translation>
+        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance and editor settings.</source>
+        <translation>已加载旧版设置，但保存失败。请检查配置目录权限，再确认外观和编辑器设置。</translation>
     </message>
     <message id="setup.wizard">
         <source>Setup wizard</source>
@@ -5734,8 +5734,12 @@ Held %8 · Slides %9 · Overlap %10</source>
         <translation>音符大小</translation>
     </message>
     <message id="workspace.menu">
-        <source>Workspace</source>
-        <translation>工作区</translation>
+        <source>Workspace(&amp;W)</source>
+        <translation>工作区(&amp;W)</translation>
+    </message>
+    <message id="workspace.panels">
+        <source>Panels</source>
+        <translation>面板</translation>
     </message>
     <message id="workspace.default">
         <source>Default layout</source>
@@ -5748,6 +5752,14 @@ Held %8 · Slides %9 · Overlap %10</source>
     <message id="workspace.preview">
         <source>Preview layout</source>
         <translation>预览布局</translation>
+    </message>
+    <message id="workspace.maximize_panel">
+        <source>Maximize active panel</source>
+        <translation>最大化当前面板</translation>
+    </message>
+    <message id="workspace.restore_panel">
+        <source>Restore active panel</source>
+        <translation>还原当前面板</translation>
     </message>
     <message id="workspace.save">
         <source>Save current layout…</source>

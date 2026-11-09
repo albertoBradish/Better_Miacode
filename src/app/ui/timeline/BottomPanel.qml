@@ -9,19 +9,16 @@ Item {
 
     required property var analysisSession
     required property var documentSession
-    required property var timelineSession
-    readonly property string currentTabId: (timelineSession.currentTabId === "muri" && timelineSession.muriTabVisible)
-        || !timelineSession.validationTabVisible ? "muri" : "validation"
-    signal analysisRowActivated(int difficultyId, var revision, int line, int column, int endColumn, double second)
+    required property string panelId
+    readonly property bool muri: panelId === "muri"
+    readonly property var rows: muri ? analysisSession.muriRows : analysisSession.validationRows
+    readonly property bool pending: muri ? analysisSession.pending : analysisSession.validationPending
 
     Rectangle {
         anchors.fill: parent
         color: Theme.surfaceColor(Theme.colors.background.panel)
     }
     clip: true
-    readonly property int contentTopMargin: 0
-    readonly property real minimumHeight: tabs.implicitHeight + 38
-    readonly property real minimumWidth: tabs.minimumWidth
     readonly property real analysisTextLeftInset:
         Theme.panelPadding + Theme.chromePadding
     readonly property real analysisListLeftInset:
@@ -76,154 +73,60 @@ Item {
         }
     }
 
-    // Theme owns timeline surfaces; the palette's timeline group only supplies
-    // content colors. The bridge exists before TimelineQuickItem so both sets
-    // reach the C++ scene snapshot before its first frame.
-    BottomTabBar {
-        id: tabs
+    Label {
+        id: summary
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        currentTabId: root.currentTabId
-        analysisSession: root.analysisSession
-        timelineSession: root.timelineSession
+        anchors.leftMargin: root.analysisTextLeftInset
+        anchors.rightMargin: Theme.panelPadding
+        anchors.topMargin: root.analysisVerticalSpacing
+        text: root.pending ? qsTrId("qml.analyzing") : root.muri
+            ? qsTrId("validation.muri.summary").arg(root.muriIssueCount).arg(root.muriWarningCount)
+            : qsTrId("qml.1_errors_2_warnings").arg(root.documentSession.syntaxErrorCount)
+                .arg(root.documentSession.syntaxWarningCount)
+        color: Theme.colors.text.secondary
+        font.family: Theme.uiFont
+        font.pixelSize: Theme.uiFontSize
     }
 
-    Item {
+    ListView {
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: tabs.bottom
-        anchors.topMargin: root.contentTopMargin
+        anchors.top: summary.bottom
         anchors.bottom: parent.bottom
-        visible: root.currentTabId === "validation"
+        anchors.topMargin: root.analysisVerticalSpacing
+        anchors.leftMargin: root.analysisListLeftInset
+        anchors.rightMargin: Theme.panelPadding
+        clip: true
+        model: root.rows
 
-        Row {
-            id: summaryRow
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.leftMargin: root.analysisTextLeftInset
-            anchors.rightMargin: Theme.panelPadding
-            anchors.topMargin: root.analysisVerticalSpacing
-
-            Label {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.analysisSession.validationPending
-                    ? qsTrId("qml.analyzing")
-                    : qsTrId("qml.1_errors_2_warnings")
-                        .arg(root.documentSession.syntaxErrorCount)
-                        .arg(root.documentSession.syntaxWarningCount)
-                color: Theme.colors.text.secondary
-                font.family: Theme.uiFont
-                font.pixelSize: Theme.uiFontSize
+        delegate: AnalysisIssueRow {
+            leadingText: {
+                if (root.muri) {
+                    return "%1 · %2 · L%3:C%4".arg(modelData.alert === "warning"
+                        ? qsTrId("validation.muri.alert.warning") : qsTrId("validation.muri.alert.muri"))
+                        .arg(modelData.title).arg(modelData.line).arg(modelData.column)
+                }
+                if (modelData.code === "missing_difficulty_level")
+                    return qsTrId("validation.difficulty_header")
+                return "%1 · L%2:C%3".arg(modelData.severity === "error"
+                    ? qsTrId("qml.errors") : qsTrId("validation.muri.alert.warning"))
+                    .arg(modelData.line).arg(modelData.column)
             }
+            bodyText: modelData.detail
         }
 
-        ListView {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: summaryRow.bottom
-            anchors.bottom: parent.bottom
-            anchors.topMargin: root.analysisVerticalSpacing
-            anchors.leftMargin: root.analysisListLeftInset
-            anchors.rightMargin: Theme.panelPadding
-            clip: true
-            model: root.analysisSession.validationRows
-
-            delegate: AnalysisIssueRow {
-                id: issueDelegate
-                leadingText: modelData.code === "missing_difficulty_level"
-                    ? qsTrId("validation.difficulty_header")
-                    : "%1 · L%2:C%3".arg(modelData.severity === "error"
-                        ? qsTrId("qml.errors") : qsTrId("validation.muri.alert.warning"))
-                        .arg(modelData.line).arg(modelData.column)
-                bodyText: modelData.detail
-            }
-
-            ScrollBar.vertical: AppScrollBar {}
-        }
-
-        Label {
-            anchors.centerIn: parent
-            visible: root.analysisSession.validationRows.length === 0
-            text: root.analysisSession.validationPending
-                ? qsTrId("qml.analyzing")
-                : qsTrId("validation.no_syntax_errors_detected")
-            color: Theme.colors.text.secondary
-            font.family: Theme.uiFont
-            font.pixelSize: Theme.uiFontSize
-        }
+        ScrollBar.vertical: AppScrollBar {}
     }
 
-    Item {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: tabs.bottom
-        anchors.topMargin: root.contentTopMargin
-        anchors.bottom: parent.bottom
-        visible: root.currentTabId === "muri"
-
-        Row {
-            id: muriSummaryRow
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.leftMargin: root.analysisTextLeftInset
-            anchors.rightMargin: Theme.panelPadding
-            anchors.topMargin: root.analysisVerticalSpacing
-
-            Label {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.analysisSession.pending
-                    ? qsTrId("qml.analyzing")
-                    : qsTrId("validation.muri.summary")
-                        .arg(root.muriIssueCount)
-                        .arg(root.muriWarningCount)
-                color: Theme.colors.text.secondary
-                font.family: Theme.uiFont
-                font.pixelSize: Theme.uiFontSize
-            }
-        }
-
-        ListView {
-            id: muriList
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: muriSummaryRow.bottom
-            anchors.bottom: parent.bottom
-            anchors.topMargin: root.analysisVerticalSpacing
-            anchors.leftMargin: root.analysisListLeftInset
-            anchors.rightMargin: Theme.panelPadding
-            clip: true
-            model: root.analysisSession.muriRows
-            delegate: AnalysisIssueRow {
-                id: muriDelegate
-                leadingText: "%1 · %2 · L%3:C%4".arg(modelData.alert === "warning"
-                    ? qsTrId("validation.muri.alert.warning")
-                    : qsTrId("validation.muri.alert.muri"))
-                    .arg(modelData.title)
-                    .arg(modelData.line)
-                    .arg(modelData.column)
-                bodyText: modelData.detail
-            }
-            ScrollBar.vertical: AppScrollBar {}
-        }
-        Label {
-            anchors.centerIn: parent
-            visible: root.analysisSession.muriRowCount === 0
-            text: root.analysisSession.pending
-                ? qsTrId("qml.analyzing")
-                : qsTrId("validation.no_muri_issues_detected")
-            color: Theme.colors.text.secondary
-            font.family: Theme.uiFont
-            font.pixelSize: Theme.uiFontSize
-        }
-    }
-
-    Connections {
-        target: root.analysisSession
-        function onRowActivated(difficultyId, revision, line, column, endColumn, second) {
-            root.analysisRowActivated(difficultyId, revision, line, column, endColumn, second)
-        }
+    Label {
+        anchors.centerIn: parent
+        visible: root.rows.length === 0
+        text: root.pending ? qsTrId("qml.analyzing") : root.muri
+            ? qsTrId("validation.no_muri_issues_detected") : qsTrId("validation.no_syntax_errors_detected")
+        color: Theme.colors.text.secondary
+        font.family: Theme.uiFont
+        font.pixelSize: Theme.uiFontSize
     }
 }

@@ -46,16 +46,16 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>Better Miacode へようこそ</translation>
     </message>
     <message id="setup.configure">
-        <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
-        <translation>外観、レイアウト、ナビゲーション、エディターを設定します。設定は環境設定で変更できます。</translation>
+        <source>Set up appearance and the editor. You can change these later in Preferences.</source>
+        <translation>外観とエディターを設定します。あとで環境設定から変更できます。</translation>
     </message>
     <message id="setup.imported">
-        <source>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</source>
-        <translation>旧バージョンの設定を引き継ぎました。外観、レイアウト、ナビゲーション、エディターを確認します。設定は環境設定で変更できます。</translation>
+        <source>Settings from the previous version are in place. You can review appearance and editor settings in Preferences.</source>
+        <translation>旧バージョンの設定を引き継ぎました。外観とエディターの設定は環境設定から確認できます。</translation>
     </message>
     <message id="setup.import_pending">
-        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</source>
-        <translation>旧バージョンの設定を読み込みました。保存に失敗しました。設定フォルダーの権限を確認し、外観、レイアウト、ナビゲーション、エディターを確認してください。</translation>
+        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance and editor settings.</source>
+        <translation>旧バージョンの設定を読み込みましたが、保存に失敗しました。設定フォルダーの権限と、外観およびエディターの設定を確認してください。</translation>
     </message>
     <message id="setup.wizard">
         <source>Setup wizard</source>
@@ -5734,8 +5734,12 @@ Held %8 · Slides %9 · Overlap %10</source>
         <translation>ノーツの大きさ</translation>
     </message>
     <message id="workspace.menu">
-        <source>Workspace</source>
-        <translation>ワークスペース</translation>
+        <source>Workspace(&amp;W)</source>
+        <translation>ワークスペース(&amp;W)</translation>
+    </message>
+    <message id="workspace.panels">
+        <source>Panels</source>
+        <translation>パネル</translation>
     </message>
     <message id="workspace.default">
         <source>Default layout</source>
@@ -5748,6 +5752,14 @@ Held %8 · Slides %9 · Overlap %10</source>
     <message id="workspace.preview">
         <source>Preview layout</source>
         <translation>プレビューレイアウト</translation>
+    </message>
+    <message id="workspace.maximize_panel">
+        <source>Maximize active panel</source>
+        <translation>アクティブなパネルを最大化</translation>
+    </message>
+    <message id="workspace.restore_panel">
+        <source>Restore active panel</source>
+        <translation>アクティブなパネルを元に戻す</translation>
     </message>
     <message id="workspace.save">
         <source>Save current layout…</source>

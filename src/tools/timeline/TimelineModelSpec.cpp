@@ -800,14 +800,15 @@ int main(int argc, char** argv)
                    && !timelineSession.contains(QStringLiteral("FollowSettingsCheckItem")),
                QStringLiteral("v2 timeline settings expose follow-code through the session"));
         expect(tabBar.contains(QStringLiteral("currentTabId"))
-                   && tabBar.contains(QStringLiteral("setCurrentTabId"))
+                   && splitView.contains(QStringLiteral("root.timelineSession.setCurrentTabId(panelId)"))
                    && !tabBar.contains(QStringLiteral("activeBottomTab"))
                    && !panel.contains(QStringLiteral("activeBottomTab"))
                    && !splitView.contains(QStringLiteral("activeBottomTab"))
                    && !viewState.contains(QStringLiteral("activeBottomTab")),
                QStringLiteral("v2 bottom tabs select through the timeline session instead of ViewState"));
         expect(splitView.contains(QStringLiteral("parent: workspaceDock.hostFor(\"timeline\")"))
-                   && splitView.contains(QStringLiteral("parent: workspaceDock.hostFor(\"diagnostics\")")),
+                   && splitView.contains(QStringLiteral("parent: workspaceDock.hostFor(\"validation\")"))
+                   && splitView.contains(QStringLiteral("parent: workspaceDock.hostFor(\"muri\")")),
                QStringLiteral("timeline and diagnostics occupy independently dockable panels"));
         expect(timelinePanel.contains(QStringLiteral(
                    "timelineRulerRightLimit: verticalTimeline ? 0 : Math.max(0, brightnessButton.x - 2)"))

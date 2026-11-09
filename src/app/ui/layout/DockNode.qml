@@ -10,6 +10,8 @@ Item {
     required property var workspace
     required property var tree
     required property string path
+    property bool keepTabStrip: false
+    readonly property real tabMinimumWidth: leaf ? (loader.item?.tabMinimumWidth ?? 0) : 0
 
     readonly property bool leaf: tree ? !!tree.tabs : false
     readonly property var tabs: leaf ? tree.tabs.filter(workspace.panelDocked) : []
@@ -19,6 +21,7 @@ Item {
         : workspace.branchOccupied(tree)
 
     Loader {
+        id: loader
         anchors.fill: parent
         active: root.occupied
         sourceComponent: root.leaf ? tabGroup : branch
@@ -103,6 +106,11 @@ Item {
             readonly property var tabs: root.tabs
             readonly property string selected: root.selected
             readonly property Item slot: panelSlot
+            readonly property bool showsTabs: tabs.length > 1 || root.keepTabStrip
+            readonly property real stripHeight: showsTabs ? strip.height : 0
+            readonly property real tabMinimumWidth: showsTabs ? tabBar.minimumWidth : 0
+
+            function tabBefore(point) { return showsTabs ? tabBar.tabBefore(point) : "" }
 
             Component.onCompleted: root.workspace.registerGroup(groupItem)
             Component.onDestruction: root.workspace.unregisterGroup(groupItem)
@@ -110,30 +118,16 @@ Item {
             Rectangle {
                 id: strip
                 width: parent.width
-                height: Theme.controlMinHeight
+                height: groupItem.showsTabs ? tabBar.implicitHeight : 0
+                visible: groupItem.showsTabs
                 color: Theme.surfaceColor(Theme.colors.background.panel)
 
-                Flickable {
+                BottomTabBar {
+                    id: tabBar
                     anchors.fill: parent
-                    contentWidth: tabRow.width
-                    contentHeight: height
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickableDirection: Flickable.HorizontalFlick
-                    interactive: contentWidth > width
-                    clip: true
-
-                    Row {
-                        id: tabRow
-                        Repeater {
-                            model: root.tabs
-                            DockPanelTab {
-                                required property string modelData
-                                panelId: modelData
-                                workspace: root.workspace
-                                checked: modelData === root.selected
-                            }
-                        }
-                    }
+                    workspace: root.workspace
+                    tabs: groupItem.tabs
+                    currentTabId: groupItem.selected
                 }
             }
 
@@ -144,6 +138,26 @@ Item {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 clip: true
+
+                TapHandler {
+                    gesturePolicy: TapHandler.DragThreshold
+                    onTapped: if (groupItem.selected) root.workspace.activePanel = groupItem.selected
+                }
+
+                HoverHandler {
+                    onHoveredChanged: {
+                        if (hovered) root.workspace.hoveredPanel = groupItem.selected
+                        else if (root.workspace.hoveredPanel === groupItem.selected) root.workspace.hoveredPanel = ""
+                    }
+                }
+            }
+
+            DockPanelGrip {
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: !root.workspace.maximizedPanel && !groupItem.showsTabs && groupItem.selected.length > 0
+                panelId: groupItem.selected
+                workspace: root.workspace
             }
         }
     }

@@ -1187,6 +1187,13 @@ void ScintillaEditorBridge::resetSpaceGuard()
 
 void ScintillaEditorBridge::keyPressEvent(QKeyEvent* event)
 {
+    if (workspaceMaximizeKeyEnabled_ && !imeComposing_ && event->key() == Qt::Key_QuoteLeft
+        && event->modifiers() == Qt::NoModifier) {
+        event->accept();
+        if (!event->isAutoRepeat()) emit workspaceMaximizeRequested();
+        return;
+    }
+
     if (spaceGuardEnabled_ && !imeComposing_ && event->key() == Qt::Key_Space
         && event->modifiers() == Qt::NoModifier) {
         const auto action = spaceGuard_.press(spaceGuardClock_.elapsed(), event->isAutoRepeat());

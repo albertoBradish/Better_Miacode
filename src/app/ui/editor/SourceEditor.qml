@@ -466,6 +466,12 @@ Rectangle {
         onNoteComponentEditRejected: ToolTip.show(qsTrId("editor.slide_component_edit_rejected"), 3500)
         objectName: "sourceArea"
         property bool reservesPlainSpace: true
+        readonly property bool workspaceSourceEditor: true
+        workspaceMaximizeKeyEnabled: activeFocus && root.sceneWindow?.workspace?.keyboardAllowed(root.sceneWindow) === true
+        onWorkspaceMaximizeRequested: {
+            const window = root.sceneWindow
+            Qt.callLater(() => window?.workspace?.togglePanelMaximization("editor", window))
+        }
         spaceGuardEnabled: root.preferences ? root.preferences.spaceGuardEnabled : true
         onPlaybackToggleRequested: root.playbackToggleRequested()
         anchors.left: parent.left

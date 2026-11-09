@@ -14,7 +14,7 @@ ApplicationWindow {
     property bool sourceEditorOverlayHeld: false
 
     title: workspace.panelTitle(panelId)
-    flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowCloseButtonHint
+    flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowCloseButtonHint | Qt.WindowMaximizeButtonHint
     transientParent: workspace.Window.window
     visible: !!transientParent?.visible && workspace.isFloating(panelId)
         && workspace.availablePanels.includes(panelId)
@@ -34,7 +34,7 @@ ApplicationWindow {
     }
 
     function geometryChanged() {
-        if (ready && visible)
+        if (ready && visible && visibility === Window.Windowed)
             saveGeometry.restart()
     }
 
@@ -50,13 +50,26 @@ ApplicationWindow {
     onYChanged: geometryChanged()
     onWidthChanged: geometryChanged()
     onHeightChanged: geometryChanged()
-    onClosing: workspace.closeFloating(panelId)
+    onActiveChanged: if (active && visible) workspace.activePanel = panelId
+    onClosing: {
+        if (visibility === Window.Windowed)
+            workspace.updateFloatingGeometry(panelId, { x: x, y: y, width: width, height: height })
+        workspace.setPanelShown(panelId, false)
+    }
+
+    Shortcut {
+        sequence: "`"
+        autoRepeat: false
+        enabled: root.visible && root.workspace.keyboardAllowed(root)
+        onActivated: root.workspace.togglePanelMaximization(root.panelId, root)
+    }
 
     Connections {
         target: root.workspace
         function onSavedLayoutApplied() {
             if (root.ready && root.visible) {
                 root.ready = false
+                if (root.visibility !== Window.Windowed) root.showNormal()
                 root.restoreGeometry()
                 root.ready = true
             }
@@ -67,7 +80,7 @@ ApplicationWindow {
         id: saveGeometry
         interval: 350
         onTriggered: {
-            if (root.ready && root.visible)
+            if (root.ready && root.visible && root.visibility === Window.Windowed)
                 root.workspace.updateFloatingGeometry(root.panelId,
                     { x: root.x, y: root.y, width: root.width, height: root.height })
         }
@@ -83,16 +96,16 @@ ApplicationWindow {
             sourceComponent: root.workspace.editorShortcuts
         }
 
-        DockPanelTab {
-            id: tab
+        DockPanelGrip {
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
             workspace: root.workspace
             panelId: root.panelId
-            checked: true
         }
 
         Item {
             id: contentHost
-            anchors.top: tab.bottom
+            anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom

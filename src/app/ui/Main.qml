@@ -7,6 +7,7 @@ ApplicationWindow {
 
     property bool sourceEditorFocused: false
     property bool sourceEditorOverlayHeld: false
+    readonly property var workspace: mainView.mainMenuCommands.workspace
     readonly property bool playbackCommandsEnabled: mainView.chartEditorActive
         || (mainView.pages.exportSession
             && mainView.pages.exportSession.pageSessionActive

@@ -65,6 +65,21 @@ Item {
         return root.topMenus()
     }
 
+    function toggleWorkspaceMenu() {
+        if (root.nativeMenuMode) {
+            if (workspaceMenu.visible) workspaceMenu.close()
+            else workspaceMenu.open()
+            return
+        }
+        root.toggleAnchoredMenu(workspaceMenu, workspaceButton.visible ? workspaceButton : moreButton)
+    }
+
+    Shortcut {
+        sequence: "Alt+W"
+        enabled: root.visible && root.commandsEnabled && !root.nativeMenuMode
+        onActivated: root.toggleWorkspaceMenu()
+    }
+
     function menuTitle(text) {
         if (!root.nativeMenuMode)
             return text
@@ -702,12 +717,134 @@ Item {
                 onTriggered: workspaceMenu.workspace.applyBuiltin("preview")
             }
             AppMenuSeparator {}
+            AppMenu {
+                id: shownPanels
+                title: qsTrId("workspace.panels")
+
+                Instantiator {
+                    model: ["sidebar", "editor", "preview", "timeline", "validation", "muri"]
+                    delegate: AppMenuItem {
+                        required property string modelData
+                        text: workspaceMenu.workspace?.panelTitle(modelData) ?? ""
+                        enabled: !!workspaceMenu.workspace
+                        checkable: true
+                        checked: workspaceMenu.workspace?.panelShown(modelData) ?? false
+                        onTriggered: workspaceMenu.workspace.setPanelShown(modelData, checked)
+                    }
+                    onObjectAdded: (index, object) => shownPanels.insertItem(index, object)
+                    onObjectRemoved: (index, object) => shownPanels.removeItem(object)
+                }
+            }
+
+            AppMenu {
+                title: qsTrId("dialog.preferences.interface_layout")
+
+                AppMenuAction {
+                    text: qsTrId("dialog.preferences.layout.editor_preview")
+                    enabled: !!workspaceMenu.workspace
+                    checkable: true
+                    checked: !(workspaceMenu.workspace?.preferencesModel?.previewOnLeft ?? false)
+                    onTriggered: workspaceMenu.workspace.applyPreviewSide(false)
+                }
+                AppMenuAction {
+                    text: qsTrId("dialog.preferences.layout.preview_editor")
+                    enabled: !!workspaceMenu.workspace
+                    checkable: true
+                    checked: workspaceMenu.workspace?.preferencesModel?.previewOnLeft ?? false
+                    onTriggered: workspaceMenu.workspace.applyPreviewSide(true)
+                }
+            }
+
+            AppMenu {
+                title: qsTrId("dialog.preferences.sidebar_mode")
+
+                AppMenuAction {
+                    text: qsTrId("dialog.preferences.sidebar_mode.standard")
+                    enabled: !!workspaceMenu.workspace
+                    checkable: true
+                    checked: !(workspaceMenu.workspace?.preferences.efficientSidebarEnabled ?? false)
+                    onTriggered: workspaceMenu.workspace.preferences.efficientSidebarEnabled = false
+                }
+                AppMenuAction {
+                    text: qsTrId("dialog.preferences.sidebar_mode.efficient")
+                    enabled: !!workspaceMenu.workspace
+                    checkable: true
+                    checked: workspaceMenu.workspace?.preferences.efficientSidebarEnabled ?? false
+                    onTriggered: workspaceMenu.workspace.preferences.efficientSidebarEnabled = true
+                }
+            }
+
+            AppMenu {
+                id: timelineLayoutMenu
+                title: qsTrId("dialog.preferences.group.timeline")
+
+                Instantiator {
+                    model: [
+                        { mode: "horizontal", label: qsTrId("timeline.layout.horizontal") },
+                        { mode: "vertical_before_editor", label: qsTrId("timeline.layout.before_editor") },
+                        { mode: "vertical_after_editor", label: qsTrId("timeline.layout.after_editor") }
+                    ]
+                    delegate: AppMenuItem {
+                        required property var modelData
+                        text: modelData.label
+                        enabled: !!workspaceMenu.workspace
+                        checkable: true
+                        checked: workspaceMenu.workspace?.preferences.timelineLayoutMode === modelData.mode
+                        onTriggered: workspaceMenu.workspace.applyTimelinePlacement(modelData.mode)
+                    }
+                    onObjectAdded: (index, object) => timelineLayoutMenu.insertItem(index, object)
+                    onObjectRemoved: (index, object) => timelineLayoutMenu.removeItem(object)
+                }
+
+                AppMenu {
+                    title: qsTrId("timeline.layout.direction")
+                    AppMenuAction {
+                        text: qsTrId("timeline.layout.falling")
+                        enabled: !!workspaceMenu.workspace
+                        checkable: true
+                        checked: workspaceMenu.workspace?.preferences.timelineVerticalDirection === "falling"
+                        onTriggered: workspaceMenu.workspace.preferences.timelineVerticalDirection = "falling"
+                    }
+                    AppMenuAction {
+                        text: qsTrId("timeline.layout.rising")
+                        enabled: !!workspaceMenu.workspace
+                        checkable: true
+                        checked: workspaceMenu.workspace?.preferences.timelineVerticalDirection === "rising"
+                        onTriggered: workspaceMenu.workspace.preferences.timelineVerticalDirection = "rising"
+                    }
+                }
+
+                AppMenu {
+                    id: laneOrderMenu
+                    title: qsTrId("timeline.layout.lane_order")
+
+                    Instantiator {
+                        model: [
+                            { order: "natural", label: "1-2-3-4-5-6-7-8" },
+                            { order: "rotated", label: "5-6-7-8-1-2-3-4" },
+                            { order: "reversed", label: "8-7-6-5-4-3-2-1" },
+                            { order: "rotated_reversed", label: "4-3-2-1-8-7-6-5" }
+                        ]
+                        delegate: AppMenuItem {
+                            required property var modelData
+                            text: modelData.label
+                            enabled: !!workspaceMenu.workspace
+                            checkable: true
+                            checked: workspaceMenu.workspace?.preferences.timelineLaneOrder === modelData.order
+                            onTriggered: workspaceMenu.workspace.preferences.timelineLaneOrder = modelData.order
+                        }
+                        onObjectAdded: (index, object) => laneOrderMenu.insertItem(index, object)
+                        onObjectRemoved: (index, object) => laneOrderMenu.removeItem(object)
+                    }
+                }
+            }
+
+            AppMenuSeparator {}
             AppMenuAction {
-                text: qsTrId("workspace.timeline")
-                enabled: !!workspaceMenu.workspace
-                checkable: true
-                checked: workspaceMenu.workspace?.preferences.timelinePanelVisible ?? false
-                onTriggered: workspaceMenu.workspace.preferences.timelinePanelVisible = checked
+                text: workspaceMenu.workspace?.targetMaximized ? qsTrId("workspace.restore_panel") : qsTrId("workspace.maximize_panel")
+                shortcutText: "`"
+                enabled: (workspaceMenu.workspace?.maximizationTarget.length ?? 0) > 0
+                onTriggered: workspaceMenu.workspace.toggleCurrentPanelMaximization()
             }
             AppMenuAction {
                 text: qsTrId("workspace.save")

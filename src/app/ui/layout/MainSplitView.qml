@@ -9,6 +9,8 @@ import "WorkbenchLayouts.js" as Layouts
 Item {
     id: root
 
+    required property Item backgroundSource
+    required property point backgroundOffset
     required property var viewState
     required property var documentSession
     required property var analysisSession
@@ -27,9 +29,14 @@ Item {
     required property Component floatingEditorShortcuts
     property bool compact: false
     property bool timelineGuideActive: false
+    property bool workspaceShortcutsEnabled: true
     property string documentTitle: ""
     readonly property alias workspace: workspaceDock
-    readonly property Item navigationItem: sidebar.navigationItem
+    readonly property Item dockSidebar: sidebar
+    readonly property Item previewPaneItem: preview
+    readonly property Item dockEditorPane: editorPane
+    readonly property Item dockExportPage: exportVideoPage
+    readonly property Item navigationItem: navigationRail
     readonly property Item chartSidebarItem: sidebar.chartSidebarItem
     readonly property Item sourceEditorItem: editorPane.sourceEditorItem
     readonly property Item difficultyFieldsItem: editorPane.difficultyFieldsItem
@@ -42,12 +49,17 @@ Item {
     readonly property Item settingsDialogParent: root.previewDetached
         ? detachedPreviewWindow.Overlay.overlay : root.Overlay.overlay
     property bool previewSurfaceMoving: false
-    readonly property rect activityBarMaterialRect: Qt.rect(0, 0,
-        sidebarStrip.width, height)
-    readonly property real minimumWorkspaceWidth: previewDetached ? editorPane.minimumWidth : 620
-    readonly property real expandedSidebarWidth: sidebar.activityBarWidth + preferences.sidebarWidth
-    readonly property real minimumHeight: 210 + (diagnosticsVisible ? bottomPanel.minimumHeight : 0)
-        + (timelineVisible && !verticalTimeline && !workspaceDock.isFloating("timeline") ? 110 : 0)
+    readonly property rect activityBarMaterialRect: Qt.rect(0, 0, navigationRail.width, height)
+    readonly property real minimumEditorWidth: Math.max(editorPane.minimumWidth,
+        workspaceDock.nativeFrameItem?.bottomMinimumWidth ?? 0)
+    readonly property real minimumWorkspaceWidth: previewDetached || !previewPanelShown ? minimumEditorWidth
+        : Math.max(620, minimumEditorWidth + preview.minimumWidth + Theme.splitDividerThickness)
+    readonly property real expandedSidebarWidth: navigationRail.width + preferences.sidebarWidth
+        + Theme.splitDividerThickness + (preferences.efficientSidebarEnabled ? 20 : 0)
+    readonly property real bottomMinimumHeight: Theme.controlMinHeight + 4 + timelinePanel.minimumHeight
+    readonly property real minimumHeight: Math.max(
+        180 + (bottomPanelEffectivelyVisible ? bottomMinimumHeight + Theme.splitDividerThickness : 0),
+        previewDetached || !previewPanelShown ? 0 : preview.minimumHeight)
     readonly property bool canUndo: editorPane.canUndo
     readonly property bool canRedo: editorPane.canRedo
     readonly property bool canCut: editorPane.canCut
@@ -58,12 +70,16 @@ Item {
     readonly property string selectionBeatStatusText: editorPane.selectionBeatStatusText
     readonly property string selectionBeatTooltipText: editorPane.selectionBeatTooltipText
     readonly property bool chartPanelMode: root.viewState.difficultyEditorActive || root.viewState.latencyEditorActive
-    readonly property bool diagnosticsVisible: chartPanelMode && viewState.bottomPanelVisible
-        && (timelineSession.validationTabVisible || timelineSession.muriTabVisible)
-    readonly property bool timelineVisible: chartPanelMode && preferences.timelinePanelVisible
+    readonly property bool syntaxVisible: chartPanelMode && workspaceDock.panelShown("validation")
+        && timelineSession.validationTabVisible
+    readonly property bool muriVisible: chartPanelMode && workspaceDock.panelShown("muri")
+        && timelineSession.muriTabVisible
+    readonly property bool timelineVisible: chartPanelMode && workspaceDock.panelShown("timeline")
         && timelineSession.timelineTabVisible
+    readonly property bool bottomPanelEffectivelyVisible: timelineVisible || syntaxVisible || muriVisible
     readonly property bool verticalTimeline: preferences.timelineLayoutMode !== "horizontal"
-    readonly property bool previewOnLeft: !verticalTimeline && preferencesModel.previewOnLeft
+    readonly property bool previewOnLeft: preferencesModel.previewOnLeft
+    readonly property bool previewPanelShown: workspaceDock.panelShown("preview")
     readonly property bool exportVideoActive: root.pages.activePageId === "export"
     signal openRequested()
     signal settingsRequested()
@@ -71,6 +87,11 @@ Item {
     signal audioSettingsRequested()
     signal previewSettingsRequested()
     signal mediaToolRequested(string toolId)
+
+    onTimelineGuideActiveChanged: {
+        if (timelineGuideActive)
+            workspaceDock.activate("timeline")
+    }
 
     function showMediaToolsMenu() {
         sidebar.showMediaToolsMenu()
@@ -80,21 +101,26 @@ Item {
     function defaultDockTree(preset) {
         const editing = preset === "editing"
         const previewing = preset === "preview"
-        const editor = Layouts.split("vertical", 1 - preferences.bottomPanelHeightRatio,
-                                     Layouts.group(["editor"]), Layouts.group(["diagnostics"]))
+        const editor = Layouts.group(["editor"])
+        const diagnostics = Layouts.group(["validation", "muri"], timelineSession.currentTabId)
         const timeline = Layouts.group(["timeline"])
         const previewPanel = Layouts.group(["preview"])
         const ratio = previewing ? 0.57 : editing ? 0.30 : preferences.previewWidthRatio
-        const verticalWidth = preferences.timelineVerticalWidthRatio
-        let center = Layouts.split("vertical", editing ? 0.72 : 0.75, editor, timeline)
+        const bottomRatio = editing ? 0.28 : preferences.bottomPanelHeightRatio
+        let center = Layouts.split("vertical", 1 - bottomRatio, editor,
+                                   Layouts.group(["timeline", "validation", "muri"], timelineSession.currentTabId))
         if (verticalTimeline) {
+            const editorAndDiagnostics = Layouts.split("vertical", 1 - bottomRatio, editor, diagnostics)
+            const verticalWidth = preferences.timelineVerticalWidthRatio
             center = preferences.timelineLayoutMode === "vertical_before_editor"
-                ? Layouts.split("horizontal", verticalWidth, timeline, editor)
-                : Layouts.split("horizontal", 1 - verticalWidth, editor, timeline)
+                ? Layouts.split("horizontal", verticalWidth, timeline, editorAndDiagnostics)
+                : Layouts.split("horizontal", 1 - verticalWidth, editorAndDiagnostics, timeline)
         }
         const work = previewOnLeft ? Layouts.split("horizontal", ratio, previewPanel, center)
                                    : Layouts.split("horizontal", 1 - ratio, center, previewPanel)
-        const outlineRatio = Math.max(0.10, Math.min(0.27, (preferences.sidebarWidth + sidebar.activityBarWidth) / 1250))
+        const outlineWidth = preferences.sidebarWidth
+            + (preferences.efficientSidebarEnabled ? 20 : 0)
+        const outlineRatio = Math.max(0.05, Math.min(0.6, outlineWidth / Math.max(1, workspaceDock.width)))
         return Layouts.split("horizontal", outlineRatio, Layouts.group(["sidebar"]), work)
     }
 
@@ -161,6 +187,10 @@ Item {
     }
 
     function detachPreview(position) {
+        if (!root.previewPanelShown) {
+            root.preferences.previewDetached = true
+            return
+        }
         preview.closeMenus()
         root.previewSurfaceMoving = true
         root.preferences.previewDetached = true
@@ -187,8 +217,20 @@ Item {
     Connections {
         target: root.Window.window
         function onVisibleChanged() {
-            if (root.Window.window.visible && root.previewDetached)
+            if (root.Window.window.visible && root.previewDetached && root.previewPanelShown)
                 root.detachPreview()
+        }
+    }
+
+    onPreviewPanelShownChanged: {
+        if (!root.previewDetached || !detachedPreviewWindow.windowChrome || !root.Window.window?.visible)
+            return
+        if (root.previewPanelShown) {
+            root.detachPreview()
+        } else {
+            preview.closeMenus()
+            detachedPreviewWindow.windowChrome.saveWindowState()
+            detachedPreviewWindow.hide()
         }
     }
 
@@ -198,12 +240,13 @@ Item {
     }
 
     function previewGeometry() {
-        return { x: detachedPreviewWindow.x, y: detachedPreviewWindow.y,
-                 width: detachedPreviewWindow.width, height: detachedPreviewWindow.height }
+        const rect = detachedPreviewWindow.windowChrome.normalWindowGeometry()
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     }
 
     function restorePreviewGeometry(geometry) {
         const rect = preferences.boundedWorkspaceWindowGeometry(Qt.rect(geometry.x, geometry.y, geometry.width, geometry.height))
+        if (workspaceDock.windowMaximized(detachedPreviewWindow)) detachedPreviewWindow.showNormal()
         detachedPreviewWindow.x = rect.x
         detachedPreviewWindow.y = rect.y
         detachedPreviewWindow.width = rect.width
@@ -215,7 +258,8 @@ Item {
         parent: root.previewDetached ? detachedPreviewContent : workspaceDock.hostFor("preview")
         anchors.fill: parent
         documentAvailable: root.documentSession.hasDocument
-        surfaceActive: !root.previewSurfaceMoving
+        surfaceActive: root.previewPanelShown && !root.previewSurfaceMoving
+        visible: root.previewPanelShown
         detached: root.previewDetached
         transportMirrored: root.previewOnLeft && !root.previewDetached
         previewSession: root.previewSession
@@ -251,7 +295,7 @@ Item {
         height: 680
         minimumWidth: Math.min(Screen.desktopAvailableWidth, Math.ceil(preview.minimumWidth * Theme.uiScale))
         minimumHeight: Math.min(Screen.desktopAvailableHeight,
-            Math.ceil((preview.minimumHeight + detachedTitleBar.height + detachedToolBar.height + detachedPreviewTab.height) * Theme.uiScale))
+            Math.ceil((preview.minimumHeight + detachedTitleBar.height + detachedToolBar.height) * Theme.uiScale))
         flags: {
             let value = Qt.Window
             if (Qt.platform.os !== "windows" && alwaysOnTop)
@@ -290,7 +334,8 @@ Item {
         palette.highlightedText: Theme.colors.text.active
         palette.disabled.text: Theme.colors.text.disabled
         palette.disabled.buttonText: Theme.colors.text.disabled
-        onClosing: root.dockPreview()
+        onClosing: workspaceDock.setPanelShown("preview", false)
+        onActiveChanged: if (active && visible) workspaceDock.activePanel = "preview"
 
         Binding {
             target: detachedPreviewWindow.windowChrome
@@ -401,26 +446,32 @@ Item {
                 }
             }
 
-            DockPanelTab {
-                id: detachedPreviewTab
-                anchors.top: detachedToolBar.bottom
-                workspace: workspaceDock
-                panelId: "preview"
-                checked: true
-            }
-
             Item {
                 id: detachedPreviewContent
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.top: detachedPreviewTab.bottom
+                anchors.top: detachedToolBar.bottom
                 anchors.bottom: parent.bottom
+
+                DockPanelGrip {
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    workspace: workspaceDock
+                    panelId: "preview"
+                }
             }
         }
 
         Shortcut {
             sequences: [StandardKey.Close]
             onActivated: detachedPreviewWindow.close()
+        }
+
+        Shortcut {
+            sequence: "`"
+            autoRepeat: false
+            enabled: detachedPreviewWindow.visible && workspaceDock.keyboardAllowed(detachedPreviewWindow)
+            onActivated: workspaceDock.togglePanelMaximization("preview", detachedPreviewWindow)
         }
 
         UiScaleShortcuts {
@@ -437,38 +488,56 @@ Item {
 
     Rectangle {
         anchors.fill: parent
+        visible: !workspaceDock.useNativeFrame
         color: Theme.surfaceColor(Theme.colors.background.panel)
         z: -1
     }
 
-    Item {
-        id: sidebarStrip
-        width: !root.compact && !root.viewState.sidebarVisible && !root.preferences.efficientSidebarEnabled
-            ? sidebar.activityBarWidth : 0
+    ActivityBar {
+        id: navigationRail
+        objectName: "workbenchActivityBar"
+        width: implicitWidth
         height: parent.height
+        activeView: root.viewState.activeSidebarView
+        documentAvailable: root.documentSession.hasDocument
+        color: Theme.chromeSurfaceColor(Theme.colors.background.activityBar)
+        onViewRequested: viewId => {
+            sidebar.activateView(viewId, sidebar.visible && root.viewState.sidebarVisible)
+            if (root.viewState.sidebarVisible)
+                workspaceDock.activate("sidebar")
+        }
+        onSettingsRequested: root.settingsRequested()
     }
 
     Sidebar {
         id: sidebar
-        parent: sidebarStrip.width > 0 ? sidebarStrip : workspaceDock.hostFor("sidebar")
+        parent: workspaceDock.hostFor("sidebar")
         anchors.fill: parent
         viewState: root.viewState
         documentSession: root.documentSession
         preferences: root.preferences
         commands: root.commands
         pages: root.pages
-        compact: false
-        onSettingsRequested: root.settingsRequested()
+        opensDrawer: root.compact && !workspaceDock.isFloating("sidebar")
         onMediaToolRequested: toolId => root.mediaToolRequested(toolId)
     }
 
     WorkbenchDock {
         id: workspaceDock
-        anchors.left: sidebarStrip.right
+        anchors.left: navigationRail.right
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         preferences: root.preferences
+        preferencesModel: root.preferencesModel
+        nativeFrame: nativeFrameComponent
+        nativePreviewWindow: detachedPreviewWindow
+        keyboardShortcutsEnabled: root.workspaceShortcutsEnabled
+        compactSidebarShown: root.compact && !isFloating("sidebar") ? root.viewState.compactPanel === "sidebar" : undefined
+        issueCounts: ({
+            validation: { errors: root.documentSession.syntaxErrorCount, warnings: root.documentSession.syntaxWarningCount },
+            muri: { errors: root.analysisSession.muriIssueCount, warnings: root.analysisSession.muriWarningCount }
+        })
         defaultTree: root.defaultDockTree("default")
         builtinTree: root.defaultDockTree
         floatPreview: root.detachPreview
@@ -477,18 +546,32 @@ Item {
         restorePreviewGeometry: root.restorePreviewGeometry
         editorShortcuts: root.floatingEditorShortcuts
         availablePanels: {
-            const panels = ["editor"]
-            if (!root.previewDetached) panels.push("preview")
+            const panels = []
+            if (panelShown("editor")) panels.push("editor")
+            if (root.previewPanelShown && !root.previewDetached) panels.push("preview")
             if (root.timelineVisible) panels.push("timeline")
-            if (root.diagnosticsVisible) panels.push("diagnostics")
-            if (!root.compact && root.viewState.sidebarVisible) panels.push("sidebar")
+            if (root.syntaxVisible) panels.push("validation")
+            if (root.muriVisible) panels.push("muri")
+            if (root.viewState.sidebarVisible && (!root.compact || isFloating("sidebar"))) panels.push("sidebar")
             return panels
+        }
+        onPanelActivated: panelId => {
+            if (panelId === "timeline" || panelId === "validation" || panelId === "muri")
+                root.timelineSession.setCurrentTabId(panelId)
+        }
+        onPanelVisibilityChanged: (panelId, shown) => {
+            if (panelId === "sidebar" && root.compact && !isFloating("sidebar"))
+                root.viewState.compactPanel = shown ? "sidebar" : ""
         }
     }
 
     Connections {
         target: root.pages
-        function onActivePageIdChanged() { workspaceDock.activate("editor") }
+        function onActivePageIdChanged() {
+            if (root.pages.activePageId.length > 0)
+                workspaceDock.setPanelShown("editor", true)
+            workspaceDock.activate("editor")
+        }
     }
     Connections {
         target: root.viewState
@@ -496,6 +579,19 @@ Item {
         function onSidebarVisibleChanged() {
             if (root.viewState.sidebarVisible)
                 workspaceDock.activate("sidebar")
+        }
+    }
+
+    Component {
+        id: nativeFrameComponent
+
+        NativeWorkspaceFrame {
+            owner: root
+            workspaceDock: root.workspace
+            sidebar: root.dockSidebar
+            preview: root.previewPaneItem
+            editorPane: root.dockEditorPane
+            exportVideoPage: root.dockExportPage
         }
     }
 
@@ -536,14 +632,27 @@ Item {
     }
 
     BottomPanel {
-        id: bottomPanel
-        parent: workspaceDock.hostFor("diagnostics")
+        panelId: "validation"
+        parent: workspaceDock.hostFor("validation")
         anchors.fill: parent
-        visible: root.diagnosticsVisible
+        visible: root.syntaxVisible
         analysisSession: root.analysisSession
         documentSession: root.documentSession
-        timelineSession: root.timelineSession
-        onAnalysisRowActivated: (difficultyId, revision, line, column, endColumn, second) => {
+    }
+
+    BottomPanel {
+        panelId: "muri"
+        parent: workspaceDock.hostFor("muri")
+        anchors.fill: parent
+        visible: root.muriVisible
+        analysisSession: root.analysisSession
+        documentSession: root.documentSession
+    }
+
+    Connections {
+        target: root.analysisSession
+        function onRowActivated(difficultyId, revision, line, column, endColumn, second) {
+            workspaceDock.setPanelShown("editor", true)
             workspaceDock.activate("editor")
             editorPane.revealAnalysisRow(difficultyId, revision, line, column, endColumn, second, root.analysisSession)
         }

@@ -52,6 +52,12 @@ MenuBar {
         onTriggered: root.commands.exitRequested()
     }
 
+    Shortcut {
+        sequence: "Alt+W"
+        enabled: root.commandsEnabled
+        onActivated: root.menuDefinitions.toggleWorkspaceMenu()
+    }
+
     Component.onCompleted: {
         const menus = root.menuDefinitions.nativeMenus()
         menus[0].addAction(root.quitApplicationAction)
