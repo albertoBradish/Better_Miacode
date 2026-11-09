@@ -5781,6 +5781,10 @@ Held %8 · Slides %9 · Overlap %10</source>
         <source>Preview</source>
         <translation>プレビュー</translation>
     </message>
+    <message id="workspace.timeline">
+        <source>Show timeline</source>
+        <translation>タイムラインを表示</translation>
+    </message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the

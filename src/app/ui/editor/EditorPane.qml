@@ -356,7 +356,7 @@ Item {
                 label: qsTrId("dialog.unsaved_field_changes.field.metadata")
                 tooltip: qsTrId("dialog.unsaved_field_changes.field.metadata")
                 enabled: root.sourceVisible
-                onClicked: root.pages.activateMetadataPage()
+                onClicked: root.viewState.openMetadataEditor()
             }
 
             DifficultyHeaderField {
