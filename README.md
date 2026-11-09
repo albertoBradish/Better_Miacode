@@ -2,13 +2,93 @@
 
 基于 [Team-MiaCode/MiaCode](https://github.com/Team-MiaCode/MiaCode) 的独立 maimai 谱面编辑器，重点改进音符编辑、判定辅助、视频导出和封面制作。
 
-当前开发版本为 **2.0.1-better.10**，基于官方 [`release/2.0.1@8a0b44f8`](https://github.com/Team-MiaCode/MiaCode/commit/8a0b44f8e0944c97a35c0978e0ffcb842c55ed0b)，包含该版本的谱面读写、无理判定、音频设备失败处理等修复。Better Miacode 使用独立配置，不包含手序版或自动手序实验代码。
+当前开发版本为 **2.0.1-better.11.dev.2**，基于官方 [dev](https://github.com/Team-MiaCode/MiaCode/commit/be494a567869b407fd17acad33482af6ad1c664d)。Better Miacode 使用独立配置，不包含手序版或自动手序实验代码。
 
 [下载已发布版本](https://github.com/albertoBradish/Better_Miacode/releases) · [问题反馈](https://github.com/albertoBradish/Better_Miacode/issues)
 
-## 本次更新与演示
+## 功能一览
 
-以下图片和动图来自实际程序与合成谱面。七项更新均有对应演示；本轮验证平台为 Windows x64，其他平台的结果以对应 CI 和 Release 附件为准。
+基于 MiaCode 的独立改进版本，保留原版的谱面编辑、实时预览、语法与无理检测、音视频工具、Net 谱面服务和封面制作等功能，并提供以下改进：
+
+1. 点击源码行号快速定位到对应时间，并暂停播放；空行、注释行也可定位。
+
+2. 支持播放选区片段，保留音符进场和长音符尾部，播放结束后自动暂停。
+
+3. 时间轴支持 Alt＋鼠标滚轮连续缩放，音符大小可独立调整至 300%，兼容已有的自定义缩放快捷键。
+
+4. 预览和时间轴支持 Shift＋左键单击或拖框选择音符，可跨区域选择；Slide 头星与轨迹可独立选中，再次命中已选音符可取消选择。
+
+5. 源码、时间轴和预览同步音符选择，并高亮对应音符，包括 Hold 身体、Slide 轨迹和移动星星。
+
+6. 对象选择支持复制、剪切、粘贴、删除、镜像、旋转和属性变换，可直接使用编辑快捷键，并支持撤销、重做。
+
+7. 复制音符片段时保留 BPM、分音、HS、拍号和中间空拍；粘贴自动对齐完整音符或拍首，并在片段结束后恢复目标谱面的时序设置。
+
+8. 添加华卡风格的小节对齐参考线，支持默认自动检测、自定义拍数或源码行首显示。
+
+9. 支持显示 Slide 实际判定区骨骼，包含链式 Slide 和 WiFi 分路，并随判定进度消退。
+
+10. 支持显示 Slide 判定时值：沿轨迹逐步恢复亮度，在最早可获得 Perfect 的时刻全亮，帮助观察实际判定窗口。
+
+11. 可在首选项中设置 Slide 判定时值的启动拍规则，以及“启动拍前已进入 Perfect 时，从头拍全亮”。
+
+12. 预览与视频导出可分别显示 BPM、CPS、Meter 和 Mods，支持方形、竖屏及自由比例画面。
+
+13. 支持 DX 达成率失分计算，统计各类物件数量、单次判定失分，以及维持 SSS／SSS+ 可容许的判定数量，包含 Break 细分判定和 EX 判定约束。
+
+14. 支持导入音频时间格式或空 maidata 并应用 BPM，保留音符起止时间且可撤销；导出提供 BPM 顺序、音频时间和空 maidata 三种格式。
+
+15. 视频导出可同步生成多张封面，支持内置模板、用户模板和布局文件；批量输出默认使用当前谱面目录。
+
+16. 封面文字支持描边和阴影，可调整颜色、宽度、透明度、模糊和偏移，并随布局保存、加载和复制。
+
+17. 添加“无判定线”选项，可与小节参考线、判定骨骼等辅助显示分别控制。
+
+18. 视频导出的 HUD、小节线、判定骨骼和 Slide 判定时值选项统一收纳在“更多显示”中，方便按需展开设置。
+
+19. 支持通过 better-miacode 命令行查询谱面统计、列出封面模板、导出视频、封面和 BPM；支持 JSON 请求、进度和结果输出，方便批量处理。
+
+20. 打开文件时校验谱面格式，支持 .txt、.simai 和包含 maidata.txt 的文件夹，避免把其他类型文件误读为谱面。
+
+21. 使用独立的配置、缓存、会话和运行目录，与原版、手序版分别保存数据。
+
+22. 🦊狐狸在 Drop 段跟拍跳跃，其余段落轻摇头、摆尾，随 BPM、播放速度、暂停和时间跳转平滑变化。
+
+23. 时间轴支持横向、编辑区左侧或右侧的纵向布局，可选择上落、下落及四种键位排列；语法与无理面板默认位于编辑区下方。
+
+24. “工作区”支持面板拖动停靠、标签组合、独立浮窗，以及保存、切换和重置命名布局。
+
+25. 支持高级谱面信息表单，可填写歌曲与谱师 ID、分类、版本、定数、试听区间和作者备注；可从编辑器头部直接打开谱面信息。
+
+26. 结合音频与谱面自动推荐 Drop 区间，支持手动调整、选区右键设置或取消，并保存至 maidata；预览进度条、时间轴和视频导出共用该区间。
+
+27. 预览底部显示谱面压力热图，综合密度、位移、连续动作上下文和耐力负荷；支持点击或拖动定位播放时间。
+
+28. 新增黑底调试渲染，可单独勾选辅助信息；常规、无理与调试模式分别保留显示选项。
+
+29. 视频片头支持“谱面预览”：左侧信息卡、右侧谱面，沿用预览的背景明暗、缩放与皮肤，并隐藏编辑辅助信息。
+
+30. 视频模板支持保存、应用、重命名和导入导出，使用 `.miatemplate` 后缀，兼容旧 JSON 模板。
+
+31. 视频提供标准、30 MB、100 MB、200 MB 体积预设及自定义目标码率，PV 可独立开关；分辨率覆盖 360p 至 4K。
+
+32. 支持首次打开 maidata、打包 ZIP 和渲染前自动整理谱面，原文件备份至 `.autosave/*.bak`。
+
+33. 默认启用空格防误触：单按播放或暂停，短时间内三连按解锁文本空格，编辑器失焦后重新锁定。
+
+34. 提供低性能模式，优先保障 60 Hz 基础预览，减少播放中的时间轴刷新和界面特效。
+
+35. 打包 ZIP 时可提示空难度，默认取消，可在首选项中关闭提醒。
+
+下载与反馈：
+[GitHub Releases](https://github.com/albertoBradish/Better_Miacode/releases) · [问题反馈](https://github.com/albertoBradish/Better_Miacode/issues)
+
+本版默认界面字体使用阿里巴巴普惠体，字体许可随程序提供。操作细节见 [功能说明](docs/BETTER_MIACODE_ZH.md)。
+
+<details>
+<summary>better.10 功能演示</summary>
+
+以下图片和动图对应 better.10 的界面。
 
 ### 1. 视频导出模板
 
@@ -83,60 +163,7 @@
 
 [查看原尺寸 4K 导出帧](resources/demos/better10/4k-frame.png)
 
-## 既有增强功能一览
-
-Better Miacode 功能一览：
-
-基于 MiaCode 的独立改进版本，保留原版的谱面编辑、实时预览、语法与无理检测、音视频工具、Net 谱面服务和封面制作等功能，并提供以下改进：
-
-1. 点击源码行号快速定位到对应时间，并暂停播放；空行、注释行也可定位。
-
-2. 支持播放选区片段，保留音符进场和长音符尾部，播放结束后自动暂停。
-
-3. 时间轴支持 Alt＋鼠标滚轮缩放，兼容已有的自定义缩放快捷键。
-
-4. 预览和时间轴支持 Shift＋左键单击或拖框选择音符，可跨区域选择；再次命中已选音符可取消选择。
-
-5. 源码、时间轴和预览同步音符选择，并高亮对应音符，包括 Hold 身体、Slide 轨迹和移动星星。
-
-6. 对象选择支持复制、剪切、粘贴、删除、镜像、旋转和属性变换，可直接使用编辑快捷键，并支持撤销、重做。
-
-7. 复制音符片段时保留 BPM、分音、HS、拍号和中间空拍；粘贴自动对齐完整音符或拍首，并在片段结束后恢复目标谱面的时序设置。
-
-8. 添加华卡风格的小节对齐参考线，支持按谱面 clock_count、自定义拍数或源码行首显示。
-
-9. 支持显示 Slide 实际判定区骨骼，包含链式 Slide 和 WiFi 分路，并随判定进度消退。
-
-10. 支持显示 Slide 判定时值：沿轨迹逐步恢复亮度，在最早可获得 Perfect 的时刻全亮，帮助观察实际判定窗口。
-
-11. Slide 判定时值支持“有启动拍时从启动拍开始”，并可选择“启动拍前已进入 Perfect 时，从头拍全亮”。
-
-12. 宽屏画面支持分别显示 BPM、CPS、Meter 和 Mods；相关设置可用于视频导出。
-
-13. 支持 DX 达成率失分计算，统计各类物件数量、单次判定失分，以及维持 SSS／SSS+ 可容许的判定数量，包含 Break 细分判定和 EX 判定约束。
-
-14. 支持导出 BPM List，提供 BPM 顺序、音频时间和空 maidata 三种格式，可预览、复制或保存。空 maidata 保留 BPM、分音、显式拍号、偏移和源码结束拍位。
-
-15. 视频导出可同步生成封面，支持选择内置封面模板、用户保存的模板和布局文件；单曲使用触发导出时的预览画面，批量任务使用模板保存的画面时间。
-
-16. 封面文字支持描边和阴影，可调整颜色、宽度、透明度、模糊和偏移，并随布局保存、加载和复制。
-
-17. 添加“无判定线”选项，可与小节参考线、判定骨骼等辅助显示分别控制。
-
-18. 视频导出的 HUD、小节线、判定骨骼和 Slide 判定时值选项统一收纳在“更多显示”中，方便按需展开设置。
-
-19. 支持通过 better-miacode 命令行查询谱面统计、列出封面模板、导出视频、封面和 BPM；支持 JSON 请求、进度和结果输出，方便批量处理。
-
-20. 打开文件时校验谱面格式，支持 .txt、.simai 和包含 maidata.txt 的文件夹，避免把其他类型文件误读为谱面。
-
-21. 使用独立的配置、缓存、会话和运行目录，与原版、手序版分别保存数据。
-
-22. 🦊狐狸会跟着谱面节拍摇头、摆尾和轻弹身体，随 BPM、播放速度、暂停和时间跳转同步变化。
-
-下载与反馈：
-[GitHub Releases](https://github.com/albertoBradish/Better_Miacode/releases) · [问题反馈](https://github.com/albertoBradish/Better_Miacode/issues)
-
-本版默认界面字体使用阿里巴巴普惠体，字体许可随程序提供。操作细节见 [功能说明](docs/BETTER_MIACODE_ZH.md)。
+</details>
 
 ## 开始使用
 
@@ -152,12 +179,12 @@ Better Miacode 功能一览：
 better-miacode --version
 better-miacode stats --chart maidata.txt --difficulty 5 --json
 better-miacode presets list --json
-better-miacode export video --chart maidata.txt --difficulty 5 --output out.mp4 --width 1920 --height 1080 --size-preset target_30mb --json
+better-miacode export video --chart maidata.txt --difficulty 5 --output out.mp4 --width 1920 --height 1080 --size-preset 30mb --json
 better-miacode export cover --chart maidata.txt --output cover.png --preset builtin:card --time 12.5
 better-miacode export bpm --chart maidata.txt --output bpm.txt --format audio-time
 ```
 
-`--size-preset` 支持 `standard`、`compact`、`ultra_compact_with_pv`、`ultra_compact`、`target_30mb`、`target_100mb`、`target_200mb`。已有输出需显式提供 `--overwrite`。视频与封面渲染需要可用的图形环境和媒体依赖。
+`--size-preset` 支持 `standard`、`30mb`、`100mb`、`200mb`、`custom`；自定义码率使用 `--video-bitrate`，关闭 PV 使用 `--no-pv`。已有输出需显式提供 `--overwrite`。视频与封面渲染需要可用的图形环境和媒体依赖。
 
 结构化请求沿用 schemaVersion 1：
 
@@ -169,7 +196,7 @@ better-miacode export bpm --chart maidata.txt --output bpm.txt --format audio-ti
   "chart": "maidata.txt",
   "difficulty": 5,
   "output": "out.mp4",
-  "size-preset": "target_100mb"
+  "size-preset": "100mb"
 }
 ```
 
@@ -179,7 +206,7 @@ better-miacode export bpm --chart maidata.txt --output bpm.txt --format audio-ti
 
 构建依赖和脚本见 [scripts/README.md](scripts/README.md)。使用 Release，并发上限 4。GUI、CLI 和 worker 需使用独立且有标记的 `BETTER_MIACODE_RUNTIME_ROOT`。
 
-本轮变更和验证范围见 [better.10 说明](docs/releases/better_10.md)。历史版本见 [better.9](docs/releases/better_9.md) 与 [better.8](docs/releases/better_8.md)。未实际运行的平台或导出组合不计为验证通过。
+开发版功能见 [更新说明](docs/releases/workflow_dev_20261108.md)；历史版本见 [better.10](docs/releases/better_10.md)、[better.9](docs/releases/better_9.md) 与 [better.8](docs/releases/better_8.md)。
 
 ## 授权
 
