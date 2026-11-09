@@ -8,6 +8,8 @@
 #include <array>
 #include <cmath>
 #include <complex>
+#include <deque>
+#include <limits>
 #include <numbers>
 
 namespace miacode::chart_structure {
@@ -74,6 +76,8 @@ constexpr double kPlayfieldCenter = 270.0;
 constexpr double kButtonRadius = 240.0;
 constexpr double kChordWindow = 0.0001;
 constexpr double kMovementMemory = 0.65;
+constexpr double kStrikeActivitySeconds = 0.16;
+constexpr double kRecoverySeconds = 2.3;
 
 QPointF buttonPosition(int lane)
 {
@@ -128,6 +132,19 @@ struct Occupancy {
 struct OccupancyEdge {
     double second = 0.0;
     Occupancy load;
+};
+
+struct StrikeLoad {
+    double count = 0.0;
+    double simultaneous = 0.0;
+    double movement = 0.0;
+    double rhythm = 0.0;
+    double hybrid = 0.0;
+};
+
+struct ActiveStrike {
+    double expires = 0.0;
+    StrikeLoad load;
 };
 
 } // namespace
@@ -255,47 +272,82 @@ PressureCurve estimatePressure(const SimaiParseResult& chart, double firstSecond
 
     std::sort(edges.begin(), edges.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
     std::sort(attacks.begin(), attacks.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
-    // Integrate actual overlaps. Occupations in separate parts of the same
-    // frame do not compete with one another or with a strike outside them.
+    // Integrate forward from each actual start or release, rather than using
+    // totals from the whole reporting frame to predict its early part.
     Occupancy active;
+    StrikeLoad activeStrikes;
+    std::deque<ActiveStrike> strikeWindow;
+    double fatigue = 0.0;
     double lastIntegrated = 0.0;
+    const auto changeStrikes = [&](const StrikeLoad& load, double sign) {
+        activeStrikes.count += sign * load.count;
+        activeStrikes.simultaneous += sign * load.simultaneous;
+        activeStrikes.movement += sign * load.movement;
+        activeStrikes.rhythm += sign * load.rhythm;
+        activeStrikes.hybrid += sign * load.hybrid;
+    };
     const auto integrateTo = [&](double end) {
         const double load = active.held + active.slides + active.extraWifi;
-        if (end > lastIntegrated && load > 0.0) {
-            const double overlap = 0.36 * std::max(0.0, load - 1.0)
-                + 0.22 * std::min(active.held, active.slides);
-            for (int i = frameAt(lastIntegrated); i <= frameAt(end); ++i) {
-                const double startInFrame = std::max(lastIntegrated, i * curve.secondsPerFrame);
-                const double endInFrame = std::min(end, (i + 1) * curve.secondsPerFrame);
-                const double share = std::max(0.0, endInFrame - startInFrame) / curve.secondsPerFrame;
-                auto& frame = curve.frames[i];
-                frame.held += share * active.held;
-                frame.slides += share * active.slides;
-                frame.movement += share * (0.32 * active.travel + 0.24 * active.extraWifi);
-                frame.hybrid += share * overlap;
-            }
+        const double overlap = 0.36 * std::max(0.0, load - 1.0)
+            + 0.22 * std::min(active.held, active.slides);
+        const double traceMotion = 0.32 * active.travel + 0.24 * active.extraWifi;
+        const bool exerting = load > 0.0 || activeStrikes.count > 0.0;
+        const double exertion = 0.19 * std::log1p(activeStrikes.count / 0.25)
+            + 0.42 * std::log1p(activeStrikes.simultaneous) + 0.23 * active.held + 0.25 * active.slides
+            + 0.78 * (activeStrikes.movement + traceMotion) + 0.52 * activeStrikes.rhythm
+            + 0.56 * (activeStrikes.hybrid + overlap);
+        const double sustained = std::max(0.0, exertion - 0.22);
+        for (int i = frameAt(lastIntegrated); i <= frameAt(end); ++i) {
+            const double startInFrame = std::max(lastIntegrated, i * curve.secondsPerFrame);
+            const double endInFrame = std::min(end, (i + 1) * curve.secondsPerFrame);
+            const double seconds = endInFrame - startInFrame;
+            if (seconds <= 0.0) continue;
+            const double share = seconds / curve.secondsPerFrame;
+            auto& frame = curve.frames[i];
+            frame.held += share * active.held;
+            frame.slides += share * active.slides;
+            frame.movement += share * traceMotion;
+            frame.hybrid += share * overlap;
+            const double fatigueBefore = fatigue;
+            const double timeConstant = sustained > fatigue ? 4.0 : kRecoverySeconds;
+            fatigue += (sustained - fatigue) * (1.0 - std::exp(-seconds / timeConstant));
+            frame.endurance = fatigue;
+            if (!exerting) continue;
+            const double strength = 1.0 - std::exp(-(exertion + 0.62 * fatigueBefore) / 1.8);
+            frame.strength += share * strength;
+            curve.spans.append(PressureSpan{startInFrame, endInFrame, strength, fatigueBefore, fatigue});
         }
         lastIntegrated = end;
     };
     qsizetype edgeIndex = 0;
-    const auto advanceOccupancy = [&](double second) {
-        while (edgeIndex < edges.size() && edges.at(edgeIndex).second <= second) {
+    const auto advanceTo = [&](double second) {
+        constexpr double infinity = std::numeric_limits<double>::infinity();
+        for (;;) {
+            const double edgeSecond = edgeIndex < edges.size() ? edges.at(edgeIndex).second : infinity;
+            const double expiration = strikeWindow.empty() ? infinity : strikeWindow.front().expires;
+            const double next = std::min(edgeSecond, expiration);
+            if (next > second) break;
             task::CancellationScope::checkpoint();
-            const auto& edge = edges.at(edgeIndex++);
-            integrateTo(edge.second);
-            active.held += edge.load.held;
-            active.slides += edge.load.slides;
-            active.extraWifi += edge.load.extraWifi;
-            active.travel += edge.load.travel;
-            if (active.slides == 0.0) {
-                active.extraWifi = 0.0;
-                active.travel = 0.0;
+            integrateTo(next);
+            if (edgeSecond <= expiration) {
+                const auto& edge = edges.at(edgeIndex++);
+                active.held += edge.load.held;
+                active.slides += edge.load.slides;
+                active.extraWifi += edge.load.extraWifi;
+                active.travel += edge.load.travel;
+                if (active.slides == 0.0) {
+                    active.extraWifi = 0.0;
+                    active.travel = 0.0;
+                }
+            } else {
+                changeStrikes(strikeWindow.front().load, -1.0);
+                strikeWindow.pop_front();
+                if (strikeWindow.empty()) activeStrikes = {};
             }
         }
         integrateTo(second);
     };
 
-    QVector<double> strikeCounts(frameCount);
     const double strikeScale = 0.25 / curve.secondsPerFrame;
     QVector<QPointF> previousPositions;
     QVector<QPointF> twoBackPositions;
@@ -304,7 +356,7 @@ PressureCurve estimatePressure(const SimaiParseResult& chart, double firstSecond
     for (qsizetype first = 0; first < attacks.size();) {
         task::CancellationScope::checkpoint();
         const auto& attack = attacks.at(first);
-        advanceOccupancy(attack.second);
+        advanceTo(attack.second);
         const int frameIndex = frameAt(attack.second);
         auto& frame = curve.frames[frameIndex];
         QVector<QPointF> positions;
@@ -315,19 +367,19 @@ PressureCurve estimatePressure(const SimaiParseResult& chart, double firstSecond
             if (!positions.contains(contact.position)) positions.append(contact.position);
             if (contact.startsHold && contact.second == attack.second) ++startingHolds;
         }
-        const double strikes = end - first;
-        strikeCounts[frameIndex] += strikes;
-        frame.simultaneous += (strikes - 1) * strikeScale;
+        StrikeLoad strike;
+        strike.count = end - first;
+        strike.simultaneous = strike.count - 1.0;
         const double occupied = std::max(0.0, active.held - startingHolds) * 0.40
             + active.slides * 0.58 + active.extraWifi * 0.24;
-        frame.hybrid += strikeScale * occupied * std::sqrt(strikes);
+        strike.hybrid = occupied * std::sqrt(strike.count);
 
         double span = 0.0;
         for (qsizetype a = 0; a < positions.size(); ++a) {
             for (qsizetype b = a + 1; b < positions.size(); ++b)
                 span = std::max(span, reach(positions.at(a), positions.at(b)));
         }
-        frame.movement += strikeScale * 0.72 * span;
+        strike.movement = 0.72 * span;
 
         const double interval = attack.second - previousSecond;
         if (!previousPositions.isEmpty() && interval < kMovementMemory) {
@@ -339,13 +391,21 @@ PressureCurve estimatePressure(const SimaiParseResult& chart, double firstSecond
             for (const auto& point : positions) {
                 const double direct = nearestReach(point, previousPositions);
                 const double returning = hasReturn ? std::min(direct, nearestReach(point, twoBackPositions)) : direct;
-                frame.movement += strikeScale * urgency * (direct + returnWeight * (returning - direct));
-                frame.rhythm += strikeScale * 0.22 * urgency * std::exp(-12.0 * direct);
+                strike.movement += urgency * (direct + returnWeight * (returning - direct));
+                strike.rhythm += 0.22 * urgency * std::exp(-12.0 * direct);
             }
             if (previousInterval > 0.0 && previousInterval < kMovementMemory) {
                 const double change = std::min(2.0, std::abs(std::log2(interval / previousInterval)));
-                frame.rhythm += strikeScale * 0.32 * change;
+                strike.rhythm += 0.32 * change;
             }
+        }
+        frame.simultaneous += strikeScale * strike.simultaneous;
+        frame.movement += strikeScale * strike.movement;
+        frame.rhythm += strikeScale * strike.rhythm;
+        frame.hybrid += strikeScale * strike.hybrid;
+        if (attack.second < curve.durationSeconds) {
+            changeStrikes(strike, 1.0);
+            strikeWindow.push_back({std::min(curve.durationSeconds, attack.second + kStrikeActivitySeconds), strike});
         }
         previousSecond = attack.second;
         previousInterval = interval;
@@ -353,31 +413,22 @@ PressureCurve estimatePressure(const SimaiParseResult& chart, double firstSecond
         previousPositions = std::move(positions);
         first = end;
     }
-    advanceOccupancy(curve.durationSeconds);
-
-    double fatigue = 0.0;
-    QVector<double> raw;
-    raw.reserve(frameCount);
-    for (int i = 0; i < frameCount; ++i) {
-        auto& frame = curve.frames[i];
-        frame.density /= curve.secondsPerFrame;
-        const double pressRate = strikeCounts.at(i) / curve.secondsPerFrame;
-        const double exertion = 0.19 * std::log1p(pressRate)
-            + 0.42 * std::log1p(frame.simultaneous) + 0.23 * frame.held + 0.25 * frame.slides
-            + 0.78 * frame.movement + 0.52 * frame.rhythm + 0.56 * frame.hybrid;
-        const double sustained = std::max(0.0, exertion - 0.22);
-        const double timeConstant = sustained > fatigue ? 4.0 : 2.3;
-        fatigue += (sustained - fatigue) * (1.0 - std::exp(-curve.secondsPerFrame / timeConstant));
-        frame.endurance = fatigue;
-        raw.append(exertion + 0.62 * fatigue);
-    }
-    const auto sums = prefix(raw);
-    const int shortRadius = std::max(1, static_cast<int>(0.5 / curve.secondsPerFrame));
-    for (int i = 0; i < frameCount; ++i) {
-        const double effort = 0.66 * raw.at(i) + 0.34 * mean(sums, i - shortRadius, i + shortRadius + 1);
-        curve.frames[i].strength = 1.0 - std::exp(-effort / 1.8);
-    }
+    advanceTo(curve.durationSeconds);
+    for (auto& frame : curve.frames) frame.density /= curve.secondsPerFrame;
     return curve;
+}
+
+PressureSample samplePressure(const PressureCurve& curve, double second)
+{
+    if (!std::isfinite(second) || second < 0.0 || second >= curve.durationSeconds) return {};
+    const auto next = std::upper_bound(curve.spans.cbegin(), curve.spans.cend(), second,
+        [](double time, const PressureSpan& span) { return time < span.startSecond; });
+    if (next == curve.spans.cbegin()) return {};
+    const auto& span = *(next - 1);
+    if (second >= span.endSecond)
+        return {0.0, span.enduranceAtEnd * std::exp(-(second - span.endSecond) / kRecoverySeconds)};
+    const double fraction = (second - span.startSecond) / (span.endSecond - span.startSecond);
+    return {span.strength, std::lerp(span.enduranceAtStart, span.enduranceAtEnd, fraction)};
 }
 
 QVector<DropCandidate> recommendDrops(const AudioFeatures& audio, const PressureCurve& pressure)

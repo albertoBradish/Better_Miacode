@@ -63,7 +63,7 @@ public:
     void setLowPerformanceMode(bool enabled);
     void setPlaybackDuration(double seconds);
 
-    Q_INVOKABLE QVariantList heatmapSamples(double start, double end, int columns) const;
+    Q_INVOKABLE QVariantList heatmapSpans(double start, double end) const;
     Q_INVOKABLE QVariantMap pressureAt(double seconds) const;
     Q_INVOKABLE bool setManualDrop(double start, double end);
     Q_INVOKABLE bool canSetDropFromEditorSelection(int difficulty, qulonglong revision, qulonglong generation,

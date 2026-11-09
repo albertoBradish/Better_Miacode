@@ -191,6 +191,44 @@ bool testTouchAndTraceGeometry()
     return ok;
 }
 
+bool testPressureStartsAtActivity()
+{
+    auto chart = repeatLanes({1, 5}, 4.20, 0.125, 32);
+    chart.noteMarkers.append(repeatLanes({1, 3, 5, 7}, 12.03, 0.0, 4).noteMarkers);
+    const auto curve = estimatePressure(chart, 0.0, 20.0);
+    bool ok = expect(samplePressure(curve, 4.19).strength == 0.0 && samplePressure(curve, 4.19).endurance == 0.0
+        && samplePressure(curve, 4.20).strength > 0.0 && curve.spans.first().startSecond == 4.20,
+        "leading silence stays empty even in the same reporting bucket as the first strike");
+    const auto earlyRest = samplePressure(curve, 8.5);
+    const auto lateRest = samplePressure(curve, 12.02);
+    ok &= expect(earlyRest.strength == 0.0 && lateRest.strength == 0.0
+        && earlyRest.endurance > lateRest.endurance && lateRest.endurance > 0.0
+        && samplePressure(curve, 12.03).strength > 0.0,
+        "the long rest is an actual gap while endurance decays before the next burst");
+    ok &= expect(samplePressure(curve, 12.20).strength == 0.0
+        && samplePressure(curve, 19.75).strength == 0.0
+        && curve.spans.last().endSecond < 12.20,
+        "the last strike fades only for its contact window without filling trailing silence");
+
+    TimelineNoteMarker trace;
+    trace.type = QStringLiteral("slide");
+    trace.hasHeadStar = false;
+    trace.second = 1.01;
+    trace.slideTraceSecond = 1.04;
+    trace.endSecond = 1.9;
+    trace.endLane = 5;
+    chart.noteMarkers = {trace};
+    const auto traceOnly = estimatePressure(chart, 0.0, 20.0);
+    chart.noteMarkers.append(repeatLanes({1, 3, 5, 7}, 1.23, 0.0, 4).noteMarkers);
+    const auto withBurst = estimatePressure(chart, 0.0, 20.0);
+    ok &= expect(samplePressure(withBurst, 1.03).strength == 0.0
+        && samplePressure(withBurst, 1.22).strength > 0.0
+        && samplePressure(withBurst, 1.22).strength == samplePressure(traceOnly, 1.22).strength
+        && samplePressure(withBurst, 1.23).strength > samplePressure(traceOnly, 1.23).strength,
+        "an active trace stays visible without inheriting a later burst in its reporting bucket");
+    return ok;
+}
+
 bool testDocumentRegion()
 {
     auto document = SimaiDocument::createEmpty();
@@ -209,7 +247,8 @@ bool testDocumentRegion()
     ok &= expect(readDropSelection(document, 6, fingerprint, 30.0) == detected, "current auto drop resolves");
     auto oldAlgorithm = document;
     for (auto& field : oldAlgorithm.extraFields) {
-        if (field.key == QStringLiteral("miacode_drop_version_6")) field.value = QStringLiteral("1");
+        if (field.key == QStringLiteral("miacode_drop_version_6"))
+            field.value = QString::number(kDropAlgorithmVersion - 1);
     }
     ok &= expect(!readDropSelection(oldAlgorithm, 6, fingerprint, 30.0),
         "the previous pressure algorithm's auto drop is invalidated");
@@ -259,11 +298,12 @@ int main(int argc, char** argv)
     const bool pressure = testPressure();
     const bool movement = testMovementAndEndurance();
     const bool traces = testTouchAndTraceGeometry();
+    const bool gaps = testPressureStartsAtActivity();
     const bool document = testDocumentRegion();
     const QString lf = QStringLiteral("&lv_5=12\n&inote_5=(120)\n{4}1,2,3,4,E\n");
     QString crlf = lf; crlf.replace(QStringLiteral("\n"), QStringLiteral("\r\n"));
     const bool newlineIdentity = expect(dropChartFingerprint(SimaiDocument::fromText(lf), 5)
         == dropChartFingerprint(SimaiDocument::fromText(crlf), 5),
         "logical LF/CRLF equivalents share a portable drop fingerprint");
-    return audio && pressure && movement && traces && document && newlineIdentity ? 0 : 1;
+    return audio && pressure && movement && traces && gaps && document && newlineIdentity ? 0 : 1;
 }

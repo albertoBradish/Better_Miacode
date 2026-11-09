@@ -16,6 +16,7 @@
 #include <QThread>
 #include <algorithm>
 #include <cmath>
+#include <type_traits>
 
 namespace miacode::ui {
 namespace {
@@ -24,6 +25,7 @@ using namespace chart_structure;
 using namespace chart_preview;
 
 constexpr qsizetype kMaxCacheFrames = 16000;
+constexpr qsizetype kMaxCacheSpans = 256000;
 constexpr qint64 kMaxAudioBytes = 128 * 1024 * 1024;
 constexpr double kMaxAudioSeconds = 15.0 * 60.0;
 
@@ -85,6 +87,21 @@ bool readCache(const QString& path, Curve& result)
         || std::ceil(curve.durationSeconds / curve.secondsPerFrame) != count) return false;
     curve.frames.resize(count);
     for (auto& frame : curve.frames) stream >> frame;
+    if constexpr (std::is_same_v<Curve, PressureCurve>) {
+        qint32 spanCount = 0;
+        stream >> spanCount;
+        if (spanCount < 0 || spanCount > kMaxCacheSpans) return false;
+        curve.spans.resize(spanCount);
+        double previousEnd = 0.0;
+        for (auto& span : curve.spans) {
+            stream >> span.startSecond >> span.endSecond >> span.strength >> span.enduranceAtStart >> span.enduranceAtEnd;
+            if (!(span.startSecond >= previousEnd && span.endSecond > span.startSecond
+                && span.endSecond <= curve.durationSeconds && span.strength > 0.0 && span.strength <= 1.0
+                && std::isfinite(span.enduranceAtStart) && span.enduranceAtStart >= 0.0
+                && std::isfinite(span.enduranceAtEnd) && span.enduranceAtEnd >= 0.0)) return false;
+            previousEnd = span.endSecond;
+        }
+    }
     if (stream.status() != QDataStream::Ok || !file.atEnd()) return false;
     result = std::move(curve);
     return true;
@@ -94,6 +111,9 @@ template<typename Curve>
 void writeCache(const QString& path, const Curve& curve)
 {
     if (curve.frames.isEmpty() || curve.frames.size() > kMaxCacheFrames) return;
+    if constexpr (std::is_same_v<Curve, PressureCurve>) {
+        if (curve.spans.size() > kMaxCacheSpans) return;
+    }
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly)) return;
     QDataStream stream(&file);
@@ -101,6 +121,11 @@ void writeCache(const QString& path, const Curve& curve)
     stream << static_cast<quint32>(kDropAlgorithmVersion) << static_cast<qint32>(curve.frames.size())
         << curve.durationSeconds << curve.secondsPerFrame;
     for (const auto& frame : curve.frames) stream << frame;
+    if constexpr (std::is_same_v<Curve, PressureCurve>) {
+        stream << static_cast<qint32>(curve.spans.size());
+        for (const auto& span : curve.spans)
+            stream << span.startSecond << span.endSecond << span.strength << span.enduranceAtStart << span.enduranceAtEnd;
+    }
     if (stream.status() == QDataStream::Ok) file.commit();
 }
 
@@ -425,23 +450,17 @@ void ChartStructureModel::setPlaybackDuration(double seconds)
     emit changed();
 }
 
-QVariantList ChartStructureModel::heatmapSamples(double start, double end, int columns) const
+QVariantList ChartStructureModel::heatmapSpans(double start, double end) const
 {
     QVariantList values;
-    if (!result_ || result_->pressure.frames.isEmpty() || !std::isfinite(start) || !std::isfinite(end)
-        || end <= start || columns <= 0) return values;
-    columns = std::min(columns, 4096);
-    const auto& curve = result_->pressure;
-    const double step = (end - start) / columns;
-    for (int i = 0; i < columns; ++i) {
-        const double left = start + i * step;
-        const double right = left + step;
-        const double first = std::clamp(std::floor(left / curve.secondsPerFrame), 0.0, static_cast<double>(curve.frames.size()));
-        const double last = std::clamp(std::ceil(right / curve.secondsPerFrame), first, static_cast<double>(curve.frames.size()));
-        double peak = 0.0;
-        for (auto frame = static_cast<qsizetype>(first); frame < static_cast<qsizetype>(last); ++frame)
-            peak = std::max(peak, curve.frames.at(frame).strength);
-        values.append(peak);
+    if (!result_ || !std::isfinite(start) || !std::isfinite(end) || end <= start) return values;
+    const auto& spans = result_->pressure.spans;
+    const auto first = std::upper_bound(spans.cbegin(), spans.cend(), start,
+        [](double time, const PressureSpan& span) { return time < span.endSecond; });
+    for (auto span = first; span != spans.cend() && span->startSecond < end; ++span) {
+        values.append(std::max(start, span->startSecond));
+        values.append(std::min(end, span->endSecond));
+        values.append(span->strength);
     }
     return values;
 }
@@ -452,12 +471,13 @@ QVariantMap ChartStructureModel::pressureAt(double seconds) const
         || seconds < 0.0 || seconds >= result_->pressure.durationSeconds) return {};
     const auto& curve = result_->pressure;
     const auto index = std::min(curve.frames.size() - 1, static_cast<qsizetype>(seconds / curve.secondsPerFrame));
-    const auto& frame = curve.frames.at(index);
+    const auto sample = samplePressure(curve, seconds);
+    const auto frame = sample.strength > 0.0 ? curve.frames.at(index) : PressureFrame{};
     return {{QStringLiteral("density"), frame.density}, {QStringLiteral("simultaneous"), frame.simultaneous},
         {QStringLiteral("held"), frame.held}, {QStringLiteral("slides"), frame.slides},
         {QStringLiteral("movement"), frame.movement}, {QStringLiteral("rhythm"), frame.rhythm},
-        {QStringLiteral("hybrid"), frame.hybrid}, {QStringLiteral("endurance"), frame.endurance},
-        {QStringLiteral("strength"), frame.strength}};
+        {QStringLiteral("hybrid"), frame.hybrid}, {QStringLiteral("endurance"), sample.endurance},
+        {QStringLiteral("strength"), sample.strength}};
 }
 
 bool ChartStructureModel::persist(Selection selection, bool explicitSave)

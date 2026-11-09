@@ -181,33 +181,32 @@ Rectangle {
                     context.clearRect(0, 0, width, height)
                     if (!pressureOverlay.visible || width < 1)
                         return
-                    const columns = Math.max(32, Math.min(256, Math.ceil(width / 8)))
-                    const samples = pressureOverlay.structure.heatmapSamples(0, pressureOverlay.endSecond, columns)
-                    if (samples.length < 2)
+                    const spans = pressureOverlay.structure.heatmapSpans(0, pressureOverlay.endSecond)
+                    if (spans.length === 0)
                         return
-                    // Smooth the display envelope while keeping the tooltip at the pointer time.
-                    const points = []
-                    const weights = [1, 2, 3, 2, 1]
-                    for (let i = 0; i < samples.length; ++i) {
-                        let total = 0
-                        for (let j = -2; j <= 2; ++j) {
-                            const index = Math.max(0, Math.min(samples.length - 1, i + j))
-                            total += Math.max(0, Math.min(1, samples[index])) * weights[j + 2]
-                        }
-                        points.push({ x: i * width / (samples.length - 1), y: height - total / 9 * (height - 1) })
-                    }
+                    const pixelsPerSecond = width / pressureOverlay.endSecond
+                    let previousEnd = -1
                     context.beginPath()
-                    context.moveTo(0, height)
-                    context.lineTo(points[0].x, points[0].y)
-                    for (let i = 1; i < points.length; ++i) {
-                        const previous = points[i - 1]
-                        const current = points[i]
-                        context.quadraticCurveTo(previous.x, previous.y,
-                            (previous.x + current.x) / 2, (previous.y + current.y) / 2)
+                    for (let i = 0; i < spans.length; i += 3) {
+                        const left = spans[i] * pixelsPerSecond
+                        const right = spans[i + 1] * pixelsPerSecond
+                        const y = height - spans[i + 2] * (height - 1)
+                        if (spans[i] > previousEnd) {
+                            if (previousEnd >= 0) {
+                                context.lineTo(previousEnd * pixelsPerSecond, height)
+                                context.closePath()
+                            }
+                            context.moveTo(left, height)
+                            context.lineTo(left, y)
+                        } else {
+                            // Round the edge only after the change, inside the occupied span.
+                            const ramp = Math.min(1.5, (right - left) * 0.25)
+                            context.quadraticCurveTo(left, y, left + ramp, y)
+                        }
+                        context.lineTo(right, y)
+                        previousEnd = spans[i + 1]
                     }
-                    const last = points[points.length - 1]
-                    context.quadraticCurveTo(last.x, last.y, width, last.y)
-                    context.lineTo(width, height)
+                    context.lineTo(previousEnd * pixelsPerSecond, height)
                     context.closePath()
                     context.fillStyle = Qt.rgba(0.87, 0.87, 0.87, 1)
                     context.fill()

@@ -33,10 +33,24 @@ struct PressureFrame {
     double strength = 0.0;
 };
 
+struct PressureSpan {
+    double startSecond = 0.0;
+    double endSecond = 0.0;
+    double strength = 0.0;
+    double enduranceAtStart = 0.0;
+    double enduranceAtEnd = 0.0;
+};
+
 struct PressureCurve {
     double durationSeconds = 0.0;
     double secondsPerFrame = 0.25;
     QVector<PressureFrame> frames;
+    QVector<PressureSpan> spans;
+};
+
+struct PressureSample {
+    double strength = 0.0;
+    double endurance = 0.0;
 };
 
 struct DropCandidate {
@@ -48,6 +62,7 @@ struct DropCandidate {
 AudioFeatures analyzeAudio(const QVector<float>& samples, int sampleRate,
     const std::atomic_bool* cancelled = nullptr);
 PressureCurve estimatePressure(const SimaiParseResult& chart, double firstSeconds, double mediaDuration);
+PressureSample samplePressure(const PressureCurve& curve, double second);
 QVector<DropCandidate> recommendDrops(const AudioFeatures& audio, const PressureCurve& pressure);
 
 } // namespace miacode::chart_structure
