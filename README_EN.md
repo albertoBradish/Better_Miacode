@@ -2,24 +2,24 @@
 
 An independent usability-focused derivative of [Team-MiaCode/MiaCode](https://github.com/Team-MiaCode/MiaCode), based on upstream [dev](https://github.com/Team-MiaCode/MiaCode/commit/be494a567869b407fd17acad33482af6ad1c664d). It contains no hand-order annotation or automatic hand-order experiments.
 
-**Current development version: 2.0.1-better.11.dev.2.**
+**Current development version: 2.0.1-better.11.dev.3.**
 
 [中文](README.md) · [Published releases](https://github.com/albertoBradish/Better_Miacode/releases)
 
 ## Better Miacode features
 
 - Synchronize note selection across source, timeline, and preview, with Shift selection, non-contiguous editing, and independent Slide head and track selection.
-- Continuously zoom the timeline, resize note symbols, choose four lane orders, and use horizontal, falling, or rising layouts. Syntax and Muri panels remain separate.
-- Dock panels, group tabs, float individual panels, and save named workspace layouts.
+- Continuously zoom the timeline, resize note symbols, choose four lane orders, and use horizontal, falling, or rising layouts. The default layout shares one bottom tab bar for timeline, syntax, and Muri.
+- Use Workspace (Alt+W) to manage layouts and panel visibility, dock or float panels, and save named layouts. The backtick key maximizes or restores a panel; the left navigation rail stays fixed.
 - Edit advanced chart information, including song and designer IDs, version, level constants, demo ranges, and creator comments.
 - Recommend Drop regions from audio and chart analysis, adjust them manually or from a source selection, and save them in maidata for preview and export.
-- Scrub the pressure heatmap, which estimates movement, action context, and sustained effort without generating hand annotations.
-- Keep separate display settings for normal, Muri, and black-background debug rendering. BPM, CPS, and other HUD elements support arbitrary aspect ratios.
+- Scrub the pressure heatmap, which estimates movement, action context, and sustained effort without generating hand annotations. Empty intervals stay at zero.
+- Normal rendering always hides judgement markers and touch trails. Shared editing aids remain in the display menu, separate from black-background debug controls. BPM and CPS support arbitrary aspect ratios.
 - Export chart-preview intros, multiple covers, 30/100/200 MB presets, or a custom bitrate, with an independent PV switch.
 - Save and exchange video templates as `.miatemplate`, with legacy JSON compatibility. Cover text supports outlines and shadows.
 - Import, apply, and export BPM data, and calculate DX score loss and SSS/SSS+ allowances.
 - Use automatic chart formatting with backups, a spacebar guard, empty-difficulty ZIP warnings, and a low-performance mode.
-- The fox jumps to the beat during Drop regions and smoothly switches to gentler head and tail motion elsewhere.
+- The fox dances with closed eyes during Drop regions and uses natural blinking with gentler head and tail motion elsewhere.
 
 The upstream introduction below is retained for attribution; official download links refer to upstream MiaCode.
 
