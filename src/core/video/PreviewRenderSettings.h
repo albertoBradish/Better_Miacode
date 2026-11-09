@@ -38,6 +38,12 @@ enum class PreviewOutlineVariant {
     None = 4,
 };
 
+constexpr PreviewOutlineVariant chartIntroOutlineVariant(PreviewOutlineVariant variant)
+{
+    return variant == PreviewOutlineVariant::JudgeAreaLabeled
+        ? PreviewOutlineVariant::JudgeArea : variant;
+}
+
 enum class BackgroundPolicy {
     Normal,
     OpaqueBlack,

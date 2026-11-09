@@ -2,6 +2,7 @@
 #include "app/runtime/Shared.h"
 
 #include "app/services/ExportPagePort.h"
+#include "app/services/ExportEngine.h"
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
@@ -130,7 +131,12 @@ void miacode::runtime::PlaybackCoordinator::setupExportIntroOverlayData()
     // map (introBannerStyleMap → backdropImage/backdropBlurEnabled/cardShadowEnabled).
     // Passing the custom backdrop as backgroundImage (the old behavior) wrongly
     // replaced the card jacket and ignored the blur toggle.
-    const auto policy = backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode);
+    const auto policy = spec.chartPreview ? BackgroundPolicy::Normal
+        : backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode);
+    if (spec.chartPreview && services_.exportEngine() != nullptr) {
+        if (const auto outline = services_.exportEngine()->chartIntroOutline())
+            state_.scene_->setIntroChartOutline(outline->variant, outline->imagePath);
+    }
     const QUrl jacketUrl = usesBackgroundMedia(policy)
         ? miacode::chart_assets::displayBackgroundImageUrl(spec.jacketPath) : QUrl();
     // Overlay the dialog's difficulty-card custom fonts onto the lead-in template
@@ -164,6 +170,10 @@ void miacode::runtime::PlaybackCoordinator::renderExportIntroFrame(double positi
     const int frame = qBound(
         0, qRound(into * static_cast<double>(miacode::intro::kAuthoringFps)),
         miacode::intro::introDurationFrames(pvPreview));
+    if (state_.previewStageMediaHost_ != nullptr) {
+        state_.previewStageMediaHost_->setChartIntroBackgroundActive(
+            pvPreview && spec.chartPreview && frame < miacode::intro::kPvPreviewHoldFrames);
+    }
     state_.scene_->setIntroStillFrame(
         !state_.exportIntroPvSegmentActive_ && !state_.exportIntroLeadInActive_);
     state_.scene_->setIntroOverlayFrame(frame, true);
@@ -183,9 +193,6 @@ void miacode::runtime::PlaybackCoordinator::enterExportIntroRegion(double positi
         stopQtPreviewPlayback(true);  // freeze the chart behind the overlay
     }
     const bool firstEntry = !state_.exportIntroRegionActive_;
-    if (firstEntry) {
-        setupExportIntroOverlayData();
-    }
     state_.exportIntroRegionActive_ = true;
     playbackState_.previewTransportState_ = miacode::PlaybackTransportState::Paused;
     const double durationSeconds = introDurationSeconds(spec);
@@ -193,6 +200,11 @@ void miacode::runtime::PlaybackCoordinator::enterExportIntroRegion(double positi
     // The paused chart parks where the intro shows it: inside the PV segment
     // during the PV-preview hold (its stage PV is on screen), else at chart 0.
     const double elapsedSeconds = state_.exportIntroPlayheadSeconds_ + durationSeconds;
+    if (state_.previewStageMediaHost_ != nullptr) {
+        state_.previewStageMediaHost_->setChartIntroBackgroundActive(spec.pvPreview && spec.chartPreview
+            && qRound(elapsedSeconds * miacode::intro::kAuthoringFps) < miacode::intro::kPvPreviewHoldFrames);
+    }
+    if (firstEntry) setupExportIntroOverlayData();
     const double parkSecond = spec.pvPreview && elapsedSeconds < miacode::intro::kPvPreviewHoldSeconds
         ? introPreviewMediaSecond(spec, elapsedSeconds)
         : 0.0;
@@ -219,6 +231,8 @@ void miacode::runtime::PlaybackCoordinator::exitExportIntroRegion()
     if (state_.exportIntroLeadInTimer_ != nullptr) {
         state_.exportIntroLeadInTimer_->stop();
     }
+    if (state_.previewStageMediaHost_ != nullptr)
+        state_.previewStageMediaHost_->setChartIntroBackgroundActive(false);
     if (wasActive && state_.scene_ != nullptr) {
         state_.scene_->clearIntroOverlay(true);
     }

@@ -904,7 +904,7 @@ Rectangle {
                             }
                             LabeledSlider {
                                 objectName: "introPvBrightnessSlider"
-                                visible: !!root.session && root.session.introPvPreview
+                                visible: !!root.session && root.session.introStyleIndex === 1
                                 label: qsTrId("dialog.render_settings.video.brightness")
                                 from: 0
                                 to: 100

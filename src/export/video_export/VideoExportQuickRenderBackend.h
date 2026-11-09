@@ -148,6 +148,8 @@ private:
     bool backgroundFade_ = false;
     IntroBannerSpec intro_;
     bool introSegmentVisible() const;
+    bool chartIntroPresentationActive() const;
+    std::optional<miacode::preview::scene::PreviewAssetState> introOutlineAssets_;
     int introAuthoringFrame_ = 0;
     double introOutputSecond_ = 0.0;
     bool introActive_ = false;

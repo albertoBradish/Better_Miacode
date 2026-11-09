@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <QObject>
 #include <QElapsedTimer>
 #include <QHash>
@@ -139,6 +141,7 @@ public:
         const QUrl& backgroundImage,
         const QUrl& logoImage,
         const QVariantMap& bannerStyle = {});
+    void setIntroChartOutline(PreviewOutlineVariant variant, const QString& imagePath);
     void setIntroOverlayFrame(int authoringFrame, bool active, bool requestUpdate = true);
     void clearIntroOverlay(bool requestUpdate = true);
     void setIntroHidesChart(bool hides);
@@ -327,6 +330,10 @@ private:
     bool introOverlayActive_ = false;
     int introOverlayFrame_ = 0;
     bool introHidesChart_ = false;
+    bool chartIntroPresentation_ = false;
+    std::optional<PreviewOutlineVariant> introOutlineVariant_;
+    QString introOutlineImagePath_;
+    miacode::preview::scene::PreviewAssetState introOutlineAssets_;
     bool introStillFrame_ = false;
     QVariantMap introBannerTrack_;
     QVariantMap introBannerTemplate_;

@@ -446,7 +446,9 @@ VideoExportResult VideoExportController::exportPreparedTask(
     const int frameHeight = qMax(1, task.outputHeight);
     const QSize frameSize(frameWidth, frameHeight);
     const auto sizePolicy = miacode::video_export::videoExportSizePolicy(task.sizePreset);
-    const bool includeBackground = usesBackgroundMedia(backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode));
+    const bool chartPreviewIntro = hasChartPreviewIntro(task.intro, task.fullRangeExport);
+    const bool includeBackground = usesBackgroundMedia(backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode))
+        || chartPreviewIntro;
     // Phase 4c — `task.backgroundMediaPath` is filled by the snapshot
     // builder using `resolveChartVideoPath` (`&video=` override first,
     // then sibling fallback). Trust that as the final choice when it
@@ -471,8 +473,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
         : QString();
     const bool hasTrack = !trackPath.isEmpty();
     const QVector<TimelineNoteMarker>& exportMarkers = audioRenderPlan.exportMarkers;
-    const bool chartPreviewIntro = task.fullRangeExport && task.intro.enabled
-        && task.intro.pvPreview && task.intro.chartPreview;
     // Keep notes that began before the selected intro window, including active holds and slides.
     const QVector<TimelineNoteMarker>& sceneMarkers = chartPreviewIntro ? task.noteMarkers : exportMarkers;
     const MuriAnalysisReport exportMuriAnalysisReport = sceneMarkers.isEmpty()
@@ -1893,10 +1893,8 @@ VideoExportResult VideoExportController::exportPreparedTask(
         if (introEnabled) {
             exportCanvas.setIntroFrame(introAuthoringFrame, inIntroWindow, outputSecond);
         }
-        const bool splitIntro = inIntroWindow && chartPreviewIntro
-            && introAuthoringFrame < miacode::intro::kPvPreviewHoldFrames;
-        const bool showTimestampThisFrame = task.showTimestamp && (!inIntroCover || splitIntro);
-        const bool showObjectStatsThisFrame = task.showObjectStatsHud && (!inIntroCover || splitIntro);
+        const bool showTimestampThisFrame = task.showTimestamp && !inIntroCover;
+        const bool showObjectStatsThisFrame = task.showObjectStatsHud && !inIntroCover;
         QVector<ObjectTraceItem> traceItems;
         if (diagObjectTraceEnabled || diagObjectHashEnabled) {
             traceItems = collectVisibleObjectTrace(

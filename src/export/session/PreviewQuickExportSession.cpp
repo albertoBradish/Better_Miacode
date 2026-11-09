@@ -1215,7 +1215,7 @@ bool PreviewQuickExportSession::renderSceneIntoFramebuffer(QString* errorMessage
 
     gl->glViewport(0, 0, framebuffer_->width(), framebuffer_->height());
     gl->glClearColor(0.0f, 0.0f, 0.0f,
-        frameState_.render.backgroundPolicy == BackgroundPolicy::OpaqueBlack ? 1.0f : 0.0f);
+        frameState_.render.backgroundPolicy == BackgroundPolicy::OpaqueBlack || introChartPreviewSplit_ ? 1.0f : 0.0f);
     gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     framebuffer_->release();
 
@@ -1322,7 +1322,6 @@ void PreviewQuickExportSession::applyFrameSize()
     rootItem_->setPosition(QPointF(0.0, 0.0));
     rootItem_->setSize(QSizeF(frameSize_));
 
-    backgroundItem_->setSize(QSizeF(frameSize_));
     applyChartGeometry();
 
     applyIntroGeometry();
@@ -1333,6 +1332,11 @@ void PreviewQuickExportSession::applyChartGeometry()
     if (!sceneRoot_ || !hudLayer_) return;
     const double x = introChartPreviewSplit_ ? frameSize_.width() * 0.5 : 0.0;
     const QSizeF size(frameSize_.width() - x, frameSize_.height());
+    if (backgroundItem_) {
+        backgroundItem_->setPosition(QPointF(x, 0.0));
+        backgroundItem_->setSize(size);
+        backgroundItem_->setClip(introChartPreviewSplit_);
+    }
     sceneRoot_->setPosition(QPointF(x, 0.0));
     sceneRoot_->setSize(size);
     sceneRoot_->setClip(introChartPreviewSplit_);
@@ -1479,7 +1483,7 @@ void PreviewQuickExportSession::setIntroFrame(int authoringFrame, bool active)
 void PreviewQuickExportSession::applyFrameState()
 {
     const BackgroundPolicy policy = frameState_.render.backgroundPolicy;
-    if (quickWindow_) quickWindow_->setColor(policy == BackgroundPolicy::OpaqueBlack
+    if (quickWindow_) quickWindow_->setColor(policy == BackgroundPolicy::OpaqueBlack || introChartPreviewSplit_
         ? QColor(Qt::black) : QColor(Qt::transparent));
     if (backgroundItem_) {
         backgroundItem_->setVisible(backgroundEnabled_ && usesBackgroundMedia(policy));

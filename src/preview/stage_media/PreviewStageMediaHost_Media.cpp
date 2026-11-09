@@ -111,7 +111,17 @@ void PreviewStageMediaHost::setBackgroundPolicy(BackgroundPolicy policy)
 {
     if (backgroundPolicy_ == policy) return;
     backgroundPolicy_ = policy;
-    reloadCurrentMediaPreservingPlayback();
+    if (!chartIntroBackgroundActive_) reloadCurrentMediaPreservingPlayback();
+}
+
+void PreviewStageMediaHost::setChartIntroBackgroundActive(bool active)
+{
+    if (chartIntroBackgroundActive_ == active) return;
+    chartIntroBackgroundActive_ = active;
+    const bool changesMediaPolicy = !usesBackgroundMedia(backgroundPolicy_);
+    const bool changesPlaceholder = missingMediaFallbackEnabled_
+        && (mediaPath_.isEmpty() || mediaPath_.startsWith(QLatin1Char(':')));
+    if (changesMediaPolicy || changesPlaceholder) reloadCurrentMediaPreservingPlayback();
 }
 
 void PreviewStageMediaHost::setExportIncludePv(std::optional<bool> include)
@@ -279,7 +289,7 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
     // still force a re-decode. Phase 4c — explicit `&video=` beats the sibling
     // heuristic; fall back to the legacy resolver for image-only backgrounds.
     QString resolvedPath;
-    if (usesBackgroundMedia(backgroundPolicy_) && !normalizedChartPath.isEmpty()) {
+    if ((chartIntroBackgroundActive_ || usesBackgroundMedia(backgroundPolicy_)) && !normalizedChartPath.isEmpty()) {
         resolvedPath = resolveStageMediaPath(normalizedChartPath, chartVideoOverridePath);
     }
     const QString mediaStamp = miacode::fs::fileContentStamp(resolvedPath);
@@ -467,8 +477,9 @@ QString PreviewStageMediaHost::resolveStageMediaPath(
     if (resolved.isEmpty()) {
         resolved = resolveMediaPath(chartPath);
     }
+    const bool allowPlaceholder = missingMediaFallbackEnabled_ && !chartIntroBackgroundActive_;
     if (resolved.isEmpty()) {
-        return missingMediaFallbackEnabled_
+        return allowPlaceholder
             ? miacode::chart_assets::resolveDisplayBackgroundImagePath(chartPath)
             : QString();
     }
@@ -476,7 +487,7 @@ QString PreviewStageMediaHost::resolveStageMediaPath(
         return resolved;
     }
     const QString imagePath = miacode::chart_assets::resolveUsableBackgroundImagePath(chartPath);
-    if (!imagePath.isEmpty() || !missingMediaFallbackEnabled_) {
+    if (!imagePath.isEmpty() || !allowPlaceholder) {
         return imagePath;
     }
     return miacode::chart_assets::resolveDisplayBackgroundImagePath(chartPath);

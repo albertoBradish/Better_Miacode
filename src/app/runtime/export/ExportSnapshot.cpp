@@ -502,7 +502,8 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     // explicit `&video=` would diverge: live preview uses QtAVPlayer
     // on the override path, export's ffmpeg input uses
     // the sibling file (or nothing if no sibling exists).
-    if (usesBackgroundMedia(backgroundPolicyForRenderMode(requestedTask.muriRenderOptions.renderMode))) {
+    if (usesBackgroundMedia(backgroundPolicyForRenderMode(requestedTask.muriRenderOptions.renderMode))
+        || hasChartPreviewIntro(requestedTask.intro, requestedTask.fullRangeExport)) {
         if (requestedTask.includePv) built.backgroundMediaPath = miacode::chart_assets::resolveChartVideoPath(
             session_.currentFilePath_, session_.applicationServices_.workspace().document().videoPath);
         if (built.backgroundMediaPath.isEmpty()) built.backgroundMediaPath =
@@ -579,6 +580,9 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     // styling (DX/SD, backdrop, blur, shadow, lv text) only exists on the
     // dialog task — carry it over or the export silently reverts to defaults.
     copyIntroStyling(requestedTask.intro, &built.intro);
+    if (hasChartPreviewIntro(built.intro, built.fullRangeExport)) {
+        built.intro.chartOutline = chartIntroOutline();
+    }
     if (built.intro.pvPreviewEndSeconds <= built.intro.pvPreviewStartSeconds && built.intro.enabled && built.intro.pvPreview) {
         resolveFileIntroWindow(built.intro, session_.applicationServices_.workspace().document(),
             resolvedDifficultyId, built.trackPath, session_.previewTrackDurationSeconds_, true);
@@ -743,7 +747,8 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.trackPath = trackPath;
     // Phase 4c — batch export honours `&video=` like the single-chart
     // export path so per-chart explicit overrides flow through.
-    if (usesBackgroundMedia(backgroundPolicyForRenderMode(requestedTask.muriRenderOptions.renderMode))) {
+    if (usesBackgroundMedia(backgroundPolicyForRenderMode(requestedTask.muriRenderOptions.renderMode))
+        || hasChartPreviewIntro(requestedTask.intro, true)) {
         if (requestedTask.includePv) built.backgroundMediaPath =
             miacode::chart_assets::resolveChartVideoPath(chartPath, document.videoPath);
         if (built.backgroundMediaPath.isEmpty()) built.backgroundMediaPath =
@@ -816,6 +821,9 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     // The chart contributes title/artist/designer metadata, while the shared
     // 片头 tab owns its visual style. Preserve that style per queue item.
     copyIntroStyling(requestedTask.intro, &built.intro);
+    if (hasChartPreviewIntro(built.intro, built.fullRangeExport)) {
+        built.intro.chartOutline = chartIntroOutlineForChart(chartPath, document.videoPath);
+    }
     resolveFileIntroWindow(built.intro, document, difficultyId, trackPath, trackDurationSeconds, false);
 
     if (built.skinDirectory.trimmed().isEmpty()) {
@@ -1014,7 +1022,8 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     task.targetVideoBitrateMbps = request.targetVideoBitrateMbps;
     task.includePv = request.includePv;
     if (request.debugRendering) task.muriRenderOptions.renderMode = RenderMode::Debug;
-    if (task.includePv && usesBackgroundMedia(backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode))) {
+    if (task.includePv && (usesBackgroundMedia(backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode))
+        || request.introChartPreview)) {
         task.backgroundMediaPath = miacode::chart_assets::resolveChartVideoPath(
             chartPath, services.workspace().document().videoPath);
     }

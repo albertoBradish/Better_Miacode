@@ -37,6 +37,7 @@ public:
     QString difficultyChartText(int difficultyId) const override;
     int lastOpenedDifficultyId() const override;
     MuriRenderOptions muriRenderOptions() const override;
+    std::optional<ChartIntroOutline> chartIntroOutline() const override;
     double currentAudioClockSecond() const override;
     void refreshIntroState() override;
     void setIntroAuditionPlaying(bool playing) override;
@@ -121,6 +122,7 @@ private:
     // for the given difficulty — seeds VideoExportTask::intro so the cover
     // composer can render the card without a full snapshot.
     IntroBannerSpec buildIntroBannerSpecForDifficulty(int difficultyId) const;
+    ChartIntroOutline chartIntroOutlineForChart(const QString& chartPath, const QString& videoPath) const;
     // Seed task shared by the export dialog and the direct cover export (markers
     // + muri + render settings + skin/outline + chart metadata + intro payload).
     // difficultyId 0 = active difficulty; an explicit non-active id parses

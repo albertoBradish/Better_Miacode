@@ -338,6 +338,39 @@ struct PreviewFrameState {
     bool hudStatsSnapshotValid = false;
 };
 
+// Apply only to the displayed frame. The source preview and export task
+// retain their diagnostic options for the main chart.
+inline void applyChartIntroPresentation(PreviewFrameState& state)
+{
+    auto& render = state.render;
+    render.backgroundPolicy = BackgroundPolicy::Normal;
+    render.showDebugInfo = false;
+    render.showMeasureLines = false;
+    render.showJudgementSkeleton = false;
+    render.showSlideJudgementTiming = false;
+    render.showTimestamp = false;
+    render.showObjectStatsHud = false;
+    render.showChartInfoHud = false;
+    render.showBpmHud = false;
+    render.showCpsHud = false;
+    render.showMeterHud = false;
+    render.showModsHud = false;
+    render.centerDisplayMode = miacode::preview_gameplay::CenterDisplayMode::Off;
+    auto& options = state.muriRenderOptions;
+    if (options.renderMode != RenderMode::EraseByArea) options.renderMode = RenderMode::Native;
+    options.showSlideTracks = true;
+    options.showJudgeMarkers = false;
+    options.showTouchTrail = false;
+    options.showChartReviewSlideJudgeOverlay = false;
+    options.showChartReviewTapJudgeOverlay = false;
+    options.showChartReviewBreakJudgeOverlay = false;
+    options.showChartReviewTouchJudgeOverlay = false;
+    state.selectedNoteLocations.clear();
+    state.touchPadAuthoringEnabled = false;
+    state.hoveredTouchPad.clear();
+    state.pressedTouchPad.clear();
+}
+
 inline double previewFrameStateHudPlayheadSeconds(const PreviewFrameState& state)
 {
     return qIsFinite(state.hudPlayheadSecondsOverride)

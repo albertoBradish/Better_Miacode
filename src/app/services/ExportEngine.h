@@ -84,6 +84,7 @@ public:
 
     // The 无理 overlay options the export task is seeded from.
     virtual MuriRenderOptions muriRenderOptions() const = 0;
+    virtual std::optional<ChartIntroOutline> chartIntroOutline() const { return std::nullopt; }
 
     // Where the live playhead is, for seeding the export range from the
     // current position.

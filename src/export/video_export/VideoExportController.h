@@ -5,6 +5,7 @@
 #include "core/scene/PreviewHudState.h"
 
 #include <functional>
+#include <optional>
 #include <QFileInfo>
 #include <QString>
 #include <QUrl>
@@ -28,6 +29,11 @@ enum class VideoExportPreset {
 };
 
 using VideoExportSizePreset = miacode::video_export::VideoExportSizePreset;
+
+struct ChartIntroOutline {
+    PreviewOutlineVariant variant = PreviewOutlineVariant::Line;
+    QString imagePath;
+};
 
 // Pre-roll "track-start" intro banner spec. Populated from the chart in
 // buildVideoExportSnapshot; consumed by the export session when `enabled`.
@@ -74,6 +80,7 @@ struct IntroBannerSpec {
     // The style and segment start are selected for each export.
     bool pvPreview = false;
     bool chartPreview = false;
+    std::optional<ChartIntroOutline> chartOutline;
     double pvPreviewStartSeconds = 0.0;
     // Zero means the legacy fixed-length window.
     double pvPreviewEndSeconds = 0.0;
@@ -82,6 +89,11 @@ struct IntroBannerSpec {
     // Background-only gain, independent of the chart's normal PV brightness.
     double pvPreviewBrightness = 1.0;
 };
+
+inline bool hasChartPreviewIntro(const IntroBannerSpec& intro, bool fullRangeExport)
+{
+    return fullRangeExport && intro.enabled && intro.pvPreview && intro.chartPreview;
+}
 
 inline double introPreviewMediaSecond(const IntroBannerSpec& intro, double elapsedSeconds)
 {
@@ -209,6 +221,7 @@ inline void copyIntroStyling(const IntroBannerSpec& from, IntroBannerSpec* to)
     to->fontBodyPath = from.fontBodyPath;
     to->pvPreview = from.pvPreview;
     to->chartPreview = from.chartPreview;
+    to->chartOutline = from.chartOutline;
     to->pvPreviewStartSeconds = from.pvPreviewStartSeconds;
     to->pvPreviewEndSeconds = from.pvPreviewEndSeconds;
     to->previewWindowMode = from.previewWindowMode;

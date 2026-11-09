@@ -1743,7 +1743,8 @@ double ExportSession::introPvMusicSeconds() const
 
 bool ExportSession::introPvVideoAvailable() const
 {
-    return task_.includePv && (engine() == nullptr || engine()->muriRenderOptions().renderMode != RenderMode::Debug)
+    return task_.includePv && (task_.intro.chartPreview || engine() == nullptr
+        || engine()->muriRenderOptions().renderMode != RenderMode::Debug)
         && miacode::chart_assets::isVideoBackgroundPath(task_.backgroundMediaPath)
         && QFileInfo::exists(task_.backgroundMediaPath);
 }

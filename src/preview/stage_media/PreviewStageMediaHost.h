@@ -63,6 +63,7 @@ public:
     bool hasVideoMedia() const;
     bool chartHasVideoBackground() const;
     void setBackgroundPolicy(BackgroundPolicy policy);
+    void setChartIntroBackgroundActive(bool active);
     void setExportIncludePv(std::optional<bool> include);
     bool hidePv() const;
     void setHidePv(bool hide);
@@ -259,6 +260,7 @@ private:
     QUrl imageSource_;
     bool mediaVisible_ = true;
     BackgroundPolicy backgroundPolicy_ = BackgroundPolicy::Normal;
+    bool chartIntroBackgroundActive_ = false;
     bool hidePv_ = false;
     std::optional<bool> exportIncludePv_;
     bool missingMediaFallbackEnabled_ = false;

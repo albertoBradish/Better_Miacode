@@ -51,7 +51,8 @@ bool VideoExportQuickRenderBackend::bootstrap(
     assets_.setOutlineSelection(task.outlineVariant, task.outlineImagePath);
     const BackgroundPolicy policy = backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode);
     stageMediaPath_.clear();
-    if (usesBackgroundMedia(policy)) {
+    const bool hasChartIntro = hasChartPreviewIntro(task.intro, task.fullRangeExport);
+    if (usesBackgroundMedia(policy) || hasChartIntro) {
         stageMediaPath_ = task.includePv || !miacode::chart_assets::isVideoBackgroundPath(stageMediaPath)
             ? stageMediaPath
             : miacode::chart_assets::resolvePreferredBackgroundMediaPath(task.chartPath, stageMediaPath, false);
@@ -61,9 +62,15 @@ bool VideoExportQuickRenderBackend::bootstrap(
         if (errorMessage) *errorMessage = mediaError;
         return false;
     }
-    const bool stageMediaAvailable = !stageMediaPath_.isEmpty();
+    const bool stageMediaAvailable = usesBackgroundMedia(policy) && !stageMediaPath_.isEmpty();
     backgroundFade_ = task.fullRangeExport && task.intro.enabled;
     intro_ = task.intro;
+    introOutlineAssets_.reset();
+    if (hasChartIntro) {
+        const auto outline = intro_.chartOutline.value_or(ChartIntroOutline{task.outlineVariant, task.outlineImagePath});
+        introOutlineAssets_ = miacode::preview::runtime::PreviewSceneAssetLoader::loadAssetState(
+            chartIntroOutlineVariant(outline.variant), outline.imagePath);
+    }
     assets_.setStageMediaAvailable(stageMediaAvailable);
     if (!assets_.loadSkinDirectorySync(task.skinDirectory)) {
         if (errorMessage != nullptr) {
@@ -135,6 +142,7 @@ bool VideoExportQuickRenderBackend::copyRenderStateFrom(const VideoExportQuickRe
     if (!stageMedia_.open(stageMediaPath_, source.session_.frameSize(), errorMessage)) return false;
     backgroundFade_ = source.backgroundFade_;
     intro_ = source.intro_;
+    introOutlineAssets_ = source.introOutlineAssets_;
     assets_.setOutlineSelection(
         source.assets_.outlineVariant(),
         source.assets_.outlineImagePath(),
@@ -302,14 +310,14 @@ bool VideoExportQuickRenderBackend::initializeOffscreenRenderer(
         if (!d3d11Session_.initialize(errorMessage)) {
             return false;
         }
-        d3d11Session_.setFrameState(frameState_);
+        syncSessionStateIfInitialized();
         return true;
     }
     session_.setFrameState(frameState_);
     if (!session_.initialize(requestedFormat_, shareContext_, errorMessage)) {
         return false;
     }
-    session_.setFrameState(frameState_);
+    syncSessionStateIfInitialized();
     return true;
 }
 
@@ -348,7 +356,7 @@ bool VideoExportQuickRenderBackend::setupIntro(const IntroBannerSpec& intro, boo
         return false;
     }
     const QVariantMap track = introBannerTrackMap(intro);
-    const auto policy = frameState_.render.backgroundPolicy;
+    const auto policy = intro.chartPreview ? BackgroundPolicy::Normal : frameState_.render.backgroundPolicy;
     const QUrl jacketUrl = usesBackgroundMedia(policy)
         ? miacode::chart_assets::displayBackgroundImageUrl(intro.jacketPath) : QUrl();
 
@@ -398,17 +406,27 @@ bool VideoExportQuickRenderBackend::introSegmentVisible() const
     return introActive_ && intro_.pvPreview && introAuthoringFrame_ < miacode::intro::kPvPreviewHoldFrames;
 }
 
+bool VideoExportQuickRenderBackend::chartIntroPresentationActive() const
+{
+    return introActive_ && intro_.pvPreview && intro_.chartPreview;
+}
+
 void VideoExportQuickRenderBackend::setIntroFrame(int authoringFrame, bool active, double outputSecond)
 {
+    const bool wasChartIntro = chartIntroPresentationActive();
+    const bool wasSplit = wasChartIntro && introSegmentVisible();
     introAuthoringFrame_ = authoringFrame;
     introOutputSecond_ = outputSecond;
     introActive_ = active;
-    setChartLayersVisible(!introSegmentVisible() || intro_.chartPreview);
+    const bool chartIntro = chartIntroPresentationActive();
+    const bool split = chartIntro && introSegmentVisible();
+    setChartLayersVisible(!introSegmentVisible() || chartIntro);
     if (sessionBackend_ == ExportQuickRenderSessionBackend::D3D11Qrhi) {
         d3d11Session_.setIntroFrame(authoringFrame, active);
-        return;
+    } else {
+        session_.setIntroFrame(authoringFrame, active);
     }
-    session_.setIntroFrame(authoringFrame, active);
+    if (wasChartIntro != chartIntro || wasSplit != split) syncSessionStateIfInitialized();
 }
 
 bool VideoExportQuickRenderBackend::renderFrameOffscreenPboStep(
@@ -583,12 +601,23 @@ void VideoExportQuickRenderBackend::refreshAssetState()
 
 void VideoExportQuickRenderBackend::syncSessionStateIfInitialized()
 {
-    if (session_.isInitialized()) {
-        session_.setFrameState(frameState_);
+    const auto publish = [this](const auto& state) {
+        if (session_.isInitialized()) session_.setFrameState(state);
+        if (d3d11Session_.isInitialized()) d3d11Session_.setFrameState(state);
+    };
+    if (!chartIntroPresentationActive()) {
+        publish(frameState_);
+        return;
     }
-    if (d3d11Session_.isInitialized()) {
-        d3d11Session_.setFrameState(frameState_);
+    auto presentation = frameState_;
+    miacode::preview::scene::applyChartIntroPresentation(presentation);
+    if (introOutlineAssets_) presentation.assets = *introOutlineAssets_;
+    if (introSegmentVisible()) {
+        presentation.media.stageMediaAvailable = !stageMediaPath_.isEmpty();
+    } else {
+        presentation.render.backgroundPolicy = frameState_.render.backgroundPolicy;
     }
+    publish(presentation);
 }
 
 void VideoExportQuickRenderBackend::updateFrameStateForRender(
@@ -597,7 +626,11 @@ void VideoExportQuickRenderBackend::updateFrameStateForRender(
     bool showObjectStatsHud,
     double hudPlayheadSecondsOverride)
 {
-    if (introSegmentVisible() && intro_.chartPreview) {
+    if (chartIntroPresentationActive()) {
+        showTimestamp = false;
+        showObjectStatsHud = false;
+    }
+    if (chartIntroPresentationActive() && introSegmentVisible()) {
         playheadSeconds = introPreviewMediaSecond(intro_, introOutputSecond_);
         hudPlayheadSecondsOverride = std::numeric_limits<double>::quiet_NaN();
     }
@@ -627,21 +660,23 @@ void VideoExportQuickRenderBackend::updateFrameStateForRender(
 
 bool VideoExportQuickRenderBackend::updateBackgroundForRender(double playheadSeconds, QString* errorMessage)
 {
-    const bool fullFrame = introSegmentVisible();
-    const double mediaSecond = fullFrame
+    const bool inSegment = introSegmentVisible();
+    const bool fullFrame = inSegment && !intro_.chartPreview;
+    const double mediaSecond = inSegment
         ? introPreviewMediaSecond(intro_, introOutputSecond_)
         : playheadSeconds;
     QString mediaError;
-    const QImage image = stageMedia_.frameAt(mediaSecond, &mediaError);
+    const bool showMedia = (inSegment && intro_.chartPreview)
+        || usesBackgroundMedia(frameState_.render.backgroundPolicy);
+    const QImage image = showMedia ? stageMedia_.frameAt(mediaSecond, &mediaError) : QImage();
     if (!mediaError.isEmpty()) {
         if (errorMessage) *errorMessage = mediaError;
         return false;
     }
-    const qreal brightness = fullFrame && intro_.chartPreview ? intro_.pvPreviewBrightness
-        : backgroundFade_ && !fullFrame
-            ? qBound(0.0, (playheadSeconds + miacode::intro::kBgFadeDurationSeconds)
-                             / miacode::intro::kBgFadeDurationSeconds, 1.0)
-            : 1.0;
+    const qreal brightness = backgroundFade_ && !inSegment
+        ? qBound(0.0, (playheadSeconds + miacode::intro::kBgFadeDurationSeconds)
+                         / miacode::intro::kBgFadeDurationSeconds, 1.0)
+        : 1.0;
     frameState_.media.resolvedStageImage = image;
     frameState_.media.resolvedStageImageCacheable = stageMedia_.isStaticImage();
     frameState_.media.stageMediaSerial = image.cacheKey();

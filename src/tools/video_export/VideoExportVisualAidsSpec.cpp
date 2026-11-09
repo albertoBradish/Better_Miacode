@@ -105,6 +105,63 @@ int main(int argc, char** argv)
                 "both explicit-frame export sessions retain captured aid settings through ticks and backward seeks");
         }
     }
+    // The intro's display settings travel with the worker snapshot. Keep the
+    // body outline and its explicit debug settings independent of that copy.
+    source.fullRangeExport = true;
+    source.exportStartSeconds = 0.0;
+    source.intro.enabled = true;
+    source.intro.pvPreview = true;
+    source.intro.chartPreview = true;
+    source.intro.chartOutline = ChartIntroOutline{PreviewOutlineVariant::JudgeAreaLabeled, {}};
+    source.outlineVariant = PreviewOutlineVariant::Point;
+    source.backgroundBrightnessInner = 0.73;
+    source.backgroundBrightnessOuter = 0.21;
+    source.backgroundScaleMode = PreviewBackgroundScaleMode::InnerCircleFitOuterFill;
+    VideoExportTask introTask;
+    ok &= require(VideoExportSnapshot::fromJson(source.toJson(), &restored, &error)
+        && buildVideoExportTaskFromSnapshot(restored, &introTask, &error)
+        && introTask.intro.chartOutline && introTask.intro.chartOutline->variant == PreviewOutlineVariant::JudgeArea
+        && introTask.outlineVariant == PreviewOutlineVariant::Point
+        && introTask.muriRenderOptions.renderMode == RenderMode::Debug
+        && introTask.showJudgementSkeleton && introTask.showSlideJudgementTiming
+        && near(introTask.backgroundBrightnessInner, 0.73)
+        && near(introTask.backgroundBrightnessOuter, 0.21)
+        && introTask.backgroundScaleMode == PreviewBackgroundScaleMode::InnerCircleFitOuterFill,
+        "the worker receives a non-numbered intro outline alongside the independent debug body settings");
+
+    PreviewFrameState body;
+    body.render.backgroundPolicy = BackgroundPolicy::OpaqueBlack;
+    body.render.backgroundBrightnessInner = introTask.backgroundBrightnessInner;
+    body.render.backgroundBrightnessOuter = introTask.backgroundBrightnessOuter;
+    body.render.backgroundScaleMode = introTask.backgroundScaleMode;
+    body.render.layoutSquareScale = 0.87;
+    body.render.showJudgementSkeleton = true;
+    body.render.showSlideJudgementTiming = true;
+    body.render.showDebugInfo = true;
+    body.render.showBpmHud = true;
+    body.muriRenderOptions.renderMode = RenderMode::Debug;
+    body.muriRenderOptions.showJudgeMarkers = true;
+    body.muriRenderOptions.showTouchTrail = true;
+    body.selectedNoteLocations.insert(12);
+    body.touchPadAuthoringEnabled = true;
+    auto introFrame = body;
+    applyChartIntroPresentation(introFrame);
+    ok &= require(introFrame.render.backgroundPolicy == BackgroundPolicy::Normal
+        && introFrame.muriRenderOptions.renderMode == RenderMode::Native
+        && near(introFrame.render.backgroundBrightnessInner, 0.73)
+        && near(introFrame.render.backgroundBrightnessOuter, 0.21)
+        && near(introFrame.render.layoutSquareScale, 0.87)
+        && introFrame.render.backgroundScaleMode == body.render.backgroundScaleMode
+        && !introFrame.render.showJudgementSkeleton && !introFrame.render.showSlideJudgementTiming
+        && !introFrame.render.showDebugInfo && !introFrame.render.showTimestamp && !introFrame.render.showBpmHud
+        && !introFrame.muriRenderOptions.showJudgeMarkers && !introFrame.muriRenderOptions.showTouchTrail
+        && introFrame.selectedNoteLocations.isEmpty() && !introFrame.touchPadAuthoringEnabled,
+        "the chart-intro presentation keeps normal background geometry and removes editor overlays");
+    ok &= require(body.render.backgroundPolicy == BackgroundPolicy::OpaqueBlack
+        && body.render.showDebugInfo && body.render.showJudgementSkeleton
+        && body.render.showTimestamp && body.muriRenderOptions.showTouchTrail,
+        "projecting a clean intro does not clear the body's selected debug aids");
+
     if (!ok && !error.isEmpty()) QTextStream(stderr) << error << Qt::endl;
     if (ok) QTextStream(stdout) << "video_export_visual_aids_spec ok" << Qt::endl;
     return ok ? 0 : 1;

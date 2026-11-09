@@ -1,4 +1,5 @@
 #include "preview/runtime/PreviewRuntime.h"
+#include "core/chart/IntroConfig.h"
 #include "core/scene/PreviewFireworkWarmupPolicy.h"
 #include "core/scene/TouchPadAuthoringState.h"
 
@@ -248,6 +249,13 @@ void PreviewRuntime::publishFrameStateSnapshot()
 {
     auto snapshot =
         std::make_shared<miacode::preview::scene::PreviewFrameState>(frameState_);
+    if (introOverlayActive_ && chartIntroPresentation_) {
+        miacode::preview::scene::applyChartIntroPresentation(*snapshot);
+        if (introOutlineVariant_) snapshot->assets = introOutlineAssets_;
+        if (introOverlayFrame_ >= miacode::intro::kPvPreviewHoldFrames) {
+            snapshot->render.backgroundPolicy = frameState_.render.backgroundPolicy;
+        }
+    }
     miacode::preview::scene::refreshPreviewFrameStateHudStatsSnapshot(*snapshot);
     std::shared_ptr<const miacode::preview::scene::PreviewFrameState> publishedSnapshot =
         std::move(snapshot);
@@ -503,7 +511,17 @@ void PreviewRuntime::setIntroOverlayData(
     introBackgroundImage_ = backgroundImage;
     introLogoImage_ = logoImage;
     introBannerStyle_ = bannerStyle;
+    chartIntroPresentation_ = bannerStyle.value(QStringLiteral("chartPreviewMode")).toBool();
     emit introOverlayDataChanged();
+}
+
+void PreviewRuntime::setIntroChartOutline(PreviewOutlineVariant variant, const QString& imagePath)
+{
+    variant = chartIntroOutlineVariant(variant);
+    if (introOutlineVariant_ == variant && introOutlineImagePath_ == imagePath) return;
+    introOutlineVariant_ = variant;
+    introOutlineImagePath_ = imagePath;
+    introOutlineAssets_ = miacode::preview::runtime::PreviewSceneAssetLoader::loadAssetState(variant, imagePath);
 }
 
 void PreviewRuntime::setIntroOverlayFrame(int authoringFrame, bool active, bool requestUpdate)

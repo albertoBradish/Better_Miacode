@@ -8,6 +8,7 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/ChartAssetPaths.h"
+#include "core/video/AssetPaths.h"
 #include "core/chart/document/ChartClockCount.h"
 #include "app/runtime/ContentDurationConfig.h"
 #include "common/DebugLog.h"
@@ -289,6 +290,26 @@ void miacode::runtime::VideoExportHost::applySharedExportTaskSettings(const Vide
     emit session_.applicationServices_.shellNotifications().presentationChanged();
     // These are the values Preview Settings shows; it is open to them only if told.
     emit session_.applicationServices_.shellNotifications().previewRenderSettingsChanged();
+}
+
+std::optional<ChartIntroOutline> miacode::runtime::VideoExportHost::chartIntroOutline() const
+{
+    return chartIntroOutlineForChart(session_.currentFilePath_,
+        session_.applicationServices_.workspace().document().videoPath);
+}
+
+ChartIntroOutline miacode::runtime::VideoExportHost::chartIntroOutlineForChart(
+    const QString& chartPath, const QString& videoPath) const
+{
+    const QJsonObject regular = session_.regularPreviewModeSettings();
+    auto variant = static_cast<PreviewOutlineVariant>(regular.value(QStringLiteral("outlineVariant"))
+        .toInt(static_cast<int>(PreviewOutlineVariant::Line)));
+    if (regular.value(QStringLiteral("outlineAutomatic")).toBool()) {
+        variant = miacode::chart_assets::hasChartBackgroundMedia(chartPath, videoPath)
+            ? PreviewOutlineVariant::Line : PreviewOutlineVariant::JudgeArea;
+    }
+    return {chartIntroOutlineVariant(variant),
+        miacode::assets::customOutlinePathForFileName(regular.value(QStringLiteral("outlineCustomFile")).toString())};
 }
 
 // Build the seed VideoExportTask shared by the export dialog AND the direct

@@ -5,19 +5,18 @@ import QtQuick.Effects
 Item {
     id: root
     property var mediaHost: null
-    property bool fullFrame: false
     property alias videoOutputObject: previewStageVideoOutput
     property alias innerVideoOutputObject: previewStageInnerVideoOutput
 
     objectName: "previewStageMediaItem"
     anchors.fill: parent
-    readonly property int scaleMode: !root.fullFrame && root.mediaHost ? root.mediaHost.backgroundScaleMode : 0
+    readonly property int scaleMode: root.mediaHost ? root.mediaHost.backgroundScaleMode : 0
     readonly property bool innerCircleFitOuterFill: scaleMode === 3
     readonly property bool squareFit: scaleMode === 2
     readonly property bool fitContain: scaleMode === 1 || scaleMode === 2
     readonly property real innerCircleSide: Math.max(
         1,
-        root.height * (root.mediaHost ? root.mediaHost.layoutSquareScale : 0.95)
+        Math.min(root.width, root.height) * (root.mediaHost ? root.mediaHost.layoutSquareScale : 0.95)
     )
 
     Rectangle {

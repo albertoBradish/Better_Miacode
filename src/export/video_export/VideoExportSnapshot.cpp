@@ -261,6 +261,10 @@ QJsonObject VideoExportSnapshot::toJson() const
     introObject.insert(QStringLiteral("font_body_path"), intro.fontBodyPath);
     introObject.insert(QStringLiteral("pv_preview"), intro.pvPreview);
     introObject.insert(QStringLiteral("chart_preview"), intro.chartPreview);
+    if (intro.chartOutline) {
+        introObject.insert(QStringLiteral("chart_outline_variant"), static_cast<int>(intro.chartOutline->variant));
+        introObject.insert(QStringLiteral("chart_outline_path"), intro.chartOutline->imagePath);
+    }
     introObject.insert(QStringLiteral("pv_preview_end_seconds"), intro.pvPreviewEndSeconds);
     introObject.insert(QStringLiteral("preview_window_source"), static_cast<int>(intro.previewWindowSource));
     introObject.insert(QStringLiteral("pv_preview_start_seconds"), intro.pvPreviewStartSeconds);
@@ -464,6 +468,13 @@ bool VideoExportSnapshot::fromJson(
     parsed.intro.pvPreviewStartSeconds = qMax(
         0.0, introObject.value(QStringLiteral("pv_preview_start_seconds")).toDouble(parsed.intro.pvPreviewStartSeconds));
     parsed.intro.chartPreview = parsed.intro.pvPreview && introObject.value(QStringLiteral("chart_preview")).toBool();
+    const int chartOutline = introObject.value(QStringLiteral("chart_outline_variant")).toInt(-1);
+    if (chartOutline >= static_cast<int>(PreviewOutlineVariant::Point)
+        && chartOutline <= static_cast<int>(PreviewOutlineVariant::None)) {
+        parsed.intro.chartOutline = ChartIntroOutline{
+            chartIntroOutlineVariant(static_cast<PreviewOutlineVariant>(chartOutline)),
+            introObject.value(QStringLiteral("chart_outline_path")).toString()};
+    }
     parsed.intro.pvPreviewEndSeconds = qMax(0.0,
         introObject.value(QStringLiteral("pv_preview_end_seconds")).toDouble());
     const int source = introObject.value(QStringLiteral("preview_window_source")).toInt(-1);
@@ -537,7 +548,8 @@ bool buildVideoExportTaskFromSnapshot(
     built.outputPath = snapshot.outputPath;
     built.outputMode = snapshot.outputMode;
     built.chartPath = snapshot.originalChartPath;
-    if (usesBackgroundMedia(backgroundPolicyForRenderMode(snapshot.muriRenderOptions.renderMode))) {
+    if (usesBackgroundMedia(backgroundPolicyForRenderMode(snapshot.muriRenderOptions.renderMode))
+        || hasChartPreviewIntro(snapshot.intro, snapshot.fullRangeExport)) {
         built.backgroundMediaPath = miacode::chart_assets::isSupportedBackgroundMediaPath(
             snapshot.backgroundMediaPath, snapshot.includePv)
             ? snapshot.backgroundMediaPath

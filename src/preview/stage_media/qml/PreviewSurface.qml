@@ -166,18 +166,17 @@ Item {
         visible: root.chartPreviewSplit
     }
 
-    PreviewRuntimeQml.PreviewStageMediaItem {
-        id: previewStageMedia
-        anchors.fill: parent
-        z: 0
-        mediaHost: root.mediaHost
-        fullFrame: root.chartPreviewSplit
-        opacity: root.chartPreviewSplit ? root.introStyle.pvPreviewBrightness : 1
-        // NOTE — keep visible:true. See the comment above
-        // PreviewQuickSceneRoot for why hiding QML items in this
-        // surface breaks Qt's lazy present cadence. The internal
-        // Image/VideoOutput children render against
-        // mediaHost.mediaVisible already.
+    Item {
+        x: root.chartPreviewSplit ? parent.width * 0.5 : 0
+        width: parent.width - x
+        height: parent.height
+        clip: root.chartPreviewSplit
+
+        PreviewRuntimeQml.PreviewStageMediaItem {
+            id: previewStageMedia
+            anchors.fill: parent
+            mediaHost: root.mediaHost
+        }
     }
 
     // NOTE — keep these QQuickItems visible:true. Hiding them sounds
@@ -198,10 +197,9 @@ Item {
         height: parent.height
         clip: root.chartPreviewSplit
         z: 1
-        stageBackgroundEnabled: !root.chartPreviewSplit
         opacity: root.runtime && root.runtime.introHidesChart ? 0 : 1
         runtime: root.runtime
-        backgroundColor: root.backgroundColor
+        backgroundColor: root.chartPreviewSplit ? "#1F2833" : root.backgroundColor
     }
 
     PreviewQuickHudLayer {

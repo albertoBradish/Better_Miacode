@@ -22,7 +22,7 @@ Rectangle {
         height: parent.height
         clip: root.chartPreviewSplit
         z: 1
-        stageBackgroundEnabled: !root.chartPreviewSplit
+        backgroundColor: root.chartPreviewSplit ? "#1F2833" : root.color
         opacity: root.runtime && root.runtime.introHidesChart ? 0 : 1
         runtime: root.runtime
     }

@@ -819,7 +819,6 @@ void PreviewQuickD3D11ExportSession::applyFrameSize()
     rootItem_->setPosition(QPointF(0.0, 0.0));
     rootItem_->setSize(QSizeF(frameSize_));
 
-    backgroundItem_->setSize(QSizeF(frameSize_));
     applyChartGeometry();
 
     applyIntroGeometry();
@@ -830,6 +829,11 @@ void PreviewQuickD3D11ExportSession::applyChartGeometry()
     if (!sceneRoot_ || !hudLayer_) return;
     const double x = introChartPreviewSplit_ ? frameSize_.width() * 0.5 : 0.0;
     const QSizeF size(frameSize_.width() - x, frameSize_.height());
+    if (backgroundItem_) {
+        backgroundItem_->setPosition(QPointF(x, 0.0));
+        backgroundItem_->setSize(size);
+        backgroundItem_->setClip(introChartPreviewSplit_);
+    }
     sceneRoot_->setPosition(QPointF(x, 0.0));
     sceneRoot_->setSize(size);
     sceneRoot_->setClip(introChartPreviewSplit_);
@@ -970,7 +974,7 @@ void PreviewQuickD3D11ExportSession::setIntroFrame(int authoringFrame, bool acti
 void PreviewQuickD3D11ExportSession::applyFrameState()
 {
     const BackgroundPolicy policy = frameState_.render.backgroundPolicy;
-    if (quickWindow_) quickWindow_->setColor(policy == BackgroundPolicy::OpaqueBlack
+    if (quickWindow_) quickWindow_->setColor(policy == BackgroundPolicy::OpaqueBlack || introChartPreviewSplit_
         ? QColor(Qt::black) : QColor(Qt::transparent));
     if (backgroundItem_) {
         backgroundItem_->setVisible(backgroundEnabled_ && usesBackgroundMedia(policy));
