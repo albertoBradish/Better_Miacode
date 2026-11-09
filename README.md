@@ -2,7 +2,7 @@
 
 基于 [MiaCode](https://github.com/Team-MiaCode/MiaCode) 的独立增强版本。以下仅列出 Better Miacode 的新增与增强功能。
 
-当前开发版本为 **2.0.1-better.11.dev.3**。
+当前版本为 **2.0.1-better.11**。
 
 [下载已发布版本](https://github.com/albertoBradish/Better_Miacode/releases) · [问题反馈](https://github.com/albertoBradish/Better_Miacode/issues)
 

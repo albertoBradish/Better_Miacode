@@ -2,7 +2,7 @@
 
 An independent enhancement fork of [MiaCode](https://github.com/Team-MiaCode/MiaCode). The list below covers only Better Miacode additions and improvements.
 
-**Current development version: 2.0.1-better.11.dev.3.**
+**Current version: 2.0.1-better.11.**
 
 [Published releases](https://github.com/albertoBradish/Better_Miacode/releases) · [Issues](https://github.com/albertoBradish/Better_Miacode/issues)
 
