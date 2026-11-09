@@ -128,8 +128,9 @@ std::optional<DropSelection> storedDropSelection(const SimaiDocument& document, 
 
 bool hasManualDropMarker(const SimaiDocument& document, int difficultyId)
 {
+    const QString source = extraValue(document, dropKey("source", difficultyId));
     return document.difficulty(difficultyId) != nullptr
-        && extraValue(document, dropKey("source", difficultyId)) == QLatin1String("manual");
+        && (source == QLatin1String("manual") || source == QLatin1String("disabled"));
 }
 
 std::optional<DropSelection> readDropSelection(const SimaiDocument& document, int difficultyId,
@@ -148,16 +149,22 @@ bool writeDropSelection(SimaiDocument& document, int difficultyId, std::optional
 
     const auto existing = storedDropSelection(document, difficultyId);
     if (selection && existing == selection) return false;
+    if (!selection && extraValue(document, dropKey("source", difficultyId)) == QLatin1String("disabled")) return false;
     const QString start = dropKey("start", difficultyId);
     const QString end = dropKey("end", difficultyId);
     const QString source = dropKey("source", difficultyId);
     const QString version = dropKey("version", difficultyId);
     const QString fingerprint = dropKey("fingerprint", difficultyId);
-    const auto removed = document.extraFields.removeIf([&](const SimaiRawField& field) {
+    document.extraFields.removeIf([&](const SimaiRawField& field) {
         const QString key = field.key.toLower();
         return key == start || key == end || key == source || key == version || key == fingerprint;
     });
-    if (!selection) return removed > 0;
+    if (!selection) {
+        // Clearing is a manual decision too; automatic analysis must not
+        // silently recreate the region when the document is opened again.
+        document.extraFields.append({source, QStringLiteral("disabled")});
+        return true;
+    }
 
     document.extraFields.append({start, QString::number(selection->range.startSeconds, 'g', 17)});
     document.extraFields.append({end, QString::number(selection->range.endSeconds, 'g', 17)});

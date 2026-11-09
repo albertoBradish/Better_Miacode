@@ -239,6 +239,14 @@ bool testDocumentRegion()
     ok &= expect(resolveIntroWindow(reopened, 6, {}, IntroWindowMode::FollowDrop, 30.0, {}, {}, true).source
         == IntroWindowSource::Default, "authoritative session clear suppresses an on-disk selection");
     ok &= expect(!MediaRange{2.0, std::numeric_limits<double>::infinity()}.isValid(), "reject non-finite times");
+    auto cleared = reopened;
+    ok &= expect(writeDropSelection(cleared, 6, {}), "clearing stores an explicit manual decision");
+    cleared = SimaiDocument::fromText(cleared.toText());
+    ok &= expect(!storedDropSelection(cleared, 6) && hasManualDropMarker(cleared, 6),
+        "reopening a cleared Drop keeps automatic analysis from recreating it");
+    ok &= expect(!writeDropSelection(cleared, 6, {}), "repeated manual clear is a no-op");
+    ok &= expect(writeDropSelection(cleared, 6, manual) && storedDropSelection(cleared, 6) == manual,
+        "a new manual range replaces the cleared preference");
     return ok;
 }
 
