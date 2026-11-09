@@ -2239,6 +2239,45 @@ int main(int argc, char** argv)
     }
 
     {
+        const QString chart = QStringLiteral("(120){4}1h[4:2],3,1-5[4:2],,\nE");
+        TimelineQuickModel model;
+        model.rebuildFromText(chart, 1.25);
+
+        const int hold = chart.indexOf(QStringLiteral("1h"));
+        const auto holdRange = model.resolveMediaRangeForSelection(hold + 2, hold, 10.0);
+        expect(holdRange && nearlyEqual(holdRange->startSeconds, 1.25)
+                   && nearlyEqual(holdRange->endSeconds, 2.25),
+               QStringLiteral("reverse selection uses the hold's native tail and applies first once"));
+
+        const int slide = chart.indexOf(QStringLiteral("1-5"));
+        const auto slideRange = model.resolveMediaRangeForSelection(slide, slide + 3, 10.0);
+        expect(slideRange && nearlyEqual(slideRange->startSeconds, 2.25)
+                   && nearlyEqual(slideRange->endSeconds, 3.75),
+               QStringLiteral("Drop includes the slide's native wait and tail with no preview padding"));
+        const auto clippedSlide = model.resolveMediaRangeForSelection(slide, slide + 3, 3.0);
+        expect(clippedSlide && nearlyEqual(clippedSlide->endSeconds, 3.0)
+                   && !model.resolveMediaRangeForSelection(slide, slide + 3, 2.0),
+               QStringLiteral("a Drop is clipped to the audio duration and discarded beyond it"));
+
+        const int rest = chart.indexOf(QStringLiteral(",,\n")) + 1;
+        const auto restRange = model.resolveMediaRangeForSelection(rest, rest + 1, 10.0);
+        expect(restRange && nearlyEqual(restRange->startSeconds, 2.75)
+                   && nearlyEqual(restRange->endSeconds, 3.25),
+               QStringLiteral("the final rest ends at the next comma anchor, not an unselected slide tail"));
+
+        const int tap = chart.indexOf(QStringLiteral("3,"));
+        expect(!model.resolveMediaRangeForSelection(tap, tap + 1, 10.0)
+                   && !model.resolveMediaRangeForSelection(0, hold, 10.0),
+               QStringLiteral("isolated instantaneous taps and directives alone have no Drop duration"));
+
+        model.rebuildFromText(chart, -0.25);
+        const auto negativeFirst = model.resolveMediaRangeForSelection(hold, hold + 2, 10.0);
+        expect(negativeFirst && nearlyEqual(negativeFirst->startSeconds, 0.0)
+                   && nearlyEqual(negativeFirst->endSeconds, 0.75),
+               QStringLiteral("negative first offsets clip only the portion before the start of media"));
+    }
+
+    {
         const QString chart = QStringLiteral("1,1h[4:3],1-5-3-8[8:1],\nE");
         QTextDocument document(chart);
         TimelineQuickModel model;

@@ -7,6 +7,7 @@
 #include "common/TaskCancellation.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
+#include "timeline/TimelineQuickModel.h"
 
 #include <QDataStream>
 #include <QDateTime>
@@ -166,6 +167,7 @@ void ChartStructureModel::refresh(bool audioChanged)
     if (!input_.hasSameContent(next) || audioChanged) {
         stopCurrentTask();
         result_.reset();
+        editorDropTimeline_.reset();
         cancelled_ = false;
         next.chartFingerprint = dropChartFingerprint(document, next.difficulty);
         input_ = std::move(next);
@@ -516,6 +518,35 @@ bool ChartStructureModel::setManualDrop(double start, double end)
     const MediaRange range{start, end};
     if (!range.isValid() || (mediaDuration() > 0.0 && end > mediaDuration() + 0.001)) return false;
     return applyEdit(DropSelection{range, DropSource::Manual, result_ ? result_->audioHash : QString()});
+}
+
+std::optional<chart_preview::MediaRange> ChartStructureModel::dropRangeForEditorSelection(
+    int difficulty, quint64 revision, quint64 generation, const QString& text, int start, int end)
+{
+    if (!available() || start == end || difficulty != input_.difficulty || revision != input_.revision
+        || generation != input_.generation || text != input_.chart) return std::nullopt;
+    bool firstValid = false;
+    timeline::offset::parsedFirstSeconds(workspace_.document().first, &firstValid);
+    if (!firstValid) return std::nullopt;
+
+    if (!editorDropTimeline_) {
+        editorDropTimeline_ = std::make_unique<TimelineQuickModel>();
+        editorDropTimeline_->rebuildFromText(input_.chart, input_.first, input_.timing);
+    }
+    return editorDropTimeline_->resolveMediaRangeForSelection(start, end, mediaDuration());
+}
+
+bool ChartStructureModel::canSetDropFromEditorSelection(
+    int difficulty, qulonglong revision, qulonglong generation, const QString& text, int start, int end)
+{
+    return dropRangeForEditorSelection(difficulty, revision, generation, text, start, end).has_value();
+}
+
+bool ChartStructureModel::setDropFromEditorSelection(
+    int difficulty, qulonglong revision, qulonglong generation, const QString& text, int start, int end)
+{
+    const auto range = dropRangeForEditorSelection(difficulty, revision, generation, text, start, end);
+    return range && setManualDrop(range->startSeconds, range->endSeconds);
 }
 
 bool ChartStructureModel::clearDrop() { return applyEdit({}); }

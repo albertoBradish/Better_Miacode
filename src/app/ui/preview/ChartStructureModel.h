@@ -11,6 +11,8 @@
 #include <QVariantMap>
 #include <memory>
 
+class TimelineQuickModel;
+
 namespace miacode {
 class ChartWorkspace;
 class ChartWorkspaceFileService;
@@ -64,6 +66,10 @@ public:
     Q_INVOKABLE QVariantList heatmapSamples(double start, double end, int columns) const;
     Q_INVOKABLE QVariantMap pressureAt(double seconds) const;
     Q_INVOKABLE bool setManualDrop(double start, double end);
+    Q_INVOKABLE bool canSetDropFromEditorSelection(int difficulty, qulonglong revision, qulonglong generation,
+        const QString& text, int start, int end);
+    Q_INVOKABLE bool setDropFromEditorSelection(int difficulty, qulonglong revision, qulonglong generation,
+        const QString& text, int start, int end);
     Q_INVOKABLE bool clearDrop();
     Q_INVOKABLE bool saveSessionDrop();
     Q_INVOKABLE void undoDrop();
@@ -125,12 +131,15 @@ private:
     bool applyEdit(Selection selection);
     void restoreEdit(Selection selection);
     Selection currentSelection() const;
+    std::optional<chart_preview::MediaRange> dropRangeForEditorSelection(int difficulty, quint64 revision,
+        quint64 generation, const QString& text, int start, int end);
     void updateWatches();
 
     ChartWorkspace& workspace_;
     ChartWorkspaceFileService& files_;
     Input input_;
     std::optional<Result> result_;
+    std::unique_ptr<TimelineQuickModel> editorDropTimeline_;
     QHash<int, EditState> edits_;
     QString attemptedAutoFingerprint_;
     QThreadPool pool_;

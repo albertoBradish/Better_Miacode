@@ -12,6 +12,7 @@ Rectangle {
     required property var syncController
     required property var analysisSession
     property var preferences: null
+    property var chartStructure: null
     readonly property bool overviewRulerEnabled: preferences ? preferences.editorOverviewRulerEnabled : false
     readonly property var sceneWindow: root.Window.window
     onSceneWindowChanged: {
@@ -212,6 +213,9 @@ Rectangle {
         property int contextDifficulty: -1
         property double contextRevision: 0
         property double contextGeneration: 0
+        property int contextSelectionStart: 0
+        property int contextSelectionEnd: 0
+        property bool canSetDrop: false
         onClosed: {
             const operation = pendingOperation
             pendingOperation = ""
@@ -285,6 +289,11 @@ Rectangle {
             contextRevision = root.documentSession.documentRevision
             contextGeneration = root.documentSession.documentOpenGeneration
             const selected = root.canCopy
+            contextSelectionStart = sourceArea.selectionStart
+            contextSelectionEnd = sourceArea.selectionEnd
+            canSetDrop = selected && !sourceArea.readonly && root.chartStructure !== null
+                && root.chartStructure.canSetDropFromEditorSelection(contextDifficulty,
+                    contextRevision, contextGeneration, sourceArea.text, contextSelectionStart, contextSelectionEnd)
             const transform = root.canTransform
             const normalize = root.canNormalize
             if (menuEntries.count > 0 && selected === hasSelection
@@ -310,8 +319,11 @@ Rectangle {
             action("qml.find_and_replace", "find")
             if (selected || normalize)
                 separator()
-            if (selected)
+            if (selected) {
                 action("qml.export_selection", "export")
+                action("editor.set_selection_as_drop", "set_drop")
+                action("editor.clear_drop", "clear_drop")
+            }
             if (transform) {
                 separator()
                 for (const section of [0, 2]) {
@@ -342,6 +354,17 @@ Rectangle {
             case "find": root.openFindReplace(); break
             case "export": root.exportSelectionRange(); break
             case "play_selection": root.playSelection(); break
+            case "set_drop":
+                if (!sourceArea.readonly && sourceArea.selectionStart === contextSelectionStart
+                        && sourceArea.selectionEnd === contextSelectionEnd) {
+                    root.chartStructure?.setDropFromEditorSelection(contextDifficulty,
+                        contextRevision, contextGeneration, sourceArea.text, contextSelectionStart, contextSelectionEnd)
+                }
+                break
+            case "clear_drop":
+                if (!sourceArea.readonly && root.chartStructure?.dropAvailable)
+                    root.chartStructure.clearDrop()
+                break
             case "normalize": root.normalizeChartRequested(); break
             default: root.applyChartTransform(operation); break
             }
@@ -362,7 +385,10 @@ Rectangle {
                         enabled: operation === "play_selection" ? root.syncController.canPlaySelection
                             : operation === "cut" ? root.canCut
                             : operation === "copy" ? root.canCopy
-                            : operation === "paste" ? root.canPaste : true
+                            : operation === "paste" ? root.canPaste
+                            : operation === "set_drop" ? editorContextMenu.canSetDrop
+                            : operation === "clear_drop" ? (!sourceArea.readonly && root.chartStructure?.dropAvailable === true)
+                            : true
                         onTriggered: editorContextMenu.triggerOperation(operation)
                     }
                 }

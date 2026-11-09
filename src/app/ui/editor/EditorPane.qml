@@ -391,6 +391,7 @@ Item {
         editorController: root.editorController
         syncController: root.editorSync
         analysisSession: root.analysisSession
+        chartStructure: root.previewSession?.structure ?? null
         preferences: root.preferences
         onPlaybackToggleRequested: root.previewSession.togglePlayback()
         onNormalizeChartRequested: root.pages.openNormalizeWholeChart()

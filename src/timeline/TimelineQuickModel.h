@@ -6,6 +6,7 @@
 #include <QSet>
 #include <QVector>
 
+#include "core/chart/ChartPreviewRegion.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
 #include "core/chart/transform/ChartNoteSelection.h"
 #include "timeline/TimelineRenderData.h"
@@ -95,6 +96,10 @@ public:
         int selectionEnd,
         double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed,
         double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed) const;
+    // Musical interval covered by the selected source, with the first offset
+    // already included. Unlike video clipping, it excludes rendering padding.
+    std::optional<miacode::chart_preview::MediaRange> resolveMediaRangeForSelection(
+        int anchor, int position, double mediaDuration) const;
     struct NoteSelection {
         QSet<quint64> locations;
         double startSecond = 0.0;

@@ -405,6 +405,54 @@ TimelineExportRange TimelineQuickModel::resolveExportRangeForSelection(
     return result;
 }
 
+std::optional<miacode::chart_preview::MediaRange> TimelineQuickModel::resolveMediaRangeForSelection(
+    int anchor, int position, double mediaDuration) const
+{
+    const int textLength = static_cast<int>(sourceText_.size());
+    const int start = qBound(0, qMin(anchor, position), textLength);
+    const int end = qBound(start, qMax(anchor, position), textLength);
+    if (start == end) return std::nullopt;
+
+    double beginSecond = std::numeric_limits<double>::infinity();
+    double endSecond = -std::numeric_limits<double>::infinity();
+    const auto include = [&](double from, double to) {
+        if (!qIsFinite(from) || !qIsFinite(to)) return;
+        beginSecond = qMin(beginSecond, from);
+        endSecond = qMax(endSecond, to);
+    };
+    for (const auto& line : lines_) {
+        if (line.startPosition >= end) break;
+        if (line.startPosition + line.text.size() <= start) continue;
+        for (const auto& note : line.render.notes) {
+            const int noteStart = line.startPosition + note.sourceCol - 1;
+            const int noteEnd = noteStart + note.sourceLength;
+            if (noteStart < end && noteEnd > start) {
+                include(timelineRenderAbsoluteSecond(line.render, note.secondOffset),
+                    timelineRenderNoteBodyEndSecond(line.render, note));
+            }
+        }
+        for (const auto& beat : line.render.beats) {
+            const int comma = line.startPosition + beat.sourceCol - 1;
+            if (comma < start || comma >= end) continue;
+            // The cursor immediately after the comma gives the next beat's
+            // actual start, even when a long hold extends beyond this line.
+            const auto& anchors = line.cursorCache.segmentStarts;
+            const auto next = std::lower_bound(anchors.cbegin(), anchors.cend(), beat.sourceCol + 1,
+                [](const auto& anchor, int col) { return anchor.sourceCol < col; });
+            if (next != anchors.cend() && next->sourceCol == beat.sourceCol + 1) {
+                include(timelineRenderAbsoluteSecond(line.render, beat.secondOffset),
+                    timelineRenderAbsoluteSecond(line.render, next->secondOffset));
+            }
+        }
+    }
+
+    if (!qIsFinite(beginSecond) || !qIsFinite(endSecond)) return std::nullopt;
+    beginSecond = qMax(0.0, beginSecond);
+    if (qIsFinite(mediaDuration) && mediaDuration > 0.0) endSecond = qMin(endSecond, mediaDuration);
+    const miacode::chart_preview::MediaRange range{beginSecond, endSecond};
+    return range.isValid() ? std::optional(range) : std::nullopt;
+}
+
 TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteSelection(
     int start, int end, double tapFlowSpeed, double touchFlowSpeed) const
 {
