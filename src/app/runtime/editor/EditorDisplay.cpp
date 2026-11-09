@@ -477,18 +477,13 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     if (preview.value("show_timestamp").isBool()) {
         state_.previewShowTimestamp_ = preview.value("show_timestamp").toBool(true);
     }
-    if (preview.value("show_object_stats_preview").isBool()) {
-        state_.previewShowObjectStatsHud_ = preview.value("show_object_stats_preview").toBool(false);
-    }
+    state_.previewShowObjectStatsHud_ = false;
     if (preview.value("show_object_stats_export").isBool()) {
         state_.exportShowObjectStatsHud_ = preview.value("show_object_stats_export").toBool(false);
     }
     previewAppearanceValues_.centerDisplayMode = miacode::preview_gameplay::centerDisplayModeFromToken(
         preview.value(QStringLiteral("center_display_mode")).toString(
             QString::fromLatin1(miacode::preview_gameplay::centerDisplayModeToken(previewAppearanceValues_.centerDisplayMode))));
-    const bool unifiedObjectStatsHud = state_.previewShowObjectStatsHud_ || state_.exportShowObjectStatsHud_;
-    state_.previewShowObjectStatsHud_ = unifiedObjectStatsHud;
-    state_.exportShowObjectStatsHud_ = unifiedObjectStatsHud;
     if (preview.value("show_chart_info_preview").isBool()) {
         state_.previewShowChartInfoHud_ = preview.value("show_chart_info_preview").toBool(false);
     }

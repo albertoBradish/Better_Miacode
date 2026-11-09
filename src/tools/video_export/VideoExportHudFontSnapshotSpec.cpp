@@ -305,6 +305,16 @@ int main(int argc, char** argv)
     const QImage before = paint(gl.frameState());
     const QFont fontBefore = previewHudTimestampFontForArea(frame.hudFontSettings, PreviewHudFontArea::Timestamp, 20);
     PreviewRuntime live;
+    live.setSuppressObjectStatsHud(true);
+    live.setShowObjectStatsHud(true);
+    ok &= require(!live.frameStateSnapshot()->render.showObjectStatsHud,
+        "editor canvas keeps object counts in its footer even when an old HUD flag is true", err);
+    live.setSuppressObjectStatsHud(false);
+    ok &= require(live.frameStateSnapshot()->render.showObjectStatsHud,
+        "export audition can show the independently requested object statistics", err);
+    live.setSuppressObjectStatsHud(true);
+    ok &= require(!live.frameStateSnapshot()->render.showObjectStatsHud,
+        "returning from export hides duplicate editor statistics again", err);
     live.setHudFontSettings(frame.hudFontSettings);
     const auto oldLive = live.frameStateSnapshot();
     frame.hudFontSettings.paths[static_cast<int>(PreviewHudFontArea::Timestamp)] = fontB;

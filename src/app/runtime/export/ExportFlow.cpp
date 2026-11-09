@@ -226,7 +226,7 @@ void miacode::runtime::VideoExportHost::applySharedExportTaskSettings(const Vide
     session_.state_.previewShowSlideJudgementTiming_ = task.showSlideJudgementTiming;
     session_.state_.previewMeasureLineMode_ = task.measureLineMode;
     session_.state_.previewMeasureLineCustomBeats_ = task.measureLineCustomBeats;
-    session_.previewShowObjectStatsHud_ = task.showObjectStatsHud;
+    session_.previewShowObjectStatsHud_ = false;
     session_.exportShowObjectStatsHud_ = task.showObjectStatsHud;
     session_.previewShowChartInfoHud_ = task.showChartInfoHud;
     session_.previewShowBpmHud_ = task.showBpmHud;
@@ -265,7 +265,8 @@ void miacode::runtime::VideoExportHost::applySharedExportTaskSettings(const Vide
         session_.scene_->setSlideTimingEarlyPerfectFromHead(task.slideTimingEarlyPerfectFromHead);
         session_.scene_->setVisualAidSettings(task.showMeasureLines, task.showJudgementSkeleton,
             task.measureLineMode, task.measureLineCustomBeats);
-        session_.scene_->setShowObjectStatsHud(session_.previewShowObjectStatsHud_);
+        session_.scene_->setShowObjectStatsHud(task.showObjectStatsHud);
+        session_.scene_->setSuppressObjectStatsHud(!session_.exportPreviewActive_);
         // Chart info stays exclusive to the export audition; editor preview
         // state is left untouched.
         if (session_.exportPreviewActive_) {
@@ -486,6 +487,8 @@ void miacode::runtime::VideoExportHost::beginExportPreviewSession(const VideoExp
     // showDebugInfo preference so it returns intact afterwards.
     if (session_.scene_ != nullptr) {
         session_.scene_->setSuppressDebugInfo(true);
+        session_.scene_->setSuppressObjectStatsHud(false);
+        session_.scene_->setShowObjectStatsHud(task.showObjectStatsHud);
         applyExportPreviewChartInfo(task);
     }
 }
@@ -512,6 +515,8 @@ void miacode::runtime::VideoExportHost::endExportPreviewSession()
     teardownExportPreviewAuditionScene();
     if (session_.scene_ != nullptr) {
         session_.scene_->setSuppressDebugInfo(false);
+        session_.scene_->setSuppressObjectStatsHud(true);
+        session_.scene_->setShowObjectStatsHud(false);
         session_.scene_->setSlideJudgementTiming(session_.state_.previewShowSlideJudgementTiming_);
         session_.scene_->setSlideTimingFromLaunchBeat(session_.state_.previewSlideTimingFromLaunchBeat_);
         session_.scene_->setSlideTimingEarlyPerfectFromHead(session_.state_.previewSlideTimingEarlyPerfectFromHead_);

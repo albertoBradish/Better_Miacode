@@ -283,7 +283,8 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
         scene_->setSlideTimingEarlyPerfectFromHead(state_.previewSlideTimingEarlyPerfectFromHead_);
         scene_->setVisualAidSettings(state_.previewShowMeasureLines_, state_.previewShowJudgementSkeleton_,
             state_.previewMeasureLineMode_, state_.previewMeasureLineCustomBeats_);
-        scene_->setShowObjectStatsHud(previewShowObjectStatsHud_);
+        scene_->setSuppressObjectStatsHud(true);
+        scene_->setShowObjectStatsHud(false);
         // Chart info HUD only ever activates inside the export-preview
         // dialog (gated by setSuppressDebugInfo + setChartInfo there); the
         // editor's main preview keeps it off.

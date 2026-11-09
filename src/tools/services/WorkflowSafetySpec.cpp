@@ -46,16 +46,20 @@ int main(int argc, char** argv)
         QJsonObject debug = profiles::restored(store, RenderMode::Debug);
         check(debug.value("showTimestamp").toBool() && !debug.value("showBpmHud").toBool(),
               "unused render modes start from independent defaults");
-        for (const char* key : {"showBpmHud", "showCpsHud", "showMeasureLines", "showJudgementSkeleton",
-                               "showSlideJudgementTiming", "showJudgeMarkers", "showTouchTrail"})
+        for (const char* key : {"showBpmHud", "showCpsHud", "showJudgeMarkers", "showTouchTrail"})
             debug.insert(QString::fromLatin1(key), true);
         debug.insert("outlineVariant", static_cast<int>(PreviewOutlineVariant::JudgeAreaLabeled));
         store = profiles::withCurrent(store, RenderMode::Debug, debug);
         check(profiles::restored(store, RenderMode::EraseByArea) == regular,
               "leaving debug restores all regular flags and the exact custom outline");
         QJsonObject muri = profiles::restored(store, RenderMode::MaimuriDxStyle);
-        check(!muri.value("showJudgementSkeleton").toBool() && !muri.value("showTouchTrail").toBool(),
+        check(!muri.value("showTouchTrail").toBool(),
               "debug diagnostics never leak into an unused Muri profile");
+        const auto legacyProfile = profiles::normalized({{"showMeasureLines", true},
+            {"showJudgementSkeleton", true}, {"showSlideJudgementTiming", true}, {"showObjectStatsHud", true}});
+        check(!legacyProfile.contains("showMeasureLines") && !legacyProfile.contains("showJudgementSkeleton")
+              && !legacyProfile.contains("showSlideJudgementTiming") && !legacyProfile.contains("showObjectStatsHud"),
+              "mode profiles do not own shared visual aids or independent video statistics");
         muri.insert("showJudgeMarkers", true);
         store = profiles::withCurrent(store, RenderMode::MaimuriDxStyle, muri);
         const auto reloaded = QJsonDocument::fromJson(QJsonDocument(store).toJson()).object();

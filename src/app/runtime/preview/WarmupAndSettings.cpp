@@ -528,7 +528,6 @@ QVariantMap Session::previewRenderSettings() const
 QJsonObject Session::capturePreviewModeSettings() const
 {
     QJsonObject values = QJsonObject::fromVariantMap(previewRenderSettings());
-    values.insert(QStringLiteral("showObjectStatsHud"), state_.previewShowObjectStatsHud_);
     values.insert(QStringLiteral("showChartInfoHud"), state_.previewShowChartInfoHud_);
     values.insert(QStringLiteral("outlineVariant"), static_cast<int>(previewAppearanceValues_.outlineVariant));
     values.insert(QStringLiteral("outlineAutomatic"), state_.previewOutlineVariantUsesAutoSelection_);
@@ -553,11 +552,7 @@ void Session::restorePreviewModeSettings(RenderMode mode)
     state_.previewShowCpsHud_ = state_.exportShowCpsHud_ = flag("showCpsHud");
     state_.previewShowMeterHud_ = state_.exportShowMeterHud_ = flag("showMeterHud");
     state_.previewShowModsHud_ = state_.exportShowModsHud_ = flag("showModsHud");
-    state_.previewShowObjectStatsHud_ = state_.exportShowObjectStatsHud_ = flag("showObjectStatsHud");
     state_.previewShowChartInfoHud_ = state_.exportShowChartInfoHud_ = flag("showChartInfoHud");
-    state_.previewShowMeasureLines_ = flag("showMeasureLines");
-    state_.previewShowJudgementSkeleton_ = flag("showJudgementSkeleton");
-    state_.previewShowSlideJudgementTiming_ = flag("showSlideJudgementTiming");
     state_.previewShowDebugInfo_ = flag("showDebugInfo");
     state_.showJudgeMarkers_ = flag("showJudgeMarkers");
     state_.showTouchTrail_ = flag("showTouchTrail");
@@ -571,7 +566,6 @@ void Session::restorePreviewModeSettings(RenderMode mode)
         canvas->setShowCpsHud(state_.previewShowCpsHud_);
         canvas->setShowMeterHud(state_.previewShowMeterHud_);
         canvas->setShowModsHud(state_.previewShowModsHud_);
-        canvas->setShowObjectStatsHud(state_.previewShowObjectStatsHud_);
         canvas->setShowChartInfoHud(state_.previewShowChartInfoHud_);
         canvas->setShowDebugInfo(state_.previewShowDebugInfo_);
         canvas->setSlideJudgementTiming(state_.previewShowSlideJudgementTiming_);
@@ -641,8 +635,9 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
         state_.previewShowModsHud_ = state_.exportShowModsHud_ = value.toBool();
         if (canvas != nullptr) canvas->setShowModsHud(value.toBool());
     } else if (key == QLatin1String("showObjectStatsHud")) {
-        state_.previewShowObjectStatsHud_ = state_.exportShowObjectStatsHud_ = value.toBool();
-        if (canvas != nullptr) canvas->setShowObjectStatsHud(value.toBool());
+        // Editor statistics live below the canvas. The export task owns its HUD.
+        state_.previewShowObjectStatsHud_ = false;
+        if (canvas != nullptr && !state_.exportPreviewActive_) canvas->setSuppressObjectStatsHud(true);
     } else if (key == QLatin1String("showChartInfoHud")) {
         state_.previewShowChartInfoHud_ = state_.exportShowChartInfoHud_ = value.toBool();
         if (canvas != nullptr) canvas->setShowChartInfoHud(value.toBool());

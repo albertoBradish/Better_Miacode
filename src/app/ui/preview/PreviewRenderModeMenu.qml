@@ -227,9 +227,6 @@ AppStickyPopup {
                 Repeater {
                     model: [
                         ["labeledJudgeArea", qsTrId("qml.debug_labeled_judge_area")],
-                        ["showMeasureLines", qsTrId("preview.canvas.show_measure_lines")],
-                        ["showJudgementSkeleton", qsTrId("preview.canvas.show_judgement_skeleton")],
-                        ["showSlideJudgementTiming", qsTrId("preview.canvas.show_slide_judgement_timing")],
                         ["showTimestamp", qsTrId("dialog.video_export.option.show_timestamp")],
                         ["showBpmHud", qsTrId("dialog.video_export.option.show_bpm_hud")],
                         ["showCpsHud", qsTrId("dialog.video_export.option.show_cps_hud")],
