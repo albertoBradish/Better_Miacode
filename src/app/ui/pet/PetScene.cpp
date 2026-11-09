@@ -13,6 +13,7 @@ namespace {
 struct Vertex {
     float x, y, z;
     float u, v;
+    float alternateU, alternateV, textureBlend;
 };
 
 QShader loadShader(const QString& path)
@@ -36,7 +37,10 @@ void appendMesh(const PetModelNode* node, const QMatrix4x4& parent, QVector<Vert
         for (int index : mesh->indexes) {
             const QVector3D point = transform.map(mesh->positions[index]);
             const QVector2D uv = mesh->uv0s[index];
-            vertices.append({point.x(), point.y(), point.z(), uv.x(), uv.y()});
+            const bool hasAlternate = index < mesh->alternateUvs.size();
+            const QVector2D alternate = hasAlternate ? mesh->alternateUvs[index] : uv;
+            const float blend = hasAlternate ? static_cast<float>(qBound(0.0, node->textureBlend, 1.0)) : 0.0f;
+            vertices.append({point.x(), point.y(), point.z(), uv.x(), uv.y(), alternate.x(), alternate.y(), blend});
         }
     }
     for (QObject* child : node->childNodes()) {
@@ -98,7 +102,8 @@ public:
         layout.setBindings({{sizeof(Vertex)}});
         layout.setAttributes({
             {0, 0, QRhiVertexInputAttribute::Float3, offsetof(Vertex, x)},
-            {0, 1, QRhiVertexInputAttribute::Float2, offsetof(Vertex, u)}
+            {0, 1, QRhiVertexInputAttribute::Float2, offsetof(Vertex, u)},
+            {0, 2, QRhiVertexInputAttribute::Float3, offsetof(Vertex, alternateU)}
         });
         pipeline_->setVertexInputLayout(layout);
         pipeline_->setDepthTest(true);

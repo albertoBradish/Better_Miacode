@@ -31,6 +31,18 @@ Window {
         return t * t * (3 - 2 * t)
     }
     property real dropWeight: 0
+    readonly property real dropEyeEnvelope: {
+        if (!dropAvailable || dropEnd <= dropStart)
+            return 0
+        const ramp = 0.12
+        const t = Math.max(0, Math.min(1, 1 + Math.min(rhythmSecond - dropStart, dropEnd - rhythmSecond) / ramp))
+        return t * t * (3 - 2 * t)
+    }
+    property real eyeDanceWeight: rhythmPlaying && visible ? 1 : 0
+    Behavior on eyeDanceWeight {
+        enabled: !petWindow.rhythmPlaying
+        NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
+    }
     NumberAnimation {
         id: phaseRecovery
         target: petWindow
@@ -169,6 +181,7 @@ Window {
                 rhythmQuarterBeat: petWindow.rhythmQuarterBeat + petWindow.phaseCorrection
                 rhythmWeight: petWindow.rhythmWeight
                 rhythmDropWeight: petWindow.dropWeight
+                rhythmDropEyeClosure: petWindow.dropEyeEnvelope * petWindow.eyeDanceWeight
             }
         }
 

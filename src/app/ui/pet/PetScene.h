@@ -14,11 +14,13 @@ class PetMesh : public QObject {
     QML_ELEMENT
     Q_PROPERTY(QList<QVector3D> positions MEMBER positions)
     Q_PROPERTY(QList<QVector2D> uv0s MEMBER uv0s)
+    Q_PROPERTY(QList<QVector2D> alternateUvs MEMBER alternateUvs)
     Q_PROPERTY(QList<int> indexes MEMBER indexes)
 public:
     explicit PetMesh(QObject* parent = nullptr) : QObject(parent) {}
     QList<QVector3D> positions;
     QList<QVector2D> uv0s;
+    QList<QVector2D> alternateUvs;
     QList<int> indexes;
 };
 
@@ -32,6 +34,7 @@ class PetModelNode : public QObject {
     Q_PROPERTY(QVector3D eulerRotation MEMBER eulerRotation NOTIFY transformChanged)
     Q_PROPERTY(QVector3D scale MEMBER scale NOTIFY transformChanged)
     Q_PROPERTY(bool visible MEMBER visible NOTIFY transformChanged)
+    Q_PROPERTY(qreal textureBlend MEMBER textureBlend NOTIFY transformChanged)
     Q_PROPERTY(PetMesh* geometry MEMBER geometry NOTIFY transformChanged)
 public:
     explicit PetModelNode(QObject* parent = nullptr) : QObject(parent) {}
@@ -42,6 +45,7 @@ public:
     QVector3D eulerRotation;
     QVector3D scale{1, 1, 1};
     bool visible = true;
+    qreal textureBlend = 0.0;
     PetMesh* geometry = nullptr;
 signals:
     void transformChanged();

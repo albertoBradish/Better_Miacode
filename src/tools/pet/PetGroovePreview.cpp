@@ -186,6 +186,15 @@ public:
         return pose;
     }
 
+    bool hasEyeClosure() const { return model_->property("eyeClosure").isValid(); }
+
+    double sampleEyeClosure(double lifeTime, double dropClosure)
+    {
+        model_->setProperty("lifeTime", lifeTime);
+        model_->setProperty("rhythmDropEyeClosure", dropClosure);
+        return model_->property("eyeClosure").toDouble();
+    }
+
     QImage render(QString* error)
     {
         scene_->advanceFrame();
@@ -292,6 +301,24 @@ bool generate(OffscreenPet& renderer, double bpm, int fps, const QString& direct
     renderer.sample(0, 0);
     QImage idleImage = renderer.render(error);
     if (idleImage.isNull() || !idleImage.save(QDir(directory).filePath(QStringLiteral("idle.png")))) return false;
+    bool eyeTransitionsSafe = true;
+    if (renderer.hasEyeClosure()) {
+        const double closing = renderer.sampleEyeClosure(2.43, 0.0);
+        const double closed = renderer.sampleEyeClosure(2.46, 0.0);
+        const double opening = renderer.sampleEyeClosure(2.53, 0.0);
+        const double open = renderer.sampleEyeClosure(2.61, 0.0);
+        const double held = renderer.sampleEyeClosure(6.25, 1.0);
+        renderer.sampleEyeClosure(0.0, 0.5);
+        const QImage halfClosed = renderer.render(error);
+        renderer.sampleEyeClosure(0.0, 1.0);
+        const QImage fullyClosed = renderer.render(error);
+        renderer.sampleEyeClosure(0.0, 0.0);
+        if (halfClosed.isNull() || fullyClosed.isNull()) return false;
+        eyeTransitionsSafe = closing > 0.0 && closing < 1.0 && closed == 1.0
+            && opening > 0.0 && opening < 1.0 && open == 0.0 && held == 1.0
+            && pixelHash(idleImage) != pixelHash(halfClosed) && pixelHash(halfClosed) != pixelHash(fullyClosed);
+        valid &= eyeTransitionsSafe;
+    }
     renderer.sample(0, 1);
     // Warm QQuickRhiItem's first allocation/upload, then capture explicit phase.
     if (renderer.render(error).isNull()) return false;
@@ -374,7 +401,8 @@ bool generate(OffscreenPet& renderer, double bpm, int fps, const QString& direct
         {QStringLiteral("wrapPoseError"), wrapError}, {QStringLiteral("idlePhaseError"), idleError},
         {QStringLiteral("pixelsRepeatEveryTwoBeats"), pixelsRepeat}, {QStringLiteral("allFramesVisible"), allFramesVisible},
         {QStringLiteral("weightTransitionSafe"), weightSafe}, {QStringLiteral("maxWeightStepVertexDistance"), maxWeightStep},
-        {QStringLiteral("returnToIdleError"), returnToIdleError}, {QStringLiteral("maximumVertexRadius"), maximumRadius},
+        {QStringLiteral("returnToIdleError"), returnToIdleError}, {QStringLiteral("eyeTransitionsSafe"), eyeTransitionsSafe},
+        {QStringLiteral("maximumVertexRadius"), maximumRadius},
         {QStringLiteral("radiusLimit"), radiusLimit}, {QStringLiteral("allTransformsFinite"), allTransformsFinite}};
     QJsonObject manifest{{QStringLiteral("schemaVersion"), 1}, {QStringLiteral("model"), modelPath}, {QStringLiteral("modelSha256"), sourceHash},
         {QStringLiteral("backend"), renderer.backendName()}, {QStringLiteral("bpm"), bpm}, {QStringLiteral("fps"), fps},
