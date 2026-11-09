@@ -44,6 +44,9 @@ bool verifyHudViewportConsistency(QTextStream& err)
     state.render.showChartInfoHud = true;
     state.render.showObjectStatsHud = true;
     state.render.showDebugInfo = true;
+    state.render.showBpmHud = true;
+    state.render.showCpsHud = true;
+    state.render.showModsHud = true;
     state.render.centerDisplayMode = miacode::preview_gameplay::CenterDisplayMode::AchievementDxPlus;
     state.chartTitle = QStringLiteral("愛の残滓");
     state.chartArtist = QStringLiteral("藍月なくる");
@@ -57,8 +60,8 @@ bool verifyHudViewportConsistency(QTextStream& err)
     state.hudStatsSnapshot.finaleRate = 59.83;
     state.hudStatsSnapshot.deluxeRate = 59.522;
     bool ok = true;
-    const auto render = [&](const QSize& logicalSize, int dpi) {
-        QImage image(1920, 1080, QImage::Format_ARGB32_Premultiplied);
+    const auto render = [&](const QSize& logicalSize, const QSize& referenceSize, int dpi) {
+        QImage image(referenceSize, QImage::Format_ARGB32_Premultiplied);
         image.setDotsPerMeterX(qRound(dpi / 0.0254));
         image.setDotsPerMeterY(qRound(dpi / 0.0254));
         image.fill(Qt::transparent);
@@ -66,7 +69,8 @@ bool verifyHudViewportConsistency(QTextStream& err)
             QPainter painter(&image);
             // Compare layout at the same raster resolution, removing only the
             // viewport scale. A narrow pane must retain the export's layout.
-            painter.scale(1920.0 / logicalSize.width(), 1080.0 / logicalSize.height());
+            painter.scale(qreal(referenceSize.width()) / logicalSize.width(),
+                qreal(referenceSize.height()) / logicalSize.height());
             const auto transform = painter.worldTransform();
             miacode::preview::hud::paintPreviewHudOverlay(painter, state, logicalSize);
             miacode::preview::hud::paintCenterDisplay(painter, state, logicalSize);
@@ -78,14 +82,85 @@ bool verifyHudViewportConsistency(QTextStream& err)
     };
     for (const QString& font : {QString(), QStringLiteral(MIACODE_SOURCE_ROOT "/assets/fonts/MapleMonoNormalNL-CN-Regular.ttf")}) {
         state.hudFontSettings.paths.fill(font);
-        const QImage exported = render(QSize(1920, 1080), 96);
-        for (const QSize& viewport : {QSize(640, 360), QSize(800, 450), QSize(1280, 720), QSize(3840, 2160)}) {
-            for (int dpi : {96, 120, 144}) {
-                const bool matches = render(viewport, dpi) == exported;
-                if (!matches) err << "viewport=" << viewport.width() << "x" << viewport.height()
-                    << " dpi=" << dpi << " font=" << font << Qt::endl;
-                ok &= require(matches, "preview HUD layout matches export across viewport sizes and DPI", err);
+        for (const QSize& aspect : {QSize(16, 9), QSize(4, 3), QSize(1, 1), QSize(9, 16), QSize(3, 5)}) {
+            const QSize referenceSize = aspect * (1080 / qMin(aspect.width(), aspect.height()));
+            const QImage exported = render(referenceSize, referenceSize, 96);
+            for (qreal scale : {1.0 / 3.0, 2.0 / 3.0, 2.0}) {
+                const QSize viewport = referenceSize * scale;
+                for (int dpi : {96, 120, 144}) {
+                    const bool matches = render(viewport, referenceSize, dpi) == exported;
+                    if (!matches) err << "viewport=" << viewport.width() << "x" << viewport.height()
+                        << " dpi=" << dpi << " font=" << font << Qt::endl;
+                    ok &= require(matches, "preview HUD layout matches export across viewport sizes and DPI", err);
+                }
             }
+        }
+    }
+    return ok;
+}
+
+bool verifyHudAspectComposition(QTextStream& err)
+{
+    bool ok = true;
+    for (const QSize& size : {QSize(640, 360), QSize(480, 360), QSize(360, 360),
+                              QSize(360, 640), QSize(300, 500), QSize(240, 240)}) {
+        PreviewFrameState state;
+        state.render.showTimestamp = false;
+        state.render.showDebugInfo = false;
+        state.render.showBpmHud = false;
+        state.render.showCpsHud = false;
+        state.render.showMeterHud = false;
+        state.render.showModsHud = false;
+        state.render.showChartInfoHud = false;
+        state.render.showObjectStatsHud = false;
+        state.chartTitle = QStringLiteral("Test chart");
+        state.chartArtist = QStringLiteral("Artist");
+        state.chartDifficultyLabel = QStringLiteral("MASTER 13+");
+        state.chartDesigner = QStringLiteral("Designer");
+        TimelineTimingPoint timing;
+        timing.bpm = 195.5;
+        timing.meterExplicit = true;
+        timing.meterNumerator = 7;
+        timing.meterDenominator = 8;
+        state.timingPoints.append(timing);
+        state.hudStatsSnapshot.totalNotes = 1234;
+        const auto render = [&] {
+            QImage image(size, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            miacode::preview::hud::paintPreviewHudOverlay(painter, state, size);
+            return image;
+        };
+        QImage previous = render();
+        QVector<QRect> blocks;
+        for (int section = 0; section < 5; ++section) {
+            if (section == 0) state.render.showDebugInfo = true;
+            if (section == 1) state.render.showTimestamp = true;
+            if (section == 2) {
+                state.render.showBpmHud = true;
+                state.render.showCpsHud = true;
+                state.render.showMeterHud = true;
+                state.render.showModsHud = true;
+            }
+            if (section == 3) state.render.showChartInfoHud = true;
+            if (section == 4) state.render.showObjectStatsHud = true;
+            const QImage image = render();
+            QRect bounds;
+            for (int y = 0; y < size.height(); ++y) {
+                for (int x = 0; x < size.width(); ++x) {
+                    if (image.pixel(x, y) != previous.pixel(x, y))
+                        bounds = bounds.united(QRect(x, y, 1, 1));
+                }
+            }
+            if (bounds.isEmpty()) err << "empty HUD section=" << section << " size="
+                << size.width() << "x" << size.height() << Qt::endl;
+            ok &= require(!bounds.isEmpty(), "each enabled HUD section renders at every aspect ratio", err);
+            ok &= require(QRect(QPoint(1, 1), size - QSize(2, 2)).contains(bounds),
+                "HUD retains viewport margins without clipping", err);
+            for (const auto& occupied : blocks)
+                ok &= require(!occupied.intersects(bounds), "HUD sections do not overlap", err);
+            blocks.append(bounds);
+            previous = image;
         }
     }
     return ok;
@@ -181,6 +256,7 @@ int main(int argc, char** argv)
     QTextStream err(stderr);
     bool ok = verifyHudSpacing(err);
     ok &= verifyHudViewportConsistency(err);
+    ok &= verifyHudAspectComposition(err);
     VideoExportSnapshot source;
     source.chartTextUtf8 = QStringLiteral("&title=HUD Spec\n&first=0\n&lv_5=12\n&inote_5=(120){4}1,\n");
     source.difficultyId = 5;

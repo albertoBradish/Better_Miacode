@@ -31,6 +31,8 @@ struct HudInformationLayoutKey {
     QRectF playfield;
     QRectF timestamp;
     qreal chartTop = 0;
+    qreal rightTop = 0;
+    bool cornerLayout = false;
     qreal padding = 0;
     qreal shadow = 0;
     int minimumPointSize = 1;
@@ -255,8 +257,15 @@ QRectF informationRowRect(const HudInformationLayoutKey& key, qreal top, qreal h
         -key.padding - key.shadow, -key.padding - key.shadow);
     const qreal bottom = top + height;
     if (height <= 0 || top < safe.top() || bottom > safe.bottom()
-        || (!bottomRight && bottom > key.stage.center().y())) {
+        || (!bottomRight && bottom > key.stage.center().y())
+        || (bottomRight && top < key.rightTop)) {
         return {};
+    }
+    // Without side gutters, reserve disjoint corner columns. The playfield
+    // remains unchanged, so preview and export use identical note geometry.
+    if (key.cornerLayout) {
+        const qreal width = (safe.width() - key.padding) / 2;
+        return QRectF(bottomRight ? safe.right() - width : safe.left(), top, width, height);
     }
     const QPointF center = key.playfield.center();
     const qreal radius = key.playfield.width() / 2 + key.padding;
@@ -368,7 +377,7 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
         font.setPointSize(size);
         font = hudReferenceFont(font);
         const QFontMetrics metrics(font, painter.device());
-        for (const bool compact : {false, true}) {
+        for (const bool compact : {key.cornerLayout, !key.cornerLayout}) {
             QStringList lines = key.samples;
             if (compact) {
                 lines[0] = QStringLiteral("FiNALE");
@@ -1044,6 +1053,21 @@ void paintPreviewHudOverlay(
                     .arg(QString::number(state->media.externalPlaybackSecond, 'f', 3))
             );
         }
+        // Keep diagnostics in the left column, leaving the right column for
+        // timing and enough vertical room for chart metadata below it.
+        const qreal debugWidth = (stageRect.width() - 3 * hudPadding) / 2 - shadowOffset;
+        const qreal debugHeight = stageRect.height() * 0.25;
+        while (fpsFont.pixelSize() > 1) {
+            const QFontMetrics fitMetrics(fpsFont, painter.device());
+            const auto fitGlyphs = hudGlyphVerticalBounds(fpsFont, fitMetrics, debugLines);
+            const qreal fitAdvance = hudLineAdvance(fpsFont, fitMetrics, fitGlyphs, shadowOffset);
+            qreal width = 0;
+            for (const auto& line : debugLines)
+                width = qMax(width, informationTextWidth(fitMetrics, line));
+            if (width + informationLeftBearing(fitMetrics, debugLines) <= debugWidth
+                && fitAdvance * debugLines.size() <= debugHeight) break;
+            fpsFont.setPixelSize(fpsFont.pixelSize() - 1);
+        }
         const QFontMetrics metrics(fpsFont, painter.device());
         // Keep row geometry stable when decoder names and counters change.
         const auto glyphs = hudGlyphVerticalBounds(fpsFont, metrics,
@@ -1106,9 +1130,9 @@ void paintPreviewHudOverlay(
     key.padding = hudPadding;
     key.shadow = shadowOffset;
     key.minimumPointSize = qMax(1, qRound(6 * hudScale));
-    const bool informationHudSupported = stageRect.width() >= qRound(stageRect.height() * 4.0 / 3.0);
+    key.cornerLayout = stageRect.width() < stageRect.height() * 4.0 / 3.0;
 
-    if (informationHudSupported) {
+    {
         const auto timing = miacode::chart::timingAt(state->timingPoints, hudPlayheadSeconds);
         QStringList lines;
         if (state->render.showBpmHud)
@@ -1124,29 +1148,38 @@ void paintPreviewHudOverlay(
         // The top-right corner leaves chart metadata and bottom-right totals independent.
         for (int pointSize = qMax(1, qRound(kHudReferenceStatsFontPointSize * hudScale));
              pointSize >= key.minimumPointSize && !lines.isEmpty(); --pointSize) {
-            const QFont font = miacode::preview::scene::previewHudTimestampFontForArea(
+            const QFont font = hudReferenceFont(miacode::preview::scene::previewHudTimestampFontForArea(
                 state->hudFontSettings, miacode::preview::scene::PreviewHudFontArea::ObjectStats,
-                pointSize, QFont::DemiBold);
+                pointSize, QFont::DemiBold));
             const QFontMetrics metrics(font, painter.device());
-            const qreal advance = metrics.height() + shadowOffset + 4 * hudScale;
+            const auto glyphs = hudGlyphVerticalBounds(font, metrics, lines);
+            const qreal ascent = glyphs.valid ? -glyphs.top : metrics.ascent();
+            const qreal descent = glyphs.valid ? glyphs.bottom : metrics.descent();
+            const qreal advance = hudLineAdvance(font, metrics, glyphs, shadowOffset);
+            const qreal bearing = informationLeftBearing(metrics, lines);
             bool fits = true;
             for (int index = 0; index < lines.size(); ++index) {
                 const auto rect = informationRowRect(key, stageRect.top() + hudPadding + index * advance,
-                    advance, true);
-                if (rect.width() < informationTextWidth(metrics, lines[index])) { fits = false; break; }
+                    ascent + descent, true);
+                if (rect.isEmpty() || rect.width() < informationTextWidth(metrics, lines[index]) + bearing) {
+                    fits = false;
+                    break;
+                }
             }
             if (!fits) continue;
             for (int index = 0; index < lines.size(); ++index)
                 drawHudText(painter, QStringLiteral("timing.line%1").arg(index),
                     QPointF(stageRect.right() - hudPadding - shadowOffset
-                        - metrics.horizontalAdvance(lines[index]),
-                        stageRect.top() + hudPadding + metrics.ascent() + index * advance),
+                        - informationTextWidth(metrics, lines[index]),
+                        stageRect.top() + hudPadding + ascent + index * advance),
                     lines[index], font, shadowOffset);
+            key.rightTop = stageRect.top() + 2 * hudPadding + (lines.size() - 1) * advance
+                + ascent + descent + shadowOffset;
             break;
         }
     }
 
-    if (state->render.showChartInfoHud && informationHudSupported) {
+    if (state->render.showChartInfoHud) {
         key.font = chartInfoFont();
         key.fontPath = state->hudFontSettings.path(miacode::preview::scene::PreviewHudFontArea::ChartInfo);
         key.samples = {state->chartTitle, state->chartArtist, state->chartDifficultyLabel, state->chartDesigner};
@@ -1161,7 +1194,7 @@ void paintPreviewHudOverlay(
         }
     }
 
-    if (state->render.showObjectStatsHud && informationHudSupported) {
+    if (state->render.showObjectStatsHud) {
         const auto& stats = state->hudStatsSnapshot;
         const QString finaleLine = QStringLiteral("%1 %")
             .arg(QString::number(stats.finaleRate, 'f', 2).rightJustified(6, QChar('0')));
