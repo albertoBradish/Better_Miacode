@@ -119,13 +119,15 @@ QVariantList ChartToolsModel::objectCounts() const
         QStringLiteral("slide.png"), QStringLiteral("touch.png"), QStringLiteral("touchhold_border.png"),
         QStringLiteral("tap_break.png"), QStringLiteral("tap_ex.png"), QString(), QStringLiteral("tap_mine.png"), QString()};
     QVariantList rows;
-    for (int index = 0; index < names.size(); ++index)
+    for (int index = 0; index < names.size(); ++index) {
+        if (index == 9 && stats.mineCount == 0) continue;
         rows.append(QVariantMap{{QStringLiteral("name"), names[index]},
             {QStringLiteral("count"), index == 10 ? stats.total : (index == 9 ? stats.mineCount : stats.counts[index])},
             {QStringLiteral("attribute"), index >= 6 && index <= 9},
             {QStringLiteral("icon"), index == 8 ? QUrl(QStringLiteral("qrc:/preview/judge_effects/judge_effect_firework.png"))
                 : icons[index].isEmpty() ? QUrl() : QUrl::fromLocalFile(
                 miacode::assets::assetPath(QStringLiteral("skin/skinDX/") + icons[index]))}});
+    }
     return rows;
 }
 QVariantList ChartToolsModel::scoreLossRows() const
