@@ -222,10 +222,14 @@ inline void copyIntroStyling(const IntroBannerSpec& from, IntroBannerSpec* to)
     to->pvPreview = from.pvPreview;
     to->chartPreview = from.chartPreview;
     to->chartOutline = from.chartOutline;
-    to->pvPreviewStartSeconds = from.pvPreviewStartSeconds;
-    to->pvPreviewEndSeconds = from.pvPreviewEndSeconds;
     to->previewWindowMode = from.previewWindowMode;
-    to->previewWindowSource = from.previewWindowSource;
+    // Resolved demo/drop ranges belong to the source chart, not its visual style.
+    // Only an explicit user range may survive a rebuild of the same export task.
+    if (from.previewWindowSource == miacode::chart_preview::IntroWindowSource::Explicit) {
+        to->pvPreviewStartSeconds = from.pvPreviewStartSeconds;
+        to->pvPreviewEndSeconds = from.pvPreviewEndSeconds;
+        to->previewWindowSource = from.previewWindowSource;
+    }
     to->pvPreviewBrightness = from.pvPreviewBrightness;
 }
 

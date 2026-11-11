@@ -143,6 +143,10 @@ bool PreviewQuickExportSession::initialize(
         return true;
     }
 
+    if (QQuickWindow::graphicsApi() != QSGRendererInterface::OpenGL) {
+        if (errorMessage) *errorMessage = QStringLiteral("OpenGL export requires the process Qt Quick graphics API to be OpenGL");
+        return false;
+    }
     requestedFormat_ = requestedFormat;
     shareContext_ = shareContext;
     clearOffscreenReadbackPboState();

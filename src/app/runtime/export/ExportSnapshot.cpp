@@ -583,7 +583,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     if (hasChartPreviewIntro(built.intro, built.fullRangeExport)) {
         built.intro.chartOutline = chartIntroOutline();
     }
-    if (built.intro.pvPreviewEndSeconds <= built.intro.pvPreviewStartSeconds && built.intro.enabled && built.intro.pvPreview) {
+    if (built.intro.enabled && built.intro.pvPreview) {
         resolveFileIntroWindow(built.intro, session_.applicationServices_.workspace().document(),
             resolvedDifficultyId, built.trackPath, session_.previewTrackDurationSeconds_, true);
     }

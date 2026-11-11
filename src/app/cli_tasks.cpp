@@ -358,7 +358,9 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
     std::unique_ptr<QCoreApplication> application;
     if (request.needsGui()) {
 #ifdef Q_OS_WIN
-        QQuickWindow::setGraphicsApi(QSGRendererInterface::Direct3D11);
+        const auto backend = miacode::debug_options::exportRenderBackendRequest();
+        QQuickWindow::setGraphicsApi(backend == miacode::debug_options::ExportRenderBackendRequest::OpenGl
+            ? QSGRendererInterface::OpenGL : QSGRendererInterface::Direct3D11);
 #else
         QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 #endif
