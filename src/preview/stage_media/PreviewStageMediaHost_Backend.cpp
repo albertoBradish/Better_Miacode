@@ -132,8 +132,10 @@ void PreviewStageMediaHost::initializeBackendObjects()
     qRegisterMetaType<QAVVideoFrame>();
 
     player_ = new QAVPlayer(this);
-    connect(player_, &QAVPlayer::videoFrameRateChanged, this, [this](double fps) {
-        sourceFrameRate_ = std::isfinite(fps) && fps > 0.0 ? fps : 0.0;
+    connect(player_, &QAVPlayer::videoFrameRateChanged, this, [this](double secondsPerFrame) {
+        // QtAVPlayer's frameRate API returns a frame period (av_q2d(den/num)).
+        sourceFrameRate_ = std::isfinite(secondsPerFrame) && secondsPerFrame > 0.0
+            ? 1.0 / secondsPerFrame : 0.0;
         frameRateGate_.reset();
         emit sourceFrameRateChanged();
         appendPreviewStageMediaLog(QStringLiteral("video_frame_rate_detected"),
