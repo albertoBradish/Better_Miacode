@@ -250,3 +250,8 @@ miacode_add_dev_tool(video_export_background_policy_spec TEST
     SOURCES src/tools/video_export/VideoExportBackgroundPolicySpec.cpp
     LIBS miacode_export Qt6::Quick Qt6::Gui
     INCLUDES src)
+
+miacode_add_dev_tool(preview_pv_frame_rate_probe
+    SOURCES src/tools/preview/PreviewPvFrameRateProbe.cpp
+    LIBS miacode_stage_media Qt6::Core Qt6::Gui
+    INCLUDES src)

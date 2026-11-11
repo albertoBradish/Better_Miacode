@@ -64,6 +64,7 @@ public:
     Q_PROPERTY(bool videoDecodePrefersSoftware READ videoDecodePrefersSoftware WRITE setVideoDecodePrefersSoftware NOTIFY performanceChanged)
     Q_PROPERTY(double displayRefreshRate READ displayRefreshRate CONSTANT)
     Q_PROPERTY(QVariantList canvasFrameRateOptions READ canvasFrameRateOptions NOTIFY performanceChanged)
+    Q_PROPERTY(QVariantList stageMediaFrameRateOptions READ stageMediaFrameRateOptions NOTIFY performanceChanged)
     Q_PROPERTY(QVariantList appFrameRateOptions READ appFrameRateOptions NOTIFY performanceChanged)
     Q_PROPERTY(int canvasFrameRateMode READ canvasFrameRateMode WRITE setCanvasFrameRateMode NOTIFY performanceChanged)
     Q_PROPERTY(int stageMediaFrameRateMode READ stageMediaFrameRateMode WRITE setStageMediaFrameRateMode NOTIFY performanceChanged)
@@ -139,6 +140,7 @@ public:
     double displayRefreshRate() const;
     QVariantList canvasFrameRateOptions() const;
     QVariantList appFrameRateOptions() const;
+    QVariantList stageMediaFrameRateOptions() const;
     int canvasFrameRateMode() const;
     void setCanvasFrameRateMode(int mode);
     int stageMediaFrameRateMode() const;

@@ -339,6 +339,12 @@ void PreviewStageMediaHost::handleDecodedVideoFrame(const QVideoFrame& frame,
         return;
     }
 
+    // Never throttle the first/paused/seek-landing frame. Automatic mode keeps
+    // the decoder's native PTS cadence, including fractional and variable FPS.
+    const bool bypassFrameLimit = !videoPlaybackActive_ || preparedPlaybackPending_
+        || pausedSeekCompletionPending_ || staleEndOfMediaResumePending_;
+    if (!frameRateGate_.accept(ptsSeconds, previewFrameRateLimit_, playbackRate_, bypassFrameLimit)) return;
+
     // Visible path: push the decoded frame into the QML VideoOutput's sink.
     // A D3D11VA hardware frame stays a zero-copy RhiTexture handle here.
     lastVideoFrame_ = frame;

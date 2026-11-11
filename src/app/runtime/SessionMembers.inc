@@ -390,7 +390,7 @@
         double previewTouchFlowSpeed_ = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
         bool lowPerformanceMode_ = false;
         PreviewCanvasFrameRateMode previewCanvasFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
-        PreviewCanvasFrameRateMode previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::Fps30;
+        PreviewCanvasFrameRateMode previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::SourceRate;
         // Preview video decode mode preference: false = hardware (default), true =
         // software. Pushed to PreviewStageMediaHost::setVideoDecodePreference.
         bool videoDecodePrefersSoftware_ = false;

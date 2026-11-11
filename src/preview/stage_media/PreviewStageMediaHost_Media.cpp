@@ -57,8 +57,15 @@ struct PreviewVideoFrameDeliveryState {
     bool active = true;
 };
 
+void PreviewStageMediaHost::setPreviewFrameRateLimit(double fps)
+{
+    previewFrameRateLimit_ = std::isfinite(fps) && fps > 0.0 ? fps : 0.0;
+    frameRateGate_.reset();
+}
+
 void PreviewStageMediaHost::sealPendingVideoFrameDelivery()
 {
+    frameRateGate_.reset();
     if (!videoFrameDelivery_) return;
     QMutexLocker lock(&videoFrameDelivery_->mutex);
     videoFrameDelivery_->coalesce = false;
@@ -337,6 +344,11 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
 
 void PreviewStageMediaHost::clearMedia()
 {
+    frameRateGate_.reset();
+    if (sourceFrameRate_ != 0.0) {
+        sourceFrameRate_ = 0.0;
+        emit sourceFrameRateChanged();
+    }
     clearPvMemorySource();
     if (videoFrameBoundaryConnection_) {
         QObject::disconnect(videoFrameBoundaryConnection_);

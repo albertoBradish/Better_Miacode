@@ -60,6 +60,8 @@ int previewFrameSwapWatchdogTimeoutMs(qint64 frameIntervalNs)
 QString miacode::runtime::PlaybackCoordinator::previewFrameRateModeStorageValue(PreviewCanvasFrameRateMode mode) const
 {
     switch (mode) {
+    case PreviewCanvasFrameRateMode::SourceRate:
+        return QStringLiteral("auto");
     case PreviewCanvasFrameRateMode::Fps30:
         return QStringLiteral("30");
     case PreviewCanvasFrameRateMode::Fps120:
@@ -468,6 +470,7 @@ void miacode::runtime::PlaybackCoordinator::setLowPerformanceMode(bool enabled)
         return;
     }
     state_.lowPerformanceMode_ = enabled;
+    setPreviewStageMediaFrameRateMode(state_.previewStageMediaFrameRateMode_, false);
     refreshPreviewFrameRateTimers();
     restartPreviewFramePacing();
     updateTimelinePlaybackCadence();
@@ -505,6 +508,11 @@ void miacode::runtime::PlaybackCoordinator::restartPreviewFramePacing()
 void miacode::runtime::PlaybackCoordinator::setPreviewStageMediaFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState)
 {
     state_.previewStageMediaFrameRateMode_ = mode;
+    if (state_.previewStageMediaHost_) {
+        const auto effective = currentPreviewStageMediaFrameRateMode();
+        state_.previewStageMediaHost_->setPreviewFrameRateLimit(
+            effective == PreviewCanvasFrameRateMode::SourceRate ? 0.0 : targetRefreshRateForFrameRateMode(effective));
+    }
     if (persistState) {
         preferences_.savePortableState();
     }

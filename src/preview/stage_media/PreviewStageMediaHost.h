@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include "core/video/PreviewFrameRatePolicy.h"
 
 #include "common/LogEmissionPolicy.h"
 #include "core/video/PreviewVideoGeometryConfig.h"
@@ -28,6 +29,7 @@ struct PreviewVideoFrameDeliveryState;
 class PreviewStageMediaHost : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(double sourceFrameRate READ sourceFrameRate NOTIFY sourceFrameRateChanged)
     Q_PROPERTY(bool hasResolvedMedia READ hasResolvedMedia NOTIFY mediaStateChanged)
     Q_PROPERTY(bool hasVideoMedia READ hasVideoMedia NOTIFY mediaStateChanged)
     Q_PROPERTY(bool chartHasVideoBackground READ chartHasVideoBackground NOTIFY mediaStateChanged)
@@ -53,6 +55,8 @@ public:
     explicit PreviewStageMediaHost(QObject* parent = nullptr);
     ~PreviewStageMediaHost() override;
 
+    double sourceFrameRate() const { return sourceFrameRate_; }
+    void setPreviewFrameRateLimit(double fps);
     void initializeBackendObjects();
     Q_INVOKABLE void attachVideoOutputObject(QObject* videoOutputObject);
     Q_INVOKABLE void attachVideoOutputObjects(QObject* videoOutputObject, QObject* innerVideoOutputObject);
@@ -155,6 +159,7 @@ public:
 
 signals:
     void mediaStateChanged();
+    void sourceFrameRateChanged();
     void hidePvChanged();
     void mediaVisibilityChanged();
     void imageSourceChanged();
@@ -243,6 +248,9 @@ private:
     void schedulePvMemoryPeriodicSample();
     void destroyPvMemorySource();
 
+    miacode::preview_video::FrameRateGate frameRateGate_;
+    double previewFrameRateLimit_ = 0.0;
+    double sourceFrameRate_ = 0.0;
     MediaKind mediaKind_ = MediaKind::None;
     // 硬件/软件渲染 preference: false = platform hardware decode (default), true =
     // FFmpeg CPU decode. Set by MainWindow from the persisted user preference; read in

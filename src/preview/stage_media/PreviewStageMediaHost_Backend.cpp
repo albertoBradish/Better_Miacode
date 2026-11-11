@@ -132,6 +132,13 @@ void PreviewStageMediaHost::initializeBackendObjects()
     qRegisterMetaType<QAVVideoFrame>();
 
     player_ = new QAVPlayer(this);
+    connect(player_, &QAVPlayer::videoFrameRateChanged, this, [this](double fps) {
+        sourceFrameRate_ = std::isfinite(fps) && fps > 0.0 ? fps : 0.0;
+        frameRateGate_.reset();
+        emit sourceFrameRateChanged();
+        appendPreviewStageMediaLog(QStringLiteral("video_frame_rate_detected"),
+            QStringLiteral("source_fps=%1 native_timestamps=1").arg(sourceFrameRate_, 0, 'g', 12));
+    });
     // Windows installs D3D11 diagnostics here; other platforms use the
     // platform-neutral diagnostic hook.
     miacode::preview::installPreviewDecodeDiagnostics();

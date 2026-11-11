@@ -23,6 +23,7 @@ enum class PreviewCanvasFrameRateMode {
     Fps60,
     Fps120,
     DisplayRefresh,
+    SourceRate, // PV only: retain decoded frames at their native timestamps.
 };
 
 enum class PreviewSkinVariant {

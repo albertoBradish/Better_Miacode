@@ -882,7 +882,7 @@ AppDialog {
                             objectName: "preferencesPvFrameRateCombo"
                             enabled: !root.preferences.lowPerformanceMode
                             label: qsTrId("qml.pv_frame_rate")
-                            options: root.preferencesModel.appFrameRateOptions
+                            options: root.preferencesModel.stageMediaFrameRateOptions
                             currentValue: root.preferencesModel.stageMediaFrameRateMode
                             onPicked: function(value) { root.preferencesModel.stageMediaFrameRateMode = value }
                         }

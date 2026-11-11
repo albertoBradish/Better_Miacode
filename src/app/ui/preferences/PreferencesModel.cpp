@@ -524,6 +524,14 @@ QVariantList PreferencesModel::canvasFrameRateOptions() const
     return frameRateOptions(/*includeDisplayRefresh=*/true);
 }
 
+QVariantList PreferencesModel::stageMediaFrameRateOptions() const
+{
+    auto rows = frameRateOptions(true);
+    rows.prepend(option(static_cast<int>(PreviewCanvasFrameRateMode::SourceRate),
+                        qtTrId("preferences.pv_frame_rate_auto")));
+    return rows;
+}
+
 QVariantList PreferencesModel::appFrameRateOptions() const
 {
     return frameRateOptions(/*includeDisplayRefresh=*/true);

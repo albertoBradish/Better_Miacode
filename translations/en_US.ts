@@ -5903,10 +5903,11 @@ Held %8 · Slides %9 · Overlap %10</translation>
 
 
 <context>
-    <name>StageA</name>
+    <name></name>
     <message id="preview.show_stage_media_when_paused"><source>Show PV / background while paused</source><translation>Show PV / background while paused</translation></message>
     <message id="preferences.disable_alt_menu"><source>Disable menu activation by Alt alone</source><translation>Disable menu activation by Alt alone</translation></message>
-    <message id="preferences.pv_frame_rate_help"><source>This limits PV preview updates. Display refresh follows the screen, not the source PV frame rate. Export frame rate is configured separately.</source><translation>This limits PV preview updates. Display refresh follows the screen, not the source PV frame rate. Export frame rate is configured separately.</translation></message>
+    <message id="preferences.pv_frame_rate_auto"><source>Auto detect</source><translation>Auto detect</translation></message>
+    <message id="preferences.pv_frame_rate_help"><source>Auto detect follows the source PV timestamps, including fractional and variable frame rates. Other options cap preview updates; export FPS is separate.</source><translation>Auto detect follows the source PV timestamps, including fractional and variable frame rates. Other options cap preview updates; export FPS is separate.</translation></message>
     <message id="editor.transform_review_title"><source>Review changes outside the editor view</source><translation>Review changes outside the editor view</translation></message>
     <message id="editor.transform_review_apply"><source>Apply reviewed change</source><translation>Apply reviewed change</translation></message>
     <message id="editor.transform_review_scope"><source>This operation on the current selection spans lines %1–%2; only lines %3–%4 are visible. It may change content outside the editor view. Cancel to inspect the selection. The excerpts below show up to 1200 characters each. One Undo restores the operation.</source><translation>This operation on the current selection spans lines %1–%2; only lines %3–%4 are visible. It may change content outside the editor view. Cancel to inspect the selection. The excerpts below show up to 1200 characters each. One Undo restores the operation.</translation></message>

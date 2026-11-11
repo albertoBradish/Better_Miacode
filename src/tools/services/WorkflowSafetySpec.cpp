@@ -1,3 +1,4 @@
+#include "core/video/PreviewFrameRatePolicy.h"
 #include "app/services/PausedPreviewPreferences.h"
 #include "app/services/AutomaticChartPreparation.h"
 #include "app/services/ChartFileSafety.h"
@@ -75,6 +76,21 @@ int main(int argc, char** argv)
               && malformed.value("outlineVariant").toInt() == static_cast<int>(PreviewOutlineVariant::Line),
               "invalid profile flags and outline types fall back safely");
     }
+    miacode::preview_video::FrameRateGate gate;
+    int shown = 0;
+    for (int i = 0; i < 120; ++i) shown += gate.accept(i / 60.0, 30, 1, false);
+    check(shown == 60, "manual PV limit keeps 30 of 60 frames each second");
+    gate.reset(); shown = 0;
+    for (int i = 0; i < 240; ++i) shown += gate.accept(i / 23.976, 0, 1, false);
+    check(shown == 240, "auto detection keeps fractional source frame timing");
+    for (double pts : {0.0, 0.04, 0.10, 0.11, 0.4})
+        check(gate.accept(pts, 0, 1, false), "auto detection retains variable frame timestamps");
+    gate.reset(); gate.accept(10, 30, 1, false);
+    check(gate.accept(10.001, 30, 1, true), "paused seek bypasses PV presentation limit");
+    check(gate.accept(1, 30, 1, false), "backward seek resets the PV gate");
+    gate.reset(); shown = 0;
+    for (int i = 0; i < 120; ++i) shown += gate.accept(i / 60.0, 30, 2, false);
+    check(shown == 30, "playback speed keeps the wall-time presentation limit");
     using miacode::paused_preview::showStageMedia;
     check(showStageMedia({}), "new preferences show PV while paused");
     check(!showStageMedia({{"force_labeled_judge_line_when_paused", true}}), "legacy explicit hidden PV stays hidden");

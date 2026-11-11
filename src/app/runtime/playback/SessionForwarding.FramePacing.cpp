@@ -13,6 +13,7 @@ Session::PreviewCanvasFrameRateMode Session::previewFrameRateModeFromStorageValu
     PreviewCanvasFrameRateMode fallback) const
 {
     const QString normalized = value.trimmed().toLower();
+    if (normalized == QLatin1String("auto")) return PreviewCanvasFrameRateMode::SourceRate;
     if (normalized == QLatin1String("30") || normalized == QLatin1String("30fps")) {
         return PreviewCanvasFrameRateMode::Fps30;
     }

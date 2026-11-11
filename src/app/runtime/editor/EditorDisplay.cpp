@@ -224,7 +224,7 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
     previewAppearanceValues_.tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     previewAppearanceValues_.skinVariant = PreviewSkinVariant::Standard;
     state_.previewCanvasFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
-    state_.previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::Fps30;
+    state_.previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::SourceRate;
     state_.videoDecodePrefersSoftware_ = false;
     state_.timeline_.timelineFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
     state_.previewCanvasAspectRatio_ = 1.0;

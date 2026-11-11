@@ -5922,10 +5922,11 @@ Held %8 · Slides %9 · Overlap %10</source>
 
 
 <context>
-    <name>StageA</name>
+    <name></name>
     <message id="preview.show_stage_media_when_paused"><source>Show PV / background while paused</source><translation>暂停时显示 PV / 背景</translation></message>
     <message id="preferences.disable_alt_menu"><source>Disable menu activation by Alt alone</source><translation>禁用单按 Alt 激活应用菜单</translation></message>
-    <message id="preferences.pv_frame_rate_help"><source>This limits PV preview updates. Display refresh follows the screen, not the source PV frame rate. Export frame rate is configured separately.</source><translation>此项限制 PV 预览刷新频率。“屏幕最大刷新率”跟随显示器，不等于源 PV 帧率。视频导出帧率单独设置。</translation></message>
+    <message id="preferences.pv_frame_rate_auto"><source>Auto detect</source><translation>自动检测</translation></message>
+    <message id="preferences.pv_frame_rate_help"><source>Auto detect follows the source PV timestamps, including fractional and variable frame rates. Other options cap preview updates; export FPS is separate.</source><translation>“自动检测”跟随源 PV 的时间戳，支持小数帧率和可变帧率；其他选项限制预览刷新频率，导出帧率另行设置。</translation></message>
     <message id="editor.transform_review_title"><source>Review changes outside the editor view</source><translation>确认编辑区可见范围外的更改</translation></message>
     <message id="editor.transform_review_apply"><source>Apply reviewed change</source><translation>应用本次更改</translation></message>
     <message id="editor.transform_review_scope"><source>This operation on the current selection spans lines %1–%2; only lines %3–%4 are visible. It may change content outside the editor view. Cancel to inspect the selection. The excerpts below show up to 1200 characters each. One Undo restores the operation.</source><translation>本次操作作用于当前选区，修改跨度为第 %1–%2 行；编辑区当前仅显示第 %3–%4 行，包含屏幕外内容。可取消后检查选区。下方修改前后各最多展示 1200 字符；应用后可一次撤销。</translation></message>
