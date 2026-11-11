@@ -2140,6 +2140,19 @@ QString DocumentModel::chartTransformMoreLabel() const
     return qtTrId("action.transform.more");
 }
 
+void DocumentModel::confirmChartTransform(const QString& summary, std::function<void(bool)> onResolved)
+{
+    if (!uiRequests_) { onResolved(false); return; }
+    const QVariantList choices{
+        QVariantMap{{"id", "cancel"}, {"label", qtTrId("action.cancel")}, {"default", true}},
+        QVariantMap{{"id", "apply"}, {"label", qtTrId("editor.transform_review_apply")}, {"role", "accept"}}
+    };
+    uiRequests_->requestChoice(qtTrId("editor.transform_review_title"), summary, choices,
+        QStringLiteral("cancel"), [onResolved = std::move(onResolved)](const QString& choice) {
+            onResolved(choice == QLatin1String("apply"));
+        });
+}
+
 miacode::editor::SimaiTextEditResult DocumentModel::transformChartSelection(
     const QString& text, int anchor, int position, const QString& opId) const
 {

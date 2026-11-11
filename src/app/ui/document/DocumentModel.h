@@ -235,6 +235,7 @@ public:
         const QString& text, int anchor, int position, const QVariantMap& options) const;
     miacode::editor::SimaiTextEditResult transformChartSelection(
         const QString& text, int anchor, int position, const QString& opId) const;
+    void confirmChartTransform(const QString& summary, std::function<void(bool)> onResolved);
     mutable miacode::chart_selection::ChartSelectionBeatIndex selectionBeatIndex_;
     Q_INVOKABLE QVariantMap selectionBeatSummary(
         const QString& text, int anchor, int position) const;

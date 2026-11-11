@@ -143,6 +143,7 @@ signals:
     void scenePositionChanged();
     void selectionChanged();
     void noteComponentEditRejected();
+    void transformReviewStale();
     void cursorRectangleChanged();
     void currentLineRectangleChanged();
     void followVisualChanged();
@@ -172,6 +173,8 @@ private:
         OverviewDisplayLineCountDirty = 0x04,
         OverviewAllDirty = OverviewMarkersDirty | OverviewCurrentLineDirty | OverviewDisplayLineCountDirty,
     };
+    bool reviewChartTransform(const miacode::editor::SimaiTextEditResult& result);
+    bool transformReviewPending_ = false;
     bool applyEditorTransaction(const miacode::editor::SimaiTextEditResult& result);
     void publishTouchAnchor(int position);
     void centerCursorInView();
@@ -199,7 +202,7 @@ private:
     void selectNoteObjects(int difficulty, quint64 revision, const miacode::chart_selection::NoteObjects& objects);
     void clearNoteSelectionState();
     bool containsPartialNoteSelection() const;
-    bool deleteNoteSelection();
+    bool deleteNoteSelection(bool review = false);
     bool copyNoteSelection();
     miacode::chart_selection::NoteTimingState noteInitialTiming() const;
     ScintillaDocumentAdapter document_;

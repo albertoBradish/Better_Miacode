@@ -886,7 +886,7 @@ bool ScintillaEditorBridge::containsPartialNoteSelection() const
     return false;
 }
 
-bool ScintillaEditorBridge::deleteNoteSelection()
+bool ScintillaEditorBridge::deleteNoteSelection(bool review)
 {
     if (!noteSelection_ || !syncController_ || selectedNoteObjects_.isEmpty()) return false;
     const auto replacement = chart_selection::deleteSelectedNoteObjects(
@@ -903,7 +903,7 @@ bool ScintillaEditorBridge::deleteNoteSelection()
     result.transaction.replacementText = replacement.text;
     result.transaction.anchor = result.transaction.position = qMin(
         selectedNoteObjects_.first().token.start, int(replacement.text.size()));
-    return applyEditorTransaction(result);
+    return review ? reviewChartTransform(result) : applyEditorTransaction(result);
 }
 
 bool ScintillaEditorBridge::copyNoteSelection()
@@ -1088,8 +1088,9 @@ bool ScintillaEditorBridge::applyNormalization(const QVariantMap& options)
 }
 bool ScintillaEditorBridge::applyChartTransform(const QString& operation)
 {
+    if (transformReviewPending_) return false;
     if (documentSession_ && noteSelection_) {
-        if (operation == QLatin1String("transform.clear_complete_elements")) return deleteNoteSelection();
+        if (operation == QLatin1String("transform.clear_complete_elements")) return deleteNoteSelection(true);
         const auto groups = groupNoteObjects(selectedNoteObjects_);
         if (groups.isEmpty()) return false;
         QString transformed = document_.text();
@@ -1120,10 +1121,70 @@ bool ScintillaEditorBridge::applyChartTransform(const QString& operation)
         edit.transaction.replacementEnd = document_.text().size();
         edit.transaction.replacementText = transformed;
         edit.transaction.anchor = edit.transaction.position = groups.first().first().token.start;
-        return applyEditorTransaction(edit);
+        return reviewChartTransform(edit);
     }
-    return documentSession_ && applyEditorTransaction(documentSession_->transformChartSelection(document_.text(), selectionStart(), selectionEnd(), operation));
+    return documentSession_ && reviewChartTransform(documentSession_->transformChartSelection(document_.text(), selectionStart(), selectionEnd(), operation));
 }
+bool ScintillaEditorBridge::reviewChartTransform(const miacode::editor::SimaiTextEditResult& result)
+{
+    if (!documentSession_ || transformReviewPending_) return false;
+    if (!result.transaction.hasEdit) return applyEditorTransaction(result);
+    const QString original = document_.text();
+    const auto& tx = result.transaction;
+    if (tx.replacementStart < 0 || tx.replacementEnd < tx.replacementStart
+        || tx.replacementEnd > original.size()) return false;
+    const QString replacement = original.left(tx.replacementStart) + tx.replacementText
+        + original.mid(tx.replacementEnd);
+    int begin = 0;
+    while (begin < original.size() && begin < replacement.size()
+        && original[begin] == replacement[begin]) ++begin;
+    if (begin == original.size() && begin == replacement.size()) return true;
+    int end = original.size(), replacementEnd = replacement.size();
+    while (end > begin && replacementEnd > begin && original[end - 1] == replacement[replacementEnd - 1]) {
+        --end; --replacementEnd;
+    }
+    const int firstLine = original.left(begin).count(QLatin1Char('\n'));
+    const int lastLine = original.left(qMax(begin, end - 1)).count(QLatin1Char('\n'));
+    const int firstVisible = send(SCI_DOCLINEFROMVISIBLE, send(SCI_GETFIRSTVISIBLELINE));
+    const int lastVisible = send(SCI_DOCLINEFROMVISIBLE,
+        send(SCI_GETFIRSTVISIBLELINE) + qMax<qintptr>(0, send(SCI_LINESONSCREEN) - 1));
+    bool fullyVisible = firstLine >= firstVisible && lastLine <= lastVisible;
+    const QRectF viewport(0, 0, width(), height());
+    for (int line = firstLine; fullyVisible && line <= lastLine; ++line) {
+        const int lineBegin = qMax(begin, document_.lineStart(line));
+        const int lineEnd = qMin(qMax(begin, end - 1), document_.utf16Position(send(SCI_GETLINEENDPOSITION, line)));
+        fullyVisible = send(SCI_GETLINEVISIBLE, line) && viewport.contains(positionToRectangle(lineBegin))
+            && viewport.contains(positionToRectangle(lineEnd));
+    }
+    if (fullyVisible) return applyEditorTransaction(result);
+
+    const QString summary = qtTrId("editor.transform_review_scope")
+        .arg(firstLine + 1).arg(lastLine + 1).arg(firstVisible + 1).arg(lastVisible + 1)
+        + QStringLiteral("\n\n") + qtTrId("editor.transform_review_before")
+        + QStringLiteral("\n") + original.mid(begin, end - begin).left(1200)
+        + QStringLiteral("\n\n") + qtTrId("editor.transform_review_after")
+        + QStringLiteral("\n") + replacement.mid(begin, replacementEnd - begin).left(1200);
+    const auto revision = documentSession_->documentRevision();
+    const int difficulty = documentSession_->currentDifficultyId();
+    const QString scope = document_.scope();
+    QPointer<ScintillaEditorBridge> guard(this);
+    QPointer<DocumentModel> model(documentSession_);
+    transformReviewPending_ = true;
+    documentSession_->confirmChartTransform(summary, [guard, model, result, original, scope, revision, difficulty](bool accepted) {
+        if (!guard) return;
+        guard->transformReviewPending_ = false;
+        if (!accepted) return;
+        if (!model || guard->documentSession_ != model || guard->document_.scope() != scope
+            || model->documentRevision() != revision || model->currentDifficultyId() != difficulty
+            || guard->document_.text() != original) {
+            emit guard->transformReviewStale();
+            return;
+        }
+        guard->applyEditorTransaction(result);
+    });
+    return true;
+}
+
 bool ScintillaEditorBridge::applyBpmImport(const QString& original, const QString& replacement, int difficulty, quint64 revision)
 {
     if (!documentSession_ || documentSession_->currentDifficultyId() != difficulty
