@@ -5920,4 +5920,17 @@ Held %8 · Slides %9 · Overlap %10</source>
 
 
 
+
+<context>
+    <name>StageA</name>
+    <message id="preview.show_stage_media_when_paused"><source>Show PV / background while paused</source><translation>一時停止中に PV / 背景を表示</translation></message>
+    <message id="preferences.disable_alt_menu"><source>Disable menu activation by Alt alone</source><translation>Alt 単独でのメニュー表示を無効化</translation></message>
+    <message id="preferences.pv_frame_rate_help"><source>This limits PV preview updates. Display refresh follows the screen, not the source PV frame rate. Export frame rate is configured separately.</source><translation>PV プレビューの更新頻度を制限します。画面のリフレッシュレートは元の PV のフレームレートとは異なります。書き出しは別設定です。</translation></message>
+    <message id="editor.transform_review_title"><source>Review changes outside the editor view</source><translation>表示範囲外の変更を確認</translation></message>
+    <message id="editor.transform_review_apply"><source>Apply reviewed change</source><translation>変更を適用</translation></message>
+    <message id="editor.transform_review_scope"><source>This operation on the current selection spans lines %1–%2; only lines %3–%4 are visible. It may change content outside the editor view. Cancel to inspect the selection. The excerpts below show up to 1200 characters each. One Undo restores the operation.</source><translation>選択範囲への変更は %1–%2 行に及び、表示中は %3–%4 行です。表示範囲外も変更されます。キャンセルして選択を確認できます。以下は変更前後各 1200 文字までです。1 回の元に戻す操作で復元できます。</translation></message>
+    <message id="editor.transform_review_before"><source>Before</source><translation>変更前</translation></message>
+    <message id="editor.transform_review_after"><source>After</source><translation>変更後</translation></message>
+    <message id="editor.transform_review_stale"><source>The document changed. Review and run the operation again.</source><translation>文書が変更されたため適用しませんでした。確認後に再実行してください。</translation></message>
+</context>
 </TS>

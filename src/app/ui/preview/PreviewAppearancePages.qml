@@ -110,6 +110,12 @@ AppTabPages {
             onToggled: root.put("showModsHud", checked)
         }
         AppSwitch {
+            objectName: "previewShowStageMediaWhenPausedSwitch"
+            text: qsTrId("preview.show_stage_media_when_paused")
+            checked: root.values.showStageMediaWhenPaused === true
+            onToggled: root.put("showStageMediaWhenPaused", checked)
+        }
+        AppSwitch {
             objectName: "previewForceLabeledJudgeLineSwitch"
             text: root.labels.forceLabeledJudgeLineWhenPaused || ""
             checked: root.values.forceLabeledJudgeLineWhenPaused === true

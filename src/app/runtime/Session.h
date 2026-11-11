@@ -541,9 +541,6 @@ public:
     void applyEffectivePreviewOutlineVariantToCanvas() override;
 
 private:
-    // Transient Alt-hold override: while the preview is paused, holding Alt
-    // flips the "暂停时显示判定区" pause display (judge area ⇄ PV/BG) until released.
-    void setPauseDisplayAltHoldActive(bool active);
     void setTouchPadAuthoringCtrlHoldActive(bool active);
     void addRecentFilePath(const QString& path);
     void persistEditorTextFontPreference() const;

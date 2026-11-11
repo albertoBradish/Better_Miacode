@@ -397,6 +397,7 @@
         double previewCanvasAspectRatio_ = 1.0;
         bool previewAutoRestoreSquareAfterExport_ = false;
         bool previewForceLabeledJudgeLineWhenPaused_ = true;
+        bool previewShowStageMediaWhenPaused_ = true;
         bool previewTouchPadAuthoringShortcutEnabled_ = true;
         bool touchPadAuthoringCtrlHoldActive_ = false;
         // Transient (not persisted): what the last touch-pad authoring click
@@ -414,12 +415,6 @@
         // ("暂停时显示判定区") is ignored so PV/BG renders exactly as it will in the
         // exported video. Normal preview leaves this false → option behaves as usual.
         bool exportPreviewActive_ = false;
-        // Transient (not persisted): true while Alt is held with the preview
-        // paused. Inverts the effective "暂停时显示判定区" option so the paused view
-        // flips judge area ⇄ PV/BG until Alt is released (or the app
-        // deactivates, e.g. Alt+Tab). Set from Session::eventFilter via
-        // Session::setPauseDisplayAltHoldActive.
-        bool pauseDisplayAltHoldActive_ = false;
         QJsonObject previewModeProfiles_;
         bool previewShowDebugInfo_ = false;
         bool previewShowTimestamp_ = true;

@@ -70,7 +70,6 @@ public:
     PreviewOutlineVariant autoPreviewOutlineVariantForChart(const QString& chartPath) const;
     PreviewOutlineVariant effectivePreviewOutlineVariant() const;
     void applyEffectivePreviewOutlineVariantToCanvas();
-    void setPauseDisplayAltHoldActive(bool active);
     void setTouchPadAuthoringCtrlHoldActive(bool active);
     void applyPreviewOutlineVariant(PreviewOutlineVariant variant, bool useAutoSelection, bool persistState);
     QString resolvePreviewCustomOutlineDir() const;

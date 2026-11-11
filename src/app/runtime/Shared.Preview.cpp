@@ -152,11 +152,8 @@ void applyPreviewStageMediaRouteVisualSettings(RuntimeContext::State& state)
 {
     // While the export-preview dialog is up, PV/BG stays visible regardless of the
     // pause-hide option so the user previews exactly what the exported video shows.
-    // Holding Alt while paused inverts the pause-hide option (same effective flag as
-    // effectivePreviewOutlineVariant) so judge area <-> PV/BG flip together.
-    const bool forceJudgeAreaWhenPaused =
-        state.previewForceLabeledJudgeLineWhenPaused_ != state.pauseDisplayAltHoldActive_;
-    const bool mediaVisible = !forceJudgeAreaWhenPaused
+    // Media visibility is independent of the paused judge-area overlay.
+    const bool mediaVisible = state.previewShowStageMediaWhenPaused_
         || state.playing_
         || state.exportPreviewActive_;
     if (state.previewStageMediaHost_ != nullptr) {

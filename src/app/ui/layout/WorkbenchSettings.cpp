@@ -130,6 +130,7 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     const QJsonObject ui = loadUiObject();
     advancedMetadataEnabled_ = ui.value(QStringLiteral("advanced_metadata_enabled")).toBool(false);
     lowPerformanceMode_ = ui.value(QStringLiteral("low_performance_mode")).toBool(false);
+    disableAltMenuActivation_ = ui.value(QStringLiteral("disable_alt_menu_activation")).toBool(true);
     spaceGuardEnabled_ = ui.value(QStringLiteral("space_guard_enabled")).toBool(true);
     autoNormalizeEnabled_ = ui.value(QStringLiteral("auto_normalize_enabled")).toBool(true);
     warnEmptyDifficulty_ = ui.value(QStringLiteral("warn_empty_difficulty")).toBool(true);
@@ -617,6 +618,14 @@ void WorkbenchSettings::setLowPerformanceMode(bool value)
     lowPerformanceMode_ = value;
     emit blurMaterialsEnabledChanged();
     storeUiValue("low_performance_mode", value);
+    emit workflowSettingsChanged();
+}
+
+void WorkbenchSettings::setDisableAltMenuActivation(bool value)
+{
+    if (disableAltMenuActivation_ == value) return;
+    disableAltMenuActivation_ = value;
+    storeUiValue("disable_alt_menu_activation", value);
     emit workflowSettingsChanged();
 }
 

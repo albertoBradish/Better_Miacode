@@ -62,6 +62,7 @@ class WorkbenchSettings final : public QObject
 
     Q_PROPERTY(bool advancedMetadataEnabled READ advancedMetadataEnabled WRITE setAdvancedMetadataEnabled NOTIFY workflowSettingsChanged)
     Q_PROPERTY(bool lowPerformanceMode READ lowPerformanceMode WRITE setLowPerformanceMode NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool disableAltMenuActivation READ disableAltMenuActivation WRITE setDisableAltMenuActivation NOTIFY workflowSettingsChanged)
     Q_PROPERTY(bool spaceGuardEnabled READ spaceGuardEnabled WRITE setSpaceGuardEnabled NOTIFY workflowSettingsChanged)
     Q_PROPERTY(bool autoNormalizeEnabled READ autoNormalizeEnabled WRITE setAutoNormalizeEnabled NOTIFY workflowSettingsChanged)
     Q_PROPERTY(bool warnEmptyDifficulty READ warnEmptyDifficulty WRITE setWarnEmptyDifficulty NOTIFY workflowSettingsChanged)
@@ -152,6 +153,8 @@ public:
     void setAdvancedMetadataEnabled(bool value);
     bool lowPerformanceMode() const { return lowPerformanceMode_; }
     void setLowPerformanceMode(bool value);
+    bool disableAltMenuActivation() const { return disableAltMenuActivation_; }
+    void setDisableAltMenuActivation(bool value);
     bool spaceGuardEnabled() const { return spaceGuardEnabled_; }
     void setSpaceGuardEnabled(bool value);
     bool autoNormalizeEnabled() const { return autoNormalizeEnabled_; }
@@ -206,6 +209,7 @@ private:
     bool advancedMetadataEnabled_ = false;
     bool lowPerformanceMode_ = false;
     bool spaceGuardEnabled_ = true;
+    bool disableAltMenuActivation_ = true;
     bool autoNormalizeEnabled_ = true;
     bool warnEmptyDifficulty_ = true;
     QString timelineLayoutMode_ = QStringLiteral("horizontal");

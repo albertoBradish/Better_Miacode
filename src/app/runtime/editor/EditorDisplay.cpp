@@ -1,3 +1,4 @@
+#include "app/services/PausedPreviewPreferences.h"
 #include "app/runtime/editor/EditorHost.h"
 #include "app/services/EditorCompletionPreferences.h"
 #include "app/runtime/settings/SettingsHost.h"
@@ -229,6 +230,7 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
     state_.previewCanvasAspectRatio_ = 1.0;
     state_.previewAutoRestoreSquareAfterExport_ = false;
     state_.previewForceLabeledJudgeLineWhenPaused_ = true;
+    state_.previewShowStageMediaWhenPaused_ = true;
     state_.previewTouchPadAuthoringShortcutEnabled_ = true;
     state_.previewModeProfiles_ = QJsonObject{};
     state_.previewShowDebugInfo_ = false;
@@ -457,6 +459,7 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
             preview.value("hide_stage_media_when_paused")
                 .toBool(state_.previewForceLabeledJudgeLineWhenPaused_);
     }
+    state_.previewShowStageMediaWhenPaused_ = miacode::paused_preview::showStageMedia(preview);
     if (preview.value("touch_pad_authoring_shortcut_enabled").isBool()) {
         state_.previewTouchPadAuthoringShortcutEnabled_ =
             preview.value("touch_pad_authoring_shortcut_enabled")
@@ -632,6 +635,7 @@ void miacode::runtime::EditorHost::savePortableState() const
         preview.insert("intro_sound_file", previewAppearanceValues_.introSoundFileName);
     }
     preview.insert("canvas_frame_rate_mode", session_.previewCanvasFrameRateModeStorageValue());
+    preview.insert("show_stage_media_when_paused", state_.previewShowStageMediaWhenPaused_);
     preview.insert("pv_frame_rate_mode", session_.previewStageMediaFrameRateModeStorageValue());
     preview.insert("video_decode_prefers_software", session_.currentVideoDecodePrefersSoftware());
     preview.insert("timeline_frame_rate_mode", session_.timelineFrameRateModeStorageValue());

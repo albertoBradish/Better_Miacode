@@ -373,34 +373,14 @@ PreviewOutlineVariant miacode::runtime::StageMediaHost::effectivePreviewOutlineV
     // The export-preview dialog ignores the pause-hide option so the on-screen
     // preview matches the exported video (the user's chosen outline variant, PV/BG
     // visible) instead of the paused judge-area view.
-    // Holding Alt while paused (pauseDisplayAltHoldActive_) inverts the option
-    // so the user can peek at the other view without opening 视频设置.
     const bool forceJudgeAreaWhenPaused =
-        state_.previewForceLabeledJudgeLineWhenPaused_ != state_.pauseDisplayAltHoldActive_;
+        state_.previewForceLabeledJudgeLineWhenPaused_;
     if (forceJudgeAreaWhenPaused
         && !state_.playing_
         && !state_.exportPreviewActive_) {
         return PreviewOutlineVariant::JudgeAreaLabeled;
     }
     return previewAppearanceValues_.outlineVariant;
-}
-
-void miacode::runtime::StageMediaHost::setPauseDisplayAltHoldActive(bool active)
-{
-    // Transient Alt-hold inversion of the "暂停时显示判定区" option (see
-    // Session::eventFilter). Engaging is pointless while the preview is
-    // playing or while the export-preview dialog pins PV visible — both paths
-    // ignore the pause-hide option entirely — so only the release/clear is
-    // accepted unconditionally.
-    if (active == state_.pauseDisplayAltHoldActive_) {
-        return;
-    }
-    if (active && (state_.playing_ || state_.exportPreviewActive_)) {
-        return;
-    }
-    state_.pauseDisplayAltHoldActive_ = active;
-    applyEffectivePreviewOutlineVariantToCanvas();
-    applyPreviewStageMediaRouteVisualSettings();
 }
 
 void miacode::runtime::StageMediaHost::setTouchPadAuthoringCtrlHoldActive(bool active)
@@ -508,6 +488,7 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("showTouchTrail"), state_.showTouchTrail_},
         {QStringLiteral("labeledJudgeArea"),
             previewAppearanceValues_.outlineVariant == PreviewOutlineVariant::JudgeAreaLabeled},
+        {QStringLiteral("showStageMediaWhenPaused"), state_.previewShowStageMediaWhenPaused_},
         {QStringLiteral("forceLabeledJudgeLineWhenPaused"), state_.previewForceLabeledJudgeLineWhenPaused_},
         // 玩法
         {QStringLiteral("tapFlowSpeed"), snappedFlowSpeed(state_.previewTapFlowSpeed_)},
@@ -684,6 +665,9 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
         if (canvas != nullptr) {
             canvas->setShowDebugInfo(state_.previewShowDebugInfo_);
         }
+    } else if (key == QLatin1String("showStageMediaWhenPaused")) {
+        state_.previewShowStageMediaWhenPaused_ = value.toBool();
+        applyPreviewStageMediaRouteVisualSettings();
     } else if (key == QLatin1String("forceLabeledJudgeLineWhenPaused")) {
         state_.previewForceLabeledJudgeLineWhenPaused_ = value.toBool();
         applyEffectivePreviewOutlineVariantToCanvas();
@@ -774,7 +758,7 @@ void miacode::runtime::StageMediaHost::applyEffectivePreviewOutlineVariantToCanv
             state_.touchPadAuthoringCtrlHoldActive_ = false;
         }
         const bool forceJudgeAreaWhenPaused =
-            state_.previewForceLabeledJudgeLineWhenPaused_ != state_.pauseDisplayAltHoldActive_;
+            state_.previewForceLabeledJudgeLineWhenPaused_;
         const bool pausedJudgeAreaView =
             forceJudgeAreaWhenPaused
             && !state_.playing_
@@ -1086,11 +1070,6 @@ PreviewOutlineVariant Session::effectivePreviewOutlineVariant() const
 void Session::applyEffectivePreviewOutlineVariantToCanvas()
 {
     stageMedia_->applyEffectivePreviewOutlineVariantToCanvas();
-}
-
-void Session::setPauseDisplayAltHoldActive(bool active)
-{
-    stageMedia_->setPauseDisplayAltHoldActive(active);
 }
 
 void Session::setTouchPadAuthoringCtrlHoldActive(bool active)

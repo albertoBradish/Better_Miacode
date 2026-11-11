@@ -11,7 +11,7 @@
     "transform.toggle_break", "transform.toggle_ex", "transform.toggle_firework",
     "transform.random_rotate", "transform.clear_complete_elements", "transform.reset_tap_notes",
     "preview.stop_or_play", "preview.play_pause_global", "preview.speed_down", "preview.speed_up",
-    "preview.pause_display_hold", "timeline.zoom_in", "timeline.zoom_out",
+    "timeline.zoom_in", "timeline.zoom_out",
     "ui.zoom_out", "ui.zoom_in", "ui.zoom_reset", "editor.overwrite_mode"
   ],
   "actions": {
@@ -172,14 +172,6 @@
       "default": "Ctrl+P",
       "context": "application",
       "owner": "MainWindow.BootstrapAndMenus"
-    },
-    "preview.pause_display_hold": {
-      "label_key": "shortcut.preview.pause_display_hold",
-      "label_zh": "暂停时切换 判定区 / PV（按住）",
-      "label_en": "Flip Judge Area / PV While Paused (Hold)",
-      "default": "Alt",
-      "context": "application",
-      "owner": "MainWindow.WindowInteraction"
     },
     "timeline.zoom_in": {
       "label_key": "shortcut.timeline.zoom_in",

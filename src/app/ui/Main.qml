@@ -5,6 +5,7 @@ import MiaCode.UI
 ApplicationWindow {
     id: window
 
+    readonly property bool disableAltMenuActivation: applicationContext.preferences.disableAltMenuActivation
     property bool sourceEditorFocused: false
     property bool sourceEditorOverlayHeld: false
     readonly property var workspace: mainView.mainMenuCommands.workspace

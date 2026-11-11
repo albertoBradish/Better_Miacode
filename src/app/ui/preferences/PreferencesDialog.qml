@@ -676,6 +676,12 @@ AppDialog {
                             }
 
                             PreferenceSwitch {
+                            objectName: "disableAltMenuActivationSwitch"
+                            text: qsTrId("preferences.disable_alt_menu")
+                            checked: root.preferences.disableAltMenuActivation
+                            onToggled: root.preferences.disableAltMenuActivation = checked
+                        }
+                        PreferenceSwitch {
                                 objectName: "preferencesSpaceGuardSwitch"
                                 text: qsTrId("preferences.space_guard")
                                 checked: root.preferences.spaceGuardEnabled
@@ -879,6 +885,12 @@ AppDialog {
                             options: root.preferencesModel.appFrameRateOptions
                             currentValue: root.preferencesModel.stageMediaFrameRateMode
                             onPicked: function(value) { root.preferencesModel.stageMediaFrameRateMode = value }
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: qsTrId("preferences.pv_frame_rate_help")
+                            color: Theme.colors.text.secondary
                         }
                     }
 

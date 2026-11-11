@@ -1,3 +1,4 @@
+#include "app/services/PausedPreviewPreferences.h"
 #include "app/services/AutomaticChartPreparation.h"
 #include "app/services/ChartFileSafety.h"
 #include "app/services/PreferenceDocument.h"
@@ -74,6 +75,16 @@ int main(int argc, char** argv)
               && malformed.value("outlineVariant").toInt() == static_cast<int>(PreviewOutlineVariant::Line),
               "invalid profile flags and outline types fall back safely");
     }
+    using miacode::paused_preview::showStageMedia;
+    check(showStageMedia({}), "new preferences show PV while paused");
+    check(!showStageMedia({{"force_labeled_judge_line_when_paused", true}}), "legacy explicit hidden PV stays hidden");
+    check(showStageMedia({{"hide_stage_media_when_paused", false}}), "legacy explicit visible PV stays visible");
+    check(showStageMedia({{"show_stage_media_when_paused", true}, {"force_labeled_judge_line_when_paused", true}}),
+          "PV and judge area can both be enabled");
+    check(!showStageMedia({{"show_stage_media_when_paused", false}, {"force_labeled_judge_line_when_paused", false}}),
+          "PV and judge area can both be disabled");
+    check(showStageMedia({{"show_stage_media_when_paused", "false"}, {"hide_stage_media_when_paused", "true"}}),
+          "invalid pause preferences use safe defaults");
     using miacode::editor::SpaceInputGuard;
     SpaceInputGuard guard;
     check(guard.press(0, false) == SpaceInputGuard::Action::TogglePlayback, "single space plays immediately");
