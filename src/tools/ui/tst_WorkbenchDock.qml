@@ -227,6 +227,14 @@ Item {
         name: "WorkbenchDock"
         when: windowShown
 
+        function init() {
+            // Hiding a Qt.Tool window can leave the offscreen main window marked
+            // active without a Quick focus item. Restore both before each case.
+            root.Window.window.requestActivate()
+            root.forceActiveFocus()
+            tryVerify(() => root.Window.window.active && root.activeFocus)
+        }
+
         function cleanup() {
             dock.maximizedPanel = ""
             dock.activePanel = ""
