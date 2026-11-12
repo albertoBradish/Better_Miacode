@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQml.Models
 import QtTest
 import MiaCode.UI
 
@@ -78,7 +79,7 @@ Item {
         onSaveRequested: ++root.saves
     }
 
-    readonly property var panels: ["editor", "timeline", "preview", "sidebar", "validation", "muri"]
+    readonly property var panels: ["editor", "timeline", "preview", "sidebar", "validation", "muri", "library"]
     property var enabledPanels: panels
     property int saves: 0
 
@@ -89,6 +90,7 @@ Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         preferences: root.preferences
+        libraryAvailable: true
         availablePanels: root.enabledPanels.filter(id => dock.panelShown(id))
         defaultTree: ({ axis: "horizontal", ratio: 0.21,
                         first: { tabs: ["sidebar"], selected: "sidebar" },
@@ -155,6 +157,36 @@ Item {
         readonly property Item cornerSourceItem: outlinePane
     }
 
+    ListModel {
+        id: sharedLibrary
+        property string rootPath: "/generated"
+        property string query: ""
+        property bool busy: false
+        property bool duplicatesOnly: false
+        property int totalCount: count
+        property int selectedCount: 0
+        property string status: "Generated test index"
+        function chooseRoot() {}
+        function refresh() {}
+        function cancel() {}
+        function selectVisible(selected) { selectPath("/generated/maidata.txt", selected) }
+        function selectPath(path, selected) { setProperty(0, "selected", selected); selectedCount = selected ? 1 : 0 }
+        ListElement {
+            chartPath: "/generated/maidata.txt"; chartTitle: "Generated fixture"
+            artist: "QA"; levels: "5:12"; chartVersion: "test"
+            sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            copies: 1; selected: false
+        }
+    }
+
+    ChartLibraryBrowser {
+        id: libraryPane
+        parent: dock.hostFor("library")
+        anchors.fill: parent
+        visible: dock.panelPresent("library")
+        library: sharedLibrary
+    }
+
     Item {
         id: sourceInputStandIn
         property bool workspaceSourceEditor: true
@@ -207,6 +239,9 @@ Item {
             floatingShortcutFocus.parent = root
             preferences.workspaceLayout = {}
             preferences.workspaceHiddenPanels = {}
+            preferences.savedWorkspaceLayouts = {}
+            preferences.savedWorkspaceLayoutOrder = []
+            sharedLibrary.query = ""
             preferences.sidebarVisible = true
             preferences.bottomPanelVisible = true
             root.selectedBottom = "timeline"
@@ -340,6 +375,69 @@ Item {
             verify(!("metadataDialog" in snapshot))
             compare(snapshot.timelineVerticalWidthRatio, preferences.timelineVerticalWidthRatio)
             compare(JSON.stringify(snapshot.tree), JSON.stringify(dock.tree))
+        }
+
+        function test_legacyLayoutKeepsItsOriginalTreeWithoutLibrary() {
+            tryVerify(() => dock.useNativeFrame)
+            verify(!dock.panelShown("library"))
+            verify(!libraryPane.visible)
+            const legacy = JSON.parse(JSON.stringify(dock.defaultTree))
+            dock.commit(legacy, {})
+            tryVerify(() => dock.customTree !== null)
+            compare(JSON.stringify(dock.customTree), JSON.stringify(legacy))
+            compare(JSON.stringify(dock.tree), JSON.stringify(legacy))
+            verify(!dock.panelShown("library"))
+            verify(!libraryPane.visible)
+            preferences.workspaceLayout = { version: 1, tree: { tabs: ["editor"], selected: "editor" }, floating: {} }
+            tryCompare(dock, "customTree", null)
+        }
+
+        function test_libraryDockFloatAndRestoreKeepLiveState() {
+            tryVerify(() => dock.useNativeFrame && editor.visible)
+            const editorInstance = editor
+            const libraryInstance = libraryPane
+            const modelInstance = libraryPane.library
+            const text = editor.text
+            editor.insert(editor.length, "\n")
+            verify(editor.canUndo)
+            const editedText = editor.text
+            sharedLibrary.query = "kept filter"
+
+            dock.setPanelShown("library", true)
+            tryVerify(() => libraryPane.visible && !dock.useNativeFrame)
+            verify(dock.groups.some(group => group.tabs.includes("library")))
+            verify(editor === editorInstance && editor.text === editedText && editor.canUndo)
+            const docked = dock.captureLayout()
+            compare(docked.hiddenPanels.library, false)
+            preferences.savedWorkspaceLayouts = { "Library docked": docked }
+            preferences.savedWorkspaceLayoutOrder = ["Library docked"]
+            dock.applyBuiltin("default")
+            tryVerify(() => dock.useNativeFrame && !libraryPane.visible)
+            dock.applySaved("Library docked")
+            tryVerify(() => libraryPane.visible && !dock.isFloating("library"))
+            verify(libraryPane === libraryInstance && libraryPane.library === modelInstance)
+            compare(sharedLibrary.query, "kept filter")
+
+            dock.updateDrag("library", dock.mapToGlobal(dock.width + 30, 100))
+            dock.finishDrag("library")
+            tryVerify(() => libraryPane.visible && libraryPane.Window.window !== root.Window.window)
+            const floated = dock.captureLayout()
+            verify(!!floated.floating.library)
+            preferences.savedWorkspaceLayouts = { "Library floated": floated }
+            preferences.savedWorkspaceLayoutOrder = ["Library floated"]
+            dock.applyBuiltin("default")
+            tryVerify(() => !libraryPane.visible)
+            dock.applySaved("Library floated")
+            tryVerify(() => libraryPane.visible && dock.isFloating("library"))
+            verify(libraryPane === libraryInstance && libraryPane.library === modelInstance)
+            compare(sharedLibrary.query, "kept filter")
+            compare(editor.text, editedText)
+            verify(editor.canUndo)
+            dock.closeFloating("library")
+            tryVerify(() => libraryPane.visible && libraryPane.Window.window === root.Window.window)
+            verify(editor === editorInstance && libraryPane.library === modelInstance)
+            editor.undo()
+            compare(editor.text, text)
         }
 
         function test_reparentingPreservesLiveContent() {

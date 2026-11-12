@@ -628,6 +628,7 @@ set(MIACODE_THEME_PALETTE_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/generated/ThemePal
 file(WRITE "${MIACODE_THEME_PALETTE_SCRIPT}" ".pragma library\nvar catalog = ${MIACODE_THEME_PALETTE_JSON};\n")
 set_source_files_properties("${MIACODE_THEME_PALETTE_SCRIPT}" PROPERTIES QT_RESOURCE_ALIAS "ThemePalettes.js")
 set(MIACODE_UI_QML_FILES
+    src/app/ui/library/ChartLibraryBrowser.qml
     src/app/ui/library/ChartLibraryWindow.qml
     src/app/ui/layout/WorkspaceManagerDialog.qml
     src/app/ui/tools/DxScoreLossWindow.qml

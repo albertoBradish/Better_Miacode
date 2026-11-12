@@ -1,6 +1,7 @@
 .pragma library
 
-var panels = ["editor", "timeline", "preview", "sidebar", "validation", "muri"]
+var corePanels = ["editor", "timeline", "preview", "sidebar", "validation", "muri"]
+var panels = corePanels.concat(["library"])
 
 function group(tabs, selected) {
     return { tabs: tabs, selected: selected || tabs[0] }
@@ -38,7 +39,16 @@ function normalizedTree(tree) {
         return split(node.axis, ratio, visit(node.first, depth + 1), visit(node.second, depth + 1))
     }
     const normalized = visit(tree, 0)
-    return seen.length === panels.length ? normalized : null
+    // Optional panels may be absent in older saved layouts. Preserve their tree
+    // exactly until the user explicitly enables the new panel.
+    return corePanels.every(id => seen.includes(id)) ? normalized : null
+}
+
+function ensurePanel(tree, id, targetId = "sidebar") {
+    if (!tree || !panels.includes(id) || pathFor(tree, id) !== null) return tree
+    const path = pathFor(tree, targetId)
+    if (path === null) return split("horizontal", 0.75, tree, group([id]))
+    return replace(tree, path, node => group(node.tabs.concat([id]), id))
 }
 
 function normalizedFloating(floating) {

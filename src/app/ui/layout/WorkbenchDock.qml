@@ -24,15 +24,17 @@ Item {
     property var nativePreviewWindow
     property bool keyboardShortcutsEnabled: true
     property var compactSidebarShown
+    property bool libraryAvailable: false
 
     readonly property var config: preferences.workspaceLayout
     readonly property var customTree: config.version === 1 ? Layouts.normalizedTree(config.tree) : null
-    readonly property var tree: customTree || defaultTree
+    readonly property var baseTree: customTree || defaultTree
+    readonly property var tree: panelShown("library") ? Layouts.ensurePanel(baseTree, "library") : baseTree
     readonly property var floating: customTree ? Layouts.normalizedFloating(config.floating) : ({})
-    readonly property bool defaultNativeLayout: !!nativeFrame && !customTree && preferences.timelineLayoutMode === "horizontal"
+    readonly property bool defaultNativeLayout: !!nativeFrame && !customTree && preferences.timelineLayoutMode === "horizontal" && !panelShown("library")
     readonly property bool useNativeFrame: defaultNativeLayout && maximizedPanel.length === 0
     readonly property var nativeFrameItem: nativeFrameLoader.item
-    readonly property var panelIds: Layouts.panels
+    readonly property var panelIds: Layouts.panels.filter(id => id !== "library" || root.libraryAvailable)
     readonly property var savedNames: preferences.savedWorkspaceLayoutOrder ?? Object.keys(preferences.savedWorkspaceLayouts).sort((a, b) => a.localeCompare(b))
     property var groups: []
     property var floatingHosts: ({})
@@ -54,6 +56,7 @@ Item {
         case "timeline": return qsTrId("window.timeline")
         case "preview": return qsTrId("workspace.preview_panel")
         case "sidebar": return qsTrId("workspace.sidebar")
+        case "library": return qsTrId("workspace.library")
         case "validation": return qsTrId("window.syntax")
         case "muri": return qsTrId("window.muri")
         }
@@ -61,6 +64,7 @@ Item {
     }
 
     function panelShown(id) {
+        if (id === "library") return libraryAvailable && preferences.workspaceHiddenPanels?.library === false
         if (id === "sidebar") return compactSidebarShown ?? preferences.sidebarVisible
         if (id === "timeline") return preferences.bottomPanelVisible && preferences.timelinePanelVisible
         if ((id === "validation" || id === "muri") && !preferences.bottomPanelVisible) return false
@@ -76,7 +80,8 @@ Item {
             preferences.timelinePanelVisible = shown
         } else {
             const hidden = Object.assign({}, preferences.workspaceHiddenPanels)
-            if (shown) delete hidden[id]
+            if (id === "library") hidden[id] = !shown
+            else if (shown) delete hidden[id]
             else hidden[id] = true
             preferences.workspaceHiddenPanels = hidden
         }
@@ -445,7 +450,7 @@ Item {
     Item { id: staging; visible: false }
 
     Instantiator {
-        model: ["editor", "timeline", "sidebar", "validation", "muri"]
+        model: root.panelIds.filter(id => id !== "preview")
         delegate: DockFloatWindow {
             required property string modelData
             panelId: modelData

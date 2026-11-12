@@ -734,7 +734,7 @@ Item {
                 title: qsTrId("workspace.panels")
 
                 Instantiator {
-                    model: ["sidebar", "editor", "preview", "timeline", "validation", "muri"]
+                    model: workspaceMenu.workspace?.panelIds ?? []
                     delegate: AppMenuItem {
                         required property string modelData
                         text: workspaceMenu.workspace?.panelTitle(modelData) ?? ""

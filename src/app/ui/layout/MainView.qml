@@ -431,6 +431,12 @@ Item {
                     && beginnerGuide.selectedSection.id === "timeline-options"
                 workspaceShortcutsEnabled: !root.beginnerGuideActive
                 viewState: state
+                libraryModel: root.applicationContext.chartLibrary
+                onOpenLibraryManager: chartLibraryWindow.open()
+                onOpenLibraryChart: path => {
+                    if (chartLibraryWindow.flush()) root.applicationContext.chartLibrary.openInEditor(path)
+                    else chartLibraryWindow.open()
+                }
                 documentSession: root.documentSession
                 analysisSession: root.analysisSession
                 preferences: root.preferences

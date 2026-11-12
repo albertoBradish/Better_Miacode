@@ -6040,4 +6040,10 @@ Held %8 · Slides %9 · Overlap %10</source>
 <message id="library.recovered"><source>Recovered independent source sessions; disk conflicts are checked on save.</source><translation>已恢复独立原文会话，保存时会检查磁盘冲突。</translation></message>
 </context>
 <context><name></name><message id="library.file_limit"><source>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</source><translation>草稿超过 4 MiB，请缩小内容后再保存或切换会话。</translation></message></context>
+<context><name></name>
+<message id="workspace.library"><source>Chart library</source><translation>谱库浏览</translation></message>
+<message id="library.open_manager"><source>Manage / format</source><translation>管理 / 格式化</translation></message>
+<message id="library.dock_hint"><source>Read-only browser. Buffers and reviewed batch edits stay in the library manager.</source><translation>此面板只读浏览。原文会话与需要确认的批量操作统一在管理窗口处理。</translation></message>
+<message id="library.dock_empty"><source>Choose a library folder or adjust the filter to show charts.</source><translation>选择谱库目录，或调整筛选条件以显示谱面。</translation></message>
+</context>
 </TS>
