@@ -1,4 +1,5 @@
 #include "app/ui/preview/PreviewModel.h"
+#include "app/services/PreviewModePreferences.h"
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -376,6 +377,29 @@ void PreviewModel::setDebugRendering()
         surface()->setMuriRenderMode(RenderMode::Debug);
         refreshFromBackend();
     }
+}
+
+int PreviewModel::debugDisplayPreset() const
+{
+    const auto values = canvasSettings();
+    for (int preset : {0, 1}) {
+        const auto expected = miacode::preview_mode_preferences::debugDisplayPreset(preset);
+        bool matches = true;
+        for (auto it = expected.begin(); it != expected.end(); ++it)
+            matches = matches && values.value(it.key()).toBool() == it.value().toBool();
+        if (matches) return preset;
+    }
+    return -1;
+}
+
+void PreviewModel::applyDebugDisplayPreset(int preset)
+{
+    if (!surface()) return;
+    const auto values = miacode::preview_mode_preferences::debugDisplayPreset(preset);
+    if (values.isEmpty()) return;
+    setDebugRendering();
+    for (auto it = values.begin(); it != values.end(); ++it) setCanvasSetting(it.key(), it.value().toVariant());
+    emit canvasSettingsChanged();
 }
 
 void PreviewModel::setMuriHandRadiusPx(int radiusPx)

@@ -42,14 +42,13 @@ Rectangle {
             spacing: 2
 
             NavRow {
+                objectName: "chartMetadataNavigation"
                 width: parent.width
                 text: qsTrId("dialog.unsaved_field_changes.field.metadata")
                 iconSource: Qt.resolvedUrl("icons/metadata.svg")
                 filledIconSource: Qt.resolvedUrl("icons/metadata-fill.svg")
                 selected: root.viewState.metadataEditorActive
                 onClicked: {
-                    if (root.pages && root.pages.overlayActive)
-                        root.pages.leaveOverlayPage()
                     root.viewState.activeSidebarView = "chart"
                     root.viewState.openMetadataEditor()
                 }

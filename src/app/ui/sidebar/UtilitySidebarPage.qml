@@ -85,6 +85,11 @@ Rectangle {
                 visible: root.mode === "tools"
                 spacing: 2
 
+                NavRow {
+                    width: parent.width
+                    text: qsTrId("library.title")
+                    onClicked: root.toolRequested("chartLibrary")
+                }
                 ToolSectionHeader {
                     text: qsTrId("media_tools.audio_processing_track")
                 }

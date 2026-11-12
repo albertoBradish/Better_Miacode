@@ -702,7 +702,14 @@ Item {
             readonly property var workspace: root.commands.workspace
 
             AppMenuAction {
-                text: qsTrId("workspace.default")
+                text: qsTrId("workspace.manage")
+                shortcutText: "`"
+                enabled: !!workspaceMenu.workspace
+                onTriggered: Qt.callLater(workspaceMenu.workspace.showManager)
+            }
+
+            AppMenuAction {
+                text: qsTrId("workspace.classic")
                 enabled: !!workspaceMenu.workspace
                 onTriggered: workspaceMenu.workspace.applyBuiltin("default")
             }
@@ -715,6 +722,11 @@ Item {
                 text: qsTrId("workspace.preview")
                 enabled: !!workspaceMenu.workspace
                 onTriggered: workspaceMenu.workspace.applyBuiltin("preview")
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.analysis")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("analysis")
             }
             AppMenuSeparator {}
             AppMenu {
@@ -842,7 +854,7 @@ Item {
             AppMenuSeparator {}
             AppMenuAction {
                 text: workspaceMenu.workspace?.targetMaximized ? qsTrId("workspace.restore_panel") : qsTrId("workspace.maximize_panel")
-                shortcutText: "`"
+                shortcutText: "Ctrl+`"
                 enabled: (workspaceMenu.workspace?.maximizationTarget.length ?? 0) > 0
                 onTriggered: workspaceMenu.workspace.toggleCurrentPanelMaximization()
             }
@@ -856,21 +868,6 @@ Item {
                 enabled: !!workspaceMenu.workspace
                 onTriggered: workspaceMenu.workspace.applyBuiltin("default")
             }
-            AppMenu {
-                id: deleteLayouts
-                title: qsTrId("workspace.remove")
-                enabled: count > 0
-                Instantiator {
-                    model: workspaceMenu.workspace?.savedNames ?? []
-                    delegate: AppMenuItem {
-                        required property string modelData
-                        text: modelData
-                        onTriggered: workspaceMenu.workspace.preferences.removeWorkspaceLayout(modelData)
-                    }
-                    onObjectAdded: (index, object) => deleteLayouts.insertItem(index, object)
-                    onObjectRemoved: (index, object) => deleteLayouts.removeItem(object)
-                }
-            }
             Instantiator {
                 model: workspaceMenu.workspace?.savedNames ?? []
                 delegate: AppMenuItem {
@@ -878,7 +875,7 @@ Item {
                     text: modelData
                     onTriggered: workspaceMenu.workspace.applySaved(modelData)
                 }
-                onObjectAdded: (index, object) => workspaceMenu.insertItem(3 + index, object)
+                onObjectAdded: (index, object) => workspaceMenu.insertItem(5 + index, object)
                 onObjectRemoved: (index, object) => workspaceMenu.removeItem(object)
             }
         }

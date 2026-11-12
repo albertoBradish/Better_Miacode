@@ -101,12 +101,13 @@ Item {
     function defaultDockTree(preset) {
         const editing = preset === "editing"
         const previewing = preset === "preview"
+        const analyzing = preset === "analysis"
         const editor = Layouts.group(["editor"])
         const diagnostics = Layouts.group(["validation", "muri"], timelineSession.currentTabId)
         const timeline = Layouts.group(["timeline"])
         const previewPanel = Layouts.group(["preview"])
         const ratio = previewing ? 0.57 : editing ? 0.30 : preferences.previewWidthRatio
-        const bottomRatio = editing ? 0.28 : preferences.bottomPanelHeightRatio
+        const bottomRatio = analyzing ? 0.42 : editing ? 0.28 : preferences.bottomPanelHeightRatio
         let center = Layouts.split("vertical", 1 - bottomRatio, editor,
                                    Layouts.group(["timeline", "validation", "muri"], timelineSession.currentTabId))
         if (verticalTimeline) {
@@ -469,6 +470,13 @@ Item {
 
         Shortcut {
             sequence: "`"
+            autoRepeat: false
+            enabled: detachedPreviewWindow.visible && workspaceDock.keyboardAllowed(detachedPreviewWindow)
+            onActivated: workspaceDock.showManager(detachedPreviewWindow)
+        }
+
+        Shortcut {
+            sequence: "Ctrl+`"
             autoRepeat: false
             enabled: detachedPreviewWindow.visible && workspaceDock.keyboardAllowed(detachedPreviewWindow)
             onActivated: workspaceDock.togglePanelMaximization("preview", detachedPreviewWindow)

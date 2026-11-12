@@ -5,7 +5,7 @@ set(MIACODE_VERSION_MINOR "0")
 set(MIACODE_VERSION_PATCH "1")
 # Single source of truth for the prerelease tag and package version. The
 # About dialog appends its compile date to this version at runtime.
-set(MIACODE_VERSION_PRERELEASE "better.12.dev.2")
+set(MIACODE_VERSION_PRERELEASE "better.13.dev.1")
 set(MIACODE_BUILD_LAYOUT_REVISION "2026-04-21-first-unification")
 set(MIACODE_VERSION "${MIACODE_VERSION_MAJOR}.${MIACODE_VERSION_MINOR}.${MIACODE_VERSION_PATCH}")
 set(MIACODE_VERSION_STRING "${MIACODE_VERSION}")
@@ -526,6 +526,10 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/CliRequest.h
     src/app/CliRequest.cpp
     src/app/cli_tasks.cpp
+    src/app/services/ChartLibraryFiles.h
+    src/app/services/ChartLibraryFiles.cpp
+    src/app/ui/library/ChartLibraryModel.h
+    src/app/ui/library/ChartLibraryModel.cpp
     src/app/ui/tools/ChartToolsModel.h
     src/app/ui/tools/ChartToolsModel.cpp
     src/app/ui/preferences/LocaleService.h
@@ -624,6 +628,8 @@ set(MIACODE_THEME_PALETTE_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/generated/ThemePal
 file(WRITE "${MIACODE_THEME_PALETTE_SCRIPT}" ".pragma library\nvar catalog = ${MIACODE_THEME_PALETTE_JSON};\n")
 set_source_files_properties("${MIACODE_THEME_PALETTE_SCRIPT}" PROPERTIES QT_RESOURCE_ALIAS "ThemePalettes.js")
 set(MIACODE_UI_QML_FILES
+    src/app/ui/library/ChartLibraryWindow.qml
+    src/app/ui/layout/WorkspaceManagerDialog.qml
     src/app/ui/tools/DxScoreLossWindow.qml
     src/app/ui/tools/BpmExportWindow.qml
     src/app/ui/tools/ScoringObjectIcon.qml

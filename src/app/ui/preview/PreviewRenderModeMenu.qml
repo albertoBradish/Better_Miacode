@@ -208,6 +208,35 @@ AppStickyPopup {
             }
         }
 
+        ModeRow {
+            visible: root.previewSession.debugRendering
+            width: parent.width
+            label: qsTrId("preview.debug_compact")
+            active: root.previewSession.debugDisplayPreset === 0
+            onClicked: root.previewSession.applyDebugDisplayPreset(0)
+        }
+        ModeRow {
+            visible: root.previewSession.debugRendering
+            width: parent.width
+            label: qsTrId("preview.debug_detailed")
+            active: root.previewSession.debugDisplayPreset === 1
+            onClicked: root.previewSession.applyDebugDisplayPreset(1)
+        }
+        Repeater {
+            model: [
+                { value: "off", label: qsTrId("preview.heatmap_off") },
+                { value: "classic", label: qsTrId("preview.heatmap_classic") },
+                { value: "overlay", label: qsTrId("preview.heatmap_overlay") }
+            ]
+            delegate: ModeRow {
+                required property var modelData
+                width: parent.width
+                enabled: root.previewSession.structure !== null
+                label: modelData.label
+                active: root.previewSession.structure && root.previewSession.structure.heatmapStyle === modelData.value
+                onClicked: root.previewSession.structure.heatmapStyle = modelData.value
+            }
+        }
         ScrollView {
             id: debugPanel
             visible: root.previewSession.debugRendering

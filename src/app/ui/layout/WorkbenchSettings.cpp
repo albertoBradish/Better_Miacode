@@ -10,6 +10,7 @@
 #include <QGuiApplication>
 #include <QFontDatabase>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QJsonValue>
 #include <QScreen>
 #include <QDate>
@@ -24,6 +25,7 @@ namespace {
 constexpr auto kUiSection = "ui";
 constexpr auto kWorkspaceLayout = "workspace_layout";
 constexpr auto kSavedWorkspaceLayouts = "saved_workspace_layouts";
+constexpr auto kSavedWorkspaceLayoutOrder = "saved_workspace_layout_order";
 constexpr auto kWorkspaceHiddenPanels = "workspace_hidden_panels";
 constexpr auto kTimelinePanelVisible = "timeline_panel_visible";
 constexpr auto kBlurMaterialsEnabled = "blur_materials_enabled";
@@ -140,6 +142,14 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     if (!QStringList{QStringLiteral("falling"), QStringLiteral("rising")}.contains(timelineVerticalDirection_)) timelineVerticalDirection_ = QStringLiteral("falling");
     workspaceLayout_ = ui.value(QLatin1String(kWorkspaceLayout)).toObject().toVariantMap();
     savedWorkspaceLayouts_ = ui.value(QLatin1String(kSavedWorkspaceLayouts)).toObject().toVariantMap();
+    for (const auto& value : ui.value(QLatin1String(kSavedWorkspaceLayoutOrder)).toArray()) {
+        const QString name = value.toString();
+        if (savedWorkspaceLayouts_.contains(name) && !savedWorkspaceLayoutOrder_.contains(name))
+            savedWorkspaceLayoutOrder_.append(name);
+    }
+    for (const auto& name : savedWorkspaceLayouts_.keys()) {
+        if (!savedWorkspaceLayoutOrder_.contains(name)) savedWorkspaceLayoutOrder_.append(name);
+    }
     workspaceHiddenPanels_ = ui.value(QLatin1String(kWorkspaceHiddenPanels)).toObject().toVariantMap();
     timelinePanelVisible_ = ui.value(QLatin1String(kTimelinePanelVisible)).toBool(true);
     timelineNoteScale_ = qBound(0.5, ui.value(QStringLiteral("timeline_note_scale")).toDouble(1.5), 3.0);
@@ -684,8 +694,57 @@ void WorkbenchSettings::saveWorkspaceLayout(const QString& name, const QVariantM
     const QString key = name.trimmed();
     if (key.isEmpty() || key.size() > 48 || savedWorkspaceLayouts_.value(key).toMap() == layout) return;
     savedWorkspaceLayouts_.insert(key, layout);
-    storeUiValue(kSavedWorkspaceLayouts, QJsonObject::fromVariantMap(savedWorkspaceLayouts_));
+    if (!savedWorkspaceLayoutOrder_.contains(key)) savedWorkspaceLayoutOrder_.append(key);
+    persistSavedWorkspaceLayouts();
+}
+
+void WorkbenchSettings::persistSavedWorkspaceLayouts()
+{
+    auto root = PreferenceDocument::loadPreferencesObject();
+    auto ui = root.value(QLatin1String(kUiSection)).toObject();
+    ui.insert(QLatin1String(kSavedWorkspaceLayouts), QJsonObject::fromVariantMap(savedWorkspaceLayouts_));
+    ui.insert(QLatin1String(kSavedWorkspaceLayoutOrder), QJsonArray::fromStringList(savedWorkspaceLayoutOrder_));
+    root.insert(QLatin1String(kUiSection), ui);
+    PreferenceDocument::savePreferencesObject(root);
     emit savedWorkspaceLayoutsChanged();
+}
+
+bool WorkbenchSettings::renameWorkspaceLayout(const QString& oldName, const QString& newName)
+{
+    const QString key = newName.trimmed();
+    if (!savedWorkspaceLayouts_.contains(oldName) || key.isEmpty() || key.size() > 48
+        || (key != oldName && savedWorkspaceLayouts_.contains(key))) return false;
+    if (oldName == key) return true;
+    const QVariant layout = savedWorkspaceLayouts_.take(oldName);
+    savedWorkspaceLayouts_.insert(key, layout);
+    const int index = savedWorkspaceLayoutOrder_.indexOf(oldName);
+    if (index >= 0) savedWorkspaceLayoutOrder_[index] = key;
+    else savedWorkspaceLayoutOrder_.append(key);
+    persistSavedWorkspaceLayouts();
+    return true;
+}
+
+bool WorkbenchSettings::copyWorkspaceLayout(const QString& name, const QString& newName)
+{
+    const QString key = newName.trimmed();
+    if (!savedWorkspaceLayouts_.contains(name) || key.isEmpty() || key.size() > 48
+        || savedWorkspaceLayouts_.contains(key)) return false;
+    savedWorkspaceLayouts_.insert(key, savedWorkspaceLayouts_.value(name));
+    const int index = savedWorkspaceLayoutOrder_.indexOf(name);
+    savedWorkspaceLayoutOrder_.insert(index < 0 ? savedWorkspaceLayoutOrder_.size() : index + 1, key);
+    persistSavedWorkspaceLayouts();
+    return true;
+}
+
+bool WorkbenchSettings::moveWorkspaceLayout(const QString& name, int offset)
+{
+    const int index = savedWorkspaceLayoutOrder_.indexOf(name);
+    if (index < 0 || offset == 0) return false;
+    const int destination = qBound(0, index + (offset < 0 ? -1 : 1), int(savedWorkspaceLayoutOrder_.size()) - 1);
+    if (destination == index) return false;
+    savedWorkspaceLayoutOrder_.move(index, destination);
+    persistSavedWorkspaceLayouts();
+    return true;
 }
 
 void WorkbenchSettings::setWorkspaceHiddenPanels(const QVariantMap& panels)
@@ -712,8 +771,8 @@ QRect WorkbenchSettings::boundedWorkspaceWindowGeometry(const QRect& rect) const
 void WorkbenchSettings::removeWorkspaceLayout(const QString& name)
 {
     if (!savedWorkspaceLayouts_.remove(name)) return;
-    storeUiValue(kSavedWorkspaceLayouts, QJsonObject::fromVariantMap(savedWorkspaceLayouts_));
-    emit savedWorkspaceLayoutsChanged();
+    savedWorkspaceLayoutOrder_.removeAll(name);
+    persistSavedWorkspaceLayouts();
 }
 
 void WorkbenchSettings::setTimelinePanelVisible(bool value)

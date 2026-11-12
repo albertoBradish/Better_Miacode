@@ -11,6 +11,11 @@ struct Field {
     const char* label;
     const char* group;
     bool multiline = false;
+    const char* help = "metadata.reference.optional";
+    QString example;
+    QString unit;
+    QStringList suggestions;
+    bool readOnly = false;
 };
 QVector<Field> advancedFields(int difficultyId);
 QString fieldValue(const SimaiDocument& document, const QString& key);

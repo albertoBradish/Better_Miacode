@@ -71,6 +71,7 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(double timelineVerticalWidthRatio READ timelineVerticalWidthRatio WRITE setTimelineVerticalWidthRatio NOTIFY workflowSettingsChanged)
     Q_PROPERTY(QVariantMap workspaceLayout READ workspaceLayout WRITE setWorkspaceLayout NOTIFY workspaceLayoutChanged)
     Q_PROPERTY(QVariantMap savedWorkspaceLayouts READ savedWorkspaceLayouts NOTIFY savedWorkspaceLayoutsChanged)
+    Q_PROPERTY(QStringList savedWorkspaceLayoutOrder READ savedWorkspaceLayoutOrder NOTIFY savedWorkspaceLayoutsChanged)
     Q_PROPERTY(QVariantMap workspaceHiddenPanels READ workspaceHiddenPanels WRITE setWorkspaceHiddenPanels NOTIFY workspaceHiddenPanelsChanged)
     Q_PROPERTY(bool timelinePanelVisible READ timelinePanelVisible WRITE setTimelinePanelVisible NOTIFY timelinePanelVisibleChanged)
     Q_PROPERTY(double timelineNoteScale READ timelineNoteScale WRITE setTimelineNoteScale NOTIFY timelineNoteScaleChanged)
@@ -170,6 +171,10 @@ public:
     QVariantMap workspaceLayout() const { return workspaceLayout_; }
     void setWorkspaceLayout(const QVariantMap& layout);
     QVariantMap savedWorkspaceLayouts() const { return savedWorkspaceLayouts_; }
+    QStringList savedWorkspaceLayoutOrder() const { return savedWorkspaceLayoutOrder_; }
+    Q_INVOKABLE bool renameWorkspaceLayout(const QString& oldName, const QString& newName);
+    Q_INVOKABLE bool copyWorkspaceLayout(const QString& name, const QString& newName);
+    Q_INVOKABLE bool moveWorkspaceLayout(const QString& name, int offset);
     QVariantMap workspaceHiddenPanels() const { return workspaceHiddenPanels_; }
     void setWorkspaceHiddenPanels(const QVariantMap& panels);
     Q_INVOKABLE void saveWorkspaceLayout(const QString& name, const QVariantMap& layout);
@@ -217,6 +222,8 @@ private:
     double timelineVerticalWidthRatio_ = 0.34;
     QVariantMap workspaceLayout_;
     QVariantMap savedWorkspaceLayouts_;
+    QStringList savedWorkspaceLayoutOrder_;
+    void persistSavedWorkspaceLayouts();
     QVariantMap workspaceHiddenPanels_;
     bool timelinePanelVisible_ = true;
     double timelineNoteScale_ = 1.5;

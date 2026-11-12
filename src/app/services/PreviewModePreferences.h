@@ -32,6 +32,15 @@ inline QJsonObject normalized(const QJsonObject& values)
     return result;
 }
 
+inline QJsonObject debugDisplayPreset(int preset)
+{
+    if (preset != 0 && preset != 1) return {};
+    const bool detailed = preset == 1;
+    return {{QStringLiteral("labeledJudgeArea"), true}, {QStringLiteral("showTimestamp"), true},
+        {QStringLiteral("showBpmHud"), detailed}, {QStringLiteral("showCpsHud"), detailed},
+        {QStringLiteral("showJudgeMarkers"), detailed}, {QStringLiteral("showTouchTrail"), detailed}};
+}
+
 inline QJsonObject withCurrent(QJsonObject profiles, RenderMode mode, const QJsonObject& current)
 {
     profiles.insert(profileKey(mode), normalized(current));

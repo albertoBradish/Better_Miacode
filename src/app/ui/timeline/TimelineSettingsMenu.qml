@@ -110,6 +110,12 @@ AppStickyPopup {
 
     contentItem: Column {
         spacing: 0
+        AppButton {
+            width: parent.width
+            text: qsTrId("timeline.reset_zoom")
+            enabled: root.stateBridge !== null
+            onClicked: root.stateBridge.applyZoomPreset(1.0)
+        }
 
         ParameterItem {
             width: parent.width

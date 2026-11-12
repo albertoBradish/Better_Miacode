@@ -11,5 +11,6 @@ struct Result {
     bool changed = false;
     QString error;
 };
+bool normalizationPreservesGameplay(const SimaiParseResult& before, const SimaiParseResult& after);
 Result prepare(ChartWorkspace& workspace, ChartWorkspaceFileService& files, Trigger trigger);
 } // namespace miacode::automatic_chart

@@ -22,7 +22,7 @@ Rectangle {
     // window always renders the default order.
     property bool transportMirrored: false
     readonly property real minimumHeight: heading.implicitHeight + transport.implicitHeight
-                                          + statistics.implicitHeight + 64
+                                          + statistics.implicitHeight + 64 + classicPressureHeight
     readonly property real minimumWidth: transport.minimumWidth
     signal detachRequested()
     signal dockRequested()
@@ -43,6 +43,16 @@ Rectangle {
                       : 1.0
         return Math.max(1.0, (ratio > 0 && isFinite(ratio)) ? ratio : 1.0)
     }
+
+    readonly property string heatmapStyle: root.previewSession.structure
+        ? root.previewSession.structure.heatmapStyle : "off"
+    readonly property bool pressureDisplayAvailable: root.documentAvailable && !root.latencyActive
+        && !root.exportPageActive && !root.exportSession.pageSessionActive
+        && !root.exportSession.introAuditionPlaying
+        && !(root.previewSession.runtime && root.previewSession.runtime.introOverlayActive)
+        && root.previewSession.structure && root.previewSession.structure.pressureAvailable
+        && root.previewSession.durationSeconds > 0
+    readonly property real classicPressureHeight: root.heatmapStyle === "classic" && root.pressureDisplayAvailable ? 42 : 0
 
     color: Theme.surfaceColor(Theme.colors.background.panel)
     clip: true
@@ -125,13 +135,14 @@ Rectangle {
 
         Loader {
             id: previewSurfaceLoader
-            anchors.centerIn: parent
+            x: (parent.width - width) / 2
+            y: (parent.height - root.classicPressureHeight - height) / 2
             width: root.freeAspectActive
                    ? parent.width
-                   : root.fittedFrameWidth(parent.width, parent.height)
+                   : root.fittedFrameWidth(parent.width, parent.height - root.classicPressureHeight)
             height: root.freeAspectActive
-                    ? parent.height
-                    : root.fittedFrameHeight(parent.width, parent.height)
+                    ? Math.max(0, parent.height - root.classicPressureHeight)
+                    : root.fittedFrameHeight(parent.width, parent.height - root.classicPressureHeight)
             // Do not construct an invisible scene root: it still subscribes to
             // PreviewRuntime::frameStateChanged even when QSG skips painting it.
             active: root.surfaceActive && root.visible && width >= 64 && height >= 64
@@ -151,14 +162,14 @@ Rectangle {
         Item {
             id: pressureOverlay
             objectName: "previewPressureOverlay"
-            anchors.left: previewSurfaceLoader.left
-            anchors.right: previewSurfaceLoader.right
-            anchors.bottom: previewSurfaceLoader.bottom
-            height: Math.min(36, previewSurfaceLoader.height * 0.075)
-            visible: previewSurfaceLoader.active && root.documentAvailable && !root.latencyActive
-                && !root.exportPageActive && !root.exportSession.pageSessionActive
-                && !root.exportSession.introAuditionPlaying && !introActive
-                && structure !== null && structure.pressureAvailable && endSecond > 0
+            readonly property bool classic: root.heatmapStyle === "classic"
+            anchors.left: classic ? parent.left : previewSurfaceLoader.left
+            anchors.right: classic ? parent.right : previewSurfaceLoader.right
+            anchors.bottom: classic ? parent.bottom : previewSurfaceLoader.bottom
+            anchors.leftMargin: classic ? Theme.panelPadding : 0
+            anchors.rightMargin: classic ? Theme.panelPadding : 0
+            height: classic ? 36 : Math.min(36, previewSurfaceLoader.height * 0.075)
+            visible: root.heatmapStyle !== "off" && previewSurfaceLoader.active && root.pressureDisplayAvailable
             readonly property var structure: root.previewSession.structure || null
             readonly property bool introActive: root.previewSession.runtime
                 ? root.previewSession.runtime.introOverlayActive : false
@@ -169,11 +180,28 @@ Rectangle {
             }
 
             onEndSecondChanged: pressureShape.requestPaint()
+            onClassicChanged: pressureShape.requestPaint()
             onVisibleChanged: if (visible) pressureShape.requestPaint()
+            Rectangle {
+                anchors.fill: parent
+                visible: pressureOverlay.classic
+                color: Theme.colors.background.surface
+                border.color: Theme.separatorColor
+                radius: Theme.controlRadius
+            }
+            Rectangle {
+                visible: pressureOverlay.classic
+                x: Math.max(0, Math.min(parent.width - width,
+                    root.previewSession.positionSeconds / Math.max(0.001, pressureOverlay.endSecond) * parent.width))
+                width: 1
+                height: parent.height
+                color: Theme.colors.text.primary
+                z: 2
+            }
             Canvas {
                 id: pressureShape
                 anchors.fill: parent
-                opacity: pressureScrub.containsMouse || pressureScrub.pressed ? 0.28 : 0.16
+                opacity: pressureOverlay.classic ? 0.9 : (pressureScrub.containsMouse || pressureScrub.pressed ? 0.28 : 0.16)
                 onWidthChanged: requestPaint()
                 onHeightChanged: requestPaint()
                 onPaint: {
@@ -185,6 +213,16 @@ Rectangle {
                     if (spans.length === 0)
                         return
                     const pixelsPerSecond = width / pressureOverlay.endSecond
+                    if (pressureOverlay.classic) {
+                        for (let i = 0; i < spans.length; i += 3) {
+                            const strength = Math.max(0, Math.min(1, spans[i + 2]))
+                            context.fillStyle = Qt.rgba(0.24 + strength * 0.67, 0.57 - strength * 0.13,
+                                0.88 - strength * 0.47, 0.8)
+                            context.fillRect(spans[i] * pixelsPerSecond, height - strength * (height - 2),
+                                Math.max(1, (spans[i + 1] - spans[i]) * pixelsPerSecond), strength * (height - 2))
+                        }
+                        return
+                    }
                     let previousEnd = -1
                     context.beginPath()
                     for (let i = 0; i < spans.length; i += 3) {

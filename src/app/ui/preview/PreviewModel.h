@@ -41,6 +41,7 @@ class PreviewModel final : public QObject
     Q_PROPERTY(QString renderModeLabel READ renderModeLabel NOTIFY renderModeChanged)
     Q_PROPERTY(bool muriCheckEnabled READ muriCheckEnabled NOTIFY renderModeChanged)
     Q_PROPERTY(bool debugRendering READ debugRendering NOTIFY renderModeChanged)
+    Q_PROPERTY(int debugDisplayPreset READ debugDisplayPreset NOTIFY canvasSettingsChanged)
     Q_PROPERTY(bool smoothStarErase READ smoothStarErase NOTIFY renderModeChanged)
     // 无理检测 parameters: 手部半径 (1080 px reference) and 撞尾阈值 (ms), plus the
     // slider ranges, so the menu states no limits of its own.
@@ -92,6 +93,8 @@ public:
     Q_INVOKABLE void toggleRenderMode();
     Q_INVOKABLE void setMuriCheckEnabled(bool enabled);
     Q_INVOKABLE void setDebugRendering();
+    int debugDisplayPreset() const;
+    Q_INVOKABLE void applyDebugDisplayPreset(int preset);
     Q_INVOKABLE void setSmoothStarErase(bool enabled);
     Q_INVOKABLE void setMuriHandRadiusPx(int radiusPx);
     Q_INVOKABLE void setMuriTapOnSlideThresholdMs(int thresholdMs);

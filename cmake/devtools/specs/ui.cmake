@@ -346,3 +346,24 @@ foreach(locale_spec IN ITEMS qml_app_background_model_spec document_model_save_s
         target_link_libraries(${locale_spec} PRIVATE "-framework AppKit")
     endif()
 endforeach()
+
+# Reuse the product-specific document adapter sources for isolated library tests.
+get_target_property(_library_spec_sources document_model_save_spec SOURCES)
+list(FILTER _library_spec_sources INCLUDE REGEX "(^|/)src/")
+list(FILTER _library_spec_sources EXCLUDE REGEX "DocumentModelSaveSpec.cpp$")
+miacode_add_dev_tool(chart_library_spec TEST
+    SOURCES ${_library_spec_sources}
+        src/tools/services/ChartLibrarySpec.cpp
+        src/app/services/ChartLibraryFiles.cpp
+        src/app/services/ChartLibraryFiles.h
+        src/app/ui/library/ChartLibraryModel.cpp
+        src/app/ui/library/ChartLibraryModel.h
+    LIBS miacode_analysis miacode_audio miacode_editor_core Qt6::Core Qt6::Gui Qt6::Qml
+    INCLUDES src)
+target_compile_definitions(chart_library_spec PRIVATE
+    "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\"")
+set_tests_properties(chart_library_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+if(APPLE)
+    target_sources(chart_library_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslationMac.mm)
+    target_link_libraries(chart_library_spec PRIVATE "-framework AppKit")
+endif()

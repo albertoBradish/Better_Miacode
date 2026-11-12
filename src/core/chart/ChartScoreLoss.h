@@ -25,6 +25,57 @@ struct ScoreLossResult {
     QVector<int> counts = QVector<int>(9, 0); // six kinds, Break, Ex, Firework; attributes overlap
     QVector<ScoreLossRow> rows;
 };
+
+enum class ScoreScenarioError { None, Unavailable, InvalidQuantity, InventoryExceeded };
+struct ScoreScenarioResult {
+    ScoreScenarioError error = ScoreScenarioError::Unavailable;
+    QString object;
+    double maximumAchievement = 0.0;
+    double lossPercent = 0.0;
+    double achievement = 0.0;
+    qint64 enteredJudgments = 0;
+    bool valid() const { return error == ScoreScenarioError::None; }
+};
+
+inline ScoreScenarioResult calculateScoreScenario(const ScoreLossResult& score, const QVector<int>& quantities)
+{
+    ScoreScenarioResult result;
+    if (!score.calculable) return result;
+    if (quantities.size() != score.rows.size()) {
+        result.error = ScoreScenarioError::InvalidQuantity;
+        return result;
+    }
+    for (int index = 0; index < quantities.size(); ++index) {
+        if (quantities[index] < 0 || quantities[index] > score.rows[index].quantity) {
+            result.error = ScoreScenarioError::InvalidQuantity;
+            result.object = score.rows[index].object;
+            return result;
+        }
+    }
+    // Eligible inventories are nested for each object: non-EX <= degrading EX
+    // hold tails <= all notes (Miss). Check every threshold, not just row limits,
+    // so the same scarce non-EX note cannot supply both Great and Good.
+    for (const auto& limit : score.rows) {
+        qint64 used = 0;
+        for (int index = 0; index < score.rows.size(); ++index) {
+            const auto& row = score.rows[index];
+            if (row.object == limit.object && row.quantity <= limit.quantity) used += quantities[index];
+        }
+        if (used > limit.quantity) {
+            result.error = ScoreScenarioError::InventoryExceeded;
+            result.object = limit.object;
+            return result;
+        }
+    }
+    result.error = ScoreScenarioError::None;
+    result.maximumAchievement = score.breakTotal > 0 ? 101.0 : 100.0;
+    for (int index = 0; index < score.rows.size(); ++index) {
+        result.lossPercent += quantities[index] * score.rows[index].lossPercent;
+        result.enteredJudgments += quantities[index];
+    }
+    result.achievement = std::max(0.0, result.maximumAchievement - result.lossPercent);
+    return result;
+}
 inline ScoreLossResult calculateScoreLoss(const ScoringEvents& source)
 {
     ScoreLossResult result;

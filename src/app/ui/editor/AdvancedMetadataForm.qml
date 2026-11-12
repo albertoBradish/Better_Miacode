@@ -77,6 +77,11 @@ ColumnLayout {
                     id: fieldRow
                     required property var modelData
                     property bool rejectedDraft: false
+                    property string validationError: ""
+                    function submit(value) {
+                        rejectedDraft = !root.updateField(modelData.key, value)
+                        validationError = rejectedDraft ? root.errorText : ""
+                    }
                     Layout.fillWidth: true
                     spacing: Theme.settingsLabelSpacing
                     Connections {
@@ -91,8 +96,33 @@ ColumnLayout {
                     Label {
                         Layout.fillWidth: true
                         text: qsTrId(fieldRow.modelData.labelKey) + "  (&" + fieldRow.modelData.key + ")"
+                              + (fieldRow.modelData.unit ? " · " + fieldRow.modelData.unit : "")
                         color: Theme.colors.text.secondary
                         wrapMode: Text.WordWrap
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTrId(fieldRow.modelData.helpKey)
+                        color: Theme.colors.text.secondary
+                        font.pixelSize: Theme.secondaryFontSize
+                        wrapMode: Text.WordWrap
+                    }
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: Theme.settingsLabelSpacing
+                        visible: !fieldRow.modelData.readOnly && fieldRow.modelData.suggestions.length > 0
+                        Repeater {
+                            model: fieldRow.modelData.suggestions
+                            delegate: AppButton {
+                                required property string modelData
+                                text: modelData
+                                Accessible.name: qsTrId("metadata.reference.use_suggestion").arg(modelData)
+                                onClicked: {
+                                    singleInput.text = modelData
+                                    fieldRow.submit(modelData)
+                                }
+                            }
+                        }
                     }
                     AppTextField {
                         id: singleInput
@@ -100,24 +130,41 @@ ColumnLayout {
                         outlined: true
                         Accessible.name: qsTrId(fieldRow.modelData.labelKey)
                         visible: !fieldRow.modelData.multiline
+                        readOnly: fieldRow.modelData.readOnly
+                        placeholderText: fieldRow.modelData.example
                         text: fieldRow.modelData.value
                         selectByMouse: true
                         onEditingFinished: {
                             if (text !== root.documentSession.advancedMetadataValue(fieldRow.modelData.key))
-                                fieldRow.rejectedDraft = !root.updateField(fieldRow.modelData.key, text)
+                                fieldRow.submit(text)
                         }
                     }
-                    AppTextArea {
-                        id: multilineInput
+                    Label {
                         Layout.fillWidth: true
-                        outlined: true
-                        Accessible.name: qsTrId(fieldRow.modelData.labelKey)
-                        Layout.preferredHeight: 90
+                        text: fieldRow.validationError
+                        visible: text.length > 0
+                        color: Theme.colors.syntax.error
+                        wrapMode: Text.WordWrap
+                    }
+                    ScrollView {
+                        id: multilineScroll
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 110
                         visible: fieldRow.modelData.multiline
-                        text: fieldRow.modelData.value
-                        onActiveFocusChanged: {
-                            if (!activeFocus && text !== root.documentSession.advancedMetadataValue(fieldRow.modelData.key))
-                                fieldRow.rejectedDraft = !root.updateField(fieldRow.modelData.key, text)
+                        clip: true
+                        AppTextArea {
+                            id: multilineInput
+                            width: multilineScroll.availableWidth
+                            height: Math.max(multilineScroll.availableHeight, implicitHeight)
+                            outlined: true
+                            wrapMode: TextEdit.Wrap
+                            Accessible.name: qsTrId(fieldRow.modelData.labelKey)
+                            readOnly: fieldRow.modelData.readOnly
+                            text: fieldRow.modelData.value
+                            onActiveFocusChanged: {
+                                if (!activeFocus && text !== root.documentSession.advancedMetadataValue(fieldRow.modelData.key))
+                                    fieldRow.submit(text)
+                            }
                         }
                     }
                 }

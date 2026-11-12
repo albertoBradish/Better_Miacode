@@ -84,6 +84,9 @@ QString identityKey(const QString& path)
 
 } // namespace
 
+bool normalizationPreservesGameplay(const SimaiParseResult& before, const SimaiParseResult& after)
+{ return gameplaySignature(before) == gameplaySignature(after); }
+
 Result prepare(ChartWorkspace& workspace, ChartWorkspaceFileService& files, Trigger trigger)
 {
     const auto snapshot = workspace.snapshot();

@@ -4,6 +4,7 @@ QtObject {
     signal difficultyEditorActivationRequested(int difficultyId)
     signal applicationEditorActivationRequested(string key)
     signal editorPresentationCleared()
+    signal metadataDialogRequested()
     // A closed tab is a view that no longer exists; whatever it accumulated —
     // its undo history above all — goes with it.
     signal editorClosed(string key)
@@ -136,7 +137,7 @@ QtObject {
     }
 
     function openMetadataEditor() {
-        openEditor(metadataEditorKey)
+        metadataDialogRequested()
     }
 
     function openLatencyEditor() {

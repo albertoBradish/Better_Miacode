@@ -12,13 +12,14 @@
 #include <QPointer>
 #include <QSaveFile>
 #include <cmath>
+#include <algorithm>
 
 namespace miacode::ui {
 ChartToolsModel::ChartToolsModel(miacode::UiRequestService& requests, QObject* parent)
     : QObject(parent), requests_(&requests)
 {
     connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
-        this, [this](const QString&) { emit changed(); });
+        this, [this](const QString&) { emit changed(); emit scenarioChanged(); });
 }
 QString ChartToolsModel::error() const
 {
@@ -35,7 +36,7 @@ void ChartToolsModel::setChart(const QString& text, const miacode::simai::SimaiT
     }
     const bool identityChanged = difficulty_ != difficulty || revision_ != revision;
     difficulty_ = difficulty; revision_ = revision;
-    if (identityChanged) emit changed();
+    if (identityChanged) { lossInputs_.clear(); emit changed(); emit scenarioChanged(); }
     if (initialized_ && chartText_ == text && timing_ == timing && firstText_ == first) return;
     initialized_ = true;
     chartText_ = text;
@@ -48,7 +49,9 @@ void ChartToolsModel::setChart(const QString& text, const miacode::simai::SimaiT
     parsed_ = SimaiParser::parseForTimeline(text, timing);
     if (!parsed_.ok) error_ = QStringLiteral("tools.chart.parse_error");
     score_ = chart::calculateScoreLoss(chart::buildScoringEvents(parsed_.noteMarkers));
+    lossInputs_.fill(QStringLiteral("0"), score_.rows.size());
     emit changed();
+    emit scenarioChanged();
 }
 
 QString ChartToolsModel::bpmImportSummary() const
@@ -135,11 +138,13 @@ QVariantList ChartToolsModel::scoreLossRows() const
     QVariantList rows;
     if (!error_.isEmpty()) return rows;
     const auto& stats = score_;
-    for (const auto& row : stats.rows)
-        rows.append(QVariantMap{{QStringLiteral("object"), row.object}, {QStringLiteral("judgment"), row.judgment},
+    for (int index = 0; index < stats.rows.size(); ++index) {
+        const auto& row = stats.rows[index];
+        rows.append(QVariantMap{{QStringLiteral("rowIndex"), index}, {QStringLiteral("object"), row.object}, {QStringLiteral("judgment"), row.judgment},
             {QStringLiteral("loss"), QString::number(row.lossPercent, 'f', 6) + QLatin1Char('%')},
             {QStringLiteral("sss"), row.maximumSss}, {QStringLiteral("sssPlus"), row.maximumSssPlus},
             {QStringLiteral("count"), row.quantity}});
+    }
     return rows;
 }
 bool ChartToolsModel::calculable() const
@@ -161,6 +166,65 @@ QString ChartToolsModel::simpleLossSummary() const
         .arg(score_.simpleGreatSssPlus < 0 ? qtTrId("tools.dx_loss.unreachable")
                                          : QString::number(score_.simpleGreatSssPlus));
 }
+QString ChartToolsModel::scoreBasisSummary() const
+{
+    if (!error_.isEmpty() || !score_.calculable) return {};
+    return qtTrId("tools.dx_loss.basis").arg(score_.baseTotal).arg(score_.breakTotal)
+        .arg(score_.total).arg(score_.breakTotal > 0 ? 101 : 100);
+}
+QString ChartToolsModel::lossQuantity(int row) const
+{
+    return lossInputs_.value(row, QStringLiteral("0"));
+}
+void ChartToolsModel::setLossQuantity(int row, const QString& value)
+{
+    if (row < 0 || row >= score_.rows.size()) return;
+    if (lossInputs_.size() != score_.rows.size()) lossInputs_.fill(QStringLiteral("0"), score_.rows.size());
+    if (lossInputs_[row] == value) return;
+    lossInputs_[row] = value;
+    emit scenarioChanged();
+}
+void ChartToolsModel::resetLossQuantities()
+{
+    lossInputs_.fill(QStringLiteral("0"), score_.rows.size());
+    emit scenarioChanged();
+}
+chart::ScoreScenarioResult ChartToolsModel::scoreScenario() const
+{
+    if (!calculable()) return {};
+    QVector<int> quantities;
+    for (int row = 0; row < score_.rows.size(); ++row) {
+        const QString value = lossQuantity(row).trimmed();
+        bool ok = value.isEmpty();
+        const int quantity = value.isEmpty() ? 0 : value.toInt(&ok);
+        if (!ok || quantity < 0 || (!value.isEmpty()
+            && std::any_of(value.cbegin(), value.cend(), [](QChar ch) { return ch < QLatin1Char('0') || ch > QLatin1Char('9'); }))) {
+            chart::ScoreScenarioResult invalid;
+            invalid.error = chart::ScoreScenarioError::InvalidQuantity;
+            return invalid;
+        }
+        quantities.append(quantity);
+    }
+    return chart::calculateScoreScenario(score_, quantities);
+}
+QString ChartToolsModel::scenarioError() const
+{
+    if (!calculable()) return calculationStatus();
+    const auto result = scoreScenario();
+    if (result.error == chart::ScoreScenarioError::InvalidQuantity) return qtTrId("tools.dx_loss.invalid_quantity");
+    if (result.error == chart::ScoreScenarioError::InventoryExceeded)
+        return qtTrId("tools.dx_loss.inventory_exceeded").arg(result.object);
+    return {};
+}
+QString ChartToolsModel::scenarioSummary() const
+{
+    const auto result = scoreScenario();
+    if (!result.valid()) return QStringLiteral("—");
+    return qtTrId("tools.dx_loss.scenario_result").arg(result.enteredJudgments)
+        .arg(result.lossPercent, 0, 'f', 6).arg(result.achievement, 0, 'f', 6)
+        .arg(result.maximumAchievement, 0, 'f', 1);
+}
+
 void ChartToolsModel::setBpmFormat(int format)
 {
     format = qBound(0, format, 2);

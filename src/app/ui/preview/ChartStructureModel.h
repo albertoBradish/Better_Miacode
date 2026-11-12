@@ -35,6 +35,7 @@ class ChartStructureModel final : public QObject
     Q_PROPERTY(bool canRedo READ canRedo NOTIFY changed)
     Q_PROPERTY(bool unsaved READ unsaved NOTIFY changed)
     Q_PROPERTY(QString status READ status NOTIFY changed)
+    Q_PROPERTY(QString heatmapStyle READ heatmapStyle WRITE setHeatmapStyle NOTIFY heatmapStyleChanged)
 
 public:
     ChartStructureModel(ChartWorkspace& workspace, ChartWorkspaceFileService& files, QObject* parent = nullptr);
@@ -52,6 +53,8 @@ public:
     bool canRedo() const;
     bool unsaved() const;
     QString status() const;
+    QString heatmapStyle() const { return heatmapStyle_; }
+    void setHeatmapStyle(const QString& style);
 
     std::optional<chart_preview::DropSelection> effectiveDrop() const;
     std::optional<chart_preview::DropSelection> effectiveDropForDifficulty(int difficultyId) const;
@@ -79,8 +82,10 @@ public:
 
 signals:
     void changed();
+    void heatmapStyleChanged();
 
 private:
+    QString heatmapStyle_ = QStringLiteral("overlay");
     using Selection = std::optional<chart_preview::DropSelection>;
     struct Input {
         quint64 generation = 0;

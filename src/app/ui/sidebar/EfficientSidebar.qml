@@ -49,6 +49,7 @@ Rectangle {
 
             SidebarRow {
                 id: metadataRow
+                objectName: "efficientMetadataNavigation"
                 width: parent.width
                 text: qsTrId("dialog.unsaved_field_changes.field.metadata")
                 iconSource: Qt.resolvedUrl("icons/metadata.svg")
@@ -56,8 +57,6 @@ Rectangle {
                 enabled: root.documentSession.hasDocument
                 selected: root.viewState.metadataEditorActive && !root.pages.overlayActive
                 onClicked: {
-                    if (root.pages.overlayActive)
-                        root.pages.leaveOverlayPage()
                     root.viewState.openMetadataEditor()
                 }
             }

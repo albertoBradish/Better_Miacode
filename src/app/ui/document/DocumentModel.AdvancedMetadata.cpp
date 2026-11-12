@@ -42,7 +42,10 @@ QVariantList DocumentModel::advancedMetadataGroups(int difficultyId) const
         fields.append(QVariantMap{{QStringLiteral("key"), field.key}, {QStringLiteral("label"), qtTrId(field.label)},
             {QStringLiteral("labelKey"), QString::fromLatin1(field.label)},
             {QStringLiteral("value"), miacode::metadata::fieldValue(workspace_->document(), field.key)},
-            {QStringLiteral("multiline"), field.multiline}});
+            {QStringLiteral("multiline"), field.multiline},
+            {QStringLiteral("helpKey"), QString::fromLatin1(field.help)},
+            {QStringLiteral("example"), field.example}, {QStringLiteral("unit"), field.unit},
+            {QStringLiteral("suggestions"), field.suggestions}, {QStringLiteral("readOnly"), field.readOnly}});
         group.insert(QStringLiteral("fields"), fields);
         groups[index] = group;
     }
@@ -54,7 +57,11 @@ QString DocumentModel::setAdvancedMetadataField(const QString& key, const QStrin
     if (!workspace_ || !hasDocument()) return qtTrId("metadata.advanced.no_document");
     bool allowed = false;
     for (int slot = 1; slot <= 7 && !allowed; ++slot)
-        for (const auto& field : miacode::metadata::advancedFields(slot)) if (field.key == key) { allowed = true; break; }
+        for (const auto& field : miacode::metadata::advancedFields(slot)) if (field.key == key) {
+            if (field.readOnly) return qtTrId("metadata.reference.managed_field");
+            allowed = true;
+            break;
+        }
     if (!allowed) return qtTrId("metadata.advanced.unknown_field");
     const QString conflicts = metadataConflictText();
     if (!conflicts.isEmpty()) return conflicts;

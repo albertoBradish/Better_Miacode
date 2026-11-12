@@ -170,8 +170,24 @@ int main(int argc, char** argv)
     bridge.setZoomWheelShortcuts({QStringLiteral("Alt+WheelDown")}, {QStringLiteral("Alt+WheelUp")});
     wheel({}, QPoint(0, 120));
     expect(qFuzzyCompare(bridge.zoomScale(), 0.5), "custom Alt-wheel direction keeps its priority");
-    bridge.setZoomScale(4.0);
-    expect(qFuzzyCompare(bridge.zoomScale(), 3.0), "zoom is clamped at 300 percent");
+    for (const auto& mode : {QStringLiteral("horizontal"), QStringLiteral("falling"), QStringLiteral("rising")}) {
+        bridge.setAxisMode(mode);
+        bridge.setPlayheadSeconds(8.0, true);
+        for (double zoom : {6.0, 12.0}) {
+            const double before = secondAtAnchor();
+            const auto beforeScene = buildState();
+            bridge.zoomAtViewportPosition(zoom, beforeScene.axisProjection().toAxis(anchor).x());
+            const auto scene = buildState();
+            expect(qFuzzyCompare(bridge.zoomScale(), zoom) && qAbs(secondAtAnchor() - before) < 1e-6,
+                "600 and 1200 percent preserve the pointer anchor in every axis orientation");
+            expect(qIsFinite(scene.pixelsPerSecond) && scene.pixelsPerSecond > 0.0,
+                "high zoom retains finite scene geometry");
+        }
+    }
+    bridge.setZoomScale(16.0);
+    expect(qFuzzyCompare(bridge.zoomScale(), 12.0), "zoom is clamped at 1200 percent");
+    bridge.applyZoomPreset(1.0);
+    expect(qFuzzyCompare(bridge.zoomScale(), 1.0), "reset preset restores 100 percent");
     bridge.setZoomScale(0.1);
     expect(qFuzzyCompare(bridge.zoomScale(), 0.25), "zoom is clamped at 25 percent");
 

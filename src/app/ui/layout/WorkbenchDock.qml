@@ -33,7 +33,7 @@ Item {
     readonly property bool useNativeFrame: defaultNativeLayout && maximizedPanel.length === 0
     readonly property var nativeFrameItem: nativeFrameLoader.item
     readonly property var panelIds: Layouts.panels
-    readonly property var savedNames: Object.keys(preferences.savedWorkspaceLayouts).sort((a, b) => a.localeCompare(b))
+    readonly property var savedNames: preferences.savedWorkspaceLayoutOrder ?? Object.keys(preferences.savedWorkspaceLayouts).sort((a, b) => a.localeCompare(b))
     property var groups: []
     property var floatingHosts: ({})
     property string dragging: ""
@@ -130,11 +130,13 @@ Item {
     }
 
     function keyboardAllowed(window) {
-        if (!keyboardShortcutsEnabled || !window) return false
+        // Qt.Tool windows may keep both parent and child marked active. Only
+        // the window holding Quick focus may register these shared gestures.
+        if (!keyboardShortcutsEnabled || !window || !window.active) return false
         const focusItem = window.activeFocusItem
-        if (!focusItem) return true
+        if (!focusItem) return false
         if (isWithin(focusItem, window.Overlay.overlay)) return false
-        if (focusItem.workspaceSourceEditor === true) return focusItem.imeComposing !== true
+        if (focusItem.workspaceSourceEditor === true) return false
         return focusItem.reservesPlainSpace !== true && !(focusItem instanceof TextInput) && !(focusItem instanceof TextEdit)
     }
 
@@ -179,7 +181,23 @@ Item {
         sequence: "`"
         autoRepeat: false
         enabled: root.maximizationTarget.length > 0 && root.keyboardAllowed(root.Window.window)
+        onActivated: root.showManager()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+`"
+        autoRepeat: false
+        enabled: root.maximizationTarget.length > 0 && root.keyboardAllowed(root.Window.window)
         onActivated: root.toggleCurrentPanelMaximization()
+    }
+
+    function showManager(window) {
+        manager.parent = window?.Overlay.overlay ?? root.Overlay.overlay
+        manager.open()
+    }
+    function validSavedLayout(name) {
+        const saved = preferences.savedWorkspaceLayouts[name]
+        return !!saved && saved.version === 1 && !!Layouts.normalizedTree(saved.tree)
     }
 
     function isFloating(id) {
@@ -367,6 +385,8 @@ Item {
             preferences.previewWidthRatio = saved.previewWidthRatio
         if (Number.isFinite(saved.bottomPanelHeightRatio))
             preferences.bottomPanelHeightRatio = saved.bottomPanelHeightRatio
+        if (Number.isFinite(saved.timelineVerticalWidthRatio))
+            preferences.timelineVerticalWidthRatio = saved.timelineVerticalWidthRatio
         if (saved.nativeFrame === true)
             preferences.workspaceLayout = {}
         else
@@ -380,31 +400,28 @@ Item {
         savedLayoutApplied()
     }
 
-    function showSaveDialog() {
-        nameField.text = ""
-        saveDialog.open()
+    function showSaveDialog() { showManager() }
+
+    function captureLayout() {
+        return {
+            version: 1, tree: tree, floating: floating, nativeFrame: defaultNativeLayout,
+            timelineLayoutMode: preferences.timelineLayoutMode,
+            sidebarVisible: preferences.sidebarVisible,
+            timelinePanelVisible: preferences.timelinePanelVisible,
+            bottomPanelVisible: preferences.bottomPanelVisible,
+            hiddenPanels: preferences.workspaceHiddenPanels,
+            previewOnLeft: preferencesModel?.previewOnLeft ?? false,
+            efficientSidebar: preferences.efficientSidebarEnabled,
+            sidebarWidth: preferences.sidebarWidth,
+            previewWidthRatio: preferences.previewWidthRatio,
+            bottomPanelHeightRatio: preferences.bottomPanelHeightRatio,
+            timelineVerticalWidthRatio: preferences.timelineVerticalWidthRatio,
+            previewDetached: preferences.previewDetached,
+            previewGeometry: preferences.previewDetached ? previewGeometry() : {}
+        }
     }
 
-    function saveLayout() {
-        const name = nameField.text.trim()
-        if (name.length === 0)
-            return
-        preferences.saveWorkspaceLayout(name, { version: 1, tree: tree, floating: floating,
-                                                 nativeFrame: defaultNativeLayout,
-                                                 timelineLayoutMode: preferences.timelineLayoutMode,
-                                                 sidebarVisible: preferences.sidebarVisible,
-                                                 timelinePanelVisible: preferences.timelinePanelVisible,
-                                                 bottomPanelVisible: preferences.bottomPanelVisible,
-                                                 hiddenPanels: preferences.workspaceHiddenPanels,
-                                                 previewOnLeft: preferencesModel?.previewOnLeft ?? false,
-                                                 efficientSidebar: preferences.efficientSidebarEnabled,
-                                                 sidebarWidth: preferences.sidebarWidth,
-                                                 previewWidthRatio: preferences.previewWidthRatio,
-                                                 bottomPanelHeightRatio: preferences.bottomPanelHeightRatio,
-                                                 previewDetached: preferences.previewDetached,
-                                                 previewGeometry: preferences.previewDetached ? previewGeometry() : {} })
-        saveDialog.close()
-    }
+    WorkspaceManagerDialog { id: manager; workspace: root }
 
     Loader {
         id: nativeFrameLoader
@@ -465,24 +482,4 @@ Item {
         onActivated: root.cancelDrag()
     }
 
-    AppDialog {
-        id: saveDialog
-        title: qsTrId("workspace.save")
-        preferredHeight: 165
-        onOpened: nameField.forceActiveFocus()
-        body: AppTextField {
-            id: nameField
-            placeholderText: qsTrId("workspace.name")
-            Accessible.name: placeholderText
-            maximumLength: 48
-            onAccepted: root.saveLayout()
-        }
-        footer: DialogFooter {
-            acceptText: qsTrId("action.save")
-            cancelText: qsTrId("action.cancel")
-            acceptEnabled: nameField.text.trim().length > 0
-            onAccepted: root.saveLayout()
-            onRejected: saveDialog.close()
-        }
-    }
 }

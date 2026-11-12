@@ -10,6 +10,7 @@ Item {
     readonly property alias preferences: preferences
     readonly property alias preferencesModel: preferencesModel
     readonly property alias viewState: viewState
+    readonly property alias testCommands: commands
     property bool previewOnLeft: false
     property bool compact: false
     property bool previewDetached: false
@@ -27,6 +28,8 @@ Item {
         id: preferences
         property var workspaceLayout: ({})
         property var savedWorkspaceLayouts: ({})
+        property var savedWorkspaceLayoutOrder: []
+        property real timelineVerticalWidthRatio: 0.34
         property bool previewDetached: false
         property bool sidebarVisible: true
         property bool efficientSidebarEnabled: false
@@ -54,6 +57,9 @@ Item {
         property bool previewOnLeft: false
         signal interfaceChanged()
     }
+
+    ViewState { id: metadataState }
+    SignalSpy { id: metadataRequests; target: metadataState; signalName: "metadataDialogRequested" }
 
     QtObject {
         id: viewState
@@ -149,9 +155,40 @@ Item {
         readonly property Item cornerSourceItem: outlinePane
     }
 
+    Item {
+        id: sourceInputStandIn
+        property bool workspaceSourceEditor: true
+        visible: false
+    }
+
     TextField {
         id: ordinaryInput
         visible: false
+    }
+
+    Item { id: floatingShortcutFocus; visible: false }
+
+    QtObject {
+        id: metadataTestDocument
+        property bool hasDocument: true
+        property var availableDifficulties: []
+        property var difficulties: []
+        property int currentDifficultyId: 5
+    }
+    QtObject {
+        id: metadataTestPages
+        property bool overlayActive: true
+        property string activePageId: "latency"
+        property int leaveRequests: 0
+        function leaveOverlayPage() { ++leaveRequests; return false }
+    }
+    Component {
+        id: normalMetadataSidebar
+        ChartFieldSidebar { viewState: metadataState; documentSession: metadataTestDocument; commands: root.testCommands; pages: metadataTestPages }
+    }
+    Component {
+        id: efficientMetadataSidebar
+        EfficientSidebar { viewState: metadataState; documentSession: metadataTestDocument; commands: root.testCommands; pages: metadataTestPages }
     }
 
     TestCase {
@@ -161,8 +198,13 @@ Item {
         function cleanup() {
             dock.maximizedPanel = ""
             dock.activePanel = ""
+            const manager = findChild(dock, "workspaceManagerDialog")
+            if (manager) manager.close()
             ordinaryInput.visible = false
+            sourceInputStandIn.visible = false
             ordinaryInput.text = ""
+            floatingShortcutFocus.visible = false
+            floatingShortcutFocus.parent = root
             preferences.workspaceLayout = {}
             preferences.workspaceHiddenPanels = {}
             preferences.sidebarVisible = true
@@ -219,12 +261,12 @@ Item {
             const activityPosition = activityRail.mapToGlobal(0, 0)
             mouseClick(previewPane, previewPane.width / 2, previewPane.height / 2)
             tryCompare(dock, "activePanel", "preview")
-            keyClick(Qt.Key_QuoteLeft)
+            dock.toggleCurrentPanelMaximization()
             tryCompare(dock, "maximizedPanel", "preview")
             tryVerify(() => !editor.visible && previewPane.visible && previewPane.width === dock.width)
             compare(activityRail.mapToGlobal(0, 0), activityPosition)
             compare(JSON.stringify(preferences.workspaceLayout), savedTree)
-            keyClick(Qt.Key_QuoteLeft)
+            dock.toggleCurrentPanelMaximization()
             tryVerify(() => dock.useNativeFrame && editor.visible)
             compare(previewPane.width, originalPreviewWidth)
             compare(JSON.stringify(preferences.workspaceLayout), savedTree)
@@ -235,6 +277,69 @@ Item {
             keyClick("`")
             compare(ordinaryInput.text, "`")
             compare(dock.maximizedPanel, "")
+            sourceInputStandIn.visible = true
+            sourceInputStandIn.forceActiveFocus()
+            tryVerify(() => sourceInputStandIn.activeFocus)
+            verify(!dock.keyboardAllowed(root.Window.window))
+        }
+
+        function test_managerShortcutAndMetadataIsolation() {
+            mouseClick(previewPane, previewPane.width / 2, previewPane.height / 2)
+            const original = JSON.stringify(preferences.workspaceLayout)
+            keyClick(Qt.Key_QuoteLeft)
+            const manager = findChild(dock, "workspaceManagerDialog")
+            verify(manager !== null)
+            tryCompare(manager, "visible", true)
+            compare(dock.maximizedPanel, "")
+            keyClick(Qt.Key_Escape)
+            tryCompare(manager, "visible", false)
+            compare(JSON.stringify(preferences.workspaceLayout), original)
+
+            metadataState.openEditor("difficulty:5", false)
+            const editorKey = metadataState.activeEditorKey
+            const tabs = JSON.stringify(metadataState.openEditorTabs)
+            const previousRequests = metadataRequests.count
+            metadataState.openMetadataEditor()
+            compare(metadataRequests.count, previousRequests + 1)
+            compare(metadataState.activeEditorKey, editorKey)
+            compare(JSON.stringify(metadataState.openEditorTabs), tabs)
+            verify(metadataState.difficultyEditorActive)
+        }
+
+        function test_sidebarMetadataDoesNotLeaveOverlay() {
+            metadataState.openEditor("difficulty:5", false)
+            const activeEditor = metadataState.activeEditorKey
+            const tabs = JSON.stringify(metadataState.openEditorTabs)
+            metadataTestPages.leaveRequests = 0
+            for (const entry of [
+                [normalMetadataSidebar, "chartMetadataNavigation"],
+                [efficientMetadataSidebar, "efficientMetadataNavigation"]
+            ]) {
+                const sidebar = createTemporaryObject(entry[0], root, { width: 300, height: 400, z: 100 })
+                verify(sidebar !== null)
+                const button = findChild(sidebar, entry[1])
+                verify(button !== null)
+                tryVerify(() => button.visible && button.width > 0)
+                const previousRequests = metadataRequests.count
+                mouseClick(button)
+                compare(metadataRequests.count, previousRequests + 1)
+                compare(metadataTestPages.leaveRequests, 0)
+                compare(metadataTestPages.activePageId, "latency")
+                verify(metadataTestPages.overlayActive)
+                compare(metadataState.activeEditorKey, activeEditor)
+                compare(JSON.stringify(metadataState.openEditorTabs), tabs)
+                sidebar.visible = false
+            }
+        }
+
+        function test_layoutCaptureDoesNotIncludeTransientState() {
+            dock.maximizedPanel = "preview"
+            const snapshot = dock.captureLayout()
+            verify(!("maximizedPanel" in snapshot))
+            verify(!("activeEditorKey" in snapshot))
+            verify(!("metadataDialog" in snapshot))
+            compare(snapshot.timelineVerticalWidthRatio, preferences.timelineVerticalWidthRatio)
+            compare(JSON.stringify(snapshot.tree), JSON.stringify(dock.tree))
         }
 
         function test_reparentingPreservesLiveContent() {
@@ -272,12 +377,36 @@ Item {
             verify(editorPopup.parent.Window.window === editor.Window.window)
 
             const floatingEditor = editor.Window.window
+            const manager = findChild(dock, "workspaceManagerDialog")
+            const textBeforeShortcut = editor.text
+            keyClick(Qt.Key_QuoteLeft)
+            compare(editor.text.length, textBeforeShortcut.length + 1)
+            compare(manager.visible, false)
+            verify(!dock.windowMaximized(floatingEditor))
+            editor.undo()
+            compare(editor.text, textBeforeShortcut)
+
+            floatingShortcutFocus.parent = floatingEditor.contentItem
+            floatingShortcutFocus.visible = true
+            floatingShortcutFocus.forceActiveFocus()
+            tryVerify(() => floatingShortcutFocus.activeFocus)
+            verify(dock.keyboardAllowed(floatingEditor))
+            verify(!dock.keyboardAllowed(root.Window.window))
+            keyClick(Qt.Key_QuoteLeft)
+            tryCompare(manager, "visible", true)
+            verify(manager.parent.Window.window === floatingEditor)
+            verify(!dock.windowMaximized(floatingEditor))
+            keyClick(Qt.Key_Escape)
+            tryCompare(manager, "visible", false)
+            floatingShortcutFocus.forceActiveFocus()
             const geometryBefore = JSON.stringify(dock.floating.editor)
-            dock.togglePanelMaximization("editor", floatingEditor)
+            keyClick(Qt.Key_QuoteLeft, Qt.ControlModifier)
             tryVerify(() => dock.windowMaximized(floatingEditor))
-            dock.togglePanelMaximization("editor", floatingEditor)
+            keyClick(Qt.Key_QuoteLeft, Qt.ControlModifier)
             tryVerify(() => !dock.windowMaximized(floatingEditor))
             compare(JSON.stringify(dock.floating.editor), geometryBefore)
+            floatingShortcutFocus.visible = false
+            floatingShortcutFocus.parent = root
 
             const group = dock.groups.find(candidate => candidate.tabs.includes("preview"))
             dock.updateDrag("editor", group.mapToGlobal(group.width / 2, group.height / 2))

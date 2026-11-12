@@ -1,6 +1,7 @@
 #include "app/ui/preview/ChartStructureModel.h"
 
 #include "app/services/ChartFileSafety.h"
+#include "app/services/PreferenceDocument.h"
 #include "app/services/ChartWorkspaceFileService.h"
 #include "audio/bass/OfflineAudioDecoder.h"
 #include "common/RuntimePaths.h"
@@ -141,6 +142,9 @@ QString cachePath(const QString& root, const char* kind, const QString& key)
 ChartStructureModel::ChartStructureModel(ChartWorkspace& workspace, ChartWorkspaceFileService& files, QObject* parent)
     : QObject(parent), workspace_(workspace), files_(files)
 {
+    const auto ui = PreferenceDocument::loadPreferencesObject().value(QStringLiteral("ui")).toObject();
+    const auto style = ui.value(QStringLiteral("pressure_heatmap_style")).toString(QStringLiteral("overlay"));
+    if (style == QLatin1String("classic") || style == QLatin1String("off")) heatmapStyle_ = style;
     pool_.setMaxThreadCount(1);
     pool_.setThreadPriority(QThread::LowPriority);
     debounce_.setSingleShot(true);
@@ -150,6 +154,19 @@ ChartStructureModel::ChartStructureModel(ChartWorkspace& workspace, ChartWorkspa
     connect(&watcher_, &QFileSystemWatcher::fileChanged, this, [this] { refresh(true); });
     connect(&watcher_, &QFileSystemWatcher::directoryChanged, this, [this] { refresh(); });
     refresh();
+}
+
+void ChartStructureModel::setHeatmapStyle(const QString& style)
+{
+    if (style != QLatin1String("off") && style != QLatin1String("classic") && style != QLatin1String("overlay")) return;
+    if (heatmapStyle_ == style) return;
+    heatmapStyle_ = style;
+    auto preferences = PreferenceDocument::loadPreferencesObject();
+    auto ui = preferences.value(QStringLiteral("ui")).toObject();
+    ui.insert(QStringLiteral("pressure_heatmap_style"), style);
+    preferences.insert(QStringLiteral("ui"), ui);
+    PreferenceDocument::savePreferencesObject(preferences);
+    emit heatmapStyleChanged();
 }
 
 ChartStructureModel::~ChartStructureModel()

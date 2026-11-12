@@ -38,6 +38,14 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
     {
         namespace profiles = miacode::preview_mode_preferences;
+        const auto compact = profiles::debugDisplayPreset(0);
+        const auto detailed = profiles::debugDisplayPreset(1);
+        check(compact.value("showTimestamp").toBool() && !compact.value("showTouchTrail").toBool()
+            && !compact.value("showJudgeMarkers").toBool(), "compact diagnostics keep timing without contact overlays");
+        check(detailed.value("showBpmHud").toBool() && detailed.value("showCpsHud").toBool()
+            && detailed.value("showTouchTrail").toBool() && detailed.value("showJudgeMarkers").toBool(),
+            "detailed diagnostics enable the shared exportable overlays");
+        check(profiles::debugDisplayPreset(7).isEmpty(), "unknown diagnostic presets cannot reset live settings");
         QJsonObject store;
         QJsonObject regular = profiles::normalized({});
         regular.insert("showTimestamp", false);

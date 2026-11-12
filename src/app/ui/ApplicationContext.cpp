@@ -36,6 +36,7 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
     , netUpload_(services.netService(), services.uiRequests(), this)
     , cli_(this)
     , chartTools_(services.uiRequests(), this)
+    , chartLibrary_(services.uiRequests(), document_, this)
     , lifecycle_(services.editorPageRouterSlot(), this)
 {
     preview_.setStructure(&chartStructure_);
