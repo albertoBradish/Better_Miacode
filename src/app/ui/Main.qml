@@ -140,6 +140,11 @@ ApplicationWindow {
     property bool closeApproved: false
 
     onClosing: function(close) {
+        if (!mainView.flushLibrarySessions()) {
+            close.accepted = false
+            window.closeApproved = false
+            return
+        }
         if (window.closeApproved) {
             window.shellLifecycle.notifyRootCloseAccepted("qml_ui_root_closing")
             return

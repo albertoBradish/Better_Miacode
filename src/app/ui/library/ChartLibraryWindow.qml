@@ -133,6 +133,7 @@ ApplicationWindow {
                         enabled: !!root.editingSession
                         textFormat: TextEdit.PlainText; wrapMode: TextEdit.NoWrap
                         color: Theme.colors.text.primary; font.family: "Consolas"
+                        onActiveFocusChanged: if (!activeFocus) root.flush()
                         onTextChanged: if (!root.synchronizing && activeFocus) { root.pendingEdit = true; editTimer.restart() }
                         Keys.onPressed: event => {
                             if ((event.modifiers & Qt.ControlModifier) && root.editingSession && (event.key === Qt.Key_Z || event.key === Qt.Key_Y)) {
