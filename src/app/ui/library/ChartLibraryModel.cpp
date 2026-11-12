@@ -72,6 +72,7 @@ ChartLibraryModel::ChartLibraryModel(miacode::UiRequestService& requests,Documen
     connect(&recoveryTimer_,&QTimer::timeout,this,&ChartLibraryModel::saveRecovery);
     connect(&watcher_,&QFileSystemWatcher::directoryChanged,this,[this]{refreshTimer_.start();});
     connect(&watcher_,&QFileSystemWatcher::fileChanged,this,[this]{refreshTimer_.start();});
+    connect(&progress_, &JobProgressService::cancellationRequested, this, [this](quint64 token) { if(token==progress_.token())cancel(); });
     restoreRecovery();
 }
 ChartLibraryModel::~ChartLibraryModel()
@@ -136,13 +137,15 @@ bool ChartLibraryModel::setRoot(const QString& path)
     rebuildFilter(&restored); refresh(); return true;
 }
 void ChartLibraryModel::finishThread()
-{ if(worker_){worker_->wait();delete worker_;worker_=nullptr;}busy_=false;emit changed(); }
+{ if(worker_){worker_->wait();delete worker_;worker_=nullptr;}progress_.end();busy_=false;emit changed(); }
 void ChartLibraryModel::cancel(){if(cancel_)cancel_->store(true);}
 void ChartLibraryModel::refresh()
 {
     if(busy_||root_.isEmpty())return;
     busy_=true;status_=qtTrId("library.scanning");prepared_.clear();emit changed();
     const auto root=root_; const auto generation=++generation_;cancel_=std::make_shared<std::atomic_bool>(false);
+    progress_.begin(localizedText("library.title"),localizedText("library.scanning"),true);
+    progress_.reportIndeterminate(localizedText("library.scanning"));
     const auto canceled=cancel_; QHash<QString,Entry> cached;for(const auto& e:entries_)cached.insert(e.path,e);
     worker_=QThread::create([this,root,generation,canceled,cached]{
         QVector<Entry> found;QHash<QString,int> hashes;int skipped=0;qint64 indexBytes=0;
@@ -263,6 +266,8 @@ void ChartLibraryModel::prepareNormalization()
     const auto stored=PreferenceDocument::loadPreferencesObject().value("app").toObject().value("preview").toObject();
     const auto options=app_preferences::chartNormalizationOptionsFromPreferences(stored, chart_transform::ChartNormalizationOptions{true,false,true});
     cancel_=std::make_shared<std::atomic_bool>(false);const auto canceled=cancel_;
+    progress_.begin(localizedText("library.title"),localizedText("library.preparing"),true);
+    progress_.reportIndeterminate(localizedText("library.preparing"));
     worker_=QThread::create([this,paths,root,generation,canceled,options]{
         QVector<library::Change> changes;QString error;qint64 total=0;
         for(const auto&path:paths){

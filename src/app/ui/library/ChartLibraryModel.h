@@ -1,5 +1,6 @@
 #pragma once
 #include "app/services/ChartLibraryFiles.h"
+#include "app/services/JobProgressService.h"
 #include <QAbstractListModel>
 #include <QFileSystemWatcher>
 #include <QPointer>
@@ -49,6 +50,7 @@ private:
 
 class ChartLibraryModel final : public QAbstractListModel {
     Q_OBJECT
+    Q_PROPERTY(QObject* progress READ progress CONSTANT)
     Q_PROPERTY(QString rootPath READ rootPath NOTIFY changed)
     Q_PROPERTY(QString query READ query WRITE setQuery NOTIFY changed)
     Q_PROPERTY(bool duplicatesOnly READ duplicatesOnly WRITE setDuplicatesOnly NOTIFY changed)
@@ -67,6 +69,7 @@ public:
     int rowCount(const QModelIndex& parent={}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int,QByteArray> roleNames() const override;
+    QObject* progress() { return &progress_; }
     QString rootPath() const { return root_; }
     QString query() const { return query_; }
     void setQuery(const QString& text);
@@ -122,6 +125,8 @@ private:
     QPointer<LibraryDocument> active_;
     QThread* worker_=nullptr;
     std::shared_ptr<std::atomic_bool> cancel_;
+    // Background indexing owns its progress rather than blocking the main editor.
+    miacode::JobProgressService progress_{this};
     QFileSystemWatcher watcher_;
     QTimer refreshTimer_,recoveryTimer_;
 };

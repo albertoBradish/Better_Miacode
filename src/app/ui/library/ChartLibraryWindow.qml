@@ -151,7 +151,7 @@ ApplicationWindow {
             AppButton { text: qsTrId("library.prepare"); enabled: !root.library.busy && root.library.selectedCount > 0; onClicked: { if (root.flush()) root.library.prepareNormalization() } }
             AppButton { text: qsTrId("library.review").arg(root.library.proposals.length); enabled: root.library.proposals.length > 0; onClicked: review.open() }
             AppButton { text: qsTrId("library.undo_batch"); enabled: root.library.canUndoBatch; onClicked: root.library.undoBatch() }
-            BusyIndicator { running: root.library.busy; visible: running; Layout.preferredWidth: 30; Layout.preferredHeight: 30 }
+            ProgressBar { visible: root.library.busy; indeterminate: root.library.progress.indeterminate; from: 0; to: 100; value: root.library.progress.percent; Layout.preferredWidth: 120 }
         }
         Label { Layout.fillWidth: true; text: root.library.status; textFormat: Text.PlainText; wrapMode: Text.Wrap; color: Theme.colors.text.secondary }
     }

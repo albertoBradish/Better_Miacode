@@ -353,6 +353,8 @@ list(FILTER _library_spec_sources INCLUDE REGEX "(^|/)src/")
 list(FILTER _library_spec_sources EXCLUDE REGEX "DocumentModelSaveSpec.cpp$")
 miacode_add_dev_tool(chart_library_spec TEST
     SOURCES ${_library_spec_sources}
+        src/app/services/JobProgressService.cpp
+        src/app/services/JobProgressService.h
         src/tools/services/ChartLibrarySpec.cpp
         src/app/services/ChartLibraryFiles.cpp
         src/app/services/ChartLibraryFiles.h
