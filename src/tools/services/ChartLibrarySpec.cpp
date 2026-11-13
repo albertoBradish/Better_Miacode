@@ -395,6 +395,11 @@ void recovery(const QString& base)
         Host unavailable;
         check(unavailable.library->sessions().isEmpty() && unavailable.library->checkpoint(),
             "unavailable sources retain deferred recovery without creating empty live buffers");
+        QDir runtime(QFileInfo(miacode::runtime_paths::configFile("preferences_v2.json")).absolutePath()); runtime.cdUp();
+        const QString record=runtime.filePath("sessions/chart-library.json");
+        QFile::remove(record);check(QDir().mkpath(record),"deferred recovery failure fixture created");
+        check(!unavailable.library->checkpoint(),"unavailable dirty drafts also block closing if recovery cannot be saved");
+        check(QDir().rmdir(record) && unavailable.library->checkpoint(),"deferred draft checkpoint retries without source files");
     }
     check(QDir().rename(offline,root), "recovery source directory returns");
     {

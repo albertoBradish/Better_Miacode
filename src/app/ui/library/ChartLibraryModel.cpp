@@ -330,7 +330,8 @@ bool ChartLibraryModel::checkpoint()
 {
     recoveryTimer_.stop();
     if(writeRecovery())return true;
-    return std::none_of(sessions_.cbegin(),sessions_.cend(),[](const LibraryDocument* session){return session->dirty();});
+    return std::none_of(sessions_.cbegin(),sessions_.cend(),[](const LibraryDocument* session){return session->dirty();})
+        && std::none_of(unavailableRecovery_.cbegin(),unavailableRecovery_.cend(),[](const QJsonValue& value){return value.toObject().value("dirty").toBool();});
 }
 bool ChartLibraryModel::writeRecovery()
 {
