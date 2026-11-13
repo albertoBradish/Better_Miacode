@@ -6027,4 +6027,5 @@ Held %8 · Slides %9 · Overlap %10</translation>
 <message id="library.dock_hint"><source>Read-only browser. Buffers and reviewed batch edits stay in the library manager.</source><translation>Read-only browser. Buffers and reviewed batch edits stay in the library manager.</translation></message>
 <message id="library.dock_empty"><source>Choose a library folder or adjust the filter to show charts.</source><translation>Choose a library folder or adjust the filter to show charts.</translation></message>
 </context>
+<context><name></name><message id="library.recovery_failed"><source>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</source><translation>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</translation></message></context>
 </TS>

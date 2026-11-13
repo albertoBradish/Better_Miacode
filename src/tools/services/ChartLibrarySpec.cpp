@@ -379,6 +379,14 @@ void recovery(const QString& base)
         if (!buffer) return;
         draft = buffer->text() + "|| recovered draft\n";
         buffer->setText(draft);
+        QDir runtime(QFileInfo(miacode::runtime_paths::configFile("preferences_v2.json")).absolutePath());
+        runtime.cdUp();
+        const QString recoveryFile=runtime.filePath("sessions/chart-library.json");
+        QFile::remove(recoveryFile);
+        check(QDir().mkpath(recoveryFile), "blocked recovery destination prepared");
+        check(!host.library->checkpoint() && buffer->dirty() && buffer->text()==draft && get(path)==original,
+            "failed recovery checkpoint blocks closing unsaved drafts without touching source bytes");
+        check(QDir().rmdir(recoveryFile) && host.library->checkpoint(), "recovery checkpoint can be retried after fixing storage");
     }
     check(get(path) == original, "saving session recovery never writes the source chart");
     {

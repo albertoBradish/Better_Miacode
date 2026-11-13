@@ -92,6 +92,7 @@ public:
     Q_INVOKABLE void activateBuffer(int index);
     Q_INVOKABLE void closeActive();
     Q_INVOKABLE void saveActive();
+    Q_INVOKABLE bool checkpoint();
     Q_INVOKABLE void openInEditor(const QString& path);
     Q_INVOKABLE void prepareNormalization();
     Q_INVOKABLE void applyPrepared();
@@ -105,6 +106,7 @@ private:
     void rebuildFilter(QVector<Entry>* replacement = nullptr);
     void finishThread();
     void saveRecovery();
+    bool writeRecovery();
     void restoreRecovery();
     void persistIndex();
     QString cachePath() const;
@@ -115,7 +117,7 @@ private:
     miacode::UiRequestService* requests_;
     QPointer<DocumentModel> document_;
     QString root_,query_,status_;
-    bool duplicatesOnly_=false,busy_=false;
+    bool duplicatesOnly_=false,busy_=false,recoveryFailed_=false;
     quint64 generation_=0;
     QVector<Entry> entries_;
     QVector<int> visible_;

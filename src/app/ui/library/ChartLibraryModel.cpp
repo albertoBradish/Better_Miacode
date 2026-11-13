@@ -18,12 +18,17 @@
 
 namespace miacode::ui {
 namespace {
-void saveJson(const QString& path,const QJsonObject& value)
+bool saveJson(const QString& path,const QJsonObject& value,QString* error=nullptr)
 {
-    QDir().mkpath(QFileInfo(path).absolutePath());
+    if(!QDir().mkpath(QFileInfo(path).absolutePath())) {
+        if(error)*error=QStringLiteral("Cannot create recovery directory: %1").arg(path);
+        return false;
+    }
     QSaveFile file(path); file.setDirectWriteFallback(false);
     const auto bytes=QJsonDocument(value).toJson(QJsonDocument::Compact);
-    if (file.open(QIODevice::WriteOnly) && file.write(bytes)==bytes.size()) file.commit();
+    if (file.open(QIODevice::WriteOnly) && file.write(bytes)==bytes.size() && file.commit()) return true;
+    if(error)*error=file.errorString();
+    return false;
 }
 QJsonObject loadJson(const QString& path)
 {
@@ -310,11 +315,23 @@ void ChartLibraryModel::undoBatch()
     QString error;
     if(library::undo(root_,undo_,journalPath(),&error)){undo_.clear();refresh();}else{status_=error;emit changed();}
 }
-void ChartLibraryModel::saveRecovery()
+void ChartLibraryModel::saveRecovery() { writeRecovery(); }
+bool ChartLibraryModel::checkpoint()
+{
+    recoveryTimer_.stop();
+    if(writeRecovery())return true;
+    return std::none_of(sessions_.cbegin(),sessions_.cend(),[](const LibraryDocument* session){return session->dirty();});
+}
+bool ChartLibraryModel::writeRecovery()
 {
     QJsonArray sessions;for(auto*s:sessions_)sessions.append(QJsonObject{{"path",s->path()},{"text",s->text()},
         {"expected",QString::fromLatin1(s->expectedHash.toHex())},{"dirty",s->dirty()}});
-    saveJson(recoveryPath(),{{"schema",1},{"root",root_},{"sessions",sessions}});
+    QString error;
+    if(!saveJson(recoveryPath(),{{"schema",1},{"root",root_},{"sessions",sessions}},&error)) {
+        recoveryFailed_=true;status_=qtTrId("library.recovery_failed").arg(error);emit changed();return false;
+    }
+    if(recoveryFailed_){recoveryFailed_=false;status_.clear();emit changed();}
+    return true;
 }
 void ChartLibraryModel::restoreRecovery()
 {

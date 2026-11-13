@@ -38,7 +38,7 @@ ApplicationWindow {
             synchronizing = false
         }
     }
-    onClosing: close => { if (!flush()) close.accepted = false }
+    onClosing: close => { if (!flush() || !library.checkpoint()) close.accepted = false }
     Shortcut { sequences: [StandardKey.Close]; onActivated: root.close() }
     Timer { id: editTimer; interval: 300; onTriggered: root.flush() }
     Connections { target: root.library; function onChanged() { root.syncSession() } }

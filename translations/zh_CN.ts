@@ -6046,4 +6046,5 @@ Held %8 · Slides %9 · Overlap %10</source>
 <message id="library.dock_hint"><source>Read-only browser. Buffers and reviewed batch edits stay in the library manager.</source><translation>此面板只读浏览。原文会话与需要确认的批量操作统一在管理窗口处理。</translation></message>
 <message id="library.dock_empty"><source>Choose a library folder or adjust the filter to show charts.</source><translation>选择谱库目录，或调整筛选条件以显示谱面。</translation></message>
 </context>
+<context><name></name><message id="library.recovery_failed"><source>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</source><translation>无法保存草稿恢复记录：%1。未保存会话仍在内存中，请先处理错误或保存文件，再关闭窗口。</translation></message></context>
 </TS>
