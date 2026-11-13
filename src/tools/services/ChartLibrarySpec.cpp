@@ -389,6 +389,14 @@ void recovery(const QString& base)
         check(QDir().rmdir(recoveryFile) && host.library->checkpoint(), "recovery checkpoint can be retried after fixing storage");
     }
     check(get(path) == original, "saving session recovery never writes the source chart");
+    const QString offline=root+"_offline";
+    check(QDir().rename(root,offline), "recovery source directory becomes temporarily unavailable");
+    {
+        Host unavailable;
+        check(unavailable.library->sessions().isEmpty() && unavailable.library->checkpoint(),
+            "unavailable sources retain deferred recovery without creating empty live buffers");
+    }
+    check(QDir().rename(offline,root), "recovery source directory returns");
     {
         Host host;
         auto* restored = qobject_cast<LibraryDocument*>(host.library->activeSession());

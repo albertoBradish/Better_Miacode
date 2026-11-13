@@ -129,6 +129,15 @@ bool ChartLibraryModel::setRoot(const QString& path)
     const QString canonical=dir.canonicalFilePath();
     if(canonical.isEmpty())return false;
     if(root_!=canonical && !sessions_.isEmpty()){status_=qtTrId("library.close_sessions_first");emit changed();return false;}
+    if(root_!=canonical && !unavailableRecovery_.isEmpty()) {
+        const QString archive=QDir(storageDirectory("sessions")).filePath("library-unavailable-"+QUuid::createUuid().toString(QUuid::Id128)+".json");
+        QString error;
+        if(!saveJson(archive,{{"schema",1},{"root",root_},{"sessions",unavailableRecovery_}},&error)) {
+            status_=qtTrId("library.recovery_failed").arg(error);emit changed();return false;
+        }
+        unavailableRecovery_={};
+        requests_->postNotice(NoticeSeverity::Information,qtTrId("library.title"),qtTrId("library.recovery_archived").arg(archive));
+    }
     root_=canonical;selected_.clear();prepared_.clear();undo_.clear();QVector<Entry> restored;
     const auto cached=loadJson(cachePath());
     if(cached.value("schema").toInt()==1 && cached.value("root").toString()==root_) {
@@ -147,6 +156,7 @@ void ChartLibraryModel::cancel(){if(cancel_)cancel_->store(true);}
 void ChartLibraryModel::refresh()
 {
     if(busy_||root_.isEmpty())return;
+    if(!QFileInfo(root_).isDir()){status_=qtTrId("library.recovery_unavailable");emit changed();return;}
     busy_=true;status_=qtTrId("library.scanning");prepared_.clear();emit changed();
     const auto root=root_; const auto generation=++generation_;cancel_=std::make_shared<std::atomic_bool>(false);
     progress_.begin(localizedText("library.title"),localizedText("library.scanning"),true);
@@ -324,7 +334,7 @@ bool ChartLibraryModel::checkpoint()
 }
 bool ChartLibraryModel::writeRecovery()
 {
-    QJsonArray sessions;for(auto*s:sessions_)sessions.append(QJsonObject{{"path",s->path()},{"text",s->text()},
+    QJsonArray sessions=unavailableRecovery_;for(auto*s:sessions_)sessions.append(QJsonObject{{"path",s->path()},{"text",s->text()},
         {"expected",QString::fromLatin1(s->expectedHash.toHex())},{"dirty",s->dirty()}});
     QString error;
     if(!saveJson(recoveryPath(),{{"schema",1},{"root",root_},{"sessions",sessions}},&error)) {
@@ -336,16 +346,23 @@ bool ChartLibraryModel::writeRecovery()
 void ChartLibraryModel::restoreRecovery()
 {
     const auto saved=loadJson(recoveryPath());if(saved.value("schema").toInt()!=1)return;
-    root_=saved.value("root").toString();if(!QFileInfo(root_).isDir()){root_.clear();return;}
+    root_=saved.value("root").toString();
+    if(!QFileInfo(root_).isDir()){
+        unavailableRecovery_=saved.value("sessions").toArray();
+        if(!unavailableRecovery_.isEmpty())status_=qtTrId("library.recovery_unavailable");
+        return;
+    }
     for(const auto&value:saved.value("sessions").toArray()){
         const auto object=value.toObject();const auto path=object.value("path").toString();
-        if(!library::withinRoot(root_,path)||sessions_.size()>=5)continue;
+        if(!library::withinRoot(root_,path)||sessions_.size()>=5){unavailableRecovery_.append(object);continue;}
         openBuffer(path);
-        if(active_&&active_->path()==path&&object.value("dirty").toBool()){
+        if(!active_||active_->path()!=path){unavailableRecovery_.append(object);continue;}
+        if(object.value("dirty").toBool()){
             active_->expectedHash=QByteArray::fromHex(object.value("expected").toString().toLatin1());
             active_->setText(object.value("text").toString());
         }
     }
-    if(!sessions_.isEmpty())status_=qtTrId("library.recovered");
+    if(!unavailableRecovery_.isEmpty())status_=qtTrId("library.recovery_unavailable");
+    else if(!sessions_.isEmpty())status_=qtTrId("library.recovered");
 }
 }

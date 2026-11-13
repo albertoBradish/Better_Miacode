@@ -2,6 +2,7 @@
 #include "app/services/ChartLibraryFiles.h"
 #include "app/services/JobProgressService.h"
 #include <QAbstractListModel>
+#include <QJsonArray>
 #include <QFileSystemWatcher>
 #include <QPointer>
 #include <QSet>
@@ -124,6 +125,7 @@ private:
     QSet<QString> selected_;
     QVector<library::Change> prepared_,undo_;
     QList<LibraryDocument*> sessions_;
+    QJsonArray unavailableRecovery_;
     QPointer<LibraryDocument> active_;
     QThread* worker_=nullptr;
     std::shared_ptr<std::atomic_bool> cancel_;

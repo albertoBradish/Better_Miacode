@@ -6047,4 +6047,8 @@ Held %8 · Slides %9 · Overlap %10</source>
 <message id="library.dock_empty"><source>Choose a library folder or adjust the filter to show charts.</source><translation>选择谱库目录，或调整筛选条件以显示谱面。</translation></message>
 </context>
 <context><name></name><message id="library.recovery_failed"><source>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</source><translation>无法保存草稿恢复记录：%1。未保存会话仍在内存中，请先处理错误或保存文件，再关闭窗口。</translation></message></context>
+<context><name></name>
+<message id="library.recovery_unavailable"><source>Some saved sessions are unavailable. Their drafts remain in recovery storage; restore the folder or choose another library to archive them safely.</source><translation>部分待恢复会话的文件暂时不可用，草稿仍保留在恢复记录中。可恢复目录，或选择其他谱库并保留恢复快照。</translation></message>
+<message id="library.recovery_archived"><source>Unavailable session drafts were preserved at: %1</source><translation>不可用会话的草稿已另存恢复快照：%1</translation></message>
+</context>
 </TS>

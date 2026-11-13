@@ -6047,4 +6047,8 @@ Held %8 · Slides %9 · Overlap %10</source>
 <message id="library.dock_empty"><source>Choose a library folder or adjust the filter to show charts.</source><translation>ライブラリのフォルダーを選択するか、絞り込み条件を変更してください。</translation></message>
 </context>
 <context><name></name><message id="library.recovery_failed"><source>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</source><translation>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</translation></message></context>
+<context><name></name>
+<message id="library.recovery_unavailable"><source>Some saved sessions are unavailable. Their drafts remain in recovery storage; restore the folder or choose another library to archive them safely.</source><translation>Some saved sessions are unavailable. Their drafts remain in recovery storage; restore the folder or choose another library to archive them safely.</translation></message>
+<message id="library.recovery_archived"><source>Unavailable session drafts were preserved at: %1</source><translation>Unavailable session drafts were preserved at: %1</translation></message>
+</context>
 </TS>
