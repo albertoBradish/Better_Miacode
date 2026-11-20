@@ -8,21 +8,12 @@ Rectangle {
 
     property string activeView: "chart"
     property bool documentAvailable: true
-    property bool netUploadEnabled: false
-    property bool networkActive: false
     property bool toolsAvailable: true
-    readonly property bool toolsMenuActive: toolsPopup.active
     signal viewRequested(string viewId)
-    signal toolRequested(string toolId)
     signal settingsRequested()
 
-    function showMediaToolsMenu(anchorItem) {
-        if (root.toolsAvailable)
-            toolsPopup.popup(anchorItem || toolsButton, (anchorItem || toolsButton).width, 0)
-    }
-
     implicitWidth: Theme.activityButtonSize
-    color: Theme.surfaceColor(Theme.colors.background.activityBar)
+    color: Theme.chromeSurfaceColor(Theme.colors.background.activityBar, false)
 
     Column {
         anchors.left: parent.left
@@ -50,8 +41,8 @@ Rectangle {
             objectName: "majnetActivityButton"
             iconSource: Qt.resolvedUrl("icons/globe.svg")
             tooltip: qsTrId("net.ui.majnet")
-            selected: root.networkActive || majnetPopup.active
-            onClicked: majnetPopup.popup(majnetButton, majnetButton.width, 0)
+            selected: root.activeView === "network"
+            onClicked: root.viewRequested("network")
         }
         ActivityButton {
             id: toolsButton
@@ -59,43 +50,9 @@ Rectangle {
             filledIconSource: Qt.resolvedUrl("icons/tools-fill.svg")
             tooltip: qsTrId("qml.tools")
             enabled: root.toolsAvailable
-            selected: toolsPopup.active
-            onClicked: {
-                if (toolsPopup.active)
-                    toolsPopup.close()
-                else
-                    toolsPopup.popup(toolsButton, toolsButton.width, 0)
-            }
+            selected: root.activeView === "tools"
+            onClicked: root.viewRequested("tools")
         }
-    }
-
-    // Keep the left navigation entry and the top-level Majnet menu identical.
-    MajnetActionsMenu {
-        id: majnetPopup
-        uploadEnabled: root.netUploadEnabled
-        onDownloadRequested: root.toolRequested("net-download")
-        onUploadRequested: root.toolRequested("net-upload")
-    }
-
-    AppMenu {
-        id: toolsPopup
-        hugContent: true
-
-        AudioProcessingMenu {
-            enabled: root.toolsAvailable
-            documentAvailable: root.documentAvailable
-            onToolRequested: toolId => root.toolRequested("media." + toolId)
-        }
-        VideoProcessingMenu {
-            enabled: root.toolsAvailable
-            documentAvailable: root.documentAvailable
-            onToolRequested: toolId => root.toolRequested("media." + toolId)
-        }
-    }
-
-    onToolsAvailableChanged: {
-        if (!toolsAvailable)
-            toolsPopup.close()
     }
 
     ActivityButton {
@@ -103,7 +60,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         iconSource: Qt.resolvedUrl("icons/settings.svg")
-        tooltip: qsTrId("qml.view_settings")
+        tooltip: qsTrId("dialog.preferences.title")
         onClicked: root.settingsRequested()
     }
 
@@ -115,6 +72,9 @@ Rectangle {
         required property string tooltip
         property bool selected: false
 
+        Accessible.name: button.tooltip
+        Accessible.selected: button.selected
+        focusPolicy: Qt.StrongFocus
         width: Theme.activityButtonSize
         height: Theme.activityButtonSize
         hoverEnabled: true
@@ -148,6 +108,7 @@ Rectangle {
                 hovered: button.hovered
                 pressed: button.down
                 selected: button.selected
+                focused: button.visualFocus
             }
 
         }

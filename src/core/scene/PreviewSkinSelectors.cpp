@@ -180,4 +180,38 @@ qreal slideStartupStarInitialScale(const PreviewSkinAssets& skin, const QImage& 
     return qMax<qreal>(0.01, headWidth / qMax(1, starImage.width()));
 }
 
+const QImage* selectHandOrderSkinArtwork(const PreviewSkinAssets& skin, const QImage* original, HandOrderHand hand)
+{
+    if (original == nullptr || hand == HandOrderHand::Unspecified) {
+        return original;
+    }
+    const int handIndex = static_cast<int>(hand) - 1;
+    if (handIndex < 0 || handIndex >= 3) {
+        return original;
+    }
+    const auto variants = skin.handOrderVariants.constFind(static_cast<quint64>(original->cacheKey()));
+    if (variants == skin.handOrderVariants.constEnd()) {
+        return original;
+    }
+    const QImage& artwork = variants.value().at(static_cast<size_t>(handIndex));
+    return artwork.isNull() ? original : &artwork;
+}
+
+void applyHandOrderSkinArtwork(const PreviewSkinAssets& skin, PreviewSpriteDescriptors* sprites)
+{
+    if (sprites == nullptr || skin.handOrderVariants.isEmpty()) {
+        return;
+    }
+    for (PreviewSpriteDescriptor& sprite : *sprites) {
+        if (sprite.image == nullptr || sprite.handOrderHand == HandOrderHand::Unspecified) {
+            continue;
+        }
+        const QImage* artwork = selectHandOrderSkinArtwork(skin, sprite.image, sprite.handOrderHand);
+        if (artwork != sprite.image) {
+            sprite.image = artwork;
+            sprite.handOrderHand = HandOrderHand::Unspecified;
+        }
+    }
+}
+
 }  // namespace miacode::preview::scene

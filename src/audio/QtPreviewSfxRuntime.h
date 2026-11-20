@@ -70,6 +70,7 @@ public:
     void setBackgroundTrackOffsetSeconds(double seconds);
     void setBackgroundTrackPlaybackRate(double rate);
     void applyPlaybackRateAtChartSecond(double rate, double chartSecond);
+    void setOutputRoute(double gain, double pan) { outputRoute_->set(gain, pan); }
     void applyLevels(const PreviewAudioSettings& settings);
     void configureTimeline(
         const QVector<TimelineNoteMarker>& noteMarkers,
@@ -163,6 +164,7 @@ signals:
     void auditionCompleted(const QtPreviewSfxRuntime::Completion& completion);
 
 private:
+    std::shared_ptr<PreviewOutputRoute> outputRoute_ = std::make_shared<PreviewOutputRoute>();
     struct CallbackState {
         std::atomic_bool deliveryEnabled{true};
     };

@@ -10,9 +10,12 @@
 // IntroBannerSpec is defined in VideoExportController.h (so VideoExportTask can
 // carry it too); VideoExportSnapshot just serializes one.
 
+// New snapshots use v2; the reader also migrates existing v1 CLI requests.
+inline constexpr auto kVideoExportSnapshotSchema = "miacode_export_snapshot_v2";
+
 struct VideoExportSnapshot {
     miacode::preview::scene::PreviewHudFontSettings hudFontSettings;
-    QString schema = QStringLiteral("miacode_export_snapshot_v1");
+    QString schema = QString::fromLatin1(kVideoExportSnapshotSchema);
     QString jobId;
     QString createdAtUtc;
     QString chartTextUtf8;
@@ -29,12 +32,15 @@ struct VideoExportSnapshot {
     double backgroundBrightnessInner = miacode::preview_video::kBackgroundBrightnessInnerDefault;
     double layoutSquareScale = miacode::preview_video::kLayoutSquareScaleDefault;
     double fireworkBrightness = miacode::preview_video::kFireworkBrightnessDefault;
+    PreviewFireworkStyle fireworkStyle = PreviewFireworkStyle::Standard;
+    CompletionDisplay completionDisplay = CompletionDisplay::Both;
     bool smoothBrightness = miacode::preview_video::kSmoothBrightnessDefault;
     PreviewOutlineVariant outlineVariant = PreviewOutlineVariant::Line;
     QString outlineImagePath;
     PreviewBackgroundScaleMode backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
     double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
     double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
+    double starFadeTiming = 0.0;
     bool slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     PreviewJudgeEffectStyle judgeEffectStyle = PreviewJudgeEffectStyle::Standard;
@@ -47,12 +53,15 @@ struct VideoExportSnapshot {
     int outputHeight = 1080;
     int fps = 60;
     int audioBitrateKbps = 192;
-    VideoExportPreset preset = VideoExportPreset::HighQuality;
-    VideoExportSizePreset sizePreset = VideoExportSizePreset::Standard;
+    miacode::video_export::VideoEncodingSettings encoding;
+    bool includePv = true;
     bool fullRangeExport = true;
     QString outputPath;
     VideoExportOutputMode outputMode = VideoExportOutputMode::Mp4;
     bool showTimestamp = true;
+    bool showHandOrderAnnotations = true;
+    bool showHandOrderWatermark = false;
+    miacode::video_export::VideoWatermarkSettings videoWatermark;
     bool showMeasureLines = false;
     bool showJudgementSkeleton = false;
     bool showSlideJudgementTiming = false;

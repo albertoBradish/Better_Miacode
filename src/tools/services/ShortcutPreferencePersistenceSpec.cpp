@@ -2,7 +2,7 @@
 #include "app/services/PreferenceJsonFile.h"
 #include "app/ui/chrome/ShortcutModel.h"
 
-#include <QCoreApplication>
+#include <QGuiApplication>
 #include <QJsonArray>
 #include <QSet>
 #include <QTemporaryDir>
@@ -23,7 +23,9 @@ QByteArray bytes(const QString& path)
 
 int main(int argc, char** argv)
 {
-    QCoreApplication app(argc, argv);
+    // ShortcutModel reads the platform's standard key bindings.
+    qputenv("QT_QPA_PLATFORM", "offscreen");
+    QGuiApplication app(argc, argv);
     QTemporaryDir temporary;
     if (!temporary.isValid()) {
         return 1;
@@ -37,6 +39,48 @@ int main(int argc, char** argv)
     using miacode::ui::ShortcutRegistry;
     using miacode::ui::ShortcutModel;
     using namespace miacode::preference_json_file;
+    const QString handPath = temporary.filePath(QStringLiteral("hand-order-shortcuts.json"));
+    const QStringList handIds{QStringLiteral("hand_order.set_left"), QStringLiteral("hand_order.set_right"),
+        QStringLiteral("hand_order.set_either"), QStringLiteral("hand_order.split_annotation"), QStringLiteral("hand_order.split_native_slide"),
+        QStringLiteral("hand_order.bisect_annotation"), QStringLiteral("hand_order.swap_hands"),
+        QStringLiteral("hand_order.screen_split"), QStringLiteral("hand_order.alternate")};
+    const QStringList handDefaults{QStringLiteral("Alt+W"), QStringLiteral("Alt+E"),
+        QStringLiteral("Alt+Y"), QStringLiteral("Alt+T"), QStringLiteral("Ctrl+Alt+5"), QStringLiteral("Alt+C"),
+        QStringLiteral("Alt+Q"), QStringLiteral("Alt+B"), QStringLiteral("Alt+G")};
+    ShortcutRegistry handRegistry(handPath);
+    ShortcutModel handModel(handRegistry);
+    for (int index = 0; index < handIds.size(); ++index) {
+        const auto& handId = handIds.at(index);
+        expect(handRegistry.defaultShortcutText(handId) == handDefaults.at(index),
+               "hand-order default is registered");
+        const QString custom = QStringLiteral("Ctrl+Shift+Alt+%1").arg(index + 1);
+        expect(handModel.setShortcutText(handId, custom), "hand-order shortcut is editable");
+        ShortcutRegistry handRestart(handPath);
+        expect(handRestart.shortcutText(handId) == QKeySequence(custom).toString(QKeySequence::PortableText)
+                   && read(handPath).object.value("actions").toObject().value(handId).toObject().value("shortcut")
+                       == QKeySequence(custom).toString(QKeySequence::PortableText),
+               "hand-order binding persists canonically and survives registry restart");
+    }
+    const QString basicId = QStringLiteral("hand_order.basic_layout");
+    expect(handRegistry.defaultShortcutText(basicId) == QStringLiteral("Ctrl+Alt+B")
+        && handModel.setShortcutText(basicId, QStringLiteral("Ctrl+Shift+Alt+B")),
+        "basic layout has its own editable default shortcut");
+    ShortcutRegistry layoutRestart(handPath);
+    expect(layoutRestart.shortcutText(basicId) == QKeySequence(QStringLiteral("Ctrl+Shift+Alt+B")).toString(QKeySequence::PortableText),
+        "basic-layout shortcut survives an independent registry restart");
+    const QString cwdFixture = temporary.filePath(QStringLiteral("external-launch"));
+    expect(QDir().mkpath(cwdFixture), "create synthetic external launch directory");
+    const QString externalShortcuts = QDir(cwdFixture).filePath(QStringLiteral("shortcuts.json"));
+    expect(put(externalShortcuts, R"({"actions":{"hand_order.analyze":{"shortcut":"Ctrl+Alt+F12"}}})"),
+           "write synthetic external shortcut override");
+    const QString priorCwd = QDir::currentPath();
+    expect(QDir::setCurrent(cwdFixture), "enter synthetic external launch directory");
+    expect(ShortcutRegistry::instance().shortcutText(QStringLiteral("hand_order.analyze"))
+               != QStringLiteral("Ctrl+Alt+F12"), "default registry ignores external launch directory");
+    ShortcutRegistry explicitInput(temporary.filePath(QStringLiteral("owned.json")), externalShortcuts);
+    expect(explicitInput.shortcutText(QStringLiteral("hand_order.analyze")) == QStringLiteral("Ctrl+Alt+F12"),
+           "explicit hosts retain additional-input support");
+    expect(QDir::setCurrent(priorCwd), "restore isolated working directory");
     const QString id = QStringLiteral("transform.mirror_lr");
     const QString second = QStringLiteral("preview.stop_or_play");
     const QString path = temporary.filePath(QStringLiteral("shortcuts.json"));
@@ -209,6 +253,23 @@ int main(int argc, char** argv)
         expect(guarded.shortcutText(id) == "Ctrl+8" && bytes(futurePath) == originalFuture,
                "unsupported shortcut schema retains pending override after reload");
     }
+    // Bindings are exclusive: assigning or resetting one takes it from every other command.
+    const QString exclusivePath = temporary.filePath(QStringLiteral("exclusive-shortcuts.json"));
+    ShortcutRegistry exclusive(exclusivePath);
+    ShortcutModel exclusiveModel(exclusive);
+    const QString stop = QStringLiteral("preview.stop_or_play");
+    const QString outside = QStringLiteral("preview.play_pause_non_text");
+    const QString mirror = QStringLiteral("transform.mirror_ud");
+    expect(exclusiveModel.setShortcutText(stop, QStringLiteral("Space"))
+               && exclusive.shortcutText(outside).isEmpty()
+               && ShortcutRegistry(exclusivePath).shortcutText(outside).isEmpty(),
+           "taking a key unbinds its previous owner, and the unbinding survives a restart");
+    exclusiveModel.resetShortcut(outside);
+    expect(exclusive.shortcutText(outside) == "Space" && exclusive.shortcutText(stop).isEmpty(),
+           "resetting a command reclaims its default from the current owner");
+    expect(exclusiveModel.setShortcutText(stop, QStringLiteral("Ctrl+K, Ctrl+C"))
+               && exclusive.shortcutText(mirror).isEmpty(),
+           "a chord takes the single key it starts with");
     miacode::debug_log::shutdownAsyncLogWriter();
     const QByteArray log = bytes(miacode::debug_log::runtimeLogPath());
     expect(log.contains("invalid-json") && log.contains("read-"), "silent recovery and IO failures leave log evidence");

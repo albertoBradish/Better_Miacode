@@ -1,5 +1,6 @@
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartBatchTransform.Internal.h"
+#include "core/chart/parser/HandOrderAnnotationSyntax.h"
 
 #include <QRandomGenerator>
 #include <QStringList>
@@ -14,7 +15,7 @@ void scanSelectionTokens(const QString& input, const std::function<void(const QS
         QString token;
         const auto flushToken = [&]() {
             if (!token.isEmpty()) {
-                visitToken(token);
+                visitToken(miacode::hand_order::splitToken(token).baseToken);
                 token.clear();
             }
         };
@@ -73,7 +74,9 @@ QString rewriteSelectionTokens(const QString& input, const std::function<QString
         QString token;
         const auto flushToken = [&]() {
             if (!token.isEmpty()) {
-                transformed.append(rewriteToken(token));
+                const auto annotation = miacode::hand_order::splitToken(token);
+                transformed.append(rewriteToken(annotation.baseToken));
+                transformed.append(annotation.suffix);
                 token.clear();
             }
         };

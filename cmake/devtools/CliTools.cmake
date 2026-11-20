@@ -82,14 +82,20 @@ miacode_add_dev_tool(miacode_latency_offset_batch
 )
 miacode_link_dev_audio(miacode_latency_offset_batch)
 
-miacode_add_dev_tool(miacode_firework_render
-    SOURCES src/devtools/FireworkRender.cpp
-    LIBS miacode_export miacode_preview_quick miacode_preview_quickplugin
-        Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick
+# Local corpus audit, intentionally not a CTest case or a distributed chart fixture.
+miacode_add_dev_tool(miacode_hand_order_audit
+    SOURCES src/devtools/HandOrderCorpusAudit.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui Qt6::Widgets
     INCLUDES src
 )
-miacode_link_dev_audio(miacode_firework_render)
 
+miacode_add_dev_tool(miacode_hand_order_pipeline_audit
+    SOURCES src/devtools/HandOrderPipelineAudit.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui Qt6::Widgets
+    INCLUDES src
+)
+target_compile_definitions(miacode_hand_order_pipeline_audit PRIVATE
+    "MIACODE_PIPELINE_WORKSPACE=\"${CMAKE_CURRENT_SOURCE_DIR}/..\"")
 miacode_add_dev_tool(miacode_measure_ring_render
     SOURCES src/devtools/MeasureRingRender.cpp
     LIBS miacode_export miacode_preview_quick miacode_preview_quickplugin

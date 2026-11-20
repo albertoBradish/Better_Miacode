@@ -2,9 +2,9 @@
 
 基于 [MiaCode](https://github.com/Team-MiaCode/MiaCode) 的谱面编辑器，以下仅列出 Better 的新增与改进。
 
-最新发布：[2.0.1-better.11](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.11)。
+最新发布：[2.0.1-better.14](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.14)。
 
-[下载](https://github.com/albertoBradish/Better_Miacode/releases) · [对应源码](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.11) · [English](README_EN.md) · [问题反馈](https://github.com/albertoBradish/Better_Miacode/issues)
+[下载](https://github.com/albertoBradish/Better_Miacode/releases) · [对应源码](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.14) · [English](README_EN.md) · [问题反馈](https://github.com/albertoBradish/Better_Miacode/issues)
 
 功能快速查阅：
 基于 MiaCode 的独立改进版本，保留原版的谱面编辑、实时预览、语法与无理检测、音视频工具、Net 谱面服务和封面制作等功能，并提供以下改进：

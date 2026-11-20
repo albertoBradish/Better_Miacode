@@ -59,16 +59,19 @@ Item {
     property bool backdropBlurEnabled: true
     // Soft drop shadow behind the whole card (the transparent-mode card can't
     // draw its own — MaimaiBannerCard.cardShadowEnabled is a no-op there).
-    property bool cardShadowEnabled: false
+    property bool cardShadowEnabled: true
 
     // ---- PV-preview style (IntroBannerSpec.pvPreview) ----
     property bool pvPreviewMode: false
+    property bool chartPreviewMode: false
+    property bool backgroundSuppressed: false
+    readonly property bool stagePreviewHold: pvPreviewMode && frame < hideAbs
     // Card + PV window [0, hold); also the cycle-2 start frame.
     property int pvPreviewHoldFrames: 510
     // true -> the caller composites the PV segment under this overlay, so the
     // hold leaves the frame transparent around the card.
     property bool pvPreviewVideoUnderlay: false
-    property real pvPreviewBrightness: 1.0
+    property real pvPreviewBrightness: 0.8
     readonly property int pvFadeInFrames: 24
     // Preview only: the export page fades the card while its PV segment window
     // is dragged, so the PV under the card stays readable.
@@ -87,7 +90,7 @@ Item {
     property var bannerTemplateData: null
 
     // Dim tint over the blurred backdrop so the crisp card reads.
-    property color backdropColor: "#0A0414"
+    property color backdropColor: "#000000"
 
     // Flat fill the maimai wipe composites OVER (its own base-plate colour, sampled
     // from transition/base_TL.png). Used as the cycle-2 hard-cut colour AND as the
@@ -174,7 +177,7 @@ Item {
     // downstream in the ffmpeg base, so the playfield/HUD here are unaffected.
     // The PV-preview hold keeps it off so the underlaid PV segment shows through.
     function baseOpacity() {
-        if (pvPreviewMode && pvPreviewVideoUnderlay && frame < hideAbs) return 0.0
+        if (stagePreviewHold && (pvPreviewVideoUnderlay || chartPreviewMode)) return 0.0
         return frame < revealStart ? 1.0 : 0.0
     }
 
@@ -226,7 +229,7 @@ Item {
     Image {
         id: bgFill
         anchors.fill: parent
-        source: root.pvPreviewMode ? "" : root.effectiveBackdrop
+        source: root.pvPreviewMode || root.backgroundSuppressed ? "" : root.effectiveBackdrop
         fillMode: Image.PreserveAspectCrop
         visible: false
         asynchronous: false
@@ -263,7 +266,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: root.backdropColor
-        opacity: root.cardOpacity() * 0.45
+        opacity: root.backgroundSuppressed ? 0 : root.cardOpacity() * (1.0 - root.clamp(root.pvPreviewBrightness, 0.0, 1.0))
         visible: opacity > 0
     }
 
@@ -271,7 +274,8 @@ Item {
     // stands in for the PV through the hold.
     Image {
         anchors.fill: parent
-        source: (root.pvPreviewMode && !root.pvPreviewVideoUnderlay) ? root.effectiveBackdrop : ""
+        source: root.pvPreviewMode && !root.pvPreviewVideoUnderlay && !root.chartPreviewMode
+            && !root.backgroundSuppressed ? root.effectiveBackdrop : ""
         fillMode: Image.PreserveAspectCrop
         visible: root.pvPreviewMode && !root.pvPreviewVideoUnderlay
                  && root.frame < root.hideAbs && status === Image.Ready
@@ -286,7 +290,7 @@ Item {
         anchors.fill: parent
         color: "#000000"
         opacity: 1.0 - root.clamp(root.pvPreviewBrightness, 0.0, 1.0)
-        visible: root.pvPreviewMode && root.frame < root.hideAbs && opacity > 0
+        visible: root.stagePreviewHold && !root.chartPreviewMode && opacity > 0
     }
 
     // PV-preview fade-in: black over the PV underneath (below the card, so the
@@ -316,9 +320,10 @@ Item {
 
     MaimaiBannerCard {
         id: cardImg
-        anchors.centerIn: parent
-        height: parent.height
-        width: parent.height
+        x: root.chartPreviewMode ? parent.width * 0.25 - width * 0.5 : (parent.width - width) * 0.5
+        y: (parent.height - height) * 0.5
+        height: root.chartPreviewMode ? Math.min(parent.height, parent.width * 0.5) : parent.height
+        width: height
         frame: root.frame
         fps: root.fps
         externalTemplate: root.bannerTemplateData
@@ -330,8 +335,8 @@ Item {
         // clears, so it's in view) — the master opacity here only gates presence +
         // the cycle-2 hard-cut, NOT the fade-in (else the two would multiply). The
         // blurred backdrop/dim use cardOpacity() (earlier, under the wipe).
-        revealStartFrame: root.pvPreviewMode && root.stillFrame ? -1 : root.cardRevealStart
-        opacity: ((root.frame >= root.cardRevealStart || (root.pvPreviewMode && root.stillFrame))
+        revealStartFrame: root.chartPreviewMode || (root.pvPreviewMode && root.stillFrame) ? -1 : root.cardRevealStart
+        opacity: ((root.chartPreviewMode || root.frame >= root.cardRevealStart || (root.pvPreviewMode && root.stillFrame))
                   && root.frame < root.hideAbs)
                  ? (root.cardDimmed ? 0.3 : 1.0) : 0.0
         visible: opacity > 0

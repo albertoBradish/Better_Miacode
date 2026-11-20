@@ -1,3 +1,4 @@
+#include "app/services/HandOrderFeaturePreferences.h"
 #include "app/runtime/Session.h"
 #include "app/runtime/Shared.h"
 #include "app/runtime/shell/ShellHost.h"
@@ -64,6 +65,27 @@ void miacode::runtime::PlaybackCoordinator::togglePlayback()
         return;
     }
     onTogglePreviewPause();
+}
+
+void miacode::runtime::PlaybackCoordinator::pausePlayback()
+{
+    if (!beginPlaybackCommand()) {
+        return;
+    }
+    // A parse completion must not restart playback after export has begun.
+    state_.pendingPreviewPlaybackStart_ = false;
+    state_.pendingPreviewPlaybackResumeFromPause_ = false;
+    state_.pendingPreviewPlaybackRevision_ = 0;
+    state_.pendingPreviewPlaybackDifficultyId_ = 0;
+    state_.pendingPreviewPlaybackSecond_ = 0.0;
+    state_.previewPendingPlayInteractionId_ = 0;
+    state_.previewPendingPlayInteractionSource_.clear();
+    pauseExportIntroAdvance();
+    if (state_.playing_ || state_.previewStartupSyncPending_ || state_.previewLateVideoStartPending_) {
+        pauseQtPreviewPlaybackExact();
+    }
+    playbackState_.previewTransportState_ = miacode::PlaybackTransportState::Paused;
+    updatePauseButtonAppearance();
 }
 
 void miacode::runtime::PlaybackCoordinator::stopOrPlay()
@@ -357,9 +379,19 @@ void miacode::runtime::PlaybackCoordinator::toggleMuriRenderMode()
         nextMode = RenderMode::MaimuriDxStyle;
         break;
     case RenderMode::MaimuriDxStyle:
+        nextMode = RenderMode::HandOrderBreakdown;
+        break;
+    case RenderMode::HandOrderBreakdown:
+        nextMode = RenderMode::SimulatedPlay;
+        break;
+    case RenderMode::SimulatedPlay:
+        nextMode = RenderMode::Debug;
+        break;
+    case RenderMode::Debug:
         nextMode = RenderMode::Native;
         break;
     }
+    if (!miacode::hand_order_features::enabled() && renderModeShowsHandOrder(nextMode)) nextMode = RenderMode::Debug;
     validation_.setMuriRenderMode(nextMode, true);
 }
 
@@ -580,6 +612,9 @@ bool miacode::runtime::PlaybackCoordinator::bottomTabsTabVisibleFromState(
         return state_.validationTabVisible_;
     case RuntimeContext::BottomTabsTabId::Muri:
         return state_.muriTabVisible_;
+    case RuntimeContext::BottomTabsTabId::Patterns:
+    case RuntimeContext::BottomTabsTabId::PlayChecks:
+        return true;
     case RuntimeContext::BottomTabsTabId::Unknown:
         break;
     }
@@ -595,6 +630,10 @@ QString miacode::runtime::PlaybackCoordinator::bottomTabsTabIdToString(RuntimeCo
         return QStringLiteral("validation");
     case RuntimeContext::BottomTabsTabId::Muri:
         return QStringLiteral("muri");
+    case RuntimeContext::BottomTabsTabId::Patterns:
+        return QStringLiteral("patterns");
+    case RuntimeContext::BottomTabsTabId::PlayChecks:
+        return QStringLiteral("play_checks");
     case RuntimeContext::BottomTabsTabId::Unknown:
         break;
     }
@@ -613,6 +652,8 @@ miacode::runtime::RuntimeContext::BottomTabsTabId miacode::runtime::PlaybackCoor
     if (normalized == QStringLiteral("muri")) {
         return RuntimeContext::BottomTabsTabId::Muri;
     }
+    if (normalized == QStringLiteral("patterns")) return RuntimeContext::BottomTabsTabId::Patterns;
+    if (normalized == QStringLiteral("play_checks")) return RuntimeContext::BottomTabsTabId::PlayChecks;
     return RuntimeContext::BottomTabsTabId::Unknown;
 }
 
@@ -638,9 +679,7 @@ void miacode::runtime::PlaybackCoordinator::setCurrentBottomTabsTabId(RuntimeCon
     }
     const RuntimeContext::BottomTabsTabId previousTabId = state_.currentBottomTabsTabId_;
     state_.currentBottomTabsTabId_ = tabId;
-    if (tabId == RuntimeContext::BottomTabsTabId::Timeline) {
-        flushDeferredTimelineBridgeState();
-    }
+    flushDeferredTimelineBridgeState();
     if (previousTabId != tabId) {
         emit services_.shellNotifications().presentationChanged();
     }
@@ -648,6 +687,7 @@ void miacode::runtime::PlaybackCoordinator::setCurrentBottomTabsTabId(RuntimeCon
 
 bool miacode::runtime::PlaybackCoordinator::bottomTabsVisible() const
 {
+    // Pattern suggestions share this panel's existing visibility preference.
     return bottomTabsTabVisibleFromState(RuntimeContext::BottomTabsTabId::Timeline)
         || bottomTabsTabVisibleFromState(RuntimeContext::BottomTabsTabId::Validation)
         || bottomTabsTabVisibleFromState(RuntimeContext::BottomTabsTabId::Muri);

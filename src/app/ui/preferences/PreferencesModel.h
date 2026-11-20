@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include "app/services/PreferencesStore.h"
 #include "app/ui/preferences/CompletionCandidateModel.h"
@@ -15,7 +16,7 @@ class WorkbenchSettings;
 // by the settings page and reports what changed.
 //
 // Language is applied live through LocaleService (QTranslator + retranslate).
-// Theme still needs a restart for full effect; restartRequired tracks theme only.
+// Font and theme choices are applied through WorkbenchSettings immediately.
 class PreferencesModel final : public QObject
 {
     Q_OBJECT
@@ -27,6 +28,28 @@ public:
         LeaveInputUnchanged = 2,
     };
     Q_ENUM(EditorInputHandlingMode)
+
+    Q_PROPERTY(bool handOrderFeaturesEnabled READ handOrderFeaturesEnabled NOTIFY handOrderFeaturesChanged)
+    Q_PROPERTY(bool handOrderWatermarkEnabled READ handOrderWatermarkEnabled WRITE setHandOrderWatermarkEnabled NOTIFY handOrderFeaturesChanged)
+    bool handOrderFeaturesEnabled() const;
+    Q_INVOKABLE QString unlockHandOrderFeatures(const QString& password);
+    Q_INVOKABLE bool disableHandOrderFeatures();
+    bool handOrderWatermarkEnabled() const;
+    void setHandOrderWatermarkEnabled(bool enabled);
+
+    Q_PROPERTY(bool videoWatermarkEnabled READ videoWatermarkEnabled WRITE setVideoWatermarkEnabled NOTIFY videoWatermarkEnabledChanged)
+    Q_PROPERTY(QString videoWatermarkText READ videoWatermarkText WRITE setVideoWatermarkText NOTIFY videoWatermarkTextChanged)
+    Q_PROPERTY(int videoWatermarkFontSize READ videoWatermarkFontSize WRITE setVideoWatermarkFontSize NOTIFY videoWatermarkFontSizeChanged)
+    Q_PROPERTY(int videoWatermarkMinFontSize READ videoWatermarkMinFontSize CONSTANT)
+    Q_PROPERTY(int videoWatermarkMaxFontSize READ videoWatermarkMaxFontSize CONSTANT)
+    bool videoWatermarkEnabled() const;
+    void setVideoWatermarkEnabled(bool enabled);
+    QString videoWatermarkText() const;
+    void setVideoWatermarkText(const QString& text);
+    int videoWatermarkFontSize() const;
+    void setVideoWatermarkFontSize(int size);
+    int videoWatermarkMinFontSize() const;
+    int videoWatermarkMaxFontSize() const;
 
     // Interface
     Q_PROPERTY(QVariantList languageOptions READ languageOptions NOTIFY interfaceChanged)
@@ -44,6 +67,7 @@ public:
     Q_PROPERTY(int uiScalePercent READ uiScalePercent WRITE setUiScalePercent NOTIFY interfaceChanged)
 
     // Editor
+    Q_PROPERTY(QString editorFontFamily READ editorFontFamily WRITE setEditorFontFamily NOTIFY editorChanged)
     Q_PROPERTY(int editorFontSize READ editorFontSize WRITE setEditorFontSize NOTIFY editorChanged)
     Q_PROPERTY(int editorFontSizeMinimum READ editorFontSizeMinimum CONSTANT)
     Q_PROPERTY(int editorFontSizeMaximum READ editorFontSizeMaximum CONSTANT)
@@ -55,6 +79,16 @@ public:
     Q_PROPERTY(bool editorScrollPastEnd READ editorScrollPastEnd WRITE setEditorScrollPastEnd NOTIFY editorChanged)
     Q_PROPERTY(bool editorSelectionBeatDisplay READ editorSelectionBeatDisplay WRITE setEditorSelectionBeatDisplay NOTIFY editorChanged)
     Q_PROPERTY(bool editorOverviewRulerEnabled READ editorOverviewRulerEnabled WRITE setEditorOverviewRulerEnabled NOTIFY editorChanged)
+    Q_PROPERTY(double handOrderReturnSpeed READ handOrderReturnSpeed WRITE setHandOrderReturnSpeed NOTIFY editorChanged)
+    Q_PROPERTY(int handOrderSweepThreshold READ handOrderSweepThreshold WRITE setHandOrderSweepThreshold NOTIFY editorChanged)
+    Q_PROPERTY(bool handOrderColorUnresolved READ handOrderColorUnresolved WRITE setHandOrderColorUnresolved NOTIFY editorChanged)
+    Q_PROPERTY(QVariantMap handOrderPlayerProfile READ handOrderPlayerProfile NOTIFY editorChanged)
+    Q_PROPERTY(QVariantMap handOrderPlayerDisplayProfile READ handOrderPlayerDisplayProfile NOTIFY editorChanged)
+    Q_PROPERTY(QVariantList handOrderStyleOptions READ handOrderStyleOptions NOTIFY interfaceChanged)
+    Q_PROPERTY(QString handOrderStyleToken READ handOrderStyleToken WRITE setHandOrderStyleToken NOTIFY editorChanged)
+    Q_PROPERTY(QVariantList handOrderSearchModeOptions READ handOrderSearchModeOptions NOTIFY interfaceChanged)
+    Q_PROPERTY(QString handOrderSearchMode READ handOrderSearchMode WRITE setHandOrderSearchMode NOTIFY editorChanged)
+    Q_PROPERTY(int handOrderSearchBudgetMillions READ handOrderSearchBudgetMillions WRITE setHandOrderSearchBudgetMillions NOTIFY editorChanged)
 
     Q_PROPERTY(QAbstractItemModel* completionDurations READ completionDurations CONSTANT)
     Q_PROPERTY(QAbstractItemModel* completionDivisions READ completionDivisions CONSTANT)
@@ -63,6 +97,7 @@ public:
     Q_PROPERTY(bool videoDecodePrefersSoftware READ videoDecodePrefersSoftware WRITE setVideoDecodePrefersSoftware NOTIFY performanceChanged)
     Q_PROPERTY(double displayRefreshRate READ displayRefreshRate CONSTANT)
     Q_PROPERTY(QVariantList canvasFrameRateOptions READ canvasFrameRateOptions NOTIFY performanceChanged)
+    Q_PROPERTY(QVariantList stageMediaFrameRateOptions READ stageMediaFrameRateOptions NOTIFY performanceChanged)
     Q_PROPERTY(QVariantList appFrameRateOptions READ appFrameRateOptions NOTIFY performanceChanged)
     Q_PROPERTY(int canvasFrameRateMode READ canvasFrameRateMode WRITE setCanvasFrameRateMode NOTIFY performanceChanged)
     Q_PROPERTY(int stageMediaFrameRateMode READ stageMediaFrameRateMode WRITE setStageMediaFrameRateMode NOTIFY performanceChanged)
@@ -102,6 +137,9 @@ public:
     void setUiScalePercent(int percent);
 
     int editorFontSize() const;
+    QString editorFontFamily() const;
+    void setEditorFontFamily(const QString& family);
+    Q_INVOKABLE QVariantList editorFontOptions(const QString& filter = QString()) const;
     void setEditorFontSize(int pointSize);
     int editorFontSizeMinimum() const { return kEditorFontSizeMinimum; }
     int editorFontSizeMaximum() const { return kEditorFontSizeMaximum; }
@@ -129,12 +167,32 @@ public:
     bool editorOverviewRulerEnabled() const;
     void setEditorSelectionBeatDisplay(bool enabled);
     void setEditorOverviewRulerEnabled(bool enabled);
+    double handOrderReturnSpeed() const;
+    void setHandOrderReturnSpeed(double speed);
+    int handOrderSweepThreshold() const;
+    void setHandOrderSweepThreshold(int threshold);
+    bool handOrderColorUnresolved() const;
+    void setHandOrderColorUnresolved(bool enabled);
+    QVariantMap handOrderPlayerProfile() const;
+    QVariantMap handOrderPlayerDisplayProfile() const;
+    Q_INVOKABLE void setHandOrderPlayerDisplayParameter(const QString& name, double value);
+    QVariantList handOrderStyleOptions() const;
+    QString handOrderStyleToken() const;
+    void setHandOrderStyleToken(const QString& token);
+    QVariantList handOrderSearchModeOptions() const;
+    QString handOrderSearchMode() const;
+    void setHandOrderSearchMode(const QString& mode);
+    int handOrderSearchBudgetMillions() const;
+    void setHandOrderSearchBudgetMillions(int millions);
+    Q_INVOKABLE void setHandOrderPlayerParameter(const QString& name, double value);
+    Q_INVOKABLE void resetHandOrderPlayerProfile();
 
     bool videoDecodePrefersSoftware() const;
     void setVideoDecodePrefersSoftware(bool preferSoftware);
     double displayRefreshRate() const;
     QVariantList canvasFrameRateOptions() const;
     QVariantList appFrameRateOptions() const;
+    QVariantList stageMediaFrameRateOptions() const;
     int canvasFrameRateMode() const;
     void setCanvasFrameRateMode(int mode);
     int stageMediaFrameRateMode() const;
@@ -145,6 +203,10 @@ public:
     bool restartRequired() const { return restartRequired_; }
 
 signals:
+    void handOrderFeaturesChanged();
+    void videoWatermarkEnabledChanged();
+    void videoWatermarkTextChanged();
+    void videoWatermarkFontSizeChanged();
     void interfaceChanged();
     void editorChanged();
     void performanceChanged();

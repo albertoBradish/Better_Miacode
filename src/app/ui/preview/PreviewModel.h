@@ -31,6 +31,8 @@ class PreviewModel final : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(double quarterBeat READ quarterBeat NOTIFY positionChanged)
+    Q_PROPERTY(QObject* comparisons READ comparisons CONSTANT)
+    Q_PROPERTY(QObject* structure READ structure CONSTANT)
     Q_PROPERTY(double positionSeconds READ positionSeconds WRITE setPositionSeconds NOTIFY positionChanged)
     Q_PROPERTY(double durationSeconds READ durationSeconds NOTIFY transportChanged)
     Q_PROPERTY(double lowerBoundSeconds READ lowerBoundSeconds NOTIFY transportChanged)
@@ -39,7 +41,14 @@ class PreviewModel final : public QObject
     Q_PROPERTY(QString renderMode READ renderMode NOTIFY renderModeChanged)
     Q_PROPERTY(QString renderModeLabel READ renderModeLabel NOTIFY renderModeChanged)
     Q_PROPERTY(bool muriCheckEnabled READ muriCheckEnabled NOTIFY renderModeChanged)
+    Q_PROPERTY(bool debugRendering READ debugRendering NOTIFY renderModeChanged)
+    Q_PROPERTY(bool simulatedPlay READ simulatedPlay NOTIFY renderModeChanged)
+    Q_PROPERTY(bool handOrderFeaturesEnabled READ handOrderFeaturesEnabled NOTIFY renderModeChanged)
+    Q_PROPERTY(bool handOrderBreakdown READ handOrderBreakdown NOTIFY renderModeChanged)
+    Q_PROPERTY(QVariantMap playProfile READ playProfile NOTIFY canvasSettingsChanged)
+    Q_PROPERTY(int debugDisplayPreset READ debugDisplayPreset NOTIFY canvasSettingsChanged)
     Q_PROPERTY(bool smoothStarErase READ smoothStarErase NOTIFY renderModeChanged)
+    Q_PROPERTY(bool handOrderOverlayEnabled READ handOrderOverlayEnabled NOTIFY canvasSettingsChanged)
     // 无理检测 parameters: 手部半径 (1080 px reference) and 撞尾阈值 (ms), plus the
     // slider ranges, so the menu states no limits of its own.
     Q_PROPERTY(int muriHandRadiusPx READ muriHandRadiusPx NOTIFY muriParametersChanged)
@@ -60,6 +69,13 @@ public:
                              QObject* parent = nullptr);
 
     double positionSeconds() const;
+    QObject* comparisons() const { return comparisons_; }
+    void setComparisons(QObject* model) { comparisons_ = model; }
+    void routeAudio(double gain, double pan) { emit notifications_->previewOutputRouteChanged(gain, pan); }
+    PreviewTimingSettings audioTiming() const { return surface() ? surface()->audioTiming() : PreviewTimingSettings{}; }
+    PreviewAudioSettings audioSettings() const { return surface() ? surface()->audioSettings() : PreviewAudioSettings{}; }
+    QObject* structure() const { return structure_; }
+    void setStructure(QObject* model) { structure_ = model; }
     double quarterBeat() const { return quarterBeat_; }
     double durationSeconds() const;
     double lowerBoundSeconds() const;
@@ -68,6 +84,13 @@ public:
     QString renderMode() const;
     QString renderModeLabel() const;
     bool muriCheckEnabled() const;
+    bool debugRendering() const { return renderMode_ == QLatin1String("debug"); }
+    bool simulatedPlay() const { return renderMode_ == QLatin1String("simulated_play"); }
+    bool handOrderFeaturesEnabled() const { return handOrderFeaturesEnabled_; }
+    void setHandOrderFeaturesEnabled(bool enabled);
+    bool handOrderBreakdown() const { return renderMode_ == QLatin1String("hand_order_breakdown"); }
+    QVariantMap playProfile() const;
+    Q_INVOKABLE QVariantMap playStartingHeights(const QVariantMap& settings) const;
     bool smoothStarErase() const;
     int muriHandRadiusPx() const;
     int muriTapOnSlideThresholdMs() const;
@@ -80,12 +103,19 @@ public:
     double canvasAspectRatio() const;
     QVariantMap canvasSettings() const;
     Q_INVOKABLE void setCanvasSetting(const QString& key, const QVariant& value);
+    bool handOrderOverlayEnabled() const;
+    Q_INVOKABLE void setHandOrderOverlayEnabled(bool enabled);
 
     void setPositionSeconds(double value);
     void setRate(double value);
     void setPlaying(bool value);
     Q_INVOKABLE void toggleRenderMode();
     Q_INVOKABLE void setMuriCheckEnabled(bool enabled);
+    Q_INVOKABLE void setDebugRendering();
+    Q_INVOKABLE void setSimulatedPlay();
+    Q_INVOKABLE void setHandOrderBreakdown();
+    int debugDisplayPreset() const;
+    Q_INVOKABLE void applyDebugDisplayPreset(int preset);
     Q_INVOKABLE void setSmoothStarErase(bool enabled);
     Q_INVOKABLE void setMuriHandRadiusPx(int radiusPx);
     Q_INVOKABLE void setMuriTapOnSlideThresholdMs(int thresholdMs);
@@ -123,6 +153,8 @@ private:
     void appendV2UiProbeSummary() const;
 
     miacode::ShellNotifications* notifications_ = nullptr;
+    QObject* structure_ = nullptr;
+    QObject* comparisons_ = nullptr;
     // Bound to the assembly's slot, not a snapshot.
     miacode::PreviewSurface** surfaceSlot_ = nullptr;
     miacode::PreviewSurface* surface() const
@@ -143,6 +175,7 @@ private:
     double lowerBoundSeconds_ = 0.0;
     double rate_ = 1.0;
     bool playing_ = false;
+    bool handOrderFeaturesEnabled_ = false;
     QString renderMode_;
     QString renderModeLabel_;
     RenderMode lastRegularMode_ = RenderMode::Native;

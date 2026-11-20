@@ -188,6 +188,17 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
             --result.transaction.anchor;
             --result.transaction.position;
             result.consumed = true;
+            if (glyph == QLatin1Char('[')) {
+                QString edited = request.text;
+                const auto& tx = result.transaction;
+                edited.replace(tx.replacementStart, tx.replacementEnd - tx.replacementStart, tx.replacementText);
+                const HandOrderCompletion hand = handOrderCompletionAt(edited, tx.position);
+                if (hand.active()) {
+                    result.completion = {true, QLatin1Char('~'), false,
+                                         hand.startPosition, hand.candidates};
+                    return result;
+                }
+            }
             QStringList candidates;
             if (glyph == QLatin1Char('(')) {
                 QString chart = request.text;
@@ -211,6 +222,16 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
 
     replaceSelection(&result, input);
     result.consumed = true;
+    if (smartEnabled && input == QLatin1String("~")) {
+        QString edited = request.text;
+        const auto& tx = result.transaction;
+        edited.replace(tx.replacementStart, tx.replacementEnd - tx.replacementStart, tx.replacementText);
+        const HandOrderCompletion hand = handOrderCompletionAt(edited, tx.position);
+        if (hand.active()) {
+            result.completion = {true, QLatin1Char('~'), false,
+                                 hand.startPosition, hand.candidates};
+        }
+    }
     return result;
 }
 

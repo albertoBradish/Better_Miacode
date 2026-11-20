@@ -11,7 +11,7 @@
 // command knowing what the backend actually settled on.
 
 #include "app/ui/preview/PreviewModel.h"
-#include "app/services/PlaybackControl.h"
+#include "tools/ui/FakePreviewBackend.h"
 #include "app/services/PreviewSurface.h"
 #include "app/services/ShellNotifications.h"
 #include "common/DebugLog.h"
@@ -30,112 +30,6 @@ bool expect(bool condition, const QString& message, QTextStream& out, int* faile
     return condition;
 }
 
-QString rateLabelFor(double rate)
-{
-    QString text = QString::number(rate, 'f', 2);
-    while (text.endsWith(QLatin1Char('0'))) text.chop(1);
-    if (text.endsWith(QLatin1Char('.'))) text.chop(1);
-    return QStringLiteral("%1x").arg(text);
-}
-
-// One rate lives behind both faces, the way the runtime has it: the control
-// writes it, the surface reports it, and nothing signals in between.
-struct FakeBackendRate {
-    double rate = 1.0;
-    int setCount = 0;
-    int nudgeCount = 0;
-};
-
-class FakeSurface final : public miacode::PreviewSurface
-{
-public:
-    explicit FakeSurface(FakeBackendRate& shared) : shared_(shared) {}
-
-    bool playing() const override { return false; }
-    miacode::PlaybackTransportState playbackTransportState() const override
-    {
-        return miacode::PlaybackTransportState::Paused;
-    }
-    double positionSeconds() const override { return 16.0; }
-    double durationSeconds() const override { return 164.0; }
-    double lowerBoundSeconds() const override { return 0.0; }
-    double playbackRate() const override { return shared_.rate; }
-    QString playbackRateLabel() const override { return rateLabelFor(shared_.rate); }
-    QObject* previewRuntimeObject() const override { return nullptr; }
-    QObject* stageMediaHostObject() const override { return nullptr; }
-    double canvasAspectRatio() const override { return 1.0; }
-    QStringList statsTexts() const override { return {}; }
-    RenderMode muriRenderMode() const override { return RenderMode::Native; }
-    void setMuriRenderMode(RenderMode) override {}
-    void toggleMuriRenderMode() override {}
-    int muriHandRadiusPx() const override { return 30; }
-    void setMuriHandRadiusPx(int) override {}
-    int muriTapOnSlideThresholdMs() const override { return 200; }
-    void setMuriTapOnSlideThresholdMs(int) override {}
-    QStringList availableSkinDirectoryNames() const override { return {}; }
-    QString skinDisplayName(const QString&) const override { return {}; }
-    QString resolveSkinDir() const override { return {}; }
-    QString resolveSkinRootDir() const override { return {}; }
-    QString resolveCustomOutlineDir() const override { return {}; }
-    QStringList availableCustomOutlineFileNames() const override { return {}; }
-    QString customOutlineDisplayName(const QString&) const override { return {}; }
-    QString currentCustomOutlineFileName() const override { return {}; }
-    void applyOutlineVariant(PreviewOutlineVariant, bool, bool) override {}
-    void applyCustomOutlineFileName(const QString&, bool) override {}
-    QVariantMap renderSettings() const override { return {}; }
-    void setRenderSetting(const QString&, const QVariant&) override {}
-    void refreshSurfaces() override {}
-    void applySfxLevels() override {}
-    void prepareForShutdown() override {}
-    PreviewAudioSettings audioSettings() const override { return {}; }
-    void applyAudioSettings(const PreviewAudioSettings&) override {}
-    void saveAudioSettingsAsSoftwareDefault() override {}
-    void restoreAudioSettingsFromSoftwareDefault() override {}
-
-private:
-    FakeBackendRate& shared_;
-};
-
-class FakeControl final : public miacode::PlaybackControl
-{
-public:
-    explicit FakeControl(FakeBackendRate& shared) : shared_(shared) {}
-
-    miacode::PlaybackSnapshot playbackSnapshot() const override { return {}; }
-    bool acceptsPlaybackCallback(const miacode::PlaybackCallbackStamp&) const override
-    {
-        return true;
-    }
-    void togglePlayback() override {}
-    void stopOrPlay() override {}
-    void setPlaybackRangeEnabled(bool, double, double) override {}
-    void stop() override {}
-    void seek(double) override {}
-    void beginScrub() override {}
-    void updateScrub(double) override {}
-    void endScrub(double) override {}
-    void setPlaybackRate(double rate) override
-    {
-        shared_.rate = qMax(0.25, rate);
-        ++shared_.setCount;
-    }
-    // The same ladder runtime/Shared.cpp steps through.
-    void nudgePlaybackRate(int direction) override
-    {
-        static const QList<double> ladder{0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0};
-        int nearest = 0;
-        for (int i = 1; i < ladder.size(); ++i) {
-            if (qAbs(ladder.at(i) - shared_.rate) < qAbs(ladder.at(nearest) - shared_.rate))
-                nearest = i;
-        }
-        shared_.rate = ladder.at(qBound(0, nearest + direction, ladder.size() - 1));
-        ++shared_.nudgeCount;
-    }
-
-private:
-    FakeBackendRate& shared_;
-};
-
 } // namespace
 
 int main(int argc, char** argv)
@@ -144,6 +38,7 @@ int main(int argc, char** argv)
     QTextStream out(stdout);
     int failed = 0;
 
+    using namespace miacode::test;
     FakeBackendRate backend;
     FakeSurface surface(backend);
     FakeControl control(backend);
@@ -175,6 +70,28 @@ int main(int argc, char** argv)
     expect(qFuzzyCompare(model.rate(), 0.25),
            QStringLiteral("a clamped request reports the clamped rate, not the request"),
            out, &failed);
+
+    model.setHandOrderBreakdown();
+    expect(!model.handOrderFeaturesEnabled() && !model.handOrderBreakdown(),
+           QStringLiteral("breakdown mode requires explicit opt-in"), out, &failed);
+    model.setHandOrderFeaturesEnabled(true);
+    QSignalSpy modeSpy(&model, &miacode::ui::PreviewModel::renderModeChanged);
+    model.setHandOrderBreakdown();
+    expect(model.handOrderBreakdown() && !model.simulatedPlay() && !model.debugRendering()
+           && model.renderMode() == QStringLiteral("hand_order_breakdown") && modeSpy.count() == 1,
+           QStringLiteral("breakdown command and notification reach QML while paused"), out, &failed);
+    model.setSimulatedPlay();
+    expect(!model.handOrderBreakdown() && model.simulatedPlay(),
+           QStringLiteral("simulated play hides breakdown steps"), out, &failed);
+    model.setDebugRendering();
+    expect(!model.handOrderBreakdown() && model.debugRendering(),
+           QStringLiteral("debug rendering hides breakdown steps"), out, &failed);
+    model.setMuriCheckEnabled(true);
+    expect(!model.handOrderBreakdown() && model.muriCheckEnabled(),
+           QStringLiteral("Muri rendering hides breakdown steps"), out, &failed);
+    model.setMuriCheckEnabled(false);
+    expect(!model.handOrderBreakdown() && model.renderMode() == QStringLiteral("native"),
+           QStringLiteral("normal rendering hides breakdown steps"), out, &failed);
 
     // The model logs through the async writer. Join it while QCoreApplication is
     // still alive, as the product entry does; joining it from static teardown

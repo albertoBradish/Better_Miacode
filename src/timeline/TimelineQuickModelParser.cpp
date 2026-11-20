@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "timeline/TimelineQuickModelPrivate.h"
+#include "core/chart/parser/HandOrderAnnotationSyntax.h"
 
 using namespace miacode::timeline::tqm_detail;
 
@@ -666,6 +667,19 @@ bool TimelineQuickModel::parseLine(LineState* lineState, const ParseState& start
             }
             break;
         }
+        // Match SimaiParser's recovery boundaries without interpreting annotation
+        // contents as native modifiers or timing directives. Comments still win.
+        const int annotationOffset = token.indexOf(QLatin1Char('~'));
+        const QString annotationSuffix = annotationOffset >= 0
+            ? token.mid(annotationOffset + 1) : QString();
+        const bool openAnnotationContainer = annotationSuffix.startsWith(QLatin1Char('['))
+            && !annotationSuffix.contains(QLatin1Char(']'));
+        if (annotationOffset >= 0
+            && (!ch.isSpace() || openAnnotationContainer)
+            && ch != QLatin1Char(',') && ch != QLatin1Char('/') && ch != QLatin1Char('`')) {
+            token.append(ch);
+            continue;
+        }
         if (ch.isSpace()) {
             flushToken();
             continue;
@@ -799,14 +813,51 @@ bool TimelineQuickModel::parseLine(LineState* lineState, const ParseState& start
 bool TimelineQuickModel::parseNoteToken(
     LineState* lineState,
     ParseState* state,
-    const QString& token,
+    const QString& annotatedToken,
     int lineNumber,
     int column,
     QVector<int>* groupIndices) const
 {
-    if (lineState == nullptr || state == nullptr || token.isEmpty()) {
+    if (lineState == nullptr || state == nullptr || annotatedToken.isEmpty()) {
         return false;
     }
+
+    const auto parts = miacode::hand_order::splitToken(annotatedToken);
+    if (parts.suffixOffset >= 0) {
+        // Native recursion retains the original source column and branch order.
+        // Validate every branch before binding, matching the authoritative parser.
+        const int firstNote = lineState->render.notes.size();
+        const bool parsed = parseNoteToken(lineState, state, parts.baseToken, lineNumber, column, groupIndices);
+        if (!parsed || lineState->render.notes.size() == firstNote) return parsed;
+        // Selection covers the original annotated token, including its suffix.
+        for (int i = firstNote; i < lineState->render.notes.size(); ++i)
+            lineState->render.notes[i].sourceLength = annotatedToken.size();
+        const auto& first = lineState->render.notes.at(firstNote);
+        const bool isSlide = first.kind == TimelineRenderNoteKind::Slide || first.kind == TimelineRenderNoteKind::Wifi;
+        const auto annotation = miacode::hand_order::parseAnnotation(annotatedToken, isSlide);
+        if (!annotation.valid) return parsed;
+        for (int i = firstNote; i < lineState->render.notes.size(); ++i) {
+            const auto& note = lineState->render.notes.at(i);
+            const bool slide = note.kind == TimelineRenderNoteKind::Slide || note.kind == TimelineRenderNoteKind::Wifi;
+            if ((slide && (note.slideBranchIndex < 0 || note.slideBranchIndex >= annotation.branchTracks.size()))
+                || (!slide && !annotation.branchTracks.isEmpty())
+                || (note.kind != TimelineRenderNoteKind::Wifi
+                    && annotation.wifiModes.value(note.slideBranchIndex, HandOrderWifiMode::Legacy) != HandOrderWifiMode::Legacy)) {
+                return parsed;
+            }
+        }
+        for (int i = firstNote; i < lineState->render.notes.size(); ++i) {
+            auto& note = lineState->render.notes[i];
+            note.handOrderHead = annotation.head;
+            if (isSlide) {
+                note.handOrderTrackStops = annotation.branchTracks.at(note.slideBranchIndex);
+                note.handOrderWifiMode = annotation.wifiModes.value(note.slideBranchIndex, HandOrderWifiMode::Legacy);
+                note.handOrderWifiSectorStops = annotation.wifiSectors.value(note.slideBranchIndex);
+            }
+        }
+        return parsed;
+    }
+    const QString& token = annotatedToken;
 
     const double lineBaseSecond = lineState->render.startSecond;
     const auto appendNote = [lineState, state, groupIndices, lineBaseSecond, &token](TimelineRenderNote note) {
@@ -919,9 +970,11 @@ bool TimelineQuickModel::parseNoteToken(
             const QString prefix = token.left(1) + modifierState.rawModifiers;
             const QChar startLane = token.at(0);
             const QStringList branches = core.split(QLatin1Char('*'), Qt::KeepEmptyParts);
-            const int firstBranchNote = lineState->render.notes.size();
-            for (const QString& branchRaw : branches) {
-                QString branch = branchRaw;
+            int trackColumn = column + 1 + modifierCount;
+            for (int branchIndex = 0; branchIndex < branches.size(); ++branchIndex) {
+                QString branch = branches.at(branchIndex);
+                const int branchColumn = trackColumn;
+                trackColumn += branch.size() + (branchIndex == 0 ? 0 : 1);
                 if (branch.isEmpty()) {
                     continue;
                 }
@@ -929,12 +982,18 @@ bool TimelineQuickModel::parseNoteToken(
                     branch.prepend(startLane);
                 }
                 const QString branchToken = prefix + branch.mid(1);
+                const qsizetype firstBranchNote = lineState->render.notes.size();
                 if (!parseNoteToken(lineState, state, branchToken, lineNumber, column, groupIndices)) {
                     return false;
                 }
+                for (qsizetype index = firstBranchNote; index < lineState->render.notes.size(); ++index) {
+                    auto& note = lineState->render.notes[index];
+                    note.sourceLength = token.size();
+                    note.slideTrackSourceCol = branchColumn;
+                    note.slideBranchIndex = branchIndex;
+                    note.slideTrackSourceLength = branches.at(branchIndex).size() - (branchIndex == 0 ? 1 : 0);
+                }
             }
-            for (int index = firstBranchNote; index < lineState->render.notes.size(); ++index)
-                lineState->render.notes[index].sourceLength = token.size();
             return true;
         }
         if (slideCoreHasDisallowedModifiers(core)) {
@@ -969,6 +1028,9 @@ bool TimelineQuickModel::parseNoteToken(
         note.secondOffset = currentSecond - lineBaseSecond;
         note.sourceCol = qMax(1, column);
         note.lane = token.at(0).digitValue();
+        note.slideHeadSourceLength = 1 + modifierCount;
+        note.slideTrackSourceCol = note.sourceCol + note.slideHeadSourceLength;
+        note.slideTrackSourceLength = token.size() - note.slideHeadSourceLength;
         note.endLane = inferSlideEndLane(sanitizedCore, note.lane);
         note.kind = sanitizedCore.contains(QLatin1Char('w'), Qt::CaseInsensitive)
             ? TimelineRenderNoteKind::Wifi

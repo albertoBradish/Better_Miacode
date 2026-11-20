@@ -3,6 +3,58 @@
 <TS version="2.1" language="en_US">
 <context>
     <name></name>
+    <message id="toast.operation_failed">
+        <source>%1 failed: %2.</source>
+        <translation>%1 failed: %2.</translation>
+    </message>
+    <message id="toast.operation_partially_failed">
+        <source>%1 partially failed: %2.</source>
+        <translation>%1 partially failed: %2.</translation>
+    </message>
+    <message id="toast.selection_required">
+        <source>Select the chart text whose subdivision you want to adjust</source>
+        <translation>Select the chart text whose subdivision you want to adjust</translation>
+    </message>
+    <message id="toast.subdivision_incompatible">
+        <source>The selected chart cannot be adjusted by this subdivision ratio</source>
+        <translation>The selected chart cannot be adjusted by this subdivision ratio</translation>
+    </message>
+    <message id="toast.subdivision_limit">
+        <source>The subdivision value exceeds the supported range</source>
+        <translation>The subdivision value exceeds the supported range</translation>
+    </message>
+    <message id="hand_order.auto.adjusted_slide_input_timing"><source>This local candidate uses slightly early or late slide input within the judge window; chart timing remains unchanged</source><translation>This local candidate uses slightly early or late slide input within the judge window; chart timing remains unchanged</translation></message>
+    <message id="hand_order.auto.player_effort"><source>Local candidate estimate: peak single-hand taps %1/s · load %2 times reference capacity</source><translation>Local candidate estimate: peak single-hand taps %1/s · load %2 times reference capacity</translation></message>
+    <message id="preferences.hand_order_player.title"><source>Player ability and technique</source><translation>Player ability and technique</translation></message>
+    <message id="preferences.hand_order_style.title"><source>Sticking style</source><translation>Sticking style</translation></message>
+    <message id="preferences.hand_order_style.comprehensive"><source>Comprehensive</source><translation>Comprehensive</translation></message>
+    <message id="preferences.hand_order_style.hard"><source>Hard carry</source><translation>Hard carry</translation></message>
+    <message id="preferences.hand_order_style.pagination"><source>Phrase paging</source><translation>Phrase paging</translation></message>
+    <message id="preferences.hand_order_style.decomposition"><source>Hand decomposition</source><translation>Hand decomposition</translation></message>
+    <message id="preferences.hand_order_style.custom"><source>Custom</source><translation>Custom</translation></message>
+    <message id="preferences.hand_order_style.help"><source>Presets adjust player estimates together. Moving a slider switches to Custom; judgement and hand occupancy stay fixed.</source><translation>Presets adjust player estimates together. Moving a slider switches to Custom; judgement and hand occupancy stay fixed.</translation></message>
+    <message id="preferences.hand_order_budget.title"><source>Sticking search budget</source><translation>Sticking search budget</translation></message>
+    <message id="preferences.hand_order_budget.low"><source>Low (50 million)</source><translation>Low (50 million)</translation></message>
+    <message id="preferences.hand_order_budget.standard"><source>Standard (300 million)</source><translation>Standard (300 million)</translation></message>
+    <message id="preferences.hand_order_budget.high"><source>High (600 million)</source><translation>High (600 million)</translation></message>
+    <message id="preferences.hand_order_budget.custom"><source>Custom</source><translation>Custom</translation></message>
+    <message id="preferences.hand_order_budget.custom_millions"><source>Budget (millions of work units)</source><translation>Budget (millions of work units)</translation></message>
+    <message id="preferences.hand_order_budget.help"><source>Limits Sticking search work, not RAM or CPU use. Higher values can resolve more complex charts but take longer.</source><translation>Limits Sticking search work, not RAM or CPU use. Higher values can resolve more complex charts but take longer.</translation></message>
+    <message id="preferences.hand_order_player.description"><source>Tap rate and movement speed are reference limits for comfortable play, not hard limits. Stamina and recovery are model estimates; adjust them to your playing style.</source><translation>Tap rate and movement speed are reference limits for comfortable play, not hard limits. Stamina and recovery are model estimates; adjust them to your playing style.</translation></message>
+    <message id="preferences.hand_order_player.tap_rate"><source>Comfortable BPM per hand (16th notes)</source><translation>Comfortable BPM per hand (16th notes)</translation></message>
+    <message id="preferences.hand_order_player.move_speed"><source>Comfortable screen-diameter moves/s</source><translation>Comfortable screen-diameter moves/s</translation></message>
+    <message id="preferences.hand_order_player.stamina"><source>Sustained-action stamina multiplier</source><translation>Sustained-action stamina multiplier</translation></message>
+    <message id="preferences.hand_order_player.recovery"><source>Rest needed to halve load (s)</source><translation>Rest needed to halve load (s)</translation></message>
+    <message id="preferences.hand_order_player.technique"><source>Movement/splitting ↔ repeated-hit preference</source><translation>Movement/splitting ↔ repeated-hit preference</translation></message>
+    <message id="preferences.hand_order_player.technique_help"><source>Negative values favor movement and splitting patterns between hands; 0 is balanced; positive values favor repeated hits in place. Occupancy and judgement requirements still apply.</source><translation>Negative values favor movement and splitting patterns between hands; 0 is balanced; positive values favor repeated hits in place. Occupancy and judgement requirements still apply.</translation></message>
+    <message id="preferences.hand_order_player.reset"><source>Reset player parameters</source><translation>Reset player parameters</translation></message>
+    <message id="preferences.hand_order_player.posture_weight"><source>Natural-side preference strength</source><translation>Natural-side preference strength</translation></message>
+    <message id="preferences.hand_order_player.posture_help"><source>0 disables this natural-side weight. Higher values prefer each hand’s natural side more strongly. Hand occupancy and path safety still apply.</source><translation>0 disables this natural-side weight. Higher values prefer each hand’s natural side more strongly. Hand occupancy and path safety still apply.</translation></message>
+    <message id="dialog.preferences.group.hand_order"><source>Sticking</source><translation>Sticking</translation></message>
+    <message id="preferences.hand_order_return_speed"><source>Idle hand return speed</source><translation>Idle hand return speed</translation></message>
+    <message id="preferences.hand_order_return_speed_unit"><source>field radii/s</source><translation>field radii/s</translation></message>
+    <message id="preferences.hand_order_sweep_threshold"><source>Sweep threshold (16th BPM equivalent)</source><translation>Sweep threshold (16th BPM equivalent)</translation></message>
+    <message id="preferences.hand_order_sweep_threshold_help"><source>160 = 16th notes at 160 BPM; 300 = 32nd notes at 150 BPM. Higher values require faster spacing.</source><translation>160 = 16th notes at 160 BPM; 300 = 32nd notes at 150 BPM. Higher values require faster spacing.</translation></message>
     <message id="setup.completion_hint">
         <source>Customize completion candidates in Preferences.</source>
         <translation>Customize completion candidates in Preferences.</translation>
@@ -26,16 +78,16 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>Welcome to Better Miacode</translation>
     </message>
     <message id="setup.configure">
-        <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
-        <translation>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</translation>
+        <source>Set up appearance and the editor. You can change these later in Preferences.</source>
+        <translation>Set up appearance and the editor. You can change these later in Preferences.</translation>
     </message>
     <message id="setup.imported">
-        <source>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</source>
-        <translation>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</translation>
+        <source>Settings from the previous version are in place. You can review appearance and editor settings in Preferences.</source>
+        <translation>Settings from the previous version are in place. You can review appearance and editor settings in Preferences.</translation>
     </message>
     <message id="setup.import_pending">
-        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</source>
-        <translation>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</translation>
+        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance and editor settings.</source>
+        <translation>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance and editor settings.</translation>
     </message>
     <message id="setup.wizard">
         <source>Setup wizard</source>
@@ -213,13 +265,25 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <source>Save As...</source>
         <translation>Save As...</translation>
     </message>
+    <message id="action.export_plain_simai">
+        <source>Export plain Simai...</source>
+        <translation>Export plain Simai...</translation>
+    </message>
     <message id="action.transform.mirror_lr">
         <source>Mirror Left/Right</source>
         <translation>Mirror Left/Right</translation>
     </message>
+    <message id="action.transform.mirror_lr_swap_hands">
+        <source>Mirror Left/Right and swap hands</source>
+        <translation>Mirror Left/Right and swap hands</translation>
+    </message>
     <message id="action.transform.mirror_ud">
         <source>Mirror Up/Down</source>
         <translation>Mirror Up/Down</translation>
+    </message>
+    <message id="action.transform.mirror_ud_swap_hands">
+        <source>Mirror Up/Down and swap hands</source>
+        <translation>Mirror Up/Down and swap hands</translation>
     </message>
     <message id="action.transform.more">
         <source>More...</source>
@@ -312,6 +376,10 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
     <message id="cli.export.chart_read_failed">
         <source>failed to read chart file</source>
         <translation>failed to read chart file</translation>
+    </message>
+    <message id="cli.export.hand_order_annotation_invalid">
+        <source>Sticking annotation is invalid</source>
+        <translation>Sticking annotation is invalid</translation>
     </message>
     <message id="cli.export.difficulty_invalid">
         <source>invalid difficulty token</source>
@@ -432,6 +500,14 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
     <message id="cli.video_export.hide_timestamp">
         <source>Hide timestamp overlay in output video.</source>
         <translation>Hide timestamp overlay in output video.</translation>
+    </message>
+    <message id="cli.video_export.hand_order">
+        <source>Sticking display: annotated or original.</source>
+        <translation>Sticking display: annotated or original.</translation>
+    </message>
+    <message id="cli.video_export.hand_order_invalid">
+        <source>--hand-order must be annotated or original</source>
+        <translation>--hand-order must be annotated or original</translation>
     </message>
     <message id="cli.video_export.inner_brightness">
         <source>Inner background brightness (0.0-1.0).</source>
@@ -1310,12 +1386,40 @@ Failed: %2</translation>
         <translation>Dark theme</translation>
     </message>
     <message id="dialog.preferences.theme.legacy">
+        <source>Classic</source>
+        <translation>Classic</translation>
+    </message>
+    <message id="dialog.preferences.theme.default">
+        <source>Default</source>
+        <translation>Default</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_dark">
+        <source>Default Dark</source>
+        <translation>Default Dark</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_light">
+        <source>Default Light</source>
+        <translation>Default Light</translation>
+    </message>
+    <message id="dialog.preferences.theme.legacy_dark">
         <source>Classic Dark</source>
         <translation>Classic Dark</translation>
     </message>
     <message id="dialog.preferences.theme.legacy_light">
         <source>Classic Light</source>
         <translation>Classic Light</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_mocha">
+        <source>Catppuccin Mocha</source>
+        <translation>Mocha</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_latte">
+        <source>Catppuccin Latte</source>
+        <translation>Latte</translation>
+    </message>
+    <message id="dialog.preferences.theme.nord">
+        <source>Nord</source>
+        <translation>Nord</translation>
     </message>
     <message id="dialog.preferences.theme.light">
         <source>Light</source>
@@ -1561,6 +1665,10 @@ Failed: %2</translation>
         <source>Show preview debug info</source>
         <translation>Show preview debug info</translation>
     </message>
+    <message id="dialog.render_settings.gameplay.hand_order">
+        <source>Show Sticking annotations</source>
+        <translation>Show Sticking annotations</translation>
+    </message>
     <message id="dialog.render_settings.preview_group">
         <source>Preview</source>
         <translation>Preview</translation>
@@ -1621,6 +1729,18 @@ Failed: %2</translation>
         <source>SD</source>
         <translation>SD</translation>
     </message>
+    <message id="dialog.skin_settings.firework">
+        <source>Firework effect</source>
+        <translation>Firework effect</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.modern">
+        <source>Modern</source>
+        <translation>Modern</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.standard">
+        <source>Standard</source>
+        <translation>Standard</translation>
+    </message>
     <message id="dialog.render_settings.video.firework_brightness">
         <source>Firework brightness</source>
         <translation>Firework brightness</translation>
@@ -1632,6 +1752,10 @@ Failed: %2</translation>
     <message id="dialog.render_settings.video.tap_flow_speed">
         <source>Tap Flow Speed</source>
         <translation>Tap Flow Speed</translation>
+    </message>
+    <message id="preview.game.star_fade_timing">
+        <source>Star fade-in timing</source>
+        <translation>Star fade-in timing</translation>
     </message>
     <message id="dialog.render_settings.video.touch_flow_speed">
         <source>Touch Flow Speed</source>
@@ -1877,6 +2001,14 @@ Restore the backup from %1?</translation>
         <source>Top-left export info</source>
         <translation>Top-left export info</translation>
     </message>
+    <message id="preview.hud_extra_info">
+        <source>Top-right extra information</source>
+        <translation>Top-right extra information</translation>
+    </message>
+    <message id="preview.advanced_render_info">
+        <source>Advanced rendering information</source>
+        <translation>Advanced rendering information</translation>
+    </message>
     <message id="dialog.video_export.option.hud_font_area.debug">
         <source>Debug info</source>
         <translation>Debug info</translation>
@@ -1896,6 +2028,22 @@ Restore the backup from %1?</translation>
     <message id="dialog.video_export.option.show_object_stats">
         <source>Show object stats</source>
         <translation>Show object stats</translation>
+    </message>
+    <message id="dialog.video_export.option.hand_order_mode">
+        <source>Sticking display</source>
+        <translation>Sticking display</translation>
+    </message>
+    <message id="dialog.video_export.hand_order.follow_preview">
+        <source>Follow preview</source>
+        <translation>Follow preview</translation>
+    </message>
+    <message id="dialog.video_export.hand_order.original">
+        <source>Original chart</source>
+        <translation>Original chart</translation>
+    </message>
+    <message id="dialog.video_export.hand_order.annotated">
+        <source>Sticking colors</source>
+        <translation>Sticking colors</translation>
     </message>
     <message id="dialog.video_export.option.show_timestamp">
         <source>Show bottom-left timestamp</source>
@@ -2169,6 +2317,10 @@ File: </translation>
         <source>Save failed</source>
         <translation>Save failed</translation>
     </message>
+    <message id="document.plain_export_same_path">
+        <source>Choose a different file to keep the annotated chart.</source>
+        <translation>Choose a different file to keep the annotated chart.</translation>
+    </message>
     <message id="document.selection_beats">
         <source>Selection beats: %1</source>
         <translation>Selection beats: %1</translation>
@@ -2395,7 +2547,7 @@ File: </translation>
     </message>
     <message id="media_tools.audio_processing_track">
         <source>Audio Processing track.mp3</source>
-        <translation>Audio Processing track.mp3</translation>
+        <translation>Audio Processing</translation>
     </message>
     <message id="media_tools.audio_video_processing">
         <source>Audio/Video Processing</source>
@@ -2678,8 +2830,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>Analyzing audio alignment...</translation>
     </message>
     <message id="media_tools.video_audio_missing">
-        <source>The background video has no audio stream to align.</source>
-        <translation>The background video has no audio stream to align.</translation>
+        <source>The background video has no audio stream and cannot be automatically aligned; no files were changed.</source>
+        <translation>The background video has no audio stream and cannot be automatically aligned; no files were changed.</translation>
     </message>
     <message id="media_tools.video_alignment_cancelled">
         <source>Audio alignment canceled.</source>
@@ -2771,7 +2923,7 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="media_tools.video_processing_pv">
         <source>Video Processing pv.mp4</source>
-        <translation>Video Processing pv.mp4</translation>
+        <translation>Video Processing</translation>
     </message>
     <message id="menu.clear_elements">
         <source>Clear Elements</source>
@@ -3962,12 +4114,12 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>Stop or Play Preview</translation>
     </message>
     <message id="shortcut.timeline.zoom_in">
-        <source>Timeline Zoom In</source>
-        <translation>Timeline Zoom In</translation>
+        <source>Timeline zoom in</source>
+        <translation>Timeline zoom in</translation>
     </message>
     <message id="shortcut.timeline.zoom_out">
-        <source>Timeline Zoom Out</source>
-        <translation>Timeline Zoom Out</translation>
+        <source>Timeline zoom out</source>
+        <translation>Timeline zoom out</translation>
     </message>
     <message id="shortcut.transform.clear_complete_elements">
         <source>Clear Complete Elements</source>
@@ -4326,6 +4478,14 @@ Error: %1</translation>
         <translation>Timeline</translation>
     </message>
 
+    <message id="net.ui.query_options">
+        <source>Search options</source>
+        <translation>Search options</translation>
+    </message>
+    <message id="net.ui.queue_hint">
+        <source>Choose a chart folder and add it to the queue.</source>
+        <translation>Choose a chart folder and add it to the queue.</translation>
+    </message>
     <message id="net.ui.download_page">
         <source>Majdata Net</source>
         <translation>Chart download</translation>
@@ -4935,202 +5095,6 @@ Error: %1</translation>
         <source>The prepended PV exceeds its size budget or the 20 MB limit.</source>
         <translation>The prepended PV exceeds its size budget or the 20 MB limit.</translation>
     </message>
-    <message id="action.play_selection">
-        <source>Play Selection</source>
-        <translation>Play Selection</translation>
-    </message>
-    <message id="preview.canvas.show_measure_lines">
-        <source>Show Measure Lines</source>
-        <translation>Show Measure Lines</translation>
-    </message>
-    <message id="preview.canvas.show_judgement_skeleton">
-        <source>Show Judgement Skeleton</source>
-        <translation>Show Judgement Skeleton</translation>
-    </message>
-    <message id="preview.canvas.slide_timing_from_launch_beat">
-        <source>Start on a matching launch beat</source>
-        <translation>Start on a matching launch beat</translation>
-    </message>
-    <message id="preview.canvas.slide_timing_early_perfect_from_head">
-        <source>Fully bright from star head when Perfect starts before launch beat</source>
-        <translation>Fully bright from star head when Perfect starts before launch beat</translation>
-    </message>
-    <message id="preview.canvas.show_slide_judgement_timing">
-        <source>Show Slide Judgement Timing</source>
-        <translation>Show Slide Judgement Timing</translation>
-    </message>
-    <message id="preview.canvas.measure_mode">
-        <source>Measure Line Mode</source>
-        <translation>Measure Line Mode</translation>
-    </message>
-    <message id="preview.canvas.measure_chart_clock">
-        <source>Chart clock_count (default 4 beats)</source>
-        <translation>Chart clock_count (default 4 beats)</translation>
-    </message>
-    <message id="preview.canvas.measure_custom_beats">
-        <source>Custom beats per measure</source>
-        <translation>Custom beats per measure</translation>
-    </message>
-    <message id="preview.canvas.measure_text_lines">
-        <source>Text line starts</source>
-        <translation>Text line starts</translation>
-    </message>
-    <message id="dialog.render_settings.gameplay.judge_line.none">
-        <source>None</source>
-        <translation>None</translation>
-    </message>
-    <message id="dialog.video_export.option.show_bpm_hud">
-        <source>Show BPM (widescreen)</source>
-        <translation>Show BPM (widescreen)</translation>
-    </message>
-    <message id="dialog.video_export.option.show_cps_hud">
-        <source>Show CPS (widescreen)</source>
-        <translation>Show CPS (widescreen)</translation>
-    </message>
-    <message id="dialog.video_export.option.show_meter_hud">
-        <source>Show explicit meter (widescreen)</source>
-        <translation>Show explicit meter (widescreen)</translation>
-    </message>
-    <message id="dialog.video_export.option.show_mods_hud">
-        <source>Show Mods (widescreen)</source>
-        <translation>Show Mods (widescreen)</translation>
-    </message>
-    <message id="tools.bpm.title">
-        <source>Export BPM</source>
-        <translation>BPM import / export</translation>
-    </message>
-    <message id="tools.bpm.sequence">
-        <source>BPM sequence (xx.xx-xx.xx)</source>
-        <translation>BPM sequence (xx.xx-xx.xx)</translation>
-    </message>
-    <message id="tools.bpm.audio_time">
-        <source>Audio timestamps (mm:ss:fff)</source>
-        <translation>Audio timestamps (mm:ss:fff)</translation>
-    </message>
-    <message id="tools.bpm.empty_maidata">
-        <source>Empty maidata with timing</source>
-        <translation>Empty maidata with timing</translation>
-    </message>
-    <message id="tools.bpm.preview">
-        <source>BPM export preview</source>
-        <translation>BPM export preview</translation>
-    </message>
-    <message id="tools.bpm.copy">
-        <source>Copy</source>
-        <translation>Copy</translation>
-    </message>
-    <message id="tools.bpm.save">
-        <source>Save as…</source>
-        <translation>Save as…</translation>
-    </message>
-    <message id="tools.bpm.save_error">
-        <source>Could not save BPM export: %1</source>
-        <translation>Could not save BPM export: %1</translation>
-    </message>
-    <message id="tools.chart.invalid_first">
-        <source>Invalid &amp;first value</source>
-        <translation>Invalid &amp;first value</translation>
-    </message>
-    <message id="tools.chart.parse_error">
-        <source>The chart contains parse errors</source>
-        <translation>The chart contains parse errors</translation>
-    </message>
-    <message id="tools.dx_loss.title">
-        <source>DX achievement loss</source>
-        <translation>DX achievement loss</translation>
-    </message>
-    <message id="tools.dx_loss.attributes">
-        <source>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</source>
-        <translation>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</translation>
-    </message>
-    <message id="tools.dx_loss.object">
-        <source>Object</source>
-        <translation>Object</translation>
-    </message>
-    <message id="tools.dx_loss.judgment">
-        <source>Judgment</source>
-        <translation>Judgment</translation>
-    </message>
-    <message id="tools.dx_loss.single">
-        <source>Loss per judgment</source>
-        <translation>Loss per judgment</translation>
-    </message>
-    <message id="tools.dx_loss.empty">
-        <source>The chart has no scoring objects</source>
-        <translation>The chart has no scoring objects</translation>
-    </message>
-    <message id="tools.dx_loss.extensions">
-        <source>Unofficial extensions: counts are available; DX calculation is disabled</source>
-        <translation>Unofficial extensions: counts are available; DX calculation is disabled</translation>
-    </message>
-    <message id="tools.dx_loss.maximum_break">
-        <source>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</source>
-        <translation>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</translation>
-    </message>
-    <message id="tools.dx_loss.maximum_no_break">
-        <source>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</source>
-        <translation>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</translation>
-    </message>
-    <message id="tools.bpm.empty_timing_note">
-        <source>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</source>
-        <translation>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</translation>
-    </message>
-    <message id="cover.text_stroke">
-        <source>Text outline</source>
-        <translation>Text outline</translation>
-    </message>
-    <message id="cover.text_stroke_color">
-        <source>Outline color</source>
-        <translation>Outline color</translation>
-    </message>
-    <message id="cover.text_stroke_width">
-        <source>Outline width</source>
-        <translation>Outline width</translation>
-    </message>
-    <message id="cover.text_shadow">
-        <source>Text shadow</source>
-        <translation>Text shadow</translation>
-    </message>
-    <message id="cover.text_shadow_color">
-        <source>Shadow color</source>
-        <translation>Shadow color</translation>
-    </message>
-    <message id="cover.text_shadow_opacity">
-        <source>Shadow opacity</source>
-        <translation>Shadow opacity</translation>
-    </message>
-    <message id="cover.text_shadow_blur">
-        <source>Shadow blur</source>
-        <translation>Shadow blur</translation>
-    </message>
-    <message id="cover.text_shadow_x">
-        <source>Shadow X offset</source>
-        <translation>Shadow X offset</translation>
-    </message>
-    <message id="cover.text_shadow_y">
-        <source>Shadow Y offset</source>
-        <translation>Shadow Y offset</translation>
-    </message>
-    <message id="dialog.video_export.cover_preset">
-        <source>Companion cover</source>
-        <translation>Companion cover</translation>
-    </message>
-    <message id="dialog.video_export.cover_failed_video_kept">
-        <source>Cover export failed. The video was kept.</source>
-        <translation>Cover export failed. The video was kept.</translation>
-    </message>
-    <message id="cli.settings.title">
-        <source>Command line</source>
-        <translation>Command line</translation>
-    </message>
-    <message id="cli.settings.enable">
-        <source>Enable command-line support</source>
-        <translation>Enable command-line support</translation>
-    </message>
-    <message id="dialog.video_export.cover_source_changed">
-        <source>The chart changed while preparing the cover. Export again.</source>
-        <translation>The chart changed while preparing the cover. Export again.</translation>
-    </message>
     <message id="file_picker.native_failed">
         <source>Could not open the system folder picker.</source>
         <translation>Could not open the system folder picker.</translation>
@@ -5166,8 +5130,11 @@ Error: %1</translation>
     <message id="video_template.export"><source>Export current template…</source><translation>Export current template…</translation></message>
     <message id="video_template.import"><source>Import and apply template…</source><translation>Import and apply template…</translation></message>
     <message id="video_template.invalid"><source>This video template is invalid or uses an unsupported version.</source><translation>This video template is invalid or uses an unsupported version.</translation></message>
-    <message id="video_cover.multiple"><source>Companion covers (multiple selection)</source><translation>Companion covers (multiple selection)</translation></message>
-    <message id="video_size.target30"><source>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</source><translation>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</translation></message>
+    <message id="video_cover.multiple"><source>Companion covers</source><translation>Companion covers</translation></message>
+    <message id="video_size.target30">
+        <source>30 MB (video %1 kbps, audio %2 kbps)</source>
+        <translation>30 MB (video %1 kbps, audio %2 kbps)</translation>
+    </message>
     <message id="video_size.target100"><source>100 MB (video %1 kbps, audio %2 kbps)</source><translation>100 MB (video %1 kbps, audio %2 kbps)</translation></message>
     <message id="video_size.target200"><source>200 MB (video %1 kbps, audio %2 kbps)</source><translation>200 MB (video %1 kbps, audio %2 kbps)</translation></message>
     <message id="video_size.parameters"><source> (video %1 kbps, audio %2 kbps)</source><translation> (video %1 kbps, audio %2 kbps)</translation></message>
@@ -5190,6 +5157,1691 @@ Error: %1</translation>
 <message id="tools.bpm.import_preview"><source>Chart preview after applying BPM</source><translation>Chart preview after applying BPM</translation></message>
 <message id="tools.bpm.back_export"><source>Back to export</source><translation>Back to export</translation></message>
 <message id="tools.bpm.import_subdivisions"><source>Keeping note times requires subdivisions %1; check chart-converter compatibility.</source><translation>Keeping note times requires subdivisions %1; check chart-converter compatibility.</translation></message>
+    <message id="dialog.preferences.font.family">
+        <source>Chart text font</source>
+        <translation>Chart text font</translation>
+    </message>
+    <message id="dialog.preferences.font.search">
+        <source>Search installed fonts…</source>
+        <translation>Search installed fonts…</translation>
+    </message>
+    <message id="dialog.preferences.font.default_suffix"><source>Default</source><translation>Default</translation></message>
+    <message id="dialog.preferences.font.default">
+        <source>Default font</source>
+        <translation>Default font</translation>
+    </message>
+    <message id="dialog.preferences.font.monospace">
+        <source>Monospace</source>
+        <translation>Monospace</translation>
+    </message>
+    <message id="dialog.preferences.font.reset">
+        <source>Restore default</source>
+        <translation>Restore default</translation>
+    </message>
+    <message id="dialog.preferences.font.sample">
+        <source>Example chart comment</source>
+        <translation>Example chart comment</translation>
+    </message>
+    <message id="dialog.preferences.theme.midnight">
+        <source>Midnight</source>
+        <translation>Midnight</translation>
+    </message>
+    <message id="dialog.preferences.theme.forest">
+        <source>Forest</source>
+        <translation>Forest</translation>
+    </message>
+    <message id="dialog.preferences.theme.paper">
+        <source>Warm Paper</source>
+        <translation>Warm Paper</translation>
+    </message>
+    <message id="dialog.preferences.theme.lavender">
+        <source>Lavender</source>
+        <translation>Lavender</translation>
+    </message>
+    <message id="dialog.preferences.theme.comment_sample">
+        <source>Comment</source>
+        <translation>Comment</translation>
+    </message>
+    <message id="dialog.preferences.theme.yuzu"><source>Yuzu</source><translation>Yuzu</translation></message>
+    <message id="dialog.preferences.theme.sky"><source>Sky Blue</source><translation>Sky Blue</translation></message>
+    <message id="dialog.preferences.theme.dracula"><source>Dracula</source><translation>Dracula</translation></message>
+    <message id="dialog.preferences.theme.tokyo_night"><source>Tokyo Night</source><translation>Tokyo Night</translation></message>
+    <message id="dialog.preferences.theme.noah"><source>Noa</source><translation>Noa</translation></message>
+
+<message id="hand_order.title">
+        <source>Sticking</source>
+        <translation>Sticking</translation>
+    </message>
+    <message id="hand_order.set_left">
+        <source>Set Selection to Left Hand</source>
+        <translation>Set Selection to Left Hand</translation>
+    </message>
+    <message id="hand_order.set_right">
+        <source>Set Selection to Right Hand</source>
+        <translation>Set Selection to Right Hand</translation>
+    </message>
+    <message id="hand_order.set_either">
+        <source>Set Selection to Either Hand</source>
+        <translation>Set Selection to Either Hand</translation>
+    </message>
+    <message id="hand_order.split_annotation">
+        <source>Split Sticking Intervals</source>
+        <translation>Split Sticking Intervals</translation>
+    </message>
+    <message id="hand_order.bisect_annotation">
+        <source>Bisect Sticking Intervals</source>
+        <translation>Bisect Sticking Intervals</translation>
+    </message>
+    <message id="hand_order.swap_hands">
+        <source>Swap Left and Right Hands in Selection</source>
+        <translation>Swap Left and Right Hands in Selection</translation>
+    </message>
+    <message id="hand_order.alternate">
+        <source>Alternate Sticking by Beat Slots</source>
+        <translation>Alternate Sticking by Beat Slots</translation>
+    </message>
+    <message id="hand_order.screen_split">
+        <source>Split Sticking by Common Screen Axis (Experimental)</source>
+        <translation>Split Sticking by Common Screen Axis (Experimental)</translation>
+    </message>
+    <message id="hand_order.selection_scope">
+        <source>Edit complete notes in the source selection, including slide heads and all branches</source>
+        <translation>Edit complete notes in the source selection, including slide heads and all branches</translation>
+    </message>
+    <message id="hand_order.feedback">
+        <source>Sticking: %1 changed, %2 partial tokens skipped, %3 unsupported, %4 diagnostics (click for details)</source>
+        <translation>Sticking: %1 changed, %2 partial tokens skipped, %3 unsupported, %4 diagnostics (click for details)</translation>
+    </message>
+    <message id="hand_order.diagnostic">
+        <source>Line %1, column %2: %3</source>
+        <translation>Line %1, column %2: %3</translation>
+    </message>
+    <message id="hand_order.intervals">
+        <source>Sticking Intervals</source>
+        <translation>Sticking Intervals</translation>
+    </message>
+    <message id="hand_order.draft_notice">
+        <source>Changes affect the corresponding interval. Assign every track interval, then write them to the chart in one edit. An unspecified head keeps its original skin. Unwritten choices remain in this session for the matching document version and are not saved with the chart.</source>
+        <translation>Changes affect the corresponding interval. Assign every track interval, then write them to the chart in one edit. An unspecified head keeps its original skin. Unwritten choices remain in this session for the matching document version and are not saved with the chart.</translation>
+    </message>
+    <message id="hand_order.head_row">
+        <source>%1:%2 · Head</source>
+        <translation>%1:%2 · Head</translation>
+    </message>
+    <message id="hand_order.track_row">
+        <source>%1:%2 · Branch %3 · %4–%5%</source>
+        <translation>%1:%2 · Branch %3 · %4–%5%</translation>
+    </message>
+    <message id="hand_order.unspecified">
+        <source>Unspecified</source>
+        <translation>Unspecified</translation>
+    </message>
+    <message id="hand_order.left">
+        <source>Left</source>
+        <translation>Left</translation>
+    </message>
+    <message id="hand_order.right">
+        <source>Right</source>
+        <translation>Right</translation>
+    </message>
+    <message id="hand_order.either">
+        <source>Either</source>
+        <translation>Either</translation>
+    </message>
+    <message id="hand_order.apply_intervals">
+        <source>Write to Chart</source>
+        <translation>Write to Chart</translation>
+    </message>
+    <message id="hand_order.applied">
+        <source>Sticking intervals written; undo restores them in one step.</source>
+        <translation>Sticking intervals written; undo restores them in one step.</translation>
+    </message>
+
+<message id="hand_order.analyze"><source>Hand Order Optimization</source><translation>Hand Order Optimization</translation></message>
+    <message id="hand_order.auto.notice"><source>Review before applying. Context optimization may rearrange existing labels inside the range; enable protection to keep them. Outside annotations stay locked. Confidence is experimental, not a correctness or playability guarantee.</source><translation>Review before applying. Context optimization may rearrange existing labels inside the range; enable protection to keep them. Outside annotations stay locked. Confidence is experimental, not a correctness or playability guarantee.</translation>
+    </message>
+    <message id="hand_order.auto.selection"><source>Calculate Selection (Empty: Current Difficulty)</source><translation>Calculate Selection (Empty: Current Difficulty)</translation>
+    </message>
+    <message id="hand_order.auto.difficulty"><source>Calculate Current Difficulty</source><translation>Calculate Current Difficulty</translation>
+    </message>
+    <message id="hand_order.auto.cancel"><source>Exit Calculation</source><translation>Exit Calculation</translation>
+    </message>
+    <message id="hand_order.auto.apply">
+        <source>Apply Writable Suggestions (Review Required)</source>
+        <translation>Apply Writable Suggestions (Review Required)</translation>
+    </message>
+    <message id="hand_order.auto.running">
+        <source>Building and searching basic action candidates…</source>
+        <translation>Building and searching basic action candidates…</translation>
+    </message>
+    <message id="hand_order.auto.cancelled">
+        <source>Analysis cancelled.</source>
+        <translation>Analysis cancelled.</translation>
+    </message>
+    <message id="hand_order.auto.stale">
+        <source>Document, difficulty or parameters changed; analyze again.</source>
+        <translation>Document, difficulty or parameters changed; analyze again.</translation>
+    </message>
+    <message id="hand_order.auto.summary">
+        <source>Writable %1; preserved %2; conflicts %3; unresolved %4; unsupported/invalid/partial %5; read-only context %6.</source>
+        <translation>Writable %1; preserved %2; conflicts %3; unresolved %4; unsupported/invalid/partial %5; read-only context %6.</translation>
+    </message>
+    <message id="hand_order.auto.truncated">
+        <source> The search beam was pruned; a failed bounded search does not prove impossibility.</source>
+        <translation> The search beam was pruned; a failed bounded search does not prove impossibility.</translation>
+    </message>
+    <message id="hand_order.auto.invalid_parameters">
+        <source>Parameters exceed the basic model limits; no suggestions generated.</source>
+        <translation>Parameters exceed the basic model limits; no suggestions generated.</translation>
+    </message>
+    <message id="hand_order.auto.invalid_output">
+        <source>Suggested output failed strict syntax validation; chart unchanged.</source>
+        <translation>Suggested output failed strict syntax validation; chart unchanged.</translation>
+    </message>
+    <message id="hand_order.auto.suggestion">
+        <source>Head: %1; track: %2. Block peak speed estimate %3 radii/s; block cost %4.</source>
+        <translation>Head: %1; track: %2. Block peak speed estimate %3 radii/s; block cost %4.</translation>
+    </message>
+    <message id="hand_order.auto.motion_metrics">
+        <source>Block peak speed estimate %1 radii/s; block cost %2.</source>
+        <translation>Block peak speed estimate %1 radii/s; block cost %2.</translation>
+    </message>
+    <message id="hand_order.auto.counterfactual">
+        <source> Reverse-hand component %1: signed complete-block cost gap %2, peak-tier gap %3 (not a probability).</source>
+        <translation> Reverse-hand component %1: signed complete-block cost gap %2, peak-tier gap %3 (not a probability).</translation>
+    </message>
+    <message id="hand_order.auto.no_counterfactual">
+        <source> No usable reverse-hand evidence; this does not prove the other hand infeasible.</source>
+        <translation> No usable reverse-hand evidence; this does not prove the other hand infeasible.</translation>
+    </message>
+    <message id="hand_order.auto.status.review">
+        <source>Suggestion: review required</source>
+        <translation>Suggestion: review required</translation>
+    </message>
+    <message id="hand_order.auto.status.heuristic">
+        <source>Default hand color: unverified</source>
+        <translation>Default hand color: unverified</translation>
+    </message>
+    <message id="hand_order.auto.reason.layout_fallback_unverified">
+        <source>Unresolved note colored with its default hand by request; no full replay verification.</source>
+        <translation>Unresolved note colored with its default hand by request; no full replay verification.</translation>
+    </message>
+    <message id="hand_order.auto.status.preserved">
+        <source>Existing annotation preserved</source>
+        <translation>Existing annotation preserved</translation>
+    </message>
+    <message id="hand_order.auto.status.unsupported">
+        <source>Unsupported</source>
+        <translation>Unsupported</translation>
+    </message>
+    <message id="hand_order.auto.status.invalid">
+        <source>Invalid input</source>
+        <translation>Invalid input</translation>
+    </message>
+    <message id="hand_order.auto.status.skipped">
+        <source>Partial selection: skipped</source>
+        <translation>Partial selection: skipped</translation>
+    </message>
+    <message id="hand_order.auto.status.conflict">
+        <source>Candidate constraint conflict</source>
+        <translation>Candidate constraint conflict</translation>
+    </message>
+    <message id="hand_order.auto.status.not_found">
+        <source>No candidate found</source>
+        <translation>No candidate found</translation>
+    </message>
+    <message id="hand_order.auto.status.undecided">
+        <source>Resource/search unresolved</source>
+        <translation>Resource/search unresolved</translation>
+    </message>
+    <message id="hand_order.auto.reason.partial_token">
+        <source>Partial token is read as context and not written</source>
+        <translation>Partial token is read as context and not written</translation>
+    </message>
+    <message id="hand_order.auto.reason.invalid_native">
+        <source>Native chart errors make timing untrusted</source>
+        <translation>Native chart errors make timing untrusted</translation>
+    </message>
+    <message id="hand_order.auto.reason.invalid_annotation">
+        <source>Invalid annotation preserved; repair it first</source>
+        <translation>Invalid annotation preserved; repair it first</translation>
+    </message>
+    <message id="hand_order.auto.reason.unsupported_object">
+        <source>Touch, Touch Hold, Wifi or another object is not modeled</source>
+        <translation>Touch, Touch Hold, Wifi or another object is not modeled</translation>
+    </message>
+    <message id="hand_order.auto.reason.mine_unsupported">
+        <source>Mine is not inferred as an ordinary strike</source>
+        <translation>Mine is not inferred as an ordinary strike</translation>
+    </message>
+    <message id="hand_order.auto.reason.shared_action_unsupported">
+        <source>Shared contact, joins or overlapping paths require validation</source>
+        <translation>Shared contact, joins or overlapping paths require validation</translation>
+    </message>
+    <message id="hand_order.auto.reason.branches_unsupported">
+        <source>Shared-head branches require a joint action model</source>
+        <translation>Shared-head branches require a joint action model</translation>
+    </message>
+    <message id="hand_order.auto.reason.handoff_unsupported">
+        <source>Existing track handoffs exceed this basic model</source>
+        <translation>Existing track handoffs exceed this basic model</translation>
+    </message>
+    <message id="hand_order.auto.reason.geometry_unsupported">
+        <source>Native path or duration is unavailable</source>
+        <translation>Native path or duration is unavailable</translation>
+    </message>
+    <message id="hand_order.auto.reason.unsupported_context">
+        <source>Associated with an unsupported risk window or spanning occupancy</source>
+        <translation>Associated with an unsupported risk window or spanning occupancy</translation>
+    </message>
+    <message id="hand_order.auto.reason.resource_limit">
+        <source>Dependency block exceeds task budget; no partial fragment applied</source>
+        <translation>Dependency block exceeds task budget; no partial fragment applied</translation>
+    </message>
+    <message id="hand_order.auto.reason.button_down_conflict">
+        <source>Exterior button remains down; no fresh DOWN is available</source>
+        <translation>Exterior button remains down; no fresh DOWN is available</translation>
+    </message>
+    <message id="hand_order.auto.reason.candidate_search_failed">
+        <source>No independent two-hand fixed-event candidate found; this is not proof of unplayability</source>
+        <translation>No independent two-hand fixed-event candidate found; this is not proof of unplayability</translation>
+    </message>
+    <message id="hand_order.auto.reason.counterfactual_unstable">
+        <source>Reverse-hand search still improves the complete plan; unresolved</source>
+        <translation>Reverse-hand search still improves the complete plan; unresolved</translation>
+    </message>
+    <message id="hand_order.auto.reason.existing_annotation">
+        <source>Source preserved exactly; existing labels constrain occupancy</source>
+        <translation>Source preserved exactly; existing labels constrain occupancy</translation>
+    </message>
+    <message id="hand_order.auto.reason.fixed_event_candidate">
+        <source>Exterior buttons, full occupancy and natural-path candidate; real judging and stray contact unverified</source>
+        <translation>Exterior buttons, full occupancy and natural-path candidate; real judging and stray contact unverified</translation>
+    </message>
+
+<message id="hand_order.auto.status.context">
+        <source>Read-only Context Candidate</source>
+        <translation>Read-only Context Candidate</translation>
+    </message>
+    <message id="hand_order.auto.reason.context_hypothesis">
+        <source>Context assignment used by this complete candidate; not written</source>
+        <translation>Context assignment used by this complete candidate; not written</translation>
+    </message>
+    <message id="hand_order.auto.context_notice">
+        <source>Context hypothesis: not written. Only participating action components are shown.</source>
+        <translation>Context hypothesis: not written. Only participating action components are shown.</translation>
+    </message>
+    <message id="hand_order.auto.original_annotation">
+        <source>Original annotation retained: %1. The hands below belong to this conditional plan and do not replace it.</source>
+        <translation>Original annotation retained: %1. The hands below belong to this conditional plan and do not replace it.</translation>
+    </message>
+    <message id="hand_order.auto.original_unannotated">
+        <source>Source is unannotated; the context assignment below is for reviewing the complete plan.</source>
+        <translation>Source is unannotated; the context assignment below is for reviewing the complete plan.</translation>
+    </message>
+
+<message id="hand_order.auto.interval">
+        <source>Branch %1: %2–%3% %4</source>
+        <translation>Branch %1: %2–%3% %4</translation>
+    </message>
+    <message id="hand_order.auto.both_contributors">
+        <source>Left and right contributors</source>
+        <translation>Left and right contributors</translation>
+    </message>
+    <message id="hand_order.auto.cause">
+        <source>Source @%1 branch %2 (%3), %4 at %5s, motion %6%, %7</source>
+        <translation>Source @%1 branch %2 (%3), %4 at %5s, motion %6%, %7</translation>
+    </message>
+    <message id="hand_order.auto.judgement">
+        <source>%1 · %2 · %3s · target margin %4ms</source>
+        <translation>%1 · %2 · %3s · target margin %4ms</translation>
+    </message>
+    <message id="hand_order.auto.handoffs">
+        <source>Track transfers: %1 · %2 · at-most-one baseline peak %3, cost %4 (zero means no baseline found)</source>
+        <translation>Track transfers: %1 · %2 · at-most-one baseline peak %3, cost %4 (zero means no baseline found)</translation>
+    </message>
+    <message id="hand_order.auto.conditions">
+        <source>Execution conditions:</source>
+        <translation>Execution conditions:</translation>
+    </message>
+    <message id="hand_order.auto.conditions_text">
+        <source>Community profile v2; high-quality target; finite contacts; combined candidate-scope replay; rolling local choices with committed inputs. Scores are experimental.</source>
+        <translation>Community profile v2; high-quality target; finite contacts; combined candidate-scope replay; rolling local choices with committed inputs. Scores are experimental.</translation>
+    </message>
+    <message id="hand_order.auto.reason.joint_action_candidate">
+        <source>Joint motion and contact candidate</source>
+        <translation>Joint motion and contact candidate</translation>
+    </message>
+    <message id="hand_order.auto.reason.slide_cover">
+        <source>Triggered by a real slide contact; no extra press</source>
+        <translation>Triggered by a real slide contact; no extra press</translation>
+    </message>
+    <message id="hand_order.auto.reason.direct_touch">
+        <source>Independent screen contact</source>
+        <translation>Independent screen contact</translation>
+    </message>
+    <message id="hand_order.auto.reason.group_carry">
+        <source>Touchgroup threshold reached; no extra contact</source>
+        <translation>Touchgroup threshold reached; no extra contact</translation>
+    </message>
+    <message id="hand_order.auto.reason.mixed_touch_responsibility">
+        <source>Multiple contributors; current notation cannot express sole responsibility</source>
+        <translation>Multiple contributors; current notation cannot express sole responsibility</translation>
+    </message>
+    <message id="hand_order.auto.reason.one_handoff_candidate_not_found">
+        <source>At-most-one transfer search found no candidate in this model</source>
+        <translation>At-most-one transfer search found no candidate in this model</translation>
+    </message>
+    <message id="hand_order.auto.reason.significant_context_improvement">
+        <source>Per-track counterfactual shows significant context improvement</source>
+        <translation>Per-track counterfactual shows significant context improvement</translation>
+    </message>
+
+<message id="hand_order.auto.reason.touch_slide_side_effect_unverified">
+        <source>Screen contact may advance an active slide before its natural judging pad; review required</source>
+        <translation>Screen contact may advance an active slide before its natural judging pad; review required</translation>
+    </message>
+    <message id="hand_order.auto.reason.unstable_touch_responsibility">
+        <source>Near-optimal candidates disagree on carry responsibility; review required</source>
+        <translation>Near-optimal candidates disagree on carry responsibility; review required</translation>
+    </message>
+    <message id="hand_order.auto.reason.single_handoff_occupation">
+        <source>One transfer with verified preparation and brief joint occupation; first-transfer cost included</source>
+        <translation>One transfer with verified preparation and brief joint occupation; first-transfer cost included</translation>
+    </message>
+    <message id="hand_order.auto.reason.existing_handoff_constraint">
+        <source>Transfers follow the preserved original interval constraints</source>
+        <translation>Transfers follow the preserved original interval constraints</translation>
+    </message>
+    <message id="hand_order.auto.quality.critical">
+        <source>Target quality</source>
+        <translation>Target quality</translation>
+    </message>
+    <message id="hand_order.auto.quality.late_bad">
+        <source>Late / expired</source>
+        <translation>Late / expired</translation>
+    </message>
+    <message id="hand_order.auto.quality.outside_target">
+        <source>Outside target quality</source>
+        <translation>Outside target quality</translation>
+    </message>
+    <message id="hand_order.auto.evidence_truncated">
+        <source> Optional reverse-hand evidence stopped at its work budget; the validated candidate is retained for review.</source>
+        <translation> Optional reverse-hand evidence stopped at its work budget; the validated candidate is retained for review.</translation>
+    </message>
+
+<message id="hand_order.auto.handoff_branch">
+        <source>Branch %1: %2 transfers · %3</source>
+        <translation>Branch %1: %2 transfers · %3</translation>
+    </message>
+    <message id="hand_order.auto.handoff_baseline">
+        <source> · at-most-one baseline peak %1, cost %2</source>
+        <translation> · at-most-one baseline peak %1, cost %2</translation>
+    </message>
+    <message id="hand_order.auto.action.slide">
+        <source>Slide motion</source>
+        <translation>Slide motion</translation>
+    </message>
+    <message id="hand_order.auto.action.touch">
+        <source>Screen touch</source>
+        <translation>Screen touch</translation>
+    </message>
+    <message id="hand_order.auto.action.touch_hold">
+        <source>Sustained screen contact</source>
+        <translation>Sustained screen contact</translation>
+    </message>
+    <message id="hand_order.auto.component.head">
+        <source>Slide head</source>
+        <translation>Slide head</translation>
+    </message>
+    <message id="hand_order.auto.component.note">
+        <source>Note %1</source>
+        <translation>Note %1</translation>
+    </message>
+    <message id="hand_order.auto.reason.expired">
+        <source>No valid contact before expiry</source>
+        <translation>No valid contact before expiry</translation>
+    </message>
+    <message id="hand_order.wifi_mode_notice">
+        <source>Wifi sectors 1/2 follow the native sides and exchange on reflection. Single mode selects one hand for the whole track; the circled 1 marks explicit single-hand execution. Either still means one selected hand.</source>
+        <translation>Wifi sectors 1/2 follow the native sides and exchange on reflection. Single mode selects one hand for the whole track; the circled 1 marks explicit single-hand execution. Either still means one selected hand.</translation>
+    </message>
+    <message id="hand_order.wifi_single_row">
+        <source>%1:%2 branch %3 · whole-track single hand</source>
+        <translation>%1:%2 branch %3 · whole-track single hand</translation>
+    </message>
+    <message id="hand_order.wifi_sector_row">
+        <source>%1:%2 branch %3 · sector %4 · %5–%6%</source>
+        <translation>%1:%2 branch %3 · sector %4 · %5–%6%</translation>
+    </message>
+    <message id="hand_order.wifi_legacy">
+        <source>Legacy whole track</source>
+        <translation>Legacy whole track</translation>
+    </message>
+    <message id="hand_order.wifi_split">
+        <source>Two sectors</source>
+        <translation>Two sectors</translation>
+    </message>
+    <message id="hand_order.wifi_single">
+        <source>Explicit single hand</source>
+        <translation>Explicit single hand</translation>
+    </message>
+    <message id="hand_order.auto.wifi_sector">
+        <source>Wifi sector %1 · %2</source>
+        <translation>Wifi sector %1 · %2</translation>
+    </message>
+    <message id="hand_order.auto.wifi_single">
+        <source>Explicit single-hand Wifi · %1</source>
+        <translation>Explicit single-hand Wifi · %1</translation>
+    </message>
+    <message id="hand_order.auto.full_replay_verified">
+        <source>Full judgement replay verified</source>
+        <translation>Full judgement replay verified</translation>
+    </message>
+    <message id="hand_order.auto.reason.full_replay_target_failed">
+        <source>No searched physical candidate met the full replay target</source>
+        <translation>No searched physical candidate met the full replay target</translation>
+    </message>
+    <message id="hand_order.auto.action.button">
+        <source>Exterior button press</source>
+        <translation>Exterior button press</translation>
+    </message>
+    <message id="hand_order.auto.action.screen_button">
+        <source>A-pad screen press</source>
+        <translation>A-pad screen press</translation>
+    </message>
+    <message id="hand_order.auto.reason.tap">
+        <source>Tap judgement</source>
+        <translation>Tap judgement</translation>
+    </message>
+    <message id="hand_order.auto.reason.hold">
+        <source>Complete Hold judgement</source>
+        <translation>Complete Hold judgement</translation>
+    </message>
+    <message id="hand_order.auto.reason.slide">
+        <source>Complete slide judgement</source>
+        <translation>Complete slide judgement</translation>
+    </message>
+    <message id="hand_order.auto.reason.wifi">
+        <source>All three Wifi queues verified</source>
+        <translation>All three Wifi queues verified</translation>
+    </message>
+    <message id="hand_order.auto.reason.star_head">
+        <source>Star head judgement</source>
+        <translation>Star head judgement</translation>
+    </message>
+    <message id="hand_order.auto.reason.direct_input">
+        <source>Direct physical input</source>
+        <translation>Direct physical input</translation>
+    </message>
+    <message id="hand_order.auto.input_preference">
+        <source>Input preference</source>
+        <translation>Input preference</translation>
+    </message>
+    <message id="hand_order.auto.input_buttons">
+        <source>Exterior preferred</source>
+        <translation>Exterior preferred</translation>
+    </message>
+    <message id="hand_order.auto.input_screen">
+        <source>Screen preferred</source>
+        <translation>Screen preferred</translation>
+    </message>
+    <message id="hand_order.auto.input_mixed">
+        <source>Mixed channels</source>
+        <translation>Mixed channels</translation>
+    </message>
+    <message id="hand_order.auto.overwrite_existing">
+        <source>Recompute existing annotations within the selection; keep outside annotations locked</source>
+        <translation>Recompute existing annotations within the selection; keep outside annotations locked</translation>
+    </message>
+    <message id="hand_order.auto.high_confidence_only">
+        <source>Apply only high-confidence complete dependency units</source>
+        <translation>Apply only high-confidence complete dependency units</translation>
+    </message>
+    <message id="hand_order.auto.color_unresolved">
+        <source>Color unresolved notes with default Sticking</source>
+        <translation>Color unresolved notes with default Sticking</translation>
+    </message>
+    <message id="hand_order.auto.color_unresolved_help">
+        <source>Off by default. Default colors are unverified and disabled in high-confidence mode. Existing annotations are preserved.</source>
+        <translation>Off by default. Default colors are unverified and disabled in high-confidence mode. Existing annotations are preserved.</translation>
+    </message>
+    <message id="hand_order.auto.high_confidence_closed">
+        <source> Only complete high-confidence dependency units are writable.</source>
+        <translation> Only complete high-confidence dependency units are writable.</translation>
+    </message>
+    <message id="hand_order.auto.confidence_text">
+        <source>Heuristic score %1/100 · %2 (not a probability)</source>
+        <translation>Heuristic score %1/100 · %2 (not a probability)</translation>
+    </message>
+    <message id="hand_order.auto.confidence.high">
+        <source>High</source>
+        <translation>High</translation>
+    </message>
+    <message id="hand_order.auto.confidence.medium">
+        <source>Medium</source>
+        <translation>Medium</translation>
+    </message>
+    <message id="hand_order.auto.confidence.low">
+        <source>Low</source>
+        <translation>Low</translation>
+    </message>
+    <message id="hand_order.auto.confidence.insufficient_evidence">
+        <source>Insufficient evidence</source>
+        <translation>Insufficient evidence</translation>
+    </message>
+    <message id="hand_order.auto.component.touch">
+        <source>Touch responsibility</source>
+        <translation>Touch responsibility</translation>
+    </message>
+    <message id="hand_order.auto.component.track">
+        <source>Branch %1 at movement %2%</source>
+        <translation>Branch %1 at movement %2%</translation>
+    </message>
+    <message id="hand_order.auto.evidence_limited">
+        <source>Evidence limited by the candidate or work budget</source>
+        <translation>Evidence limited by the candidate or work budget</translation>
+    </message>
+    <message id="hand_order.auto.evidence_alternative">
+        <source>Opposite hand replayed in the full dependency unit</source>
+        <translation>Opposite hand replayed in the full dependency unit</translation>
+    </message>
+    <message id="hand_order.auto.evidence_no_alternative">
+        <source>No opposite-hand candidate in the unpruned discrete search</source>
+        <translation>No opposite-hand candidate in the unpruned discrete search</translation>
+    </message>
+    <message id="hand_order.auto.evidence_gap">
+        <source> · risk tier %1, peak tier %2, cost gap %3</source>
+        <translation> · risk tier %1, peak tier %2, cost gap %3</translation>
+    </message>
+    <message id="hand_order.auto.pressure.low">
+        <source>Low motion pressure</source>
+        <translation>Low motion pressure</translation>
+    </message>
+    <message id="hand_order.auto.pressure.medium">
+        <source>Moderate motion pressure</source>
+        <translation>Moderate motion pressure</translation>
+    </message>
+    <message id="hand_order.auto.pressure.high">
+        <source>High motion pressure</source>
+        <translation>High motion pressure</translation>
+    </message>
+    <message id="hand_order.auto.pressure.extreme">
+        <source>Extreme motion pressure; requires review</source>
+        <translation>Extreme motion pressure; requires review</translation>
+    </message>
+    <message id="hand_order.auto.locate">
+        <source>Locate</source>
+        <translation>Locate</translation>
+    </message>
+    <message id="hand_order.auto.reason.touch_hold">
+        <source>Complete Touch Hold replay</source>
+        <translation>Complete Touch Hold replay</translation>
+    </message>
+    <message id="hand_order.split_native_slide">
+        <source>Split into Independent Slides</source>
+        <translation>Split into Independent Slides</translation>
+    </message>
+    <message id="hand_order.native.notice">
+        <source>An applicable plan preserves native geometry and actual motion times, but gives each segment an independent judgement. Counting, scoring (especially Break), Each, track appearance/disappearance, sounds and Muri may change. Review every item. Any unreliable complete slide target blocks the batch; Cancel makes no edit.</source>
+        <translation>An applicable plan preserves native geometry and actual motion times, but gives each segment an independent judgement. Counting, scoring (especially Break), Each, track appearance/disappearance, sounds and Muri may change. Review every item. Any unreliable complete slide target blocks the batch; Cancel makes no edit.</translation>
+    </message>
+    <message id="hand_order.native.summary">
+        <source>Prepared %1 · ignored non-slides %2 · partial tokens skipped %3 · unsupported %4</source>
+        <translation>Prepared %1 · ignored non-slides %2 · partial tokens skipped %3 · unsupported %4</translation>
+    </message>
+    <message id="hand_order.native.blocked">
+        <source>The whole batch is blocked. Close this preview and select convertible chains again.</source>
+        <translation>The whole batch is blocked. Close this preview and select convertible chains again.</translation>
+    </message>
+    <message id="hand_order.native.stale">
+        <source>The document, timing or parser policy changed. Prepare a new preview.</source>
+        <translation>The document, timing or parser policy changed. Prepare a new preview.</translation>
+    </message>
+    <message id="hand_order.native.counts">
+        <source>Tracks %1 → %2 · heads %3 → %4 · %5 additional independent judgement boundaries</source>
+        <translation>Tracks %1 → %2 · heads %3 → %4 · %5 additional independent judgement boundaries</translation>
+    </message>
+    <message id="hand_order.native.before">
+        <source>Before</source>
+        <translation>Before</translation>
+    </message>
+    <message id="hand_order.native.after">
+        <source>Proposed result</source>
+        <translation>Proposed result</translation>
+    </message>
+    <message id="hand_order.native.apply">
+        <source>Apply Entire Prepared Batch</source>
+        <translation>Apply Entire Prepared Batch</translation>
+    </message>
+    <message id="hand_order.native.status.ready">
+        <source>Prepared draft</source>
+        <translation>Prepared draft</translation>
+    </message>
+    <message id="hand_order.native.status.partial">
+        <source>Skipped partial token</source>
+        <translation>Skipped partial token</translation>
+    </message>
+    <message id="hand_order.native.status.ignored">
+        <source>Ignored non-slide</source>
+        <translation>Ignored non-slide</translation>
+    </message>
+    <message id="hand_order.native.status.unsupported">
+        <source>Blocks this batch</source>
+        <translation>Blocks this batch</translation>
+    </message>
+    <message id="hand_order.native.reason.empty_selection">
+        <source>Select complete native chains first.</source>
+        <translation>Select complete native chains first.</translation>
+    </message>
+    <message id="hand_order.native.reason.partial_token">
+        <source>This token is only partly selected and will stay unchanged.</source>
+        <translation>This token is only partly selected and will stay unchanged.</translation>
+    </message>
+    <message id="hand_order.native.reason.non_slide">
+        <source>This ordinary note is not a slide target and will stay unchanged.</source>
+        <translation>This ordinary note is not a slide target and will stay unchanged.</translation>
+    </message>
+    <message id="hand_order.native.reason.native_segments">
+        <source>Draft generated from the existing native segments.</source>
+        <translation>Draft generated from the existing native segments.</translation>
+    </message>
+    <message id="hand_order.native.reason.invalid_chart">
+        <source>Native syntax errors prevent a reliable conversion.</source>
+        <translation>Native syntax errors prevent a reliable conversion.</translation>
+    </message>
+    <message id="hand_order.native.reason.invalid_annotation">
+        <source>A selected target has an invalid hand annotation.</source>
+        <translation>A selected target has an invalid hand annotation.</translation>
+    </message>
+    <message id="hand_order.native.reason.wifi_not_supported">
+        <source>Wifi paths cannot be split into independent native segments here. Use Sticking interval splitting for colouring.</source>
+        <translation>Wifi paths cannot be split into independent native segments here. Use Sticking interval splitting for colouring.</translation>
+    </message>
+    <message id="hand_order.native.reason.missing_markers">
+        <source>Parsed native objects are missing.</source>
+        <translation>Parsed native objects are missing.</translation>
+    </message>
+    <message id="hand_order.native.reason.single_segment">
+        <source>This slide has one native segment. Use Sticking interval splitting for colouring.</source>
+        <translation>This slide has one native segment. Use Sticking interval splitting for colouring.</translation>
+    </message>
+    <message id="hand_order.native.reason.invalid_geometry">
+        <source>Native geometry or motion times are missing or invalid.</source>
+        <translation>Native geometry or motion times are missing or invalid.</translation>
+    </message>
+    <message id="hand_order.native.reason.unrepresentable_native">
+        <source>The native segment cannot be represented reliably in Simai.</source>
+        <translation>The native segment cannot be represented reliably in Simai.</translation>
+    </message>
+    <message id="hand_order.native.reason.hand_order_unrepresentable">
+        <source>The original hand intervals cannot be mapped reliably to every new segment.</source>
+        <translation>The original hand intervals cannot be mapped reliably to every new segment.</translation>
+    </message>
+    <message id="hand_order.native.reason.no_chain_selected">
+        <source>No convertible native chain is fully selected.</source>
+        <translation>No convertible native chain is fully selected.</translation>
+    </message>
+    <message id="hand_order.native.reason.round_trip_invalid">
+        <source>The proposed result failed strict Simai validation.</source>
+        <translation>The proposed result failed strict Simai validation.</translation>
+    </message>
+    <message id="hand_order.native.reason.round_trip_mismatch">
+        <source>Reparsing did not preserve geometry, actual motion times or annotations.</source>
+        <translation>Reparsing did not preserve geometry, actual motion times or annotations.</translation>
+    </message>
+    <message id="hand_order.native.reason.head_count_mismatch">
+        <source>The proposed result would change the real shared-head count.</source>
+        <translation>The proposed result would change the real shared-head count.</translation>
+    </message>
+    <message id="hand_order.native.change.independent_judgement_boundaries">
+        <source>Each resulting segment has an independent judgement boundary.</source>
+        <translation>Each resulting segment has an independent judgement boundary.</translation>
+    </message>
+    <message id="hand_order.native.change.slide_count_changes">
+        <source>The number of slide track objects increases as shown above.</source>
+        <translation>The number of slide track objects increases as shown above.</translation>
+    </message>
+    <message id="hand_order.native.change.availability_may_change">
+        <source>Independent segments may accept input at different times or react differently to early contact.</source>
+        <translation>Independent segments may accept input at different times or react differently to early contact.</translation>
+    </message>
+    <message id="hand_order.native.change.scoring_may_change">
+        <source>Scoring may change; this is not a per-chart score simulation.</source>
+        <translation>Scoring may change; this is not a per-chart score simulation.</translation>
+    </message>
+    <message id="hand_order.native.change.each_may_change">
+        <source>Each relationships may change.</source>
+        <translation>Each relationships may change.</translation>
+    </message>
+    <message id="hand_order.native.change.disappearance_may_change">
+        <source>Track appearance and disappearance may change, including headless-track presentation.</source>
+        <translation>Track appearance and disappearance may change, including headless-track presentation.</translation>
+    </message>
+    <message id="hand_order.native.change.sfx_may_change">
+        <source>Sound events may change.</source>
+        <translation>Sound events may change.</translation>
+    </message>
+    <message id="hand_order.native.change.muri_may_change">
+        <source>Muri results may change; before/after Muri is not calculated in this preview.</source>
+        <translation>Muri results may change; before/after Muri is not calculated in this preview.</translation>
+    </message>
+    <message id="hand_order.native.change.break_count_scoring_changes">
+        <source>Split native Break segments retain Break, which may change Break counts and scoring.</source>
+        <translation>Split native Break segments retain Break, which may change Break counts and scoring.</translation>
+    </message>
+    <message id="hand_order.auto.search_scope">
+        <source> Solve %1 objects; audit %6 native judgements; %2 rolling windows; largest window %3 tasks; work %4/%5.</source>
+        <translation> Solve %1 objects; audit %6 native judgements; %2 rolling windows; largest window %3 tasks; work %4/%5.</translation>
+    </message>
+    <message id="hand_order.auto.reason.task_limit">
+        <source>The inseparable local window exceeds the task limit; no candidate was validated</source>
+        <translation>The inseparable local window exceeds the task limit; no candidate was validated</translation>
+    </message>
+    <message id="hand_order.auto.reason.work_limit">
+        <source>The request work budget was exhausted; no candidate was validated for this window</source>
+        <translation>The request work budget was exhausted; no candidate was validated for this window</translation>
+    </message>
+    <message id="hand_order.auto.reason.boundary_replay_failed">
+        <source>Combined inputs changed an earlier judgement; this dependent scope cannot be applied</source>
+        <translation>Combined inputs changed an earlier judgement; this dependent scope cannot be applied</translation>
+    </message>
+    <message id="hand_order.auto.reason.window_work_limit">
+        <source>This local window reached its work share; independent later windows can still be checked</source>
+        <translation>This local window reached its work share; independent later windows can still be checked</translation>
+    </message>
+    <message id="hand_order.basic_layout">
+        <source>Basic Layout</source>
+        <translation>Basic Layout</translation>
+    </message>
+    <message id="hand_order.basic_layout_scope">
+        <source>Use complete selected notes, or the current difficulty when none is selected. Recognized local patterns may revise simple existing labels; complex annotations stay protected.</source>
+        <translation>Use complete selected notes, or the current difficulty when none is selected. Recognized local patterns may revise simple existing labels; complex annotations stay protected.</translation>
+    </message>
+    <message id="hand_order.basic_layout_feedback">
+        <source>Basic layout: %1 changed; %2 existing annotations kept; %3 partial tokens skipped; %4 unsupported; %5 diagnostics.</source>
+        <translation>Basic layout: %1 changed; %2 existing annotations kept; %3 partial tokens skipped; %4 unsupported; %5 diagnostics.</translation>
+    </message>
+    <message id="hand_order.basic_layout_notice">
+        <source>Fast sixteenth-note or finer repeats may alternate hands; eighth-note rebounds stay together even at high BPM. Paired winding taps stay on one hand per pair; complete fast circles favour one sweeping hand, with the opposite final each key on the other. Adjacent Touchgroup pairs and short Touch sweeps may share a hand; other each pairs use two. Slides and holds reserve hands, and overlapping alternating stars use alternating full tracks. No playability replay is performed.</source>
+        <translation>Fast sixteenth-note or finer repeats may alternate hands; eighth-note rebounds stay together even at high BPM. Paired winding taps stay on one hand per pair; complete fast circles favour one sweeping hand, with the opposite final each key on the other. Adjacent Touchgroup pairs and short Touch sweeps may share a hand; other each pairs use two. Slides and holds reserve hands, and overlapping alternating stars use alternating full tracks. No playability replay is performed.</translation>
+    </message>
+    <message id="hand_order.basic_layout_next_step">
+        <source>Basic layout writes normal annotations. To optimize them, enable “Recompute existing annotations in selection” and analyze again.</source>
+        <translation>Basic layout writes normal annotations. To optimize them, enable “Recompute existing annotations in selection” and analyze again.</translation>
+    </message>
+    <message id="hand_order.basic_layout_unverified_defaults">
+        <source>%1 unresolved notes used default hand colors without playability verification.</source>
+        <translation>%1 unresolved notes used default hand colors without playability verification.</translation>
+    </message>
+    <message id="hand_order.optimize"><source>Pattern Optimization</source><translation>Pattern Optimization</translation></message>
+    <message id="hand_order.optimize.notice"><source>Detect registry-defined pattern structures and propose their standard hand assignments. Definite structures have reviewable defaults; ambiguous patterns have two or three alternatives in Pattern candidates. Full-chart baseline search is not required. Only complete selected tokens are changed.</source><translation>Detect registry-defined pattern structures and propose their standard hand assignments. Definite structures have reviewable defaults; ambiguous patterns have two or three alternatives in Pattern candidates. Full-chart baseline search is not required. Only complete selected tokens are changed.</translation></message>
+    <message id="hand_order.optimize.preserve_existing"><source>Lock all existing annotations (no rearrangement)</source><translation>Lock all existing annotations (no rearrangement)</translation></message>
+    <message id="hand_order.optimize.needs_annotations"><source>Complete left/right annotations first using Basic Layout or automatic Sticking. Unspecified and Either labels cannot form a fixed baseline.</source><translation>Complete left/right annotations first using Basic Layout or automatic Sticking. Unspecified and Either labels cannot form a fixed baseline.</translation></message>
+    <message id="hand_order.optimize.invalid_chart"><source>Resolve native syntax and annotation errors before optimization.</source><translation>Resolve native syntax and annotation errors before optimization.</translation></message>
+    <message id="hand_order.optimize.size_limit"><source>This difficulty exceeds the structural scan limit of 100,000 markers.</source><translation>This difficulty exceeds the structural scan limit of 100,000 markers.</translation></message>
+    <message id="hand_order.optimize.locked"><source>All existing annotations are locked; no changes were made. To protect individual manual labels, exclude them from the selected range.</source><translation>All existing annotations are locked; no changes were made. To protect individual manual labels, exclude them from the selected range.</translation></message>
+    <message id="hand_order.optimize.baseline_unverified"><source>The original assignment could not pass a complete physical and judgement replay within the budget. It was kept unchanged.</source><translation>The original assignment could not pass a complete physical and judgement replay within the budget. It was kept unchanged.</translation></message>
+    <message id="hand_order.optimize.improved"><source>A safer lower-cost assignment is ready for review.</source><translation>A safer lower-cost assignment is ready for review.</translation></message>
+    <message id="hand_order.optimize.unchanged"><source>No strictly improving safe candidate was found; original annotations were kept.</source><translation>No strictly improving safe candidate was found; original annotations were kept.</translation></message>
+    <message id="hand_order.optimize.summary"><source>
+Segments: %1; candidates checked: %2; accepted: %3. Estimated cost: %4 → %5.</source><translation>
+Segments: %1; candidates checked: %2; accepted: %3. Estimated cost: %4 → %5.</translation></message>
+    <message id="hand_order.optimize.limited"><source>
+The retained candidate-list limit was reached.</source><translation>
+The retained candidate-list limit was reached.</translation></message>
+    <message id="preferences.hand_order_return_speed_help"><source>When idle, moving one field radius takes about %1 ms at this speed.</source><translation>When idle, moving one field radius takes about %1 ms at this speed.</translation></message>
+    <message id="preferences.hand_order_player.tap_rate_help"><source>16th notes played by one hand: BPM = hits/s × 15. With even alternating hands, the same per-hand rate corresponds to about twice this chart BPM. This is a comfortable reference, not an absolute limit.</source><translation>16th notes played by one hand: BPM = hits/s × 15. With even alternating hands, the same per-hand rate corresponds to about twice this chart BPM. This is a comfortable reference, not an absolute limit.</translation></message>
+    <message id="preferences.hand_order_player.move_speed_help"><source>One screen-diameter move takes about %1 ms. This is a distance/speed reference; actual moves need not cross the whole screen.</source><translation>One screen-diameter move takes about %1 ms. This is a distance/speed reference; actual moves need not cross the whole screen.</translation></message>
+    <message id="preferences.hand_order_player.stamina_help"><source>1.0 is the reference. Higher values reduce the cost of sustained dense movement; they do not increase the comfortable hit or movement speed.</source><translation>1.0 is the reference. Higher values reduce the cost of sustained dense movement; they do not increase the comfortable hit or movement speed.</translation></message>
+    <message id="hand_order.progress.baseline"><source>Checking original assignment</source><translation>Checking original assignment</translation></message>
+    <message id="hand_order.progress.candidate"><source>Checking candidate %1</source><translation>Checking candidate %1</translation></message>
+    <message id="hand_order.progress.preparing"><source>Parsing and preparing the calculation…</source><translation>Parsing and preparing the calculation…</translation></message>
+    <message id="hand_order.progress.windows"><source>Calculation windows completed: %1/%2 (stage progress)</source><translation>Calculation windows completed: %1/%2 (stage progress)</translation></message>
+    <message id="hand_order.progress.decisions"><source>Window %1/%2 · search %3
+Decisions completed: %4/%5 (stage progress)</source><translation>Window %1/%2 · search %3
+Decisions completed: %4/%5 (stage progress)</translation></message>
+    <message id="hand_order.progress.replay"><source>Replaying and verifying complete inputs… Duration is not yet predictable.</source><translation>Replaying and verifying complete inputs… Duration is not yet predictable.</translation></message>
+    <message id="hand_order.progress.complete"><source>This calculation stage is complete.</source><translation>This calculation stage is complete.</translation></message>
+    <message id="hand_order.progress.eta"><source>Estimated time left in this stage: about %1 s (rough estimate)</source><translation>Estimated time left in this stage: about %1 s (rough estimate)</translation></message>
+    <message id="hand_order.progress.estimating"><source>Estimating remaining time for this stage…</source><translation>Estimating remaining time for this stage…</translation></message>
+    <message id="hand_order.workflow.basic"><source>1. Basic Layout</source><translation>1. Basic Layout</translation></message>
+    <message id="hand_order.workflow.context"><source>2. Hand Order Optimization</source><translation>2. Hand Order Optimization</translation></message>
+    <message id="hand_order.workflow.pattern"><source>3. Pattern Optimization</source><translation>3. Pattern Optimization</translation></message>
+    <message id="hand_order.workflow.context_help"><source>Identify configurations and check context, timing and hand conflicts in one calculation.</source><translation>Identify configurations and check context, timing and hand conflicts in one calculation.</translation></message>
+    <message id="hand_order.workflow.overview"><source>1. Basic Layout → 2. Hand Order Optimization → 3. Playability Review. Review and apply each result.</source><translation>1. Basic Layout → 2. Hand Order Optimization → 3. Playability Review. Review and apply each result.</translation></message>
+    <message id="hand_order.workflow.settings"><source>Choose settings, then calculate the selection or current difficulty. Exact cached results may already be available for review.</source><translation>Choose settings, then calculate the selection or current difficulty. Exact cached results may already be available for review.</translation></message>
+    <message id="hand_order.workflow.protect_existing"><source>Protect existing annotations; only fill unlabelled notes</source><translation>Protect existing annotations; only fill unlabelled notes</translation></message>
+    <message id="hand_order.background.running"><source>Background…</source><translation>Background…</translation></message>
+    <message id="hand_order.background.progress"><source>Background %1%</source><translation>Background %1%</translation></message>
+    <message id="hand_order.background.cached"><source>Context cached</source><translation>Context cached</translation></message>
+    <message id="hand_order.background.failed"><source>Background unavailable</source><translation>Background unavailable</translation></message>
+    <message id="hand_order.background.yielded"><source>Background yielded</source><translation>Background yielded</translation></message>
+    <message id="hand_order.background.promoted"><source>Continuing in foreground</source><translation>Continuing in foreground</translation></message>
+    <message id="hand_order.background.reused"><source>Reused an exact cached calculation; no new calculation was started.</source><translation>Reused an exact cached calculation; no new calculation was started.</translation></message>
+    <message id="hand_order.background.stopped"><source>Calculation stopped</source><translation>Calculation stopped</translation></message>
+    <message id="hand_order.compute.paused"><source>Pause requested; current state is retained. Continue resumes this calculation.</source><translation>Pause requested; current state is retained. Continue resumes this calculation.</translation></message>
+    <message id="hand_order.compute.pause"><source>Pause</source><translation>Pause</translation></message>
+    <message id="hand_order.compute.resume"><source>Continue</source><translation>Continue</translation></message>
+    <message id="hand_order.compute.exit"><source>Exit Calculation</source><translation>Exit Calculation</translation></message>
+    <message id="hand_order.background.paused"><source>Background paused</source><translation>Background paused</translation></message>
+    <message id="hand_order.context_guard.retained"><source>The verified original assignment was retained; no strictly better serialized candidate was proved within the shared budget.</source><translation>The verified original assignment was retained; no strictly better serialized candidate was proved within the shared budget.</translation></message>
+    <message id="hand_order.context_guard.unverified"><source>The original assignment could not be completely verified within its reference allowance. Context search continued; no non-regression guarantee is implied.</source><translation>The original assignment could not be completely verified within its reference allowance. Context search continued; no non-regression guarantee is implied.</translation></message>
+    <message id="hand_order.auto.reason.safe_baseline_retained"><source>Verified original assignment retained by the shared-budget comparison</source><translation>Verified original assignment retained by the shared-budget comparison</translation></message>
+    <message id="hand_order.pattern.tab"><source>Pattern candidates</source><translation>Pattern candidates</translation></message>
+    <message id="hand_order.pattern.count"><source>%1 patterns have candidates</source><translation>%1 patterns have candidates</translation></message>
+    <message id="hand_order.pattern.scan"><source>Detect this difficulty</source><translation>Detect this difficulty</translation></message>
+    <message id="hand_order.pattern.default"><source>Default</source><translation>Default</translation></message>
+    <message id="hand_order.pattern.choose"><source>Choose a solution</source><translation>Choose a solution</translation></message>
+    <message id="hand_order.pattern.notice"><source>Compare the same native notes and syntax. Applying a solution changes hand annotations and supports Undo. These are structural recommendations; uncertain patterns require your choice.</source><translation>Compare the same native notes and syntax. Applying a solution changes hand annotations and supports Undo. These are structural recommendations; uncertain patterns require your choice.</translation></message>
+    <message id="hand_order.pattern.empty"><source>No candidates.</source><translation>No candidates.</translation></message>
+    <message id="hand_order.pattern.pause"><source>Pause example</source><translation>Pause example</translation></message>
+    <message id="hand_order.pattern.play"><source>Play example</source><translation>Play example</translation></message>
+    <message id="hand_order.pattern.apply"><source>Apply this solution</source><translation>Apply this solution</translation></message>
+    <message id="hand_order.pattern.applied"><source>Applied</source><translation>Applied</translation></message>
+    <message id="hand_order.pattern.open"><source>View retained pattern candidates</source><translation>View retained pattern candidates</translation></message>
+    <message id="hand_order.pattern.summary"><source>
+Matched %1 patterns; %2 alternatives; %3 defaults would change annotations.</source><translation>
+Matched %1 patterns; %2 alternatives; %3 defaults would change annotations.</translation></message>
+    <message id="hand_order.optimize.recognized"><source>Pattern rules matched. Review the defaults or choose an alternative in Pattern candidates.</source><translation>Pattern rules matched. Review the defaults or choose an alternative in Pattern candidates.</translation></message>
+    <message id="hand_order.optimize.no_patterns"><source>No supported pattern structure was detected in this range.</source><translation>No supported pattern structure was detected in this range.</translation></message>
+    <message id="hand_order.pattern.name.forked_stars"><source>Shared-head forked stars</source><translation>Shared-head forked stars</translation></message>
+    <message id="hand_order.pattern.name.umiyuri"><source>Umiyuri triplets</source><translation>Umiyuri triplets</translation></message>
+    <message id="hand_order.pattern.name.short_jacks"><source>Short jacks</source><translation>Short jacks</translation></message>
+    <message id="hand_order.pattern.name.axis"><source>Fixed-axis interaction</source><translation>Fixed-axis interaction</translation></message>
+    <message id="hand_order.pattern.name.trill"><source>Trill</source><translation>Trill</translation></message>
+    <message id="hand_order.pattern.name.triangle"><source>Triangle interaction</source><translation>Triangle interaction</translation></message>
+    <message id="hand_order.pattern.name.four_cycle"><source>Four-key interaction cycle</source><translation>Four-key interaction cycle</translation></message>
+    <message id="hand_order.pattern.name.sweep"><source>Sweep / staircase alternatives</source><translation>Sweep / staircase alternatives</translation></message>
+    <message id="hand_order.pattern.name.point_run"><source>Regular scattered interaction alternatives</source><translation>Regular scattered interaction alternatives</translation></message>
+    <message id="hand_order.pattern.strategy.track_sides"><source>Tracks by direction; shared head by near hand</source><translation>Tracks by direction; shared head by near hand</translation></message>
+    <message id="hand_order.pattern.strategy.mirror"><source>Mirror / opposite start</source><translation>Mirror / opposite start</translation></message>
+    <message id="hand_order.pattern.strategy.umiyuri_triplets"><source>Head, off-lane tap, launch and trace by one hand; alternate groups</source><translation>Head, off-lane tap, launch and trace by one hand; alternate groups</translation></message>
+    <message id="hand_order.pattern.strategy.same_hand"><source>Keep one hand through the gesture</source><translation>Keep one hand through the gesture</translation></message>
+    <message id="hand_order.pattern.strategy.alternate"><source>Alternate hands without breaking phase</source><translation>Alternate hands without breaking phase</translation></message>
+    <message id="hand_order.pattern.strategy.natural_sides"><source>Natural-side hand assignment</source><translation>Natural-side hand assignment</translation></message>
+    <message id="hand_order.pattern.name.long_jacks"><source>Long jacks</source><translation>Long jacks</translation></message>
+    <message id="hand_order.pattern.ignore"><source>Ignore</source><translation>Ignore</translation></message>
+    <message id="hand_order.pattern.strategy.hold_constrained"><source>Keep the Hold hand locked</source><translation>Keep the Hold hand locked</translation></message>
+    <message id="hand_order.pattern.strategy.paginate"><source>Page into continuous hand groups</source><translation>Page into continuous hand groups</translation></message>
+    <message id="hand_order.pattern.sort"><source>Sort</source><translation>Sort</translation></message>
+    <message id="hand_order.pattern.sort.time"><source>By time</source><translation>By time</translation></message>
+    <message id="hand_order.pattern.sort.category"><source>By category</source><translation>By category</translation></message>
+    <message id="hand_order.pattern.category.T"><source>Keys</source><translation>Keys</translation></message>
+    <message id="hand_order.pattern.category.S"><source>Slide</source><translation>Slide</translation></message>
+    <message id="hand_order.pattern.category.H"><source>Hold</source><translation>Hold</translation></message>
+    <message id="hand_order.pattern.category.U"><source>Touch</source><translation>Touch</translation></message>
+    <message id="hand_order.pattern.category.N"><source>Named patterns</source><translation>Named patterns</translation></message>
+    <message id="hand_order.pattern.category.A"><source>Techniques</source><translation>Techniques</translation></message>
+    <message id="hand_order.pattern.category.G"><source>Chart structure</source><translation>Chart structure</translation></message>
+    <message id="hand_order.pattern.strategy.existing"><source>Keep current assignment</source><translation>Keep current assignment</translation></message>
+    <message id="hand_order.pattern.group.trill"><source>Trill</source><translation>Trill</translation></message>
+    <message id="hand_order.pattern.group.triangle"><source>Triangle interaction</source><translation>Triangle interaction</translation></message>
+    <message id="hand_order.pattern.group.axis"><source>Axis interaction</source><translation>Axis interaction</translation></message>
+    <message id="hand_order.pattern.group.four_cycle"><source>Four-key interaction</source><translation>Four-key interaction</translation></message>
+    <message id="hand_order.pattern.group.point_run"><source>Scattered interaction</source><translation>Scattered interaction</translation></message>
+    <message id="hand_order.pattern.group.sweep"><source>Sweep</source><translation>Sweep</translation></message>
+    <message id="hand_order.pattern.group.short_jacks"><source>Short jacks</source><translation>Short jacks</translation></message>
+    <message id="hand_order.pattern.group.long_jacks"><source>Long jacks</source><translation>Long jacks</translation></message>
+    <message id="hand_order.pattern.group.umiyuri"><source>Umiyuri</source><translation>Umiyuri</translation></message>
+    <message id="hand_order.pattern.group.forked_stars"><source>Forked stars</source><translation>Forked stars</translation></message>
+    <message id="hand_order.pattern.similar_group"><source>Similar shape %1</source><translation>Similar shape %1</translation></message>
+    <message id="hand_order.pattern.select_instance"><source>Select this instance</source><translation>Select this instance</translation></message>
+    <message id="hand_order.pattern.select_similar"><source>Select all %1 similar instances</source><translation>Select all %1 similar instances</translation></message>
+    <message id="hand_order.pattern.selected_count"><source>%1 selected</source><translation>%1 selected</translation></message>
+    <message id="hand_order.pattern.apply_selected"><source>Apply to %1 selected instances</source><translation>Apply to %1 selected instances</translation></message>
+    <message id="hand_order.pattern.strategy.umiyuri_share"><source>Share the middle tap; keep launch and trace together</source><translation>Share the middle tap; keep launch and trace together</translation></message>
+    <message id="hand_order.pattern.strategy.same_key_return"><source>Keep the Each key hand for its return</source><translation>Keep the Each key hand for its return</translation></message>
+    <message id="hand_order.pattern.strategy.alternate_return"><source>Switch hands on the return</source><translation>Switch hands on the return</translation></message>
+    <message id="hand_order.pattern.strategy.burst_groups"><source>Keep each pair together; share the burst endings</source><translation>Keep each pair together; share the burst endings</translation></message>
+    <message id="hand_order.pattern.strategy.continuous_tracks"><source>Keep one track hand through the stroke and dwell</source><translation>Keep one track hand through the stroke and dwell</translation></message>
+    <message id="hand_order.pattern.strategy.separate_tracks"><source>Separate track hands (special technique)</source><translation>Separate track hands (special technique)</translation></message>
+    <message id="hand_order.pattern.strategy.handoff"><source>Handoff at trace launch</source><translation>Strike the star, then hand off the launch and trace; take the adjacent tap with the free hand</translation></message>
+    <message id="hand_order.pattern.strategy.launch_track"><source>Match the launch note to the track hand; keep Holds locked</source><translation>Match the launch note to the track hand; keep Holds locked</translation></message>
+    <message id="hand_order.pattern.name.moving_interaction"><source>Moving interaction</source><translation>Moving interaction</translation></message>
+    <message id="hand_order.pattern.name.burst_bullets"><source>Burst bullets</source><translation>Burst bullets</translation></message>
+    <message id="hand_order.pattern.name.each_return"><source>Each with same-key return</source><translation>Each with same-key return</translation></message>
+    <message id="hand_order.pattern.name.one_stroke"><source>One-stroke tracks</source><translation>One-stroke tracks</translation></message>
+    <message id="hand_order.pattern.name.launch_beat"><source>Slide launch beat</source><translation>Slide launch beat</translation></message>
+    <message id="hand_order.pattern.group.moving_interaction"><source>Moving interaction</source><translation>Moving interaction</translation></message>
+    <message id="hand_order.pattern.group.burst_bullets"><source>Burst bullets</source><translation>Burst bullets</translation></message>
+    <message id="hand_order.pattern.group.each_return"><source>Each with same-key return</source><translation>Each with same-key return</translation></message>
+    <message id="hand_order.pattern.group.one_stroke"><source>One-stroke tracks</source><translation>One-stroke tracks</translation></message>
+    <message id="hand_order.pattern.group.launch_beat"><source>Slide launch beat</source><translation>Slide launch beat</translation></message>
+    <message id="action.play_selection">
+        <source>Play Selection</source>
+        <translation>Play Selection</translation>
+    </message>
+    <message id="preview.canvas.show_measure_lines">
+        <source>Show Measure Lines</source>
+        <translation>Show Measure Lines</translation>
+    </message>
+    <message id="preview.canvas.show_judgement_skeleton">
+        <source>Show Judgement Skeleton</source>
+        <translation>Show Judgement Skeleton</translation>
+    </message>
+    <message id="preview.canvas.slide_timing_from_launch_beat">
+        <source>Start on a matching launch beat</source>
+        <translation>Start on a matching launch beat</translation>
+    </message>
+    <message id="preview.canvas.slide_timing_early_perfect_from_head">
+        <source>Fully bright from star head when Perfect starts before launch beat</source>
+        <translation>Fully bright from star head when Perfect starts before launch beat</translation>
+    </message>
+    <message id="preview.canvas.show_slide_judgement_timing">
+        <source>Show Slide Judgement Timing</source>
+        <translation>Show Slide Judgement Timing</translation>
+    </message>
+    <message id="preview.canvas.measure_mode">
+        <source>Measure Line Mode</source>
+        <translation>Measure Line Mode</translation>
+    </message>
+    <message id="preview.canvas.measure_chart_clock">
+        <source>Default (automatic)</source>
+        <translation>Default (automatic)</translation>
+    </message>
+    <message id="preview.canvas.measure_custom_beats">
+        <source>Custom beats per measure</source>
+        <translation>Custom beats per measure</translation>
+    </message>
+    <message id="preview.canvas.measure_text_lines">
+        <source>Text line starts</source>
+        <translation>Text line starts</translation>
+    </message>
+<message id="dialog.render_settings.gameplay.judge_line.none">
+        <source>None</source>
+        <translation>None</translation>
+    </message>
+
+<message id="dialog.video_export.option.show_bpm_hud">
+        <source>Show BPM</source>
+        <translation>Show BPM</translation>
+    </message>
+
+<message id="dialog.video_export.option.show_cps_hud">
+        <source>Show CPS</source>
+        <translation>Show CPS</translation>
+    </message>
+
+<message id="dialog.video_export.option.show_meter_hud">
+        <source>Show explicit meter</source>
+        <translation>Show explicit meter</translation>
+    </message>
+
+<message id="dialog.video_export.option.show_mods_hud">
+        <source>Show Mods</source>
+        <translation>Show Mods</translation>
+    </message>
+
+<message id="tools.bpm.title">
+        <source>Export BPM</source>
+        <translation>Export BPM</translation>
+    </message>
+
+<message id="tools.bpm.sequence">
+        <source>BPM sequence (xx.xx-xx.xx)</source>
+        <translation>BPM sequence (xx.xx-xx.xx)</translation>
+    </message>
+
+<message id="tools.bpm.audio_time">
+        <source>Audio timestamps (mm:ss:fff)</source>
+        <translation>Audio timestamps (mm:ss:fff)</translation>
+    </message>
+
+<message id="tools.bpm.empty_maidata">
+        <source>Empty maidata with timing</source>
+        <translation>Empty maidata with timing</translation>
+    </message>
+
+<message id="tools.bpm.preview">
+        <source>BPM export preview</source>
+        <translation>BPM export preview</translation>
+    </message>
+
+<message id="tools.bpm.copy">
+        <source>Copy</source>
+        <translation>Copy</translation>
+    </message>
+
+<message id="tools.bpm.save">
+        <source>Save as…</source>
+        <translation>Save as…</translation>
+    </message>
+
+<message id="tools.bpm.save_error">
+        <source>Could not save BPM export: %1</source>
+        <translation>Could not save BPM export: %1</translation>
+    </message>
+
+<message id="tools.chart.invalid_first">
+        <source>Invalid &amp;first value</source>
+        <translation>Invalid &amp;first value</translation>
+    </message>
+
+<message id="tools.chart.parse_error">
+        <source>The chart contains parse errors</source>
+        <translation>The chart contains parse errors</translation>
+    </message>
+
+<message id="tools.dx_loss.title">
+        <source>DX achievement loss</source>
+        <translation>DX achievement loss</translation>
+    </message>
+
+<message id="tools.dx_loss.attributes">
+        <source>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</source>
+        <translation>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</translation>
+    </message>
+
+<message id="tools.dx_loss.object">
+        <source>Object</source>
+        <translation>Object</translation>
+    </message>
+
+<message id="tools.dx_loss.judgment">
+        <source>Judgment</source>
+        <translation>Judgment</translation>
+    </message>
+
+<message id="tools.dx_loss.single">
+        <source>Loss per judgment</source>
+        <translation>Loss per judgment</translation>
+    </message>
+
+<message id="tools.dx_loss.empty">
+        <source>The chart has no scoring objects</source>
+        <translation>The chart has no scoring objects</translation>
+    </message>
+
+<message id="tools.dx_loss.extensions">
+        <source>Unofficial extensions: counts are available; DX calculation is disabled</source>
+        <translation>Unofficial extensions: counts are available; DX calculation is disabled</translation>
+    </message>
+
+<message id="tools.dx_loss.maximum_break">
+        <source>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</source>
+        <translation>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</translation>
+    </message>
+
+<message id="tools.dx_loss.maximum_no_break">
+        <source>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</source>
+        <translation>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</translation>
+    </message>
+
+<message id="tools.bpm.empty_timing_note">
+        <source>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</source>
+        <translation>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</translation>
+    </message>
+
+<message id="cover.text_stroke">
+        <source>Text outline</source>
+        <translation>Text outline</translation>
+    </message>
+
+<message id="cover.text_stroke_color">
+        <source>Outline color</source>
+        <translation>Outline color</translation>
+    </message>
+
+<message id="cover.text_stroke_width">
+        <source>Outline width</source>
+        <translation>Outline width</translation>
+    </message>
+
+<message id="cover.text_shadow">
+        <source>Text shadow</source>
+        <translation>Text shadow</translation>
+    </message>
+
+<message id="cover.text_shadow_color">
+        <source>Shadow color</source>
+        <translation>Shadow color</translation>
+    </message>
+
+<message id="cover.text_shadow_opacity">
+        <source>Shadow opacity</source>
+        <translation>Shadow opacity</translation>
+    </message>
+
+<message id="cover.text_shadow_blur">
+        <source>Shadow blur</source>
+        <translation>Shadow blur</translation>
+    </message>
+
+<message id="cover.text_shadow_x">
+        <source>Shadow X offset</source>
+        <translation>Shadow X offset</translation>
+    </message>
+
+<message id="cover.text_shadow_y">
+        <source>Shadow Y offset</source>
+        <translation>Shadow Y offset</translation>
+    </message>
+
+<message id="dialog.video_export.cover_preset">
+        <source>Companion cover</source>
+        <translation>Companion cover</translation>
+    </message>
+
+<message id="dialog.video_export.cover_failed_video_kept">
+        <source>Cover export failed. The video was kept.</source>
+        <translation>Cover export failed. The video was kept.</translation>
+    </message>
+
+<message id="cli.settings.title">
+        <source>Command line</source>
+        <translation>Command line</translation>
+    </message>
+
+<message id="cli.settings.enable">
+        <source>Enable command-line support</source>
+        <translation>Enable command-line support</translation>
+    </message>
+
+<message id="dialog.video_export.cover_source_changed">
+        <source>The chart changed while preparing the cover. Export again.</source>
+        <translation>The chart changed while preparing the cover. Export again.</translation>
+    </message>
+
+<message id="hand_order.object_selection_requires_contiguous"><source>This command requires a contiguous selection. Select one continuous source range first.</source><translation>This command requires a contiguous selection. Select one continuous source range first.</translation></message>
+    <message id="preferences.advanced_metadata">
+        <source>Enable advanced chart information</source>
+        <translation>Enable advanced chart information</translation>
+    </message>
+    <message id="preferences.low_performance">
+        <source>Low performance mode (prioritize 60 Hz preview)</source>
+        <translation>Low performance mode (prioritize 60 Hz preview)</translation>
+    </message>
+    <message id="preferences.space_guard">
+        <source>Prevent accidental spaces (press 3 times to unlock)</source>
+        <translation>Prevent accidental spaces (press 3 times to unlock)</translation>
+    </message>
+    <message id="preferences.auto_normalize">
+        <source>Automatically normalize charts</source>
+        <translation>Automatically normalize charts</translation>
+    </message>
+    <message id="preferences.warn_empty_difficulty">
+        <source>Warn before exporting empty difficulties</source>
+        <translation>Warn before exporting empty difficulties</translation>
+    </message>
+    <message id="editor.space_unlocked">
+        <source>Space input unlocked · relocks on focus loss</source>
+        <translation>Space input unlocked · relocks on focus loss</translation>
+    </message>
+    <message id="metadata.advanced.title">
+        <source>Advanced chart information</source>
+        <translation>Advanced chart information</translation>
+    </message>
+    <message id="metadata.advanced.song">
+        <source>Song identifiers</source>
+        <translation>Song identifiers</translation>
+    </message>
+    <message id="metadata.advanced.artist_id">
+        <source>Artist ID</source>
+        <translation>Artist ID</translation>
+    </message>
+    <message id="metadata.advanced.song_id">
+        <source>Song ID</source>
+        <translation>Song ID</translation>
+    </message>
+    <message id="metadata.advanced.timing">
+        <source>Timing and demo</source>
+        <translation>Timing and demo</translation>
+    </message>
+    <message id="metadata.advanced.whole_bpm">
+        <source>BPM metadata</source>
+        <translation>BPM metadata</translation>
+    </message>
+    <message id="metadata.advanced.demo_start">
+        <source>Demo start (seconds)</source>
+        <translation>Demo start (seconds)</translation>
+    </message>
+    <message id="metadata.advanced.demo_length">
+        <source>Demo length (seconds)</source>
+        <translation>Demo length (seconds)</translation>
+    </message>
+    <message id="metadata.advanced.compatibility">
+        <source>Legacy compatibility</source>
+        <translation>Legacy compatibility</translation>
+    </message>
+    <message id="metadata.advanced.legacy_seek">
+        <source>Legacy seek (seconds)</source>
+        <translation>Legacy seek (seconds)</translation>
+    </message>
+    <message id="metadata.advanced.legacy_wait">
+        <source>Legacy wait (seconds)</source>
+        <translation>Legacy wait (seconds)</translation>
+    </message>
+    <message id="metadata.advanced.legacy_warning">
+        <source>The current Fanmade Portal form does not support seek/wait. Keep existing values when needed; use first for timing adjustment.</source>
+        <translation>The current Fanmade Portal form does not support seek/wait. Keep existing values when needed; use first for timing adjustment.</translation>
+    </message>
+    <message id="metadata.advanced.catalog">
+        <source>Category and version</source>
+        <translation>Category and version</translation>
+    </message>
+    <message id="metadata.advanced.genre">
+        <source>Genre</source>
+        <translation>Genre</translation>
+    </message>
+    <message id="metadata.advanced.genre_id">
+        <source>Genre ID</source>
+        <translation>Genre ID</translation>
+    </message>
+    <message id="metadata.advanced.cabinet">
+        <source>Cabinet (SD / DX)</source>
+        <translation>Cabinet (SD / DX)</translation>
+    </message>
+    <message id="metadata.advanced.version">
+        <source>Version</source>
+        <translation>Version</translation>
+    </message>
+    <message id="metadata.advanced.author">
+        <source>Creator information</source>
+        <translation>Creator information</translation>
+    </message>
+    <message id="metadata.advanced.video_url">
+        <source>Chart video URL</source>
+        <translation>Chart video URL</translation>
+    </message>
+    <message id="metadata.advanced.created">
+        <source>Creation date (YYYYMMDD)</source>
+        <translation>Creation date (YYYYMMDD)</translation>
+    </message>
+    <message id="metadata.advanced.comment">
+        <source>Creator comment</source>
+        <translation>Creator comment</translation>
+    </message>
+    <message id="metadata.advanced.difficulty">
+        <source>Difficulty metadata</source>
+        <translation>Difficulty metadata</translation>
+    </message>
+    <message id="metadata.advanced.creator_id">
+        <source>Creator IDs (comma separated)</source>
+        <translation>Creator IDs (comma separated)</translation>
+    </message>
+    <message id="metadata.advanced.constant">
+        <source>Chart constant</source>
+        <translation>Chart constant</translation>
+    </message>
+    <message id="metadata.advanced.regulation">
+        <source>Regulation</source>
+        <translation>Regulation</translation>
+    </message>
+    <message id="metadata.advanced.single_line">
+        <source>This field accepts one line only.</source>
+        <translation>This field accepts one line only.</translation>
+    </message>
+    <message id="metadata.advanced.embedded_field">
+        <source>A field value cannot contain another &amp;key= assignment.</source>
+        <translation>A field value cannot contain another &amp;key= assignment.</translation>
+    </message>
+    <message id="metadata.advanced.invalid_date">
+        <source>Enter a valid date as YYYYMMDD.</source>
+        <translation>Enter a valid date as YYYYMMDD.</translation>
+    </message>
+    <message id="metadata.advanced.invalid_url">
+        <source>Enter a valid HTTP or HTTPS URL.</source>
+        <translation>Enter a valid HTTP or HTTPS URL.</translation>
+    </message>
+    <message id="metadata.advanced.invalid_id">
+        <source>Use digits for IDs; separate collaborating creator IDs with commas.</source>
+        <translation>Use digits for IDs; separate collaborating creator IDs with commas.</translation>
+    </message>
+    <message id="metadata.advanced.positive_number">
+        <source>Enter a finite number greater than zero.</source>
+        <translation>Enter a finite number greater than zero.</translation>
+    </message>
+    <message id="metadata.advanced.nonnegative_number">
+        <source>Enter a finite number of zero or greater.</source>
+        <translation>Enter a finite number of zero or greater.</translation>
+    </message>
+    <message id="metadata.advanced.no_document">
+        <source>No chart is open.</source>
+        <translation>No chart is open.</translation>
+    </message>
+    <message id="metadata.advanced.unknown_field">
+        <source>Unsupported advanced field.</source>
+        <translation>Unsupported advanced field.</translation>
+    </message>
+    <message id="metadata.advanced.update_failed">
+        <source>The metadata change could not be applied.</source>
+        <translation>The metadata change could not be applied.</translation>
+    </message>
+    <message id="timeline.layout.horizontal">
+        <source>Horizontal</source>
+        <translation>Horizontal</translation>
+    </message>
+    <message id="timeline.layout.before_editor">
+        <source>Before editor</source>
+        <translation>Before editor</translation>
+    </message>
+    <message id="timeline.layout.after_editor">
+        <source>After editor</source>
+        <translation>After editor</translation>
+    </message>
+    <message id="timeline.layout.direction">
+        <source>Vertical note direction</source>
+        <translation>Vertical note direction</translation>
+    </message>
+    <message id="timeline.layout.falling">
+        <source>Falling</source>
+        <translation>Falling</translation>
+    </message>
+    <message id="timeline.layout.rising">
+        <source>Rising</source>
+        <translation>Rising</translation>
+    </message>
+    <message id="timeline.layout.lane_order">
+        <source>Lane order</source>
+        <translation>Lane order</translation>
+    </message>
+    <message id="timeline.drop_region">
+        <source>Drop</source>
+        <translation>Drop</translation>
+    </message>
+    <message id="export.document_changed_retry">
+        <source>The chart changed while the export dialog was open. Please export again.</source>
+        <translation>The chart changed while the export dialog was open. Please export again.</translation>
+    </message>
+    <message id="export.empty_difficulty_warning">
+        <source>Empty difficulties were detected. Continue exporting?</source>
+        <translation>Empty difficulties were detected. Continue exporting?</translation>
+    </message>
+    <message id="export.empty_difficulty_continue">
+        <source>I know what I am doing!</source>
+        <translation>I know what I am doing!</translation>
+    </message>
+    <message id="qml.debug_rendering">
+        <source>Debug rendering</source>
+        <translation>Debug rendering</translation>
+    </message>
+    <message id="qml.debug_labeled_judge_area">
+        <source>Labeled judgement areas</source>
+        <translation>Labeled judgement areas</translation>
+    </message>
+    <message id="qml.debug_muri_markers">
+        <source>Muri judgement markers</source>
+        <translation>Muri judgement markers</translation>
+    </message>
+    <message id="qml.debug_touch_trail">
+        <source>Touch trails</source>
+        <translation>Touch trails</translation>
+    </message>
+    <message id="dialog.video_export.less_display">
+        <source>Show less</source>
+        <translation>Show less</translation>
+    </message>
+    <message id="video_size.custom">
+        <source>Custom</source>
+        <translation>Custom</translation>
+    </message>
+    <message id="video_size.target_mbps">
+        <source>Target video bitrate (Mbps)</source>
+        <translation>Target video bitrate (Mbps)</translation>
+    </message>
+    <message id="video_size.estimated_mb">
+        <source>Estimated size: %1 MB</source>
+        <translation>Estimated size: %1 MB</translation>
+    </message>
+    <message id="video_export.include_pv">
+        <source>Export PV</source>
+        <translation>Export PV</translation>
+    </message>
+    <message id="video_export.intro_style_chart_preview">
+        <source>Chart preview</source>
+        <translation>Chart preview</translation>
+    </message>
+    <message id="video_export.drop_range">
+        <source>Drop: %1 – %2</source>
+        <translation>Drop: %1 – %2</translation>
+    </message>
+    <message id="video_export.use_drop_range">
+        <source>Use drop range</source>
+        <translation>Use drop range</translation>
+    </message>
+    <message id="video_export.intro_automatic_segment">
+        <source>Use recommended segment</source>
+        <translation>Use recommended segment</translation>
+    </message>
+    <message id="video_template.file_filter">
+        <source>MiaCode video template (*.miatemplate)</source>
+        <translation>MiaCode video template (*.miatemplate)</translation>
+    </message>
+    <message id="video_template.compatible_file_filter">
+        <source>MiaCode video template (*.miatemplate *.json)</source>
+        <translation>MiaCode video template (*.miatemplate *.json)</translation>
+    </message>
+    <message id="video_export.intro_source_manual">
+        <source>Custom segment</source>
+        <translation>Custom segment</translation>
+    </message>
+    <message id="video_export.intro_source_demo">
+        <source>Chart demo</source>
+        <translation>Chart demo</translation>
+    </message>
+    <message id="video_export.intro_source_drop">
+        <source>Drop</source>
+        <translation>Drop</translation>
+    </message>
+    <message id="video_export.intro_source_default">
+        <source>Default segment</source>
+        <translation>Default segment</translation>
+    </message>
+    <message id="video_export.intro_follow_drop">
+        <source>Follow drop</source>
+        <translation>Follow drop</translation>
+    </message>
+    <message id="video_export.intro_automatic">
+        <source>Automatic</source>
+        <translation>Automatic</translation>
+    </message>
+    <message id="structure.session_only">
+        <source>Drop changes are in this session only</source>
+        <translation>Drop changes are in this session only</translation>
+    </message>
+    <message id="structure.manual_outside">
+        <source>Manual drop is outside the media duration</source>
+        <translation>Manual drop is outside the media duration</translation>
+    </message>
+    <message id="structure.manual_audio_changed">
+        <source>Audio changed. Review the manual drop</source>
+        <translation>Audio changed. Review the manual drop</translation>
+    </message>
+    <message id="structure.manual">
+        <source>Manual drop</source>
+        <translation>Manual drop</translation>
+    </message>
+    <message id="structure.detected">
+        <source>Detected drop</source>
+        <translation>Detected drop</translation>
+    </message>
+    <message id="structure.analyzing">
+        <source>Analyzing chart and audio…</source>
+        <translation>Analyzing chart and audio…</translation>
+    </message>
+    <message id="structure.canceled">
+        <source>Structure analysis canceled</source>
+        <translation>Structure analysis canceled</translation>
+    </message>
+    <message id="structure.wait_for_pause">
+        <source>Analysis waits for playback to pause</source>
+        <translation>Analysis waits for playback to pause</translation>
+    </message>
+    <message id="structure.syntax_estimate">
+        <source>Pressure estimate from a chart with syntax errors</source>
+        <translation>Pressure estimate from a chart with syntax errors</translation>
+    </message>
+    <message id="structure.no_audio">
+        <source>Pressure estimate · Audio unavailable</source>
+        <translation>Pressure estimate · Audio unavailable</translation>
+    </message>
+    <message id="structure.candidates">
+        <source>Drop candidates · Select a range to confirm</source>
+        <translation>Drop candidates · Select a range to confirm</translation>
+    </message>
+    <message id="structure.no_clear_drop">
+        <source>Pressure estimate · No clear drop</source>
+        <translation>Pressure estimate · No clear drop</translation>
+    </message>
+    <message id="structure.cancel_analysis">
+        <source>Cancel analysis</source>
+        <translation>Cancel analysis</translation>
+    </message>
+    <message id="structure.edit_button">
+        <source>Drop…</source>
+        <translation>Drop…</translation>
+    </message>
+    <message id="structure.pressure_tooltip">
+        <source>%1 s · Chart pressure %2/100
+Judgement TPS %3 · Simultaneous %4
+Movement %5 · Rhythm %6 · Sustained load %7
+Held %8 · Slides %9 · Overlap %10</source>
+        <translation>%1 s · Chart pressure %2/100
+Judgement TPS %3 · Simultaneous %4
+Movement %5 · Rhythm %6 · Sustained load %7
+Held %8 · Slides %9 · Overlap %10</translation>
+    </message>
+    <message id="structure.edit_title">
+        <source>Edit drop range</source>
+        <translation>Edit drop range</translation>
+    </message>
+    <message id="structure.start_seconds">
+        <source>Start (seconds)</source>
+        <translation>Start (seconds)</translation>
+    </message>
+    <message id="structure.end_seconds">
+        <source>End (seconds)</source>
+        <translation>End (seconds)</translation>
+    </message>
+    <message id="structure.recommendation">
+        <source>Recommendation · %1–%2 s</source>
+        <translation>Recommendation · %1–%2 s</translation>
+    </message>
+    <message id="structure.candidate">
+        <source>Candidate · %1–%2 s</source>
+        <translation>Candidate · %1–%2 s</translation>
+    </message>
+    <message id="structure.undo">
+        <source>Undo drop edit</source>
+        <translation>Undo drop edit</translation>
+    </message>
+    <message id="structure.redo">
+        <source>Redo drop edit</source>
+        <translation>Redo drop edit</translation>
+    </message>
+    <message id="structure.clear">
+        <source>Clear drop</source>
+        <translation>Clear drop</translation>
+    </message>
+    <message id="structure.analyze_again">
+        <source>Analyze again</source>
+        <translation>Analyze again</translation>
+    </message>
+    <message id="structure.save_drop">
+        <source>Save drop</source>
+        <translation>Save drop</translation>
+    </message>
+    <message id="structure.apply_manual">
+        <source>Apply manual drop</source>
+        <translation>Apply manual drop</translation>
+    </message>
+    <message id="editor.slide_component_edit_rejected">
+        <source>This edit would change an unselected Slide component. Select the whole Slide and try again.</source>
+        <translation>This edit would change an unselected Slide component. Select the whole Slide and try again.</translation>
+    </message>
+    <message id="metadata.advanced.conflict_warning">
+        <source>The original file contains conflicting fields: %1. Review the complete source before saving; automatic metadata saves are blocked.</source>
+        <translation>The original file contains conflicting fields: %1. Review the complete source before saving; automatic metadata saves are blocked.</translation>
+    </message>
+    <message id="export.syntax_before_zip">
+        <source>The chart contains syntax errors. Fix them before exporting ZIP.</source>
+        <translation>The chart contains syntax errors. Fix them before exporting ZIP.</translation>
+    </message>
+    <message id="video_template.path_exists">
+        <source>A template with that name already exists.</source>
+        <translation>A template with that name already exists.</translation>
+    </message>
+    <message id="timeline.note_scale">
+        <source>Note size</source>
+        <translation>Note size</translation>
+    </message>
+    <message id="workspace.menu">
+        <source>Workspace(&amp;W)</source>
+        <translation>Workspace(&amp;W)</translation>
+    </message>
+    <message id="workspace.panels">
+        <source>Panels</source>
+        <translation>Panels</translation>
+    </message>
+    <message id="workspace.default">
+        <source>Default layout</source>
+        <translation>Default layout</translation>
+    </message>
+    <message id="workspace.editing">
+        <source>Editing layout</source>
+        <translation>Editing layout</translation>
+    </message>
+    <message id="workspace.preview">
+        <source>Preview layout</source>
+        <translation>Preview layout</translation>
+    </message>
+    <message id="workspace.maximize_panel">
+        <source>Maximize active panel</source>
+        <translation>Maximize active panel</translation>
+    </message>
+    <message id="workspace.restore_panel">
+        <source>Restore active panel</source>
+        <translation>Restore active panel</translation>
+    </message>
+    <message id="workspace.save">
+        <source>Save current layout…</source>
+        <translation>Save current layout…</translation>
+    </message>
+    <message id="workspace.reset">
+        <source>Reset layout</source>
+        <translation>Reset layout</translation>
+    </message>
+    <message id="workspace.name">
+        <source>Layout name</source>
+        <translation>Layout name</translation>
+    </message>
+    <message id="workspace.remove">
+        <source>Delete saved layout</source>
+        <translation>Delete saved layout</translation>
+    </message>
+    <message id="workspace.drag_panel">
+        <source>Drag a panel tab to dock, group, or float it</source>
+        <translation>Drag a panel tab to dock, group, or float it</translation>
+    </message>
+    <message id="workspace.editor">
+        <source>Editor</source>
+        <translation>Editor</translation>
+    </message>
+    <message id="workspace.sidebar">
+        <source>Chart outline</source>
+        <translation>Chart outline</translation>
+    </message>
+    <message id="workspace.preview_panel">
+        <source>Preview</source>
+        <translation>Preview</translation>
+    </message>
+    <message id="workspace.timeline">
+        <source>Show timeline</source>
+        <translation>Show timeline</translation>
+    </message>
+    <message id="workspace.diagnostics">
+        <source>Diagnostics</source>
+        <translation>Diagnostics</translation>
+    </message>
+    <message id="editor.set_selection_as_drop">
+        <source>Set selection as Drop</source>
+        <translation>Set selection as Drop</translation>
+    </message>
+    <message id="editor.clear_drop">
+        <source>Clear Drop</source>
+        <translation>Clear Drop</translation>
+    </message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the
@@ -5282,4 +6934,506 @@ Error: %1</translation>
 
 
 
+
+
+
+
+<context>
+    <name></name>
+    <message id="structure.hand_order_tooltip">
+        <source>Annotated hands · Load L %1 / R %2
+Movement L %3 / R %4 · Alternation %5</source>
+        <translation>Annotated hands · Load L %1 / R %2
+Movement L %3 / R %4 · Alternation %5</translation>
+    </message>
+</context>
+<context>
+    <name></name>
+    <message id="preview.show_stage_media_when_paused"><source>Show PV / background while paused</source><translation>Show PV / background while paused</translation></message>
+    <message id="preferences.disable_alt_menu"><source>Disable menu activation by Alt alone</source><translation>Disable menu activation by Alt alone</translation></message>
+    <message id="preferences.pv_frame_rate_auto"><source>Auto detect</source><translation>Auto detect</translation></message>
+    <message id="preferences.pv_frame_rate_help"><source>Auto detect follows the source PV timestamps, including fractional and variable frame rates. Other options cap preview updates; export FPS is separate.</source><translation>Auto detect follows the source PV timestamps, including fractional and variable frame rates. Other options cap preview updates; export FPS is separate.</translation></message>
+    <message id="editor.transform_review_title"><source>Change extends beyond the visible chart</source><translation>Change extends beyond the visible chart</translation></message>
+    <message id="editor.transform_review_apply"><source>Apply reviewed change</source><translation>Apply reviewed change</translation></message>
+    <message id="editor.transform_review_stale"><source>The document changed. Review and run the operation again.</source><translation>The document changed. Review and run the operation again.</translation></message>
+</context>
+<context><name></name>
+<message id="hand_order.experiment.title"><source>Read-only hand analysis experiment</source><translation>Read-only hand analysis experiment</translation></message>
+<message id="hand_order.experiment.disclaimer"><source>Uncalibrated experiment. Existing annotations are protected. Shared contacts are brushing candidates, not verified player outcomes. Timing scenarios sample object groups from segment peaks; they do not replay complete palm trajectories or predict official scores.</source><translation>Uncalibrated experiment. Existing annotations are protected. Shared contacts are brushing candidates, not verified player outcomes. Timing scenarios sample object groups from segment peaks; they do not replay complete palm trajectories or predict official scores.</translation></message>
+<message id="hand_order.experiment.analyze"><source>Analyze current difficulty</source><translation>Analyze current difficulty</translation></message>
+<message id="hand_order.experiment.simulate"><source>Run timing scenario</source><translation>Run timing scenario</translation></message>
+<message id="hand_order.experiment.reaction"><source>Response delay</source><translation>Response delay</translation></message>
+<message id="hand_order.experiment.movement"><source>Movement speed (field radii/s)</source><translation>Movement speed (field radii/s)</translation></message>
+<message id="hand_order.experiment.stamina"><source>Stamina capacity</source><translation>Stamina capacity</translation></message>
+<message id="hand_order.experiment.jitter"><source>Timing jitter range</source><translation>Timing jitter range</translation></message>
+<message id="hand_order.experiment.window"><source>Scenario reference window</source><translation>Scenario reference window</translation></message>
+<message id="hand_order.experiment.trials"><source>Trials per object group</source><translation>Trials per object group</translation></message>
+<message id="hand_order.experiment.seed"><source>Random seed</source><translation>Random seed</translation></message>
+<message id="hand_order.experiment.seed_help"><source>Same analysis, parameters and seed reproduce a scenario. Seed range: 0–4294967295.</source><translation>Same analysis, parameters and seed reproduce a scenario. Seed range: 0–4294967295.</translation></message>
+<message id="hand_order.experiment.segment_title"><source>%1–%2 s · line %3, column %4 · %5 object groups</source><translation>%1–%2 s · line %3, column %4 · %5 object groups</translation></message>
+<message id="hand_order.experiment.segment_metrics"><source>Peak movement %1 · tap rate %2 · load %3 · shared contacts %4 · unresolved %5 · candidate support %6 (not probability)</source><translation>Peak movement %1 · tap rate %2 · load %3 · shared contacts %4 · unresolved %5 · candidate support %6 (not probability)</translation></message>
+<message id="hand_order.experiment.segment_simulation"><source>Outside reference window: %1 / %2 samples · mean absolute offset %3 ms · P95 %4 ms</source><translation>Outside reference window: %1 / %2 samples · mean absolute offset %3 ms · P95 %4 ms</translation></message>
+<message id="hand_order.experiment.report"><source>Show versioned JSON report (selectable)</source><translation>Show versioned JSON report (selectable)</translation></message>
+<message id="hand_order.experiment.idle"><source>Choose Analyze to create a read-only baseline.</source><translation>Choose Analyze to create a read-only baseline.</translation></message>
+<message id="hand_order.experiment.analyzing"><source>Analyzing with a bounded inference budget…</source><translation>Analyzing with a bounded inference budget…</translation></message>
+<message id="hand_order.experiment.simulating"><source>Sampling the timing scenario…</source><translation>Sampling the timing scenario…</translation></message>
+<message id="hand_order.experiment.ready"><source>%1 segments · %2 search work units. Results are not calibrated player predictions.</source><translation>%1 segments · %2 search work units. Results are not calibrated player predictions.</translation></message>
+<message id="hand_order.experiment.simulated"><source>%1 samples; %2 outside the reference window; seed %3.</source><translation>%1 samples; %2 outside the reference window; seed %3.</translation></message>
+<message id="hand_order.experiment.failed"><source>Experiment failed: %1</source><translation>Experiment failed: %1</translation></message>
+<message id="hand_order.experiment.stale"><source>The chart or analysis profile changed. Run analysis again.</source><translation>The chart or analysis profile changed. Run analysis again.</translation></message>
+<message id="hand_order.experiment.cancelled"><source>Experiment cancelled; no chart changes were made.</source><translation>Experiment cancelled; no chart changes were made.</translation></message>
+<message id="hand_order.experiment.input_limit"><source>Input exceeds the experimental bound (256 KiB, 10,000 notes or parsing budget).</source><translation>Input exceeds the experimental bound (256 KiB, 10,000 notes or parsing budget).</translation></message>
+<message id="hand_order.experiment.invalid_input"><source>The chart, annotation or player parameters are invalid.</source><translation>The chart, annotation or player parameters are invalid.</translation></message>
+<message id="hand_order.experiment.worker_failed"><source>The background calculation could not complete.</source><translation>The background calculation could not complete.</translation></message>
+<message id="hand_order.experiment.reason.unresolved"><source>Unresolved or unverified assignment</source><translation>Unresolved or unverified assignment</translation></message>
+<message id="hand_order.experiment.reason.protected_annotation"><source>Existing annotation protected</source><translation>Existing annotation protected</translation></message>
+<message id="hand_order.experiment.reason.shared_contact"><source>Shared-contact brushing candidate</source><translation>Shared-contact brushing candidate</translation></message>
+<message id="hand_order.experiment.reason.unverified_replay"><source>Candidate replay not verified</source><translation>Candidate replay not verified</translation></message>
+<message id="hand_order.experiment.reason.tap_rate"><source>Tap rate exceeds profile reference</source><translation>Tap rate exceeds profile reference</translation></message>
+<message id="hand_order.experiment.reason.movement"><source>Movement exceeds profile reference</source><translation>Movement exceeds profile reference</translation></message>
+<message id="hand_order.experiment.reason.fatigue"><source>Load exceeds stamina reference</source><translation>Load exceeds stamina reference</translation></message>
+<message id="hand_order.experiment.reason.bounded_search"><source>Search budget reached; evidence is incomplete</source><translation>Search budget reached; evidence is incomplete</translation></message>
+<message id="hand_order.experiment.reason.uncalibrated"><source>Not calibrated against real players</source><translation>Not calibrated against real players</translation></message>
+<message id="hand_order.experiment.unlocated"><source>%1 result rows could not be mapped to source time and were excluded.</source><translation>%1 result rows could not be mapped to source time and were excluded.</translation></message>
+</context>
+<context><name></name>
+<message id="workspace.manage"><source>Manage workspaces</source><translation>Manage workspaces</translation></message>
+<message id="workspace.manage_hint"><source>Layouts store panel positions and visibility. Switching them keeps the chart and undo history. Press ` outside text inputs to open this manager.</source><translation>Layouts store panel positions and visibility. Switching them keeps the chart and undo history. Press ` outside text inputs to open this manager.</translation></message>
+<message id="workspace.shortcuts"><source>Workspace shortcuts</source><translation>Workspace shortcuts</translation></message>
+<message id="workspace.current_layout"><source>Current layout</source><translation>Current layout</translation></message>
+<message id="workspace.selected_layout"><source>Selected layout</source><translation>Selected layout</translation></message>
+<message id="workspace.unbound"><source>No shortcut</source><translation>No shortcut</translation></message>
+<message id="workspace.floating_panels"><source>Floating: %1</source><translation>Floating: %1</translation></message>
+<message id="workspace.classic"><source>Classic</source><translation>Classic</translation></message>
+<message id="workspace.analysis"><source>Analysis</source><translation>Analysis</translation></message>
+<message id="workspace.saved_presets"><source>Saved layouts</source><translation>Saved layouts</translation></message>
+<message id="workspace.no_saved_presets"><source>Save the current layout with a name to get started.</source><translation>Save the current layout with a name to get started.</translation></message>
+<message id="workspace.apply"><source>Apply</source><translation>Apply</translation></message>
+<message id="workspace.move_up"><source>Move up</source><translation>Move up</translation></message>
+<message id="workspace.move_down"><source>Move down</source><translation>Move down</translation></message>
+<message id="workspace.update_selected"><source>Update selected</source><translation>Update selected</translation></message>
+<message id="workspace.name_exists"><source>This name already exists. Use a different name, or update the selected layout.</source><translation>This name already exists. Use a different name, or update the selected layout.</translation></message>
+<message id="workspace.save_new"><source>Save as new layout</source><translation>Save as new layout</translation></message>
+<message id="workspace.rename"><source>Rename</source><translation>Rename</translation></message>
+<message id="workspace.duplicate"><source>Duplicate</source><translation>Duplicate</translation></message>
+<message id="workspace.confirm_remove"><source>Remove saved layout “%1”? The current layout and chart will stay unchanged.</source><translation>Remove saved layout “%1”? The current layout and chart will stay unchanged.</translation></message>
+<message id="workspace.confirm_update"><source>Replace saved layout “%1” with the current panel arrangement?</source><translation>Replace saved layout “%1” with the current panel arrangement?</translation></message>
+<message id="workspace.metadata_tool"><source>Chart information</source><translation>Chart information</translation></message>
+<message id="timeline.reset_zoom"><source>Reset timeline zoom to 100%</source><translation>Reset timeline zoom to 100%</translation></message>
+<message id="preview.debug_compact"><source>Diagnostics: compact</source><translation>Diagnostics: compact</translation></message>
+<message id="preview.debug_detailed"><source>Diagnostics: detailed</source><translation>Diagnostics: detailed</translation></message>
+<message id="preview.heatmap_off"><source>Off</source><translation>Off</translation></message>
+<message id="preview.heatmap_overlay"><source>Picture overlay</source><translation>Picture overlay</translation></message>
+<message id="preview.hand_order_overlay"><source>Manual hand annotation overlay</source><translation>Manual hand annotation overlay</translation></message>
+<message id="preview.hand_order_overlay_help"><source>Render existing hand annotations with any rendering mode. Does not generate or change annotations. Video export follows this option unless explicitly overridden.</source><translation>Render existing hand annotations with any rendering mode. Does not generate or change annotations. Video export follows this option unless explicitly overridden.</translation></message>
+<message id="preview.simulated_play"><source>Simulated Play</source><translation>Simulated Play</translation></message>
+<message id="preview.simulated_play_help"><source>Follow the current Sticking annotations with two simulated hands and show arm interference.</source><translation>Follow the current Sticking annotations with two simulated hands and show arm interference.</translation></message>
+<message id="preview.simulated_play_left"><source>Left hand</source><translation>Left hand</translation></message>
+<message id="preview.simulated_play_right"><source>Right hand</source><translation>Right hand</translation></message>
+<message id="preview.simulated_play_lift"><source>Lifted to pass</source><translation>Lifted to pass</translation></message>
+<message id="preview.simulated_play_conflict"><source>Interference</source><translation>Interference</translation></message>
+<message id="preview.simulated_play_unassigned"><source>Unassigned</source><translation>Unassigned</translation></message>
+<message id="preview.simulated_play_palm_radius"><source>Palm radius (shared with Muri)</source><translation>Palm radius (shared with Muri)</translation></message>
+<message id="window.play_checks"><source>Play Checks</source><translation>Play Checks</translation></message>
+<message id="play.settings.title"><source>Simulated Play Settings</source><translation>Simulated Play Settings</translation></message>
+<message id="play.settings.height"><source>Player height</source><translation>Player height</translation></message>
+<message id="play.settings.distance"><source>Stand-off from screen center</source><translation>Stand-off from screen center</translation></message>
+<message id="play.settings.offset"><source>Standing height offset</source><translation>Standing height offset</translation></message>
+<message id="play.settings.reach"><source>Arm length scale</source><translation>Arm length scale</translation></message>
+<message id="play.settings.heights"><source>Starting height above floor (cm) · shoulders %1 · hands %2 · screen center ≈%3</source><translation>Starting height above floor (cm) · shoulders %1 · hands %2 · screen center ≈%3</translation></message>
+<message id="play.settings.auto_height"><source>Adjust body height automatically</source><translation>Adjust body height automatically</translation></message>
+<message id="play.settings.lower"><source>Maximum lowering</source><translation>Maximum lowering</translation></message>
+<message id="play.settings.raise"><source>Maximum raising</source><translation>Maximum raising</translation></message>
+<message id="play.settings.speed"><source>Vertical movement speed</source><translation>Vertical movement speed</translation></message>
+<message id="play.settings.apply"><source>Apply</source><translation>Apply</translation></message>
+<message id="play.issues.summary"><source>%1 movement warnings</source><translation>%1 movement warnings</translation></message>
+<message id="play.issues.empty"><source>No movement interference detected</source><translation>No movement interference detected</translation></message>
+<message id="play.issue.collision"><source>Arm interference</source><translation>Arm interference</translation></message>
+<message id="play.issue.reach"><source>Out of reach</source><translation>Out of reach</translation></message>
+<message id="play.issue.occupied"><source>Hand already occupied</source><translation>Hand already occupied</translation></message>
+<message id="play.issue.speed"><source>Insufficient travel time</source><translation>Insufficient travel time</translation></message>
+<message id="play.issue.both_hands"><source>Both hands</source><translation>Both hands</translation></message>
+<message id="play.issue.detail"><source>%1 · %2</source><translation>%1 · %2</translation></message>
+<message id="play.settings.reaction"><source>Reaction delay</source><translation>Reaction delay</translation></message>
+<message id="play.settings.buttons"><source>Prefer cabinet buttons</source><translation>Prefer cabinet buttons</translation></message>
+<message id="play.settings.adaptive_palm"><source>Adapt palm size to the pattern</source><translation>Adapt palm size to the pattern</translation></message>
+<message id="play.settings.auto_distance"><source>Automatically adjust standing distance</source><translation>Automatically adjust standing distance</translation></message>
+<message id="play.settings.forward"><source>Maximum forward step</source><translation>Maximum forward step</translation></message>
+<message id="play.settings.backward"><source>Maximum backward step</source><translation>Maximum backward step</translation></message>
+<message id="play.settings.depth_speed"><source>Forward/backward speed</source><translation>Forward/backward speed</translation></message>
+<message id="play.issue.crossed"><source>Crossed hands</source><translation>Crossed hands</translation></message>
+<message id="play.issue.judgement"><source>Judgement loss</source><translation>Judgement loss</translation></message>
+<message id="play.issue.loss"><source>%1 at %2 · −%3%</source><translation>%1 at %2 · −%3%</translation></message>
+<message id="hand_order.play_review"><source>Playability Review</source><translation>Playability Review</translation></message>
+<message id="hand_order.play_review.summary"><source>%1 groups reviewed, %2 improved, %3 annotations changed.</source><translation>%1 groups reviewed, %2 improved, %3 annotations changed.</translation></message>
+<message id="hand_order.play_review.limited"><source>%1 groups reviewed, %2 improved, %3 annotations changed. The simulation reached its replay limit.</source><translation>%1 groups reviewed, %2 improved, %3 annotations changed. The simulation reached its replay limit.</translation></message>
+<message id="hand_order.play_review.invalid"><source>Fix chart syntax or sticking annotations before reviewing.</source><translation>Fix chart syntax or sticking annotations before reviewing.</translation></message>
+<message id="hand_order.play_review.truncated"><source> The group review reached its search limit.</source><translation> The group review reached its search limit.</translation></message>
+<message id="hand_order.play_review.notice"><source>Review existing sticking with the current simulated player settings. Preview the proposed changes before applying.</source><translation>Review existing sticking with the current simulated player settings. Preview the proposed changes before applying.</translation></message>
+<message id="hand_order.workflow.stage_normalize"><source>Organize chart for analysis</source><translation>Organize chart for analysis</translation></message>
+<message id="hand_order.workflow.stage_patterns"><source>Identify and rank patterns</source><translation>Identify and rank patterns</translation></message>
+<message id="hand_order.workflow.stage_context"><source>Search hand assignments</source><translation>Search hand assignments</translation></message>
+<message id="hand_order.workflow.stage_verify"><source>Verify assignments and timing</source><translation>Verify assignments and timing</translation></message>
+<message id="hand_order.workflow.stage_conflicts"><source>Recheck action conflicts</source><translation>Recheck action conflicts</translation></message>
+<message id="hand_order.workflow.total_progress"><source>Overall progress %1%</source><translation>Overall progress %1%</translation></message>
+<message id="hand_order.workflow.total_eta"><source>Estimated time remaining %1 s</source><translation>Estimated time remaining %1 s</translation></message>
+<message id="hand_order.workflow.combined_summary"><source>%1 patterns selected. %2 overlap intervals checked, %3 affected judgements, %4 edits suspended.</source><translation>%1 patterns selected. %2 overlap intervals checked, %3 affected judgements, %4 edits suspended.</translation></message>
+<message id="hand_order.workflow.original_grid"><source>The original rhythm grid was used because the organized chart could not be matched safely.</source><translation>The original rhythm grid was used because the organized chart could not be matched safely.</translation></message>
+<message id="hand_order.workflow.conflict_limited"><source>Some input schedules could not be verified in the second replay.</source><translation>Some input schedules could not be verified in the second replay.</translation></message>
+<message id="hand_order.workflow.combined_help"><source>Organize the chart in memory, rank overlapping patterns, search the assignments, then replay timing and action conflicts.</source><translation>Organize the chart in memory, rank overlapping patterns, search the assignments, then replay timing and action conflicts.</translation></message>
+<message id="hand_order.auto.reason.physical_conflict_replay"><source>The second replay confirmed a lost judgement or hand responsibility during contact overlap.</source><translation>The second replay confirmed a lost judgement or hand responsibility during contact overlap.</translation></message>
+<message id="hand_order.progress.percent"><source>%1%</source><translation>%1%</translation></message>
+<message id="hand_order.pattern.strategy.follow_rails"><source>Follow both rails through the rotation</source><translation>Follow both rails through the rotation</translation></message>
+<message id="hand_order.pattern.strategy.anchor_axis"><source>Keep the axis hand fixed</source><translation>Keep the axis hand fixed</translation></message>
+<message id="hand_order.pattern.name.each"><source>Each</source><translation>Each</translation></message>
+<message id="hand_order.pattern.group.each"><source>Each</source><translation>Each</translation></message>
+<message id="hand_order.pattern.name.double_jacks"><source>Double jacks</source><translation>Double jacks</translation></message>
+<message id="hand_order.pattern.group.double_jacks"><source>Double jacks</source><translation>Double jacks</translation></message>
+<message id="hand_order.pattern.name.each_rotation"><source>Rotating Each</source><translation>Rotating Each</translation></message>
+<message id="hand_order.pattern.group.each_rotation"><source>Rotating Each</source><translation>Rotating Each</translation></message>
+<message id="hand_order.pattern.name.each_axis"><source>Each with a fixed axis</source><translation>Each with a fixed axis</translation></message>
+<message id="hand_order.pattern.group.each_axis"><source>Each with a fixed axis</source><translation>Each with a fixed axis</translation></message>
+<message id="hand_order.pattern.name.each_array"><source>Each array</source><translation>Each array</translation></message>
+<message id="hand_order.pattern.group.each_array"><source>Each array</source><translation>Each array</translation></message>
+<message id="hand_order.pattern.name.each_overlap"><source>Overlapping keys</source><translation>Overlapping keys</translation></message>
+<message id="hand_order.pattern.group.each_overlap"><source>Overlapping keys</source><translation>Overlapping keys</translation></message>
+<message id="hand_order.pattern.name.each_run"><source>Consecutive Each</source><translation>Consecutive Each</translation></message>
+<message id="hand_order.pattern.group.each_run"><source>Consecutive Each</source><translation>Consecutive Each</translation></message>
+<message id="hand_order.pattern.name.single_each"><source>Alternating single and Each</source><translation>Alternating single and Each</translation></message>
+<message id="hand_order.pattern.group.single_each"><source>Alternating single and Each</source><translation>Alternating single and Each</translation></message>
+<message id="hand_order.pattern.name.cut_keys"><source>Cut keys</source><translation>Cut keys</translation></message>
+<message id="hand_order.pattern.group.cut_keys"><source>Cut keys</source><translation>Cut keys</translation></message>
+<message id="hand_order.pattern.name.touch_sweep"><source>Touch sweep</source><translation>Touch sweep</translation></message>
+<message id="hand_order.pattern.group.touch_sweep"><source>Touch sweep</source><translation>Touch sweep</translation></message>
+<message id="hand_order.pattern.name.long_trill"><source>Long trill</source><translation>Long trill</translation></message>
+<message id="hand_order.pattern.group.long_trill"><source>Long trill</source><translation>Long trill</translation></message>
+<message id="hand_order.pattern.name.fixed_rails"><source>Fixed-rail trill</source><translation>Fixed-rail trill</translation></message>
+<message id="hand_order.pattern.group.fixed_rails"><source>Fixed-rail trill</source><translation>Fixed-rail trill</translation></message>
+<message id="hand_order.pattern.name.steering_interaction"><source>Steering interaction</source><translation>Steering interaction</translation></message>
+<message id="hand_order.pattern.group.steering_interaction"><source>Steering interaction</source><translation>Steering interaction</translation></message>
+<message id="hand_order.pattern.name.multiple_rotations"><source>Multiple rotations</source><translation>Multiple rotations</translation></message>
+<message id="hand_order.pattern.group.multiple_rotations"><source>Multiple rotations</source><translation>Multiple rotations</translation></message>
+<message id="hand_order.pattern.name.staircase"><source>Staircase</source><translation>Staircase</translation></message>
+<message id="hand_order.pattern.group.staircase"><source>Staircase</source><translation>Staircase</translation></message>
+<message id="hand_order.pattern.name.moving_burst_pairs"><source>Moving burst pairs</source><translation>Moving burst pairs</translation></message>
+<message id="hand_order.pattern.group.moving_burst_pairs"><source>Moving burst pairs</source><translation>Moving burst pairs</translation></message>
+<message id="hand_order.pattern.name.early_launch"><source>Tap in Slide wait</source><translation>Tap in Slide wait</translation></message>
+<message id="hand_order.pattern.group.early_launch"><source>Tap in Slide wait</source><translation>Tap in Slide wait</translation></message>
+<message id="hand_order.pattern.name.staircase_interaction"><source>Staircase interaction</source><translation>Staircase interaction</translation></message>
+<message id="hand_order.pattern.group.staircase_interaction"><source>Staircase interaction</source><translation>Staircase interaction</translation></message>
+<message id="hand_order.pattern.name.rotating_burst_pairs"><source>Rotating burst pairs</source><translation>Rotating burst pairs</translation></message>
+<message id="hand_order.pattern.group.rotating_burst_pairs"><source>Rotating burst pairs</source><translation>Rotating burst pairs</translation></message>
+<message id="hand_order.pattern.name.return_sweep"><source>Return sweep</source><translation>Return sweep</translation></message>
+<message id="hand_order.pattern.group.return_sweep"><source>Return sweep</source><translation>Return sweep</translation></message>
+<message id="hand_order.auto.quality.miss"><source>Miss</source><translation>Miss</translation></message>
+<message id="hand_order.auto.quality.bad"><source>Bad</source><translation>Bad</translation></message>
+<message id="hand_order.pattern.name.variable_rotation"><source>Variable-speed rotation</source><translation>Variable-speed rotation</translation></message>
+<message id="hand_order.pattern.group.variable_rotation"><source>Variable-speed rotation</source><translation>Variable-speed rotation</translation></message>
+<message id="hand_order.workflow.play_review"><source>3. Playability Review</source><translation>3. Playability Review</translation></message>
+<message id="metadata.reference.optional"><source>Optional field. Leave blank to omit it; unknown fields elsewhere are retained.</source><translation>Optional field. Leave blank to omit it; unknown fields elsewhere are retained.</translation></message>
+<message id="metadata.reference.meter"><source>Global time signature</source><translation>Global time signature</translation></message>
+<message id="metadata.reference.clock_count"><source>Count-in beats</source><translation>Count-in beats</translation></message>
+<message id="metadata.reference.extensions"><source>MiaCode fields and compatibility</source><translation>MiaCode fields and compatibility</translation></message>
+<message id="metadata.reference.drop"><source>Difficulty drop metadata</source><translation>Difficulty drop metadata</translation></message>
+<message id="metadata.reference.drop_help"><source>MiaCode extension maintained by the preview-region editor. Start/end use media seconds; source is manual, auto or disabled. Version and fingerprint validate automatic results. No equivalent demo-field mapping is applied.</source><translation>MiaCode extension maintained by the preview-region editor. Start/end use media seconds; source is manual, auto or disabled. Version and fingerprint validate automatic results. No equivalent demo-field mapping is applied.</translation></message>
+<message id="metadata.reference.demo_source"><source>Demo-window ownership</source><translation>Demo-window ownership</translation></message>
+<message id="metadata.reference.bookmarks"><source>Editor bookmarks</source><translation>Editor bookmarks</translation></message>
+<message id="metadata.reference.ids"><source>Decimal ID text. Leading zeros are preserved; creator IDs may use a comma-separated list. IDs do not replace author names.</source><translation>Decimal ID text. Leading zeros are preserved; creator IDs may use a comma-separated list. IDs do not replace author names.</translation></message>
+<message id="metadata.reference.bpm"><source>Positive reference BPM used by count-in and metadata tools; it does not rewrite inline tempo changes.</source><translation>Positive reference BPM used by count-in and metadata tools; it does not rewrite inline tempo changes.</translation></message>
+<message id="metadata.reference.meter_help"><source>Positive numerator/denominator, for example 4/4 or 7/8. Suggestions are editable and other valid meters are accepted.</source><translation>Positive numerator/denominator, for example 4/4 or 7/8. Suggestions are editable and other valid meters are accepted.</translation></message>
+<message id="metadata.reference.clock_help"><source>Nonnegative integer. Zero disables count-in. Blank restores the document default (4).</source><translation>Nonnegative integer. Zero disables count-in. Blank restores the document default (4).</translation></message>
+<message id="metadata.reference.demo_start_help"><source>Preview audio start in media seconds, not chart beats. This is a demo window, independent of per-difficulty drop regions.</source><translation>Preview audio start in media seconds, not chart beats. This is a demo window, independent of per-difficulty drop regions.</translation></message>
+<message id="metadata.reference.demo_length_help"><source>Positive preview duration in seconds. It is a duration, not an end timestamp.</source><translation>Positive preview duration in seconds. It is a duration, not an end timestamp.</translation></message>
+<message id="metadata.reference.legacy_help"><source>Legacy timing field. Kept for existing files; target tools may reject it. Do not substitute it for first without checking the target timing rules.</source><translation>Legacy timing field. Kept for existing files; target tools may reject it. Do not substitute it for first without checking the target timing rules.</translation></message>
+<message id="metadata.reference.constant_help"><source>Positive chart constant, separate from the displayed level (for example 13+). Confirm the source before filling it.</source><translation>Positive chart constant, separate from the displayed level (for example 13+). Confirm the source before filling it.</translation></message>
+<message id="metadata.reference.date_help"><source>Calendar date in YYYYMMDD format.</source><translation>Calendar date in YYYYMMDD format.</translation></message>
+<message id="metadata.reference.url_help"><source>Full HTTP or HTTPS address. Saving this value does not upload or download media.</source><translation>Full HTTP or HTTPS address. Saving this value does not upload or download media.</translation></message>
+<message id="metadata.reference.catalog_help"><source>Free-form catalog information. Suggestions are examples only; verify the vocabulary required by the target library or platform.</source><translation>Free-form catalog information. Suggestions are examples only; verify the vocabulary required by the target library or platform.</translation></message>
+<message id="metadata.reference.comment_help"><source>Multiline author comment. Lines that introduce another &amp;field= assignment are rejected.</source><translation>Multiline author comment. Lines that introduce another &amp;field= assignment are rejected.</translation></message>
+<message id="metadata.reference.demo_source_help"><source>Read-only ownership marker: manual or auto. Editing demo_seek/demo_len marks the window manual. Do not rename this to a timestamp field.</source><translation>Read-only ownership marker: manual or auto. Editing demo_seek/demo_len marks the window manual. Do not rename this to a timestamp field.</translation></message>
+<message id="metadata.reference.bookmarks_help"><source>Read-only serialized editor bookmarks. Edit them using the bookmark tools; there is no equivalent playback timing field.</source><translation>Read-only serialized editor bookmarks. Edit them using the bookmark tools; there is no equivalent playback timing field.</translation></message>
+<message id="metadata.reference.invalid_meter"><source>Enter a positive numerator/denominator, such as 4/4.</source><translation>Enter a positive numerator/denominator, such as 4/4.</translation></message>
+<message id="metadata.reference.invalid_clock"><source>Count-in must be a nonnegative integer.</source><translation>Count-in must be a nonnegative integer.</translation></message>
+<message id="metadata.reference.managed_field"><source>This field is managed by its dedicated editor and is read-only here.</source><translation>This field is managed by its dedicated editor and is read-only here.</translation></message>
+<message id="metadata.reference.use_suggestion"><source>Use suggestion %1</source><translation>Use suggestion %1</translation></message>
+<message id="tools.dx_loss.basis"><source>Base score %1 · Break %2 · Scoring objects %3 · Maximum %4%</source><translation>Base score %1 · Break %2 · Scoring objects %3 · Maximum %4%</translation></message>
+<message id="tools.dx_loss.invalid_quantity"><source>Enter whole quantities from zero up to the eligible count in each row.</source><translation>Enter whole quantities from zero up to the eligible count in each row.</translation></message>
+<message id="tools.dx_loss.inventory_exceeded"><source>Combined %1 judgments exceed their eligible note inventory. One note can receive only one judgment.</source><translation>Combined %1 judgments exceed their eligible note inventory. One note can receive only one judgment.</translation></message>
+<message id="tools.dx_loss.scenario_result"><source>%1 entered judgments · Loss %2% · Achievement %3% (maximum %4%)</source><translation>%1 entered judgments · Loss %2% · Achievement %3% (maximum %4%)</translation></message>
+<message id="tools.dx_loss.rules"><source>Official DX achievement rules · Official EX behavior retained · Mine is not supported</source><translation>Official DX achievement rules · Official EX behavior retained · Mine is not supported</translation></message>
+<message id="tools.dx_loss.input_help"><source>Each note may be counted once. Unentered notes receive the best judgment; inputs reset when the chart revision changes. Break/EX counts are overlapping attributes, not extra notes.</source><translation>Each note may be counted once. Unentered notes receive the best judgment; inputs reset when the chart revision changes. Break/EX counts are overlapping attributes, not extra notes.</translation></message>
+<message id="tools.dx_loss.show_tolerance"><source>Show independent SSS tolerance reference</source><translation>Show independent SSS tolerance reference</translation></message>
+<message id="tools.dx_loss.reset_quantities"><source>Reset quantities</source><translation>Reset quantities</translation></message>
+<message id="tools.dx_loss.eligible"><source>Eligible count</source><translation>Eligible count</translation></message>
+<message id="tools.dx_loss.quantity"><source>Quantity</source><translation>Quantity</translation></message>
+<message id="preferences.advanced"><source>Advanced</source><translation>Advanced</translation></message>
+<message id="preview.comparison.add"><source>Add current chart to preview</source><translation>Add current chart to preview</translation></message>
+<message id="preview.comparison.remove"><source>Remove this preview</source><translation>Remove this preview</translation></message>
+<message id="preview.comparison.seek"><source>Preview position</source><translation>Preview position</translation></message>
+<message id="preview.comparison.linked"><source>Linked</source><translation>Linked</translation></message>
+<message id="preview.comparison.sync"><source>Synchronize playback for previews of the same song</source><translation>Synchronize playback for previews of the same song</translation></message>
+<message id="preview.heatmap"><source>Pressure map</source><translation>Pressure map</translation></message>
+<message id="preview.heatmap_youtube"><source>YouTube-style curve</source><translation>YouTube-style curve</translation></message>
+<message id="library.create"><source>New library</source><translation>New library</translation></message>
+<message id="library.folder_name"><source>Chart Library</source><translation>Chart Library</translation></message>
+<message id="library.create_failed"><source>Could not create a library in %1</source><translation>Could not create a library in %1</translation></message>
+<message id="library.choose_parent"><source>Create a library folder here</source><translation>Create a library folder here</translation></message>
+<message id="library.import"><source>Import packs</source><translation>Import packs</translation></message>
+<message id="library.choose_import"><source>Select folders to import as packs</source><translation>Select folders to import as packs</translation></message>
+<message id="library.importing"><source>Importing charts…</source><translation>Importing charts…</translation></message>
+<message id="library.imported"><source>Imported %1 · Already in library %2 · Failed %3</source><translation>Imported %1 · Already in library %2 · Failed %3</translation></message>
+<message id="library.import_stopped"><source>Import stopped.</source><translation>Import stopped.</translation></message>
+<message id="library.all_packs"><source>All packs</source><translation>All packs</translation></message>
+<message id="library.all_genres"><source>All genres</source><translation>All genres</translation></message>
+<message id="library.empty_start"><source>Create or open a chart library.</source><translation>Create or open a chart library.</translation></message>
+<message id="library.empty_import"><source>Import a folder to add charts.</source><translation>Import a folder to add charts.</translation></message>
+<message id="library.utage"><source>UTAGE</source><translation>UTAGE</translation></message>
+<message id="library.untitled"><source>Untitled</source><translation>Untitled</translation></message>
+<message id="library.kind"><source>Type</source><translation>Type</translation></message>
+<message id="library.pack"><source>Pack</source><translation>Pack</translation></message>
+<message id="library.browse"><source>Browse charts</source><translation>Browse charts</translation></message>
+<message id="library.source_tabs"><source>Source (%1)</source><translation>Source (%1)</translation></message>
+<message id="library.select_chart"><source>Select %1 for batch editing</source><translation>Select %1 for batch editing</translation></message>
+<message id="editor.transform_review_at"><source>This edit affects notes at %1. Apply the change?</source><translation>This edit affects notes at %1. Apply the change?</translation></message>
+<message id="editor.transform_review_range"><source>This edit affects the chart from %1 to %2. Apply the change?</source><translation>This edit affects the chart from %1 to %2. Apply the change?</translation></message>
+<message id="editor.transform_review_unmapped"><source>Time unavailable for lines %1–%2. Apply the change?</source><translation>Time unavailable for lines %1–%2. Apply the change?</translation></message>
+<message id="library.choose_existing"><source>Choose existing</source><translation>Choose existing</translation></message>
+<message id="library.source_id"><source>Source song ID</source><translation>Source song ID</translation></message>
+<message id="library.difficulty"><source>Difficulty</source><translation>Difficulty</translation></message>
+<message id="library.note_count"><source>Notes: %1</source><translation>Notes: %1</translation></message>
+<message id="library.audition"><source>Audition track</source><translation>Audition track</translation></message>
+<message id="library.open_difficulty"><source>Open this chart in editor</source><translation>Open this chart in editor</translation></message>
+<message id="library.invalid_field"><source>This field cannot be edited here.</source><translation>This field cannot be edited here.</translation></message>
+<message id="library.duplicate_field"><source>Multiple entries for %1. Resolve them in the source editor.</source><translation>Multiple entries for %1. Resolve them in the source editor.</translation></message>
+<message id="library.batch"><source>Batch actions</source><translation>Batch actions</translation></message>
+<message id="library.new_song"><source>Create song</source><translation>Create song</translation></message>
+<message id="library.custom_pack"><source>My pack</source><translation>My pack</translation></message>
+<message id="library.invalid_song"><source>Enter a song name and a valid pack folder name.</source><translation>Enter a song name and a valid pack folder name.</translation></message>
+<message id="library.remove_song"><source>Remove from library</source><translation>Remove from library</translation></message>
+<message id="library.remove_prompt"><source>Move the chart for %1 to the library's removed folder? Shared media stays in place.</source><translation>Move the chart for %1 to the library's removed folder? Shared media stays in place.</translation></message>
+<message id="library.removed"><source>Chart archived in %1</source><translation>Chart archived in %1</translation></message>
+<message id="library.remove_failed"><source>Could not move this chart. Check the library folder.</source><translation>Could not move this chart. Check the library folder.</translation></message>
+<message id="library.manage_genres"><source>Manage genres</source><translation>Manage genres</translation></message>
+<message id="library.manage_versions"><source>Manage versions</source><translation>Manage versions</translation></message>
+<message id="library.category_name"><source>New name</source><translation>New name</translation></message>
+<message id="library.category_usage"><source>Used by %1 songs</source><translation>Used by %1 songs</translation></message>
+<message id="library.category_add"><source>Add</source><translation>Add</translation></message>
+<message id="library.category_rename"><source>Rename (%1 songs)</source><translation>Rename (%1 songs)</translation></message>
+<message id="library.category_remove"><source>Remove unused name</source><translation>Remove unused name</translation></message>
+<message id="library.category_exists"><source>This name already exists or has changed.</source><translation>This name already exists or has changed.</translation></message>
+<message id="library.category_used"><source>This category is still in use.</source><translation>This category is still in use.</translation></message>
+<message id="library.category_working"><source>Updating categories…</source><translation>Updating categories…</translation></message>
+<message id="library.replace_track"><source>Replace audio</source><translation>Replace audio</translation></message>
+<message id="library.add_track"><source>Add audio</source><translation>Add audio</translation></message>
+<message id="library.audio_copy"><source>Copying audio…</source><translation>Copying audio…</translation></message>
+<message id="library.audio_failed"><source>Could not copy the audio file.</source><translation>Could not copy the audio file.</translation></message>
+<message id="library.audio_scope"><source>Choose another supported audio file of the same format as the current track.</source><translation>Choose another supported audio file of the same format as the current track.</translation></message>
+<message id="library.audio_shared"><source>The song folder is open in the editor or shared by several charts.</source><translation>The song folder is open in the editor or shared by several charts.</translation></message>
+<message id="library.audio_added"><source>Audio added.</source><translation>Audio added.</translation></message>
+<message id="library.audio_replaced"><source>Audio replaced. Original saved to %1</source><translation>Audio replaced. Original saved to %1</translation></message>
+<message id="library.import_packs"><source>Import packs</source><translation>Import packs</translation></message>
+<message id="library.import_songs"><source>Import songs</source><translation>Import songs</translation></message>
+<message id="library.target_pack"><source>Destination pack</source><translation>Destination pack</translation></message>
+<message id="library.choose_folders"><source>Choose folders</source><translation>Choose folders</translation></message>
+<message id="library.import_to"><source>Import songs into %1</source><translation>Import songs into %1</translation></message>
+<message id="library.empty_song_manager"><source>Import a pack or create a song to start.</source><translation>Import a pack or create a song to start.</translation></message>
+<message id="library.genre"><source>Genre</source><translation>Genre</translation></message>
+<message id="library.version_category"><source>Version category</source><translation>Version category</translation></message>
+<message id="library.all_versions"><source>All version categories</source><translation>All version categories</translation></message>
+<message id="library.multiline_field"><source>Edit this multiline field in the source editor.</source><translation>Edit this multiline field in the source editor.</translation></message>
+<message id="library.discard_edits"><source>Discard edits</source><translation>Discard edits</translation></message>
+<message id="library.discard_song_prompt"><source>Discard all unsaved changes to %1?</source><translation>Discard all unsaved changes to %1?</translation></message>
+<message id="library.import_summary"><source>Imported %1 · Merged %2 · Duplicates %3 · Missing audio/art %4 · Conflicts %5 · Failed %6</source><translation>Imported %1 · Merged %2 · Duplicates %3 · Missing audio/art %4 · Conflicts %5 · Failed %6</translation></message>
+<message id="library.choose_zip"><source>Choose ZIP files</source><translation>Choose ZIP files</translation></message>
+<message id="library.batch_media_hint"><source>Packs skip charts missing music or jacket art. Import songs to include them.</source><translation>Packs skip charts missing music or jacket art. Import songs to include them.</translation></message>
+<message id="library.consolidate"><source>Consolidate duplicates</source><translation>Consolidate duplicates</translation></message>
+<message id="library.consolidate_hint"><source>Merge compatible difficulties. Conflicting editions keep one library entry. Source files stay in place.</source><translation>Merge compatible difficulties. Conflicting editions keep one library entry. Source files stay in place.</translation></message>
+<message id="preview.comparison.mix_audio"><source>Mix preview audio</source><translation>Mix preview audio</translation></message>
+<message id="library.normalize_warning"><source>Chart formatting skipped</source><translation>Chart formatting skipped</translation></message>
+<message id="library.title"><source>Chart library</source><translation>Chart library</translation></message>
+<message id="library.choose_root"><source>Open library</source><translation>Open library</translation></message>
+<message id="library.refresh"><source>Refresh</source><translation>Refresh</translation></message>
+<message id="library.cancel"><source>Cancel</source><translation>Cancel</translation></message>
+<message id="library.search"><source>Search title, artist or ID…</source><translation>Search title, artist or ID…</translation></message>
+<message id="library.duplicates"><source>Identical files only</source><translation>Identical files only</translation></message>
+<message id="library.count"><source>%1 charts · %2 selected</source><translation>%1 charts · %2 selected</translation></message>
+<message id="library.select_visible"><source>Select visible charts</source><translation>Select visible charts</translation></message>
+<message id="library.clear_visible"><source>Clear visible selection</source><translation>Clear visible selection</translation></message>
+<message id="library.edit_buffer"><source>Edit source</source><translation>Edit source</translation></message>
+<message id="library.open_editor"><source>Open in main editor</source><translation>Open in main editor</translation></message>
+<message id="library.save"><source>Save with backup</source><translation>Save with backup</translation></message>
+<message id="library.undo"><source>Undo</source><translation>Undo</translation></message>
+<message id="library.redo"><source>Redo</source><translation>Redo</translation></message>
+<message id="library.close_buffer"><source>Close session</source><translation>Close session</translation></message>
+<message id="library.discard_prompt"><source>Discard this session’s unsaved changes? Closing the library window alone preserves all sessions.</source><translation>Discard this session’s unsaved changes? Closing the library window alone preserves all sessions.</translation></message>
+<message id="library.discard"><source>Discard</source><translation>Discard</translation></message>
+<message id="library.prepare"><source>Preview selected formatting</source><translation>Preview selected formatting</translation></message>
+<message id="library.review"><source>Review %1 changes</source><translation>Review %1 changes</translation></message>
+<message id="library.undo_batch"><source>Undo last batch</source><translation>Undo last batch</translation></message>
+<message id="library.review_title"><source>Review formatting changes</source><translation>Review formatting changes</translation></message>
+<message id="library.review_help"><source>Compare the original (left) with the proposed change (right).</source><translation>Compare the original (left) with the proposed change (right).</translation></message>
+<message id="library.apply"><source>Apply reviewed batch</source><translation>Apply reviewed batch</translation></message>
+<message id="library.apply_prompt"><source>Apply formatting to %1 files? Original bytes will be backed up and every file checked again.</source><translation>Apply formatting to %1 files? Original bytes will be backed up and every file checked again.</translation></message>
+<message id="library.invalid_root"><source>Choose the library’s .miabundle file.</source><translation>Choose the library’s .miabundle file.</translation></message>
+<message id="library.close_sessions_first"><source>Close source sessions before switching library folders.</source><translation>Close source sessions before switching library folders.</translation></message>
+<message id="library.scanning"><source>Refreshing charts…</source><translation>Refreshing charts…</translation></message>
+<message id="library.canceled"><source>Canceled; existing index and source files are unchanged.</source><translation>Canceled; existing index and source files are unchanged.</translation></message>
+<message id="library.indexed"><source>%1 charts · %2 skipped</source><translation>%1 charts · %2 skipped</translation></message>
+<message id="library.session_limit"><source>At most five source sessions can be open.</source><translation>At most five source sessions can be open.</translation></message>
+<message id="library.close_editor_first"><source>Close the affected chart in the main editor and source sessions first.</source><translation>Close the affected chart in the main editor and source sessions first.</translation></message>
+<message id="library.conflict"><source>Content or selection changed; review the files and prepare again.</source><translation>Content or selection changed; review the files and prepare again.</translation></message>
+<message id="library.saved"><source>Saved with a verified original backup.</source><translation>Saved with a verified original backup.</translation></message>
+<message id="library.save_buffer_first"><source>Save or close this source session before opening its disk file.</source><translation>Save or close this source session before opening its disk file.</translation></message>
+<message id="library.batch_limit"><source>Select at most 100 files for one batch.</source><translation>Select at most 100 files for one batch.</translation></message>
+<message id="library.preparing"><source>Preparing formatting differences without writing source files…</source><translation>Preparing formatting differences without writing source files…</translation></message>
+<message id="library.prepared"><source>%1 files would change. Review the differences before applying.</source><translation>%1 files would change. Review the differences before applying.</translation></message>
+<message id="library.recovered"><source>Recovered independent source sessions; disk conflicts are checked on save.</source><translation>Recovered independent source sessions; disk conflicts are checked on save.</translation></message>
+<message id="library.file_limit"><source>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</source><translation>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</translation></message>
+</context>
+<context><name></name>
+<message id="workspace.library"><source>Chart library</source><translation>Chart library</translation></message>
+<message id="library.open_manager"><source>Manage library</source><translation>Manage library</translation></message>
+<message id="library.dock_empty"><source>No matching charts.</source><translation>No matching charts.</translation></message>
+</context>
+<context><name></name><message id="library.recovery_failed"><source>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</source><translation>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</translation></message></context>
+<context><name></name>
+<message id="library.recovery_unavailable"><source>Some saved sessions are unavailable. Their drafts remain in recovery storage; restore the folder or choose another library to archive them safely.</source><translation>Some saved sessions are unavailable. Their drafts remain in recovery storage; restore the folder or choose another library to archive them safely.</translation></message>
+<message id="library.recovery_archived"><source>Unavailable session drafts were preserved at: %1</source><translation>Unavailable session drafts were preserved at: %1</translation></message>
+</context>
+<context><name></name>
+    <message id="preview.hand_order_breakdown"><source>Hand-order breakdown</source><translation>Hand-order breakdown</translation></message>
+</context>
+<context><name></name><message id="cover.rotation">
+        <source>Rotation</source>
+        <translation>Rotation</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.estimated_size">
+        <source>Estimated size: %1</source>
+        <translation>Estimated size: %1</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.error.size_limit_too_small">
+        <source>The size limit cannot hold this export&apos;s audio. Raise the limit or lower the audio bitrate.</source>
+        <translation>The size limit cannot hold this export&apos;s audio. Raise the limit or lower the audio bitrate.</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.quality_level">
+        <source>Quality</source>
+        <translation>Quality</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.quality_level.high">
+        <source>High</source>
+        <translation>High</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.quality_level.small">
+        <source>Compact</source>
+        <translation>Compact</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.quality_level.standard">
+        <source>Standard</source>
+        <translation>Standard</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.rate_mode">
+        <source>Export strategy</source>
+        <translation>Export strategy</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.rate_mode.bitrate">
+        <source>Bitrate</source>
+        <translation>Bitrate</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.rate_mode.file_size">
+        <source>Size limit</source>
+        <translation>Size limit</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.rate_mode.quality">
+        <source>Quality first</source>
+        <translation>Quality first</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.size_limit">
+        <source>Size limit</source>
+        <translation>Size limit</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.video_bitrate">
+        <source>Video bitrate</source>
+        <translation>Video bitrate</translation>
+    </message></context>
+<context><name></name><message id="media_tools.recovery_files_1">
+        <source>Files preserved for recovery: %1</source>
+        <translation>Files preserved for recovery: %1</translation>
+    </message></context>
+<context><name></name><message id="net.cancelling_download">
+        <source>Cancelling download…</source>
+        <translation>Cancelling download…</translation>
+    </message></context>
+<context><name></name><message id="net.waiting_for_download_1">
+        <source>Waiting for server response: %1</source>
+        <translation>Waiting for server response: %1</translation>
+    </message></context>
+<context><name></name><message id="net.preparing_download">
+        <source>Preparing download…</source>
+        <translation>Preparing download…</translation>
+    </message></context>
+<context><name></name><message id="net.saving_download">
+        <source>Saving downloaded files…</source>
+        <translation>Saving downloaded files…</translation>
+    </message></context>
+<context><name></name><message id="qml.shortcut_moved">
+        <source>Moved shortcut %1 from %2 to %3.</source>
+        <translation>Moved shortcut %1 from %2 to %3.</translation>
+    </message></context>
+<context><name></name><message id="qml.shortcut_reserved">
+        <source>Shortcut %1 is used by %2 and can't be assigned to %3.</source>
+        <translation>Shortcut %1 is used by %2 and can't be assigned to %3.</translation>
+    </message></context>
+<context><name></name><message id="qml.shortcut_unassigned">
+        <source>Not set</source>
+        <translation>Not set</translation>
+    </message></context>
+<context><name></name><message id="shortcut.preview.play_pause_non_text">
+        <source>Play/Pause Preview (Outside Editor)</source>
+        <translation>Play/Pause Preview (Outside Editor)</translation>
+    </message></context>
+<context><name></name><message id="preferences.completion.help">
+        <source>"Duration" sets the completion list shown when typing [.
+"Beat subdivision" sets the completion list shown when typing {.</source>
+        <translation>"Duration" sets the completion list shown when typing [.
+"Beat subdivision" sets the completion list shown when typing {.</translation>
+    </message></context>
+<context><name></name><message id="preferences.completion.duration_suffix">
+        <source>Custom continuation</source>
+        <translation>Custom continuation</translation>
+    </message></context>
+<context><name></name><message id="preferences.completion.duration_suffix_hint">
+        <source>Enter a suffix</source>
+        <translation>Enter a suffix</translation>
+    </message></context>
+<context><name></name><message id="preferences.completion.invalid_duration_suffix">
+        <source>Enter a valid duration suffix</source>
+        <translation>Enter a valid duration suffix</translation>
+    </message></context>
+<context><name></name><message id="color_picker.open">
+        <source>Pick color</source>
+        <translation>Pick color</translation>
+    </message></context>
+
+<context><name></name>
+<message id="hand_order.features.title"><source>Hand-order breakdown</source><translation>Hand-order breakdown</translation></message>
+<message id="hand_order.features.password_notice"><source>This feature is in testing. It includes automatic features and is not publicly available yet. Contact the author for access.</source><translation>This feature is in testing. It includes automatic features and is not publicly available yet. Contact the author for access.</translation></message>
+<message id="hand_order.features.wrong_password"><source>Incorrect password</source><translation>Incorrect password</translation></message>
+<message id="hand_order.features.storage_error"><source>Could not save hand-order settings</source><translation>Could not save hand-order settings</translation></message>
+<message id="hand_order.features.enable"><source>Enable hand-order features</source><translation>Enable hand-order features</translation></message>
+<message id="hand_order.features.watermark"><source>Show hand-order watermark</source><translation>Show hand-order watermark</translation></message>
+<message id="video_watermark.settings.title"><source>Video export watermark</source><translation>Video export watermark</translation></message>
+<message id="video_watermark.settings.enable"><source>Add diagonal watermark</source><translation>Add diagonal watermark</translation></message>
+<message id="video_watermark.settings.text"><source>Watermark text</source><translation>Watermark text</translation></message>
+<message id="video_watermark.settings.font_size"><source>Font size (1080 px)</source><translation>Font size (1080 px)</translation></message>
+<message id="hand_order.features.help"><source>Disabled by default. Enables hand-order editing, analysis and simulated play. The watermark is optional for preview and export.</source><translation>Disabled by default. Enables hand-order editing, analysis and simulated play. The watermark is optional for preview and export.</translation></message>
+<message id="library.export"><source>Export library</source><translation>Export library</translation></message>
+<message id="library.export_done"><source>Exported to %1</source><translation>Exported to %1</translation></message>
+<message id="library.export_failed"><source>Cannot export %1. Check the source and destination folder.</source><translation>Cannot export %1. Check the source and destination folder.</translation></message>
+<message id="library.unlink_prompt"><source>Remove the library reference to %1?</source><translation>Remove the library reference to %1?</translation></message>
+<message id="library.open_failed"><source>Cannot open %1</source><translation>Cannot open %1</translation></message>
+<message id="document.song_tab_owns_path"><source>Another open song uses this file: %1</source><translation>Another open song uses this file: %1</translation></message>
+<message id="preview.auto_detect"><source>Auto detect</source><translation>Auto detect</translation></message>
+<message id="preview.completion_display"><source>Achievement display</source><translation>Achievement display</translation></message>
+<message id="preview.completion_default"><source>Default</source><translation>Default</translation></message>
+</context>
 </TS>

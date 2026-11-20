@@ -83,12 +83,19 @@ def verify_archive(archive: Path):
             return process.stdout
 
         invoke('--help')
-        invoke('--version', '--json')
+        version = json.loads(invoke('--version', '--json'))['data']['version']
+        assert archive.name.startswith(f'Better_Miacode_{version}_'), (version, archive.name)
+        notes = executable.parents[3] if executable.suffix != '.exe' else executable.parent
+        release_number = version.split('-better.', 1)[1]
+        assert (notes / 'docs' / 'releases' / f'better_{release_number}.md').is_file()
         invoke('capabilities', '--json')
         invoke('stats', '--chart', chart, '--difficulty', 4, '--json', expected=77)
         preferences = runtime / 'config' / 'preferences_v2.json'
-        preferences.write_text(json.dumps({'command_line': {'enabled': True}}), encoding='utf-8')
-        invoke('stats', '--chart', chart, '--difficulty', 4, '--json')
+        preferences.write_text(json.dumps({'command_line': {'enabled': True},
+                                           'app': {'hand_order_features_enabled': True}}), encoding='utf-8')
+        stats = json.loads(invoke('stats', '--chart', chart, '--difficulty', 4,
+                                  '--hand-order', 'annotated', '--json'))
+        assert stats['handOrderExportMode'] == 'original', 'A legacy setting unlocked hand-order export'
         invoke('presets', 'list', '--json')
         bpm = fixture / 'bpm.txt'
         invoke('export', 'bpm', '--chart', chart, '--difficulty', 4, '--output', bpm, '--json')

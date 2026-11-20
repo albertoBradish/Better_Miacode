@@ -10,6 +10,7 @@
 #include <QSGGeometryNode>
 #include <QSGNode>
 #include <QSGSimpleRectNode>
+#include <QSGTransformNode>
 #include <QSGRendererInterface>
 #include <QStringList>
 #include <QMetaObject>
@@ -151,7 +152,7 @@ double timelineHeldKeyPlaybackRate(double heldSeconds, double maxPlaybackRate)
     return accelerated > maxPlaybackRate ? maxPlaybackRate : accelerated;
 }
 
-QSGNode* ensureSlotRoot(QSGNode* oldNode)
+QSGTransformNode* ensureSlotRoot(QSGNode* oldNode)
 {
     auto childCountFor = [](QSGNode* node) {
         int count = 0;
@@ -160,11 +161,12 @@ QSGNode* ensureSlotRoot(QSGNode* oldNode)
         }
         return count;
     };
-    if (oldNode != nullptr && childCountFor(oldNode) == kTimelineLayerSlotCount) {
-        return oldNode;
+    if (auto* root = dynamic_cast<QSGTransformNode*>(oldNode);
+        root != nullptr && childCountFor(root) == kTimelineLayerSlotCount) {
+        return root;
     }
     delete oldNode;
-    auto* root = new QSGNode();
+    auto* root = new QSGTransformNode();
     for (int index = 0; index < kTimelineLayerSlotCount; ++index) {
         root->appendChildNode(new QSGNode());
     }
@@ -302,7 +304,7 @@ void applyDynamicSceneState(
 
     const miacode::timeline::TimelineThemeColors theme = miacode::timeline::timelineThemeColors();
     // Cached-scene updates use the same sub-pixel coordinates as a full scene
-    // build and centerOnSecond(), so the followed playhead stays at the center.
+    // build and centerOnSecond(), so playback stays pinned to the viewport anchor.
     const qreal cursorX =
         miacode::timeline::TimelineSceneStateBuilder::secondToSceneXExact(*state, stateBridge->cursorSeconds());
     if (cursorX > state->timelineLeft) {
@@ -340,7 +342,8 @@ void applyDynamicSceneState(
     }
 
     if (dragActive) {
-        const qreal dragCenterX = state->viewportSize.width() / 2.0;
+        const qreal dragCenterX = miacode::timeline::timelinePlayheadAnchor(
+            state->axisMode, state->viewportSize.width(), state->timelineLeft);
         if (dragCenterX > state->timelineLeft) {
             state->hasDragCenterLine = true;
             state->dragCenterLine = miacode::timeline::TimelineSceneLine{
@@ -974,6 +977,16 @@ void TimelineQuickItem::setHeaderMarkerRightLimit(int value)
     emit headerInsetsChanged();
 }
 
+void TimelineQuickItem::setLowPerformanceMode(bool enabled)
+{
+    if (lowPerformanceMode_ == enabled) {
+        return;
+    }
+    lowPerformanceMode_ = enabled;
+    emit lowPerformanceModeChanged();
+    update();
+}
+
 qreal TimelineQuickItem::zoomScale() const
 {
     return cachedZoomScale_;
@@ -1058,6 +1071,11 @@ int TimelineQuickItem::timelineTop() const
     return cachedTimelineTop_;
 }
 
+QRectF TimelineQuickItem::noteViewportRect() const
+{
+    return cachedNoteViewportRect_;
+}
+
 int TimelineQuickItem::minimumViewportHeight() const
 {
     return miacode::timeline::TimelineSceneStateBuilder::minimumViewportHeight();
@@ -1078,6 +1096,11 @@ bool TimelineQuickItem::isReady() const
     return ready_;
 }
 
+static qreal viewportAnchor(const miacode::timeline::TimelineSceneState& state)
+{
+    return miacode::timeline::timelinePlayheadAnchor(state.axisMode, state.viewportSize.width(), state.timelineLeft);
+}
+
 void TimelineQuickItem::cycleZoomPreset()
 {
     if (stateBridge_ == nullptr) {
@@ -1085,7 +1108,7 @@ void TimelineQuickItem::cycleZoomPreset()
     }
     const miacode::timeline::TimelineSceneState state = currentSceneState();
     stateBridge_->cycleZoomPreset(
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, width() / 2.0));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)));
 }
 
 void TimelineQuickItem::stepZoomPreset(int deltaSteps)
@@ -1096,7 +1119,7 @@ void TimelineQuickItem::stepZoomPreset(int deltaSteps)
     const miacode::timeline::TimelineSceneState state = currentSceneState();
     stateBridge_->stepZoomPreset(
         deltaSteps,
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, width() / 2.0));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)));
 }
 
 void TimelineQuickItem::setZoomScale(qreal scale)
@@ -1107,7 +1130,7 @@ void TimelineQuickItem::setZoomScale(qreal scale)
     const miacode::timeline::TimelineSceneState state = currentSceneState();
     stateBridge_->setZoomScaleAnchored(
         static_cast<double>(scale),
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, width() / 2.0));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)));
 }
 
 void TimelineQuickItem::refreshTheme()
@@ -1127,6 +1150,22 @@ void TimelineQuickItem::syncSourceState()
     const bool nextViewportLock = stateBridge_ != nullptr && stateBridge_->viewportLockEnabled();
     const bool nextProgressFollow = stateBridge_ == nullptr || stateBridge_->followProgressEnabled();
     const int nextTimelineTop = stateBridge_ != nullptr ? stateBridge_->timelineTop() : 0;
+    const auto nextAxisMode = stateBridge_ != nullptr
+        ? miacode::timeline::timelineAxisModeForToken(stateBridge_->axisMode())
+        : miacode::timeline::TimelineAxisMode::Horizontal;
+    if (cachedAxisMode_ != nextAxisMode) {
+        cachedAxisMode_ = nextAxisMode;
+        stopHeldHorizontalKeyScroll();
+        if (dragActive_ && stateBridge_ != nullptr) {
+            dragActive_ = false;
+            stateBridge_->restorePlayheadIndicator(true);
+            emit timelineDragFinished(stateBridge_->viewportCenterSecond());
+        }
+    }
+    if (selectionDragActive_ && stateBridge_ != nullptr
+        && selectionLayoutRevision_ != stateBridge_->layoutRevision()) {
+        cancelNoteSelection();
+    }
     bool appearanceBumpNeeded = false;
     if (!qFuzzyCompare(cachedZoomScale_ + 1.0, nextZoom + 1.0)) {
         cachedZoomScale_ = nextZoom;
@@ -1153,10 +1192,23 @@ void TimelineQuickItem::syncSourceState()
         cachedTimelineTop_ = nextTimelineTop;
         emit sceneMetricsChanged();
     }
+    syncNoteViewportRect();
     if (!canBecomeReady()) {
         updateReadyState(false);
     }
     update();
+}
+
+void TimelineQuickItem::syncNoteViewportRect()
+{
+    const QRectF nextRect = stateBridge_ != nullptr
+        ? stateBridge_->noteViewportRect().intersected(boundingRect())
+        : QRectF();
+    if (cachedNoteViewportRect_ == nextRect) {
+        return;
+    }
+    cachedNoteViewportRect_ = nextRect;
+    emit noteViewportRectChanged();
 }
 
 void TimelineQuickItem::updateReadyState(bool ready)
@@ -1186,12 +1238,20 @@ bool TimelineQuickItem::canBecomeReady() const
     return window() != nullptr && stateBridge_ != nullptr && width() > 0.0 && height() > 0.0;
 }
 
+miacode::timeline::TimelineAxisProjection TimelineQuickItem::axisProjection() const
+{
+    const auto size = miacode::pixel_geometry::coveringSize(boundingRect().size());
+    const miacode::timeline::TimelineAxisProjection axis{cachedAxisMode_};
+    return {cachedAxisMode_, qreal(axis.axisSize(size).width())};
+}
+
 miacode::timeline::TimelineSceneState TimelineQuickItem::currentSceneState() const
 {
     if (stateBridge_ == nullptr) {
         return miacode::timeline::TimelineSceneState();
     }
-    const QSize viewportSize = miacode::pixel_geometry::coveringSize(boundingRect().size());
+    const auto axis = axisProjection();
+    const QSize viewportSize = axis.axisSize(miacode::pixel_geometry::coveringSize(boundingRect().size()));
     // Phase 7 — bucket size = one viewport. Build emits primitives
     // for [bucket-1, bucket+2] (3 viewports total: bucket itself + 1
     // buffer each side). Scrolling within a bucket reuses the
@@ -1225,10 +1285,13 @@ miacode::timeline::TimelineSceneState TimelineQuickItem::currentSceneState() con
         timer.start();
         miacode::timeline::TimelineSceneBuildRequest request;
         request.snapshot = stateBridge_->renderSnapshot();
+        request.dropRegion = stateBridge_->dropRegion();
         request.waveformData = stateBridge_->waveformData();
         request.muriMarkersByLocation = stateBridge_->muriMarkersByLocation();
         request.muriMarkerTooltips = stateBridge_->muriMarkerTooltips();
+        request.axisMode = axis.mode;
         request.viewportSize = viewportSize;
+        request.laneOrder = miacode::timeline::timelineLaneOrderForToken(stateBridge_->laneOrder());
         request.headerLineNumberFont = stateBridge_->headerLineNumberFont();
         request.skinDirectory = stateBridge_->skinDirectory();
         request.horizontalScrollValue = currentScroll;
@@ -1241,6 +1304,7 @@ miacode::timeline::TimelineSceneState TimelineQuickItem::currentSceneState() con
             headerMarkerRightLimit_ > 0 ? headerMarkerRightLimit_ : request.viewportSize.width();
         request.zoomScale = stateBridge_->zoomScale();
         request.contentScale = stateBridge_->contentScale();
+        request.noteScale = stateBridge_->noteScale();
         request.fitViewportHeight = true;
         request.waveformBrightness = stateBridge_->waveformBrightness();
         request.measureLineBrightness = stateBridge_->measureLineBrightness();
@@ -1250,6 +1314,7 @@ miacode::timeline::TimelineSceneState TimelineQuickItem::currentSceneState() con
         request.cursorSeconds = stateBridge_->cursorSeconds();
         request.playheadUpperLimitSeconds = stateBridge_->playheadUpperLimitSeconds();
         request.showSlideTracks = stateBridge_->showSlideTracks();
+        request.showHandOrderAnnotations = stateBridge_->showHandOrderAnnotations();
         request.playheadIndicatorSuppressed = stateBridge_->playheadIndicatorSuppressed();
         request.dragActive = dragActive_;
         request.appearanceRevision = appearanceRevision_;
@@ -1335,7 +1400,7 @@ double TimelineQuickItem::viewportCenterSecondForScroll(double horizontalScrollV
     miacode::timeline::TimelineSceneState state = currentSceneState();
     state.horizontalScrollValue = qMax(0.0, horizontalScrollValue);
     return clampSceneSecond(
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, width() / 2.0));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)));
 }
 
 bool TimelineQuickItem::playheadNearViewportCenter() const
@@ -1343,7 +1408,7 @@ bool TimelineQuickItem::playheadNearViewportCenter() const
     const miacode::timeline::TimelineSceneState state = currentSceneState();
     return qAbs(
                (stateBridge_ != nullptr ? stateBridge_->playheadSeconds() : 0.0)
-               - miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, width() / 2.0))
+               - miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, viewportAnchor(state)))
         <= (0.5 / qMax(1.0, state.pixelsPerSecond));
 }
 
@@ -1454,14 +1519,11 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
                 miacode::debug_log::Channel::Runtime,
                 QStringLiteral("timeline/texture_cache"),
                 QStringLiteral(
-                    "action=capacity_flush tex=%1 tex_bytes=%2 pixmaps=%3 tex_limit=%4 "
-                    "tex_byte_limit=%5 pixmap_limit=%6")
+                    "action=capacity_flush tex=%1 tex_bytes=%2 tex_limit=%3 tex_byte_limit=%4")
                     .arg(capacity.textureCount)
                     .arg(capacity.textureBytes)
-                    .arg(capacity.pixmapCount)
                     .arg(capacity.textureCountLimit)
-                    .arg(capacity.textureByteLimit)
-                    .arg(capacity.pixmapCountLimit));
+                    .arg(capacity.textureByteLimit));
         }
         textures_->invalidateAll();
         pendingDprInvalidation_ = false;
@@ -1485,6 +1547,10 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
                 .arg(qMax(0, state.contentWidth - state.viewportSize.width())));
     }
     lastPaintedHorizontalScrollValue_ = state.horizontalScrollValue;
+    const QMatrix4x4 projection(state.axisProjection().toScreenTransform());
+    if (root->matrix() != projection) {
+        root->setMatrix(projection);
+    }
     int slotIndex = 0;
     updateLayerSlot(layerSlotAt(root, slotIndex++), [&](QSGNode* oldChild) {
         return gridLayer_->updateNode(oldChild, state, window(), textures_.get());
@@ -1492,6 +1558,7 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
     updateLayerSlot(layerSlotAt(root, slotIndex++), [&](QSGNode* oldChild) {
         return headerLayer_->updateNode(oldChild, state, window());
     });
+    // The Drop wash is part of the grid, beneath the waveform and notes.
     updateLayerSlot(layerSlotAt(root, slotIndex++), [&](QSGNode* oldChild) {
         return gridLinesLayer_->updateNode(oldChild, state, window());
     });
@@ -1515,7 +1582,7 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
         if (!selectionDragActive_) return nullptr;
         auto* rectangle = new QSGNode();
         const QRectF area = QRectF(selectionDragStart_, selectionDragEnd_).normalized().intersected(
-            QRectF(state.timelineLeft, state.timelineTop, width() - state.timelineLeft, state.timelineHeight));
+            QRectF(state.timelineLeft, state.timelineTop, state.viewportSize.width() - state.timelineLeft, state.timelineHeight));
         const QColor border(70, 150, 255);
         rectangle->appendChildNode(new QSGSimpleRectNode(area, QColor(70, 150, 255, 35)));
         for (const auto& edge : {QRectF(area.left(), area.top(), area.width(), 1),
@@ -1585,21 +1652,20 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
                 layerGeomKb[i] = layerStats.geomBytes / 1024;
             }
             int texCount = 0;
-            int texPixCount = 0;
             int texHoldCount = 0;
             int texRotCount = 0;
             quint64 texCreateTotal = 0;
             if (textures_) {
                 textures_->debugCacheStats(
-                    &texCount, &texPixCount, &texHoldCount, &texRotCount, &texCreateTotal);
+                    &texCount, &texHoldCount, &texRotCount, &texCreateTotal);
             }
             miacode::debug_log::appendLine(
                 miacode::debug_log::Channel::Runtime,
                 QStringLiteral("timeline/leak_gauge"),
                 QStringLiteral(
                     "txn=%1 priv_present_mb=%2 d_render_kb=%3 gpu_kb=%4 nodes=%5 gbytes_kb=%6 "
-                    "geom_create=%7 tex=%8 tex_pix=%9 tex_hold=%10 tex_rot=%11 tex_create=%12 "
-                    "layer_nodes=%13 layer_gkb=%14")
+                    "geom_create=%7 tex=%8 tex_hold=%9 tex_rot=%10 tex_create=%11 "
+                    "layer_nodes=%12 layer_gkb=%13")
                     .arg(gaugeTxn)
                     .arg(presentPrivBytes >= 0 ? presentPrivBytes / (1024 * 1024) : -1)
                     .arg((presentPrivBytes >= 0 && pausePrivBytes >= 0)
@@ -1610,7 +1676,6 @@ QSGNode* TimelineQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDat
                     .arg(total.geomBytes / 1024)
                     .arg(timelineQuickGeometryCreateTotal())
                     .arg(texCount)
-                    .arg(texPixCount)
                     .arg(texHoldCount)
                     .arg(texRotCount)
                     .arg(texCreateTotal)
@@ -1644,6 +1709,8 @@ void TimelineQuickItem::updatePolish()
     if (stateBridge_ != nullptr) {
         stateBridge_->setQuickViewportSize(pendingViewportSize_);
     }
+    // Fractional size changes can keep the same rounded render viewport.
+    syncNoteViewportRect();
 }
 
 void TimelineQuickItem::itemChange(ItemChange change, const ItemChangeData& value)
@@ -1686,6 +1753,9 @@ void TimelineQuickItem::bindRenderCadence(QQuickWindow* window)
             if (stateBridge_ == nullptr) {
                 return;
             }
+            if (lowPerformanceMode_ && stateBridge_->playbackCadenceActive()) {
+                return;
+            }
             stateBridge_->notifyRenderCadenceTick();
             // Keep the loop spinning for as long as playback owns the cadence. The tick above
             // normally dirties this item (renderStateChanged -> syncSourceState -> update),
@@ -1709,22 +1779,24 @@ void TimelineQuickItem::mousePressEvent(QMouseEvent* event)
     }
     forceActiveFocus(Qt::MouseFocusReason);
     const miacode::timeline::TimelineSceneState state = currentSceneState();
+    const QPointF position = state.axisProjection().toAxis(event->position());
     const double clickSecond = clampSceneSecond(
-        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, event->position().x()));
+        miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, position.x()));
     // The number strip is the timeline's navigation area.
     const QRectF headerRect(
         state.timelineLeft,
         0.0,
-        width() - state.timelineLeft,
+        state.viewportSize.width() - state.timelineLeft,
         static_cast<qreal>(state.timelineTop));
-    const QRectF bodyRect(state.timelineLeft, state.timelineTop, width() - state.timelineLeft, state.timelineHeight);
-    if (headerRect.contains(event->position())) {
+    const QRectF bodyRect(state.timelineLeft, state.timelineTop,
+        state.viewportSize.width() - state.timelineLeft, state.timelineHeight);
+    if (headerRect.contains(position)) {
         emit timelineUserInteractionStarted();
         emit headerNavigateRequested(clickSecond);
         event->accept();
         return;
     }
-    if (!bodyRect.contains(event->position())) {
+    if (!bodyRect.contains(position)) {
         QQuickItem::mousePressEvent(event);
         return;
     }
@@ -1733,7 +1805,7 @@ void TimelineQuickItem::mousePressEvent(QMouseEvent* event)
         stopHeldHorizontalKeyScroll();
         const auto captured = currentSceneState();
         selectionDragActive_ = true;
-        selectionDragStart_ = selectionDragEnd_ = event->position();
+        selectionDragStart_ = selectionDragEnd_ = position;
         selectionHitAreas_ = captured.noteHitAreas;
         selectionNotesRevision_ = stateBridge_->notesRevision();
         selectionLayoutRevision_ = stateBridge_->layoutRevision();
@@ -1756,12 +1828,12 @@ void TimelineQuickItem::mousePressEvent(QMouseEvent* event)
         emit centerNavigateRequested(centerSecond);
     }
     dragActive_ = true;
-    dragStartX_ = qRound(event->position().x());
+    dragStartTimePosition_ = position.x();
     dragStartScrollValue_ = stateBridge_ != nullptr ? stateBridge_->horizontalScrollValue() : 0.0;
     appendTimelineQuickInteractionLog(
         QStringLiteral("drag_begin"),
         QString("x=%1 scroll_start=%2")
-            .arg(dragStartX_)
+            .arg(dragStartTimePosition_)
             .arg(dragStartScrollValue_));
     if (stateBridge_ != nullptr) {
         stateBridge_->focusPlayhead(false);
@@ -1777,7 +1849,7 @@ void TimelineQuickItem::mousePressEvent(QMouseEvent* event)
 void TimelineQuickItem::mouseMoveEvent(QMouseEvent* event)
 {
     if (event && selectionDragActive_) {
-        selectionDragEnd_ = event->position();
+        selectionDragEnd_ = axisProjection().toAxis(event->position());
         update(); event->accept(); return;
     }
     if (event == nullptr || !dragActive_ || stateBridge_ == nullptr) {
@@ -1786,8 +1858,8 @@ void TimelineQuickItem::mouseMoveEvent(QMouseEvent* event)
     }
     // double, not int: dragStartScrollValue_ carries a fraction now, and narrowing here would
     // truncate it — snapping the view by up to a pixel the instant a drag begins.
-    const double newScroll =
-        dragStartScrollValue_ - static_cast<double>(qRound(event->position().x()) - dragStartX_);
+    const qreal position = axisProjection().toAxis(event->position()).x();
+    const double newScroll = dragStartScrollValue_ - (position - dragStartTimePosition_);
     stateBridge_->setHorizontalScrollValue(newScroll);
     const double centerSecond = viewportCenterSecondForScroll(stateBridge_->horizontalScrollValue());
     if (followProgressEnabled()) {
@@ -1803,7 +1875,7 @@ void TimelineQuickItem::hoverMoveEvent(QHoverEvent* event)
         return;
     }
     const miacode::timeline::TimelineSceneState state = currentSceneState();
-    QPointF hitPosition = event->position();
+    QPointF hitPosition = state.axisProjection().toAxis(event->position());
     hitPosition.rx() += state.horizontalScrollValue;
     QString tooltipText;
     for (const auto& glyph : state.muriDots) {
@@ -1835,10 +1907,15 @@ void TimelineQuickItem::updateHoverTooltip(const QString& text, const QPointF& p
 void TimelineQuickItem::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event && event->button() == Qt::LeftButton && selectionDragActive_) {
-        QRectF area(selectionDragStart_, event->position());
+        const QPointF position = axisProjection().toAxis(event->position());
+        QRectF area(selectionDragStart_, position);
         area = area.normalized();
         if (area.width() < 2 && area.height() < 2)
-            area = QRectF(event->position() - QPointF(1, 1), QSizeF(2, 2));
+            area = QRectF(position - QPointF(1, 1), QSizeF(2, 2));
+        const auto state = currentSceneState();
+        const QRectF noteArea(state.timelineLeft, state.timelineTop,
+            state.viewportSize.width() - state.timelineLeft, state.timelineHeight);
+        area = area.intersected(noteArea);
         area.translate(selectionScroll_, 0);
         QSet<quint64> locations;
         for (const auto& hit : selectionHitAreas_)
@@ -1885,8 +1962,9 @@ void TimelineQuickItem::wheelEvent(QWheelEvent* event)
         return;
     }
 
-    forceActiveFocus(Qt::MouseFocusReason);
+    // Scrolling leaves keyboard focus where it is, usually the chart editor.
     const int delta = angle != 0 ? angle : pixel;
+    const auto axis = axisProjection();
     appendTimelineQuickInteractionLog(
         QStringLiteral("wheel_scroll"),
         QString("delta=%1 modifiers=%2 scroll_before=%3")
@@ -1902,15 +1980,17 @@ void TimelineQuickItem::wheelEvent(QWheelEvent* event)
     // Keep custom direction bindings authoritative, including an intentional
     // reversed Alt-wheel mapping; the built-in alias fills only unbound input.
     const bool altZoom = event->modifiers() == Qt::AltModifier && !shortcutZoomIn && !shortcutZoomOut;
-    const bool zoomInWheel = shortcutZoomIn || (altZoom && delta > 0);
-    const bool zoomOutWheel = shortcutZoomOut || (altZoom && delta < 0);
-    if (zoomInWheel || zoomOutWheel) {
-        const miacode::timeline::TimelineSceneState state = currentSceneState();
+    if (altZoom) {
+        const double wheelSteps = pixel != 0 ? pixel / 60.0 : angle / 120.0;
+        const double scale = stateBridge_->zoomScale() * std::pow(1.20, qBound(-24.0, wheelSteps, 24.0));
+        stateBridge_->zoomAtViewportPosition(scale, axis.toAxis(event->position()).x());
+        event->accept();
+        return;
+    }
+    if (shortcutZoomIn || shortcutZoomOut) {
         const int steps = qMax(1, qAbs(qRound(static_cast<double>(delta) / 120.0)))
-            * (zoomInWheel ? 1 : -1);
-        stateBridge_->stepZoomPreset(
-            steps,
-            miacode::timeline::TimelineSceneStateBuilder::sceneXToSecond(state, width() / 2.0));
+            * (shortcutZoomIn ? 1 : -1);
+        stateBridge_->stepZoomPreset(steps, stateBridge_->viewportCenterSecond());
         event->accept();
         return;
     }
@@ -1919,7 +1999,7 @@ void TimelineQuickItem::wheelEvent(QWheelEvent* event)
     stateBridge_->focusPlayhead(false);
     const double scrollDelta = pixel != 0 ? static_cast<double>(pixel)
                                           : static_cast<double>(angle) / 2.0;
-    stateBridge_->setHorizontalScrollValue(stateBridge_->horizontalScrollValue() - scrollDelta);
+    stateBridge_->setHorizontalScrollValue(stateBridge_->horizontalScrollValue() - scrollDelta * axis.direction());
     const double centerSecond = viewportCenterSecondForScroll(stateBridge_->horizontalScrollValue());
     appendTimelineQuickInteractionLog(
         QStringLiteral("wheel_scroll_applied"),
@@ -1954,8 +2034,12 @@ void TimelineQuickItem::keyPressEvent(QKeyEvent* event)
     if (event != nullptr
         && stateBridge_ != nullptr
         && event->modifiers() == Qt::NoModifier
-        && (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right)) {
-        const int direction = event->key() == Qt::Key_Left ? -1 : 1;
+        && (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right
+            || (axisProjection().vertical() && (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down)))) {
+        int direction = event->key() == Qt::Key_Left ? -1 : 1;
+        if (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down) {
+            direction = (event->key() == Qt::Key_Up ? -1 : 1) * axisProjection().direction();
+        }
         if (!event->isAutoRepeat()) {
             emit timelineUserInteractionStarted();
             beginHeldHorizontalKeyScroll(direction, event->key());
@@ -1974,7 +2058,7 @@ void TimelineQuickItem::keyReleaseEvent(QKeyEvent* event)
     if (event != nullptr
         && event->modifiers() == Qt::NoModifier
         && !event->isAutoRepeat()
-        && (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right)) {
+        && heldHorizontalKeyScrollKey_ != 0 && event->key() == heldHorizontalKeyScrollKey_) {
         stopHeldHorizontalKeyScroll(event->key());
         event->accept();
         return;

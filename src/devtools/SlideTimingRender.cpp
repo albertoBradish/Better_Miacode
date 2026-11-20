@@ -56,6 +56,7 @@ int main(int argc, char** argv)
     if (state.skin.slideTrackImage.isNull()) return 1;
     state.render.showTimestamp = false;
     state.render.showSlideJudgementTiming = true;
+    state.render.showHandOrderAnnotations = true;
     QJsonArray results;
     QString error;
     int index=0;
@@ -64,7 +65,10 @@ int main(int argc, char** argv)
              QStringLiteral("1-5[0##0.125]"),QStringLiteral("1-5b[4:1]"),
              QStringLiteral("1s5[4:1]"),QStringLiteral("1V35[4:1]"),QStringLiteral("1w5[4:1]"),
              QStringLiteral("1pp4[4:1]"),QStringLiteral("1qq6[4:1]"),
-             QStringLiteral("5pp8[4:1]"),QStringLiteral("5qq2[4:1]"),QStringLiteral("1-5[16:1]")}) {
+             QStringLiteral("5pp8[4:1]"),QStringLiteral("5qq2[4:1]"),QStringLiteral("1-5[16:1]"),
+             QStringLiteral("1-5[4:1]~[head=l;track=0:l|0.5:r]"),
+             QStringLiteral("1w5[4:1]~[head=l;track=split:0:l&0:r]"),
+             QStringLiteral("1pp4[4:1]~r"),QStringLiteral("1-5[16:1]~l")}) {
         const auto parsed = SimaiParser::parseForTimeline(QStringLiteral("(120){8}")+token+QStringLiteral(",\nE"));
         state.noteMarkers.clear();
         for (const auto& marker : parsed.noteMarkers)
@@ -151,7 +155,10 @@ int main(int argc, char** argv)
             const QImage normal=render(waiting,launchControl);
             int visible=0;
             double dimEnergy=0.0, normalEnergy=0.0;
-            for(int y=0;y<dim.height();++y) for(int x=0;x<dim.width();++x) {
+            // Hand Order's fixed footer watermark is outside the track layer.
+            // Keep it in full-frame equality checks, but not in track photometry.
+            const int trackBottom=qRound(dim.height()*.95);
+            for(int y=0;y<trackBottom;++y) for(int x=0;x<dim.width();++x) {
                 const QColor a=dim.pixelColor(x,y), b=normal.pixelColor(x,y);
                 launchWaitDim &= a.alpha()==b.alpha();
                 if(b.alpha()>0) ++visible;
@@ -189,7 +196,7 @@ int main(int argc, char** argv)
         ++earlyCropped.sceneContentRevision;
         earlyMatches &= render(timing.headSecond,earlyCropped)==render(timing.headSecond,earlyState);
         if(!earlyMatches) {QTextStream(stderr)<<"early Perfect pixel contract failed: "<<token<<Qt::endl;return 1;}
-        if(token==QLatin1String("1-5[16:1]") && !earlyTiming.fullBrightFromHead) return 1;
+        if(token.startsWith(QLatin1String("1-5[16:1]")) && !earlyTiming.fullBrightFromHead) return 1;
         QImage strip(540*4,570,QImage::Format_RGB32);strip.fill(QColor(24,26,30));
         QPainter painter(&strip);
         painter.setPen(Qt::white);

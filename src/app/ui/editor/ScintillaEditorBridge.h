@@ -5,8 +5,11 @@
 #include "app/ui/document/DocumentModel.h"
 #include "app/ui/document/AnalysisModel.h"
 #include "app/services/EditorSyncController.h"
+#include "app/services/HandOrderAnalysisService.h"
 #include <QtQmlIntegration/qqmlintegration.h>
 #include <optional>
+#include <QElapsedTimer>
+#include "editor/SpaceInputGuard.h"
 
 namespace miacode::ui {
 struct ScintillaQuickForeign
@@ -20,6 +23,7 @@ class ScintillaEditorBridge : public ScintillaQuick_item
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(ScintillaEditor)
+    Q_PROPERTY(miacode::HandOrderAnalysisService* handOrderService READ handOrderService WRITE setHandOrderService)
     Q_PROPERTY(DocumentModel* documentSession READ documentSession WRITE setDocumentSession NOTIFY bindingsChanged)
     Q_PROPERTY(EditorController* controller READ controller WRITE setController NOTIFY bindingsChanged)
     Q_PROPERTY(miacode::EditorSyncController* syncController READ syncController WRITE setSyncController NOTIFY bindingsChanged)
@@ -52,8 +56,13 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(int overviewDisplayLineCount READ overviewDisplayLineCount NOTIFY overviewChanged)
     Q_PROPERTY(int overviewCurrentDisplayLine READ overviewCurrentDisplayLine NOTIFY overviewChanged)
     Q_PROPERTY(bool overviewFollowing READ overviewFollowing NOTIFY overviewChanged)
+    Q_PROPERTY(bool spaceGuardEnabled READ spaceGuardEnabled WRITE setSpaceGuardEnabled NOTIFY spaceGuardChanged)
+    Q_PROPERTY(bool spaceInputUnlocked READ spaceInputUnlocked NOTIFY spaceGuardChanged)
     Q_PROPERTY(bool imeComposing READ imeComposing NOTIFY imeComposingChanged)
+    Q_PROPERTY(bool workspaceMaximizeKeyEnabled MEMBER workspaceMaximizeKeyEnabled_)
 public:
+    miacode::HandOrderAnalysisService* handOrderService() const { return handOrderService_; }
+    void setHandOrderService(miacode::HandOrderAnalysisService* service) { handOrderService_ = service; }
     QColor sceneBackgroundColor() const { return Qt::transparent; }
     explicit ScintillaEditorBridge(QQuickItem* parent = nullptr);
     ~ScintillaEditorBridge() override;
@@ -97,6 +106,10 @@ public:
     int overviewDisplayLineCount() const;
     int overviewCurrentDisplayLine() const { return overviewCurrentDisplayLine_; }
     bool overviewFollowing() const { return overviewFollowing_; }
+    bool spaceGuardEnabled() const { return spaceGuardEnabled_; }
+    bool spaceInputUnlocked() const { return spaceGuard_.unlocked(); }
+    void setSpaceGuardEnabled(bool enabled);
+    void resetSpaceGuard();
     bool imeComposing() const { return imeComposing_; }
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
@@ -106,6 +119,8 @@ public:
     Q_INVOKABLE void selectAll();
     Q_INVOKABLE void beginViewportInteraction() { beginUserInteraction(); }
     Q_INVOKABLE void select(int anchor, int position);
+    // Moves the edit caret to the follow caret when that is the caret the user sees.
+    Q_INVOKABLE void continueAtFollowCaret();
     Q_INVOKABLE void selectCurrentLine();
     Q_INVOKABLE void jumpToLine(int line);
     Q_INVOKABLE int positionAt(qreal x, qreal y) const;
@@ -119,17 +134,31 @@ public:
     Q_INVOKABLE void exportSelectionRange();
     Q_INVOKABLE bool applyNormalization(const QVariantMap& options);
     Q_INVOKABLE bool applyChartTransform(const QString& operation);
+    Q_INVOKABLE bool applyHandOrderIntervals();
+    Q_INVOKABLE bool requestHandOrderAnalysis(bool wholeDifficulty = false, bool optimizePatterns = false, bool reviewPlay = false);
+    Q_INVOKABLE bool prepareHandOrderAnalysis(bool optimizePatterns = false, bool reviewPlay = false);
+    Q_INVOKABLE bool applyHandOrderAnalysis();
+    Q_INVOKABLE bool applyPatternChoice(int group, int variant);
+    Q_INVOKABLE bool applyPatternChoices(const QStringList& keys, const QString& choice);
+    Q_INVOKABLE bool navigateHandOrderResult(int row);
+    Q_INVOKABLE bool prepareNativeSlideSplit();
+    Q_INVOKABLE bool applyNativeSlideSplit();
     Q_INVOKABLE bool applyBpmImport(const QString& original, const QString& replacement, int difficulty, quint64 revision);
     Q_INVOKABLE bool createBookmarkAtLine(int line, const QString& title);
     Q_INVOKABLE bool renameBookmarkAtLine(int line, const QString& title);
     Q_INVOKABLE bool deleteBookmarkAtLine(int line);
 signals:
+    void spaceGuardChanged();
+    void playbackToggleRequested();
+    void workspaceMaximizeRequested();
     void bindingsChanged();
     void editorColorsChanged();
     void appearanceChanged();
     void layoutChanged();
     void scenePositionChanged();
     void selectionChanged();
+    void noteComponentEditRejected();
+    void transformReviewStale();
     void cursorRectangleChanged();
     void currentLineRectangleChanged();
     void followVisualChanged();
@@ -150,12 +179,18 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
     void inputMethodEvent(QInputMethodEvent* event) override;
 private:
+    NativeSlideSplitContext nativeSlideSplitContext() const;
+    bool spaceGuardEnabled_ = true;
+    miacode::editor::SpaceInputGuard spaceGuard_;
+    QElapsedTimer spaceGuardClock_;
     enum OverviewProjectionPart {
         OverviewMarkersDirty = 0x01,
         OverviewCurrentLineDirty = 0x02,
         OverviewDisplayLineCountDirty = 0x04,
         OverviewAllDirty = OverviewMarkersDirty | OverviewCurrentLineDirty | OverviewDisplayLineCountDirty,
     };
+    bool reviewChartTransform(const miacode::editor::SimaiTextEditResult& result);
+    bool transformReviewPending_ = false;
     bool applyEditorTransaction(const miacode::editor::SimaiTextEditResult& result);
     void publishTouchAnchor(int position);
     void centerCursorInView();
@@ -180,25 +215,30 @@ private:
     void beginUserInteraction();
     void publishTouchUndoAnchor();
     miacode::chart_selection::NoteRanges selectionRanges() const;
-    void selectNoteRanges(int difficulty, quint64 revision, const miacode::chart_selection::NoteRanges& ranges);
-    bool deleteNoteSelection();
+    void selectNoteObjects(int difficulty, quint64 revision, const miacode::chart_selection::NoteObjects& objects);
+    void clearNoteSelectionState();
+    bool containsPartialNoteSelection() const;
+    bool deleteNoteSelection(bool review = false);
+    bool copyNoteSelection();
     miacode::chart_selection::NoteTimingState noteInitialTiming() const;
     ScintillaDocumentAdapter document_;
     ScintillaDslStyler styler_;
     QPointer<DocumentModel> documentSession_;
     QPointer<EditorController> controller_;
+    QPointer<miacode::HandOrderAnalysisService> handOrderService_;
     QPointer<miacode::EditorSyncController> syncController_;
     QPointer<AnalysisModel> analysisSession_;
     QVariantMap palette_;
     QVariantList bookmarks_;
     QVariantList overviewMarkers_;
-    QVariantList overviewSyntaxRows_;
-    QVariantList overviewMuriRows_;
+    QVector<AnalysisDecoration> overviewSyntaxRows_;
+    QVector<AnalysisDecoration> overviewMuriRows_;
     qulonglong overviewDiagnosticGeneration_ = ~qulonglong(0);
     int overviewDiagnosticDifficulty_ = -1;
     int overviewDisplayLineCount_ = 0;
     int overviewCurrentDisplayLine_ = -1;
     bool overviewFollowing_ = false;
+    bool workspaceMaximizeKeyEnabled_ = false;
     int overviewDirtyParts_ = OverviewAllDirty;
     bool overviewRefreshPending_ = false;
     QFont effectiveFont_;
@@ -239,6 +279,7 @@ private:
     int reportedCaret_ = -1;
     miacode::chart_selection::NoteRanges reportedRanges_;
     bool noteSelection_ = false;
+    miacode::chart_selection::NoteObjects selectedNoteObjects_;
     qreal wheelRemainder_ = 0;
     int blockSpacing_ = 0;
     bool autoWrap_ = true;

@@ -6,6 +6,7 @@
 #include <QSet>
 #include <QVector>
 
+#include "core/chart/ChartPreviewRegion.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
 #include "core/chart/transform/ChartNoteSelection.h"
 #include "timeline/TimelineRenderData.h"
@@ -95,6 +96,10 @@ public:
         int selectionEnd,
         double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed,
         double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed) const;
+    // Musical interval covered by the selected source, with the first offset
+    // already included. Unlike video clipping, it excludes rendering padding.
+    std::optional<miacode::chart_preview::MediaRange> resolveMediaRangeForSelection(
+        int anchor, int position, double mediaDuration) const;
     struct NoteSelection {
         QSet<quint64> locations;
         double startSecond = 0.0;
@@ -109,7 +114,10 @@ public:
     NoteSelection resolveNoteSelection(const miacode::chart_selection::NoteRanges& ranges,
         double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed,
         double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed) const;
+    NoteSelection resolveNoteObjects(const miacode::chart_selection::NoteObjects& objects,
+        double tapFlowSpeed, double touchFlowSpeed) const;
     miacode::chart_selection::NoteRanges noteSourceRanges(const QSet<quint64>* locations = nullptr) const;
+    miacode::chart_selection::NoteObjects noteObjects(const QSet<quint64>* locations = nullptr) const;
     bool resolveTimelineNavigateCursor(double second, int* line, int* col, double* cursorSecond) const;
     bool resolveNearestTimelineNote(double second, int lane, int* line, int* col, double* noteSecond) const;
     bool resolvePreviewFollowSelectionRange(int line, int anchorCol, int* startCol, int* endCol) const;

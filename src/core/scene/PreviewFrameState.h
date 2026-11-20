@@ -1,12 +1,14 @@
 #pragma once
 
 #include <QImage>
+#include <QHash>
 #include <QSet>
 #include <QRectF>
 #include <QVector>
 #include <QtGlobal>
 #include <QtMath>
 
+#include <array>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -24,7 +26,12 @@ namespace miacode::slide_judge { class LaunchBeatIndex; }
 
 namespace miacode::preview::scene {
 
+class PreviewStandardFireworkEffect;
+
 struct PreviewSkinAssets {
+    // Optional pixel-exact hand artwork, indexed by the original QImage's
+    // cache key. A missing set falls back to the sprite shader tint.
+    QHash<quint64, std::array<QImage, 3>> handOrderVariants;
     QImage tapImage;
     QImage tapEachImage;
     QImage tapBreakImage;
@@ -143,6 +150,14 @@ struct PreviewJudgeOverlayAssets {
     PreviewJudgeDirectionalSpriteSet miss;
 };
 
+struct PreviewStandardFireworkAssets {
+    QImage starImage;
+    QImage raysImage;
+    QImage ringMaskImage;
+    QImage ringColorImage;
+    std::shared_ptr<const PreviewStandardFireworkEffect> effect;
+};
+
 struct PreviewJudgeEffectAssets {
     QImage tapImage;
     QRectF tapSourceRect;
@@ -156,8 +171,9 @@ struct PreviewJudgeEffectAssets {
     QImage touchPart01Image;
     QImage touchPart02Image;
     QImage touchPart02DxImage;
-    QImage fireworkColorBallImage;
-    QRectF fireworkColorBallSourceRect;
+    QImage modernFireworkColorBallImage;
+    QRectF modernFireworkColorBallSourceRect;
+    PreviewStandardFireworkAssets standardFirework;
 };
 
 enum class PreviewStageMediaPresentationMode {
@@ -221,14 +237,18 @@ struct PreviewAssetState {
 };
 
 struct PreviewRenderState {
+    bool operator==(const PreviewRenderState&) const = default;
+    BackgroundPolicy backgroundPolicy = BackgroundPolicy::Normal;
     double backgroundBrightnessOuter = miacode::preview_video::kBackgroundBrightnessDefault;
     double backgroundBrightnessInner = miacode::preview_video::kBackgroundBrightnessInnerDefault;
     double layoutSquareScale = miacode::preview_video::kLayoutSquareScaleDefault;
     double fireworkBrightness = miacode::preview_video::kFireworkBrightnessDefault;
+    PreviewFireworkStyle fireworkStyle = PreviewFireworkStyle::Standard;
     bool smoothBrightness = miacode::preview_video::kSmoothBrightnessDefault;
     PreviewBackgroundScaleMode backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
     double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
     double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
+    double starFadeTiming = 0.0;
     bool slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     PreviewJudgeEffectStyle judgeEffectStyle = PreviewJudgeEffectStyle::Standard;
@@ -239,6 +259,7 @@ struct PreviewRenderState {
     bool slideTimingFromLaunchBeat = false;
     bool slideTimingEarlyPerfectFromHead = false;
     bool showTimestamp = true;
+    CompletionDisplay completionDisplay = CompletionDisplay::Both;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;
     bool showBpmHud = false;
@@ -248,6 +269,8 @@ struct PreviewRenderState {
     // Presentation-only switch exposed to extensions. Mine semantics remain
     // intact while their dedicated sprites/guides are replaced by normal art.
     bool useMineSkin = true;
+    bool showHandOrderAnnotations = true;
+    bool showHandOrderWatermark = false;
     miacode::preview_gameplay::CenterDisplayMode centerDisplayMode =
         miacode::preview_gameplay::kDefaultCenterDisplayMode;
 };
@@ -324,6 +347,39 @@ struct PreviewFrameState {
     double hudStatsSnapshotSecond = std::numeric_limits<double>::quiet_NaN();
     bool hudStatsSnapshotValid = false;
 };
+
+// Apply only to the displayed frame. The source preview and export task
+// retain their diagnostic options for the main chart.
+inline void applyChartIntroPresentation(PreviewFrameState& state)
+{
+    auto& render = state.render;
+    render.backgroundPolicy = BackgroundPolicy::Normal;
+    render.showDebugInfo = false;
+    render.showMeasureLines = false;
+    render.showJudgementSkeleton = false;
+    render.showSlideJudgementTiming = false;
+    render.showTimestamp = false;
+    render.showObjectStatsHud = false;
+    render.showChartInfoHud = false;
+    render.showBpmHud = false;
+    render.showCpsHud = false;
+    render.showMeterHud = false;
+    render.showModsHud = false;
+    render.centerDisplayMode = miacode::preview_gameplay::CenterDisplayMode::Off;
+    auto& options = state.muriRenderOptions;
+    if (options.renderMode != RenderMode::EraseByArea) options.renderMode = RenderMode::Native;
+    options.showSlideTracks = true;
+    options.showJudgeMarkers = false;
+    options.showTouchTrail = false;
+    options.showChartReviewSlideJudgeOverlay = false;
+    options.showChartReviewTapJudgeOverlay = false;
+    options.showChartReviewBreakJudgeOverlay = false;
+    options.showChartReviewTouchJudgeOverlay = false;
+    state.selectedNoteLocations.clear();
+    state.touchPadAuthoringEnabled = false;
+    state.hoveredTouchPad.clear();
+    state.pressedTouchPad.clear();
+}
 
 inline double previewFrameStateHudPlayheadSeconds(const PreviewFrameState& state)
 {

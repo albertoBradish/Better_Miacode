@@ -13,13 +13,13 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "app/services/HudFontPreferences.h"
 #include "common/DebugOptions.h"
 #include "core/video/PreviewInteractionConfig.h"
 #include "preview/runtime/PreviewRuntime.h"
+#include "timeline/quick/TimelineQuickStateBridge.h"
 #include "preview/stage_media/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
@@ -90,12 +90,14 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
     qtPreviewTimer_->setSingleShot(true);
     qtPreviewTimer_->setTimerType(Qt::PreciseTimer);
     connect(qtPreviewTimer_, &QChronoTimer::timeout, this, [this]() {
-        // Doc section 4.1/4.3: qtPreviewTimer_ is a watchdog for both modes — it no longer
-        // carries the normal visual cadence. It only fires if the framePresented pipeline
-        // has stalled long enough to warrant a kick.
         if (!playing_) {
             return;
         }
+        if (state_.lowPerformanceMode_) {
+            playback_->onLowPerformancePreviewFrameDeadline();
+            return;
+        }
+        // Normal playback uses this timer as a watchdog for the present pipeline.
         const qint64 nowMs = qtPreviewWatchdogElapsed_.elapsed();
         const int stallTimeoutMs =
             previewFrameSwapWatchdogTimeoutMs(previewCanvasTargetFrameIntervalNs());
@@ -247,6 +249,10 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
     logStartupStage("timers_ready");
 
     loadPortableState();
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setShowHandOrderAnnotations(
+            previewShowHandOrderAnnotations_);
+    }
     logStartupStage("portable_state_loaded");
     // beta4: the preview debug HUD ("显示预览调试信息") is NO LONGER force-enabled in
     // --debug / diagnostic builds. It used to default ON whenever runtime debug output was
@@ -266,22 +272,26 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
         scene_->setBackgroundBrightnessInner(previewBackgroundBrightnessInner_);
         scene_->setLayoutSquareScale(previewLayoutSquareScale_);
         scene_->setFireworkBrightness(previewFireworkBrightness_);
+        scene_->setFireworkStyle(previewFireworkStyle_);
         scene_->setSmoothBrightness(previewSmoothBrightness_);
         scene_->setBackgroundScaleMode(previewBackgroundScaleMode_);
         scene_->setTapFlowSpeed(previewTapFlowSpeed_);
         scene_->setTouchFlowSpeed(previewTouchFlowSpeed_);
+        scene_->setStarFadeTiming(previewStarFadeTiming_);
         scene_->setSlideEarlierSecondAndTextOnTop(previewSlideEarlierSecondAndTextOnTop_);
         scene_->setTapJudgeTextDistance(previewTapJudgeTextDistance_);
         scene_->setJudgeEffectStyle(previewJudgeEffectStyle_);
         scene_->setShowDebugInfo(previewShowDebugInfo_);
         scene_->setHudFontSettings(miacode::hud_preferences::load());
         scene_->setShowTimestamp(previewShowTimestamp_);
+        scene_->setShowHandOrderAnnotations(previewShowHandOrderAnnotations_);
         scene_->setSlideJudgementTiming(state_.previewShowSlideJudgementTiming_);
         scene_->setSlideTimingFromLaunchBeat(state_.previewSlideTimingFromLaunchBeat_);
         scene_->setSlideTimingEarlyPerfectFromHead(state_.previewSlideTimingEarlyPerfectFromHead_);
         scene_->setVisualAidSettings(state_.previewShowMeasureLines_, state_.previewShowJudgementSkeleton_,
             state_.previewMeasureLineMode_, state_.previewMeasureLineCustomBeats_);
-        scene_->setShowObjectStatsHud(previewShowObjectStatsHud_);
+        scene_->setSuppressObjectStatsHud(true);
+        scene_->setShowObjectStatsHud(false);
         // Chart info HUD only ever activates inside the export-preview
         // dialog (gated by setSuppressDebugInfo + setChartInfo there); the
         // editor's main preview keeps it off.

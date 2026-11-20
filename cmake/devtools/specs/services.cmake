@@ -11,17 +11,6 @@ target_compile_definitions(cli_integration_spec PRIVATE
     "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\""
 )
 
-miacode_add_dev_tool(runtime_isolation_spec TEST
-    SOURCES
-        src/tools/services/RuntimeIsolationSpec.cpp
-        src/app/services/PreferenceDocument.cpp
-    LIBS miacode_base Qt6::Core
-    INCLUDES src
-)
-target_compile_definitions(runtime_isolation_spec PRIVATE
-    "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\""
-)
-
 miacode_add_dev_tool(net_api_contract_spec TEST
     SOURCES
         src/tools/services/NetApiContractSpec.cpp
@@ -44,6 +33,12 @@ miacode_add_dev_tool(job_registry_spec TEST
         src/app/services/jobs/JobRegistry.cpp
         src/app/services/jobs/JobRegistry.h
     LIBS Qt6::Core
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_runtime_paths_spec TEST
+    SOURCES src/tools/services/HandOrderRuntimePathsSpec.cpp
+    LIBS miacode_base Qt6::Core
     INCLUDES src
 )
 
@@ -87,6 +82,7 @@ miacode_add_dev_tool(chart_workspace_file_service_spec TEST
         src/tools/services/ChartWorkspaceFileServiceSpec.cpp
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/ChartWorkspaceFileService.h
     LIBS miacode_chart Qt6::Core Qt6::Gui
@@ -145,6 +141,7 @@ miacode_add_dev_tool(editor_page_router_spec TEST
         src/app/services/ChartWorkspace.h
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspaceFileService.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/EditorPageRouter.h
         src/app/services/EditorSyncController.h
@@ -173,6 +170,7 @@ miacode_add_dev_tool(export_engine_spec TEST
         src/app/services/ChartWorkspace.h
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspaceFileService.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/EditorSyncController.h
         src/app/services/EditorSyncController.cpp
@@ -210,6 +208,7 @@ miacode_add_dev_tool(application_services_spec TEST
         src/app/services/ChartWorkspace.h
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspaceFileService.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/EditorSyncController.h
         src/app/services/EditorSyncController.cpp
@@ -373,8 +372,121 @@ miacode_add_dev_tool(hud_font_preference_migration_spec TEST
 )
 target_compile_definitions(hud_font_preference_migration_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+miacode_add_dev_tool(hand_order_analysis_service_spec TEST
+    SOURCES
+        src/app/services/AnalysisService.cpp
+        src/app/services/AnalysisService.h
+        src/app/services/JobProgressService.cpp
+        src/app/services/JobProgressService.h
+        src/tools/services/HandOrderAnalysisServiceSpec.cpp
+        src/app/services/HandOrderExperimentService.cpp src/app/services/HandOrderExperimentService.h
+        src/app/services/HandOrderAnalysisService.cpp
+        src/app/services/HandOrderAnalysisService.h
+        src/app/services/ChartWorkspace.cpp
+        src/app/services/ChartWorkspace.h
+    LIBS miacode_analysis miacode_editor_core Qt6::Core Qt6::Test
+    INCLUDES src
+)
+qt_add_resources(hand_order_analysis_service_spec "hand_order_analysis_service_spec_i18n"
+    PREFIX "/i18n"
+    BASE "${CMAKE_CURRENT_BINARY_DIR}"
+    FILES ${MIACODE_TRANSLATION_QM_FILES})
+add_dependencies(hand_order_analysis_service_spec miacode_lrelease)
+
+miacode_add_dev_tool(hand_order_background_spec TEST
+    SOURCES src/tools/services/HandOrderBackgroundSpec.cpp
+        src/app/services/HandOrderExperimentService.cpp src/app/services/HandOrderExperimentService.h
+        src/app/services/HandOrderAnalysisService.cpp src/app/services/HandOrderAnalysisService.h
+        src/app/services/JobProgressService.cpp src/app/services/JobProgressService.h
+        src/app/services/ChartWorkspace.cpp src/app/services/ChartWorkspace.h
+    LIBS miacode_analysis miacode_editor_core Qt6::Core Qt6::Test
+    INCLUDES src
+)
+miacode_add_dev_tool(task_execution_control_spec TEST
+    SOURCES src/tools/services/TaskExecutionControlSpec.cpp
+    LIBS Qt6::Core
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_pipeline_service_spec TEST
+    SOURCES src/tools/services/HandOrderPipelineServiceSpec.cpp
+        src/app/services/HandOrderExperimentService.cpp src/app/services/HandOrderExperimentService.h
+        src/app/services/HandOrderAnalysisService.cpp src/app/services/HandOrderAnalysisService.h
+        src/app/services/JobProgressService.cpp src/app/services/JobProgressService.h
+        src/app/services/ChartWorkspace.cpp src/app/services/ChartWorkspace.h
+    LIBS miacode_analysis miacode_editor_core Qt6::Core Qt6::Test
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_pattern_choices_service_spec TEST
+    SOURCES src/tools/services/HandOrderPatternChoicesServiceSpec.cpp
+        src/app/services/HandOrderExperimentService.cpp src/app/services/HandOrderExperimentService.h
+        src/app/services/HandOrderAnalysisService.cpp src/app/services/HandOrderAnalysisService.h
+        src/app/services/JobProgressService.cpp src/app/services/JobProgressService.h
+        src/app/services/ChartWorkspace.cpp src/app/services/ChartWorkspace.h
+    LIBS miacode_analysis miacode_editor_core Qt6::Core Qt6::Test
+    INCLUDES src
+)
 miacode_add_dev_tool(cli_request_spec TEST
     SOURCES src/tools/services/CliRequestSpec.cpp src/app/CliRequest.cpp
     LIBS Qt6::Core
     INCLUDES src
 )
+
+miacode_add_dev_tool(runtime_isolation_spec TEST
+    SOURCES src/tools/services/RuntimeIsolationSpec.cpp src/app/services/PreferenceDocument.cpp
+    LIBS miacode_base Qt6::Core
+    INCLUDES src
+)
+target_compile_definitions(runtime_isolation_spec PRIVATE
+    "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\"")
+miacode_add_dev_tool(workflow_safety_spec TEST
+    SOURCES
+        src/tools/services/WorkflowSafetySpec.cpp
+        src/app/services/AutomaticChartPreparation.cpp
+        src/app/services/ChartFileSafety.cpp
+        src/app/services/ChartWorkspace.cpp
+        src/app/services/ChartWorkspace.h
+        src/app/services/ChartWorkspaceFileService.cpp
+        src/app/services/ChartWorkspaceFileService.h
+        src/app/services/PreferenceDocument.cpp
+    LIBS miacode_chart Qt6::Core Qt6::Gui
+    INCLUDES src)
+
+miacode_add_dev_tool(chart_structure_spec TEST
+    SOURCES src/tools/preview/ChartStructureSpec.cpp
+    LIBS miacode_analysis Qt6::Core
+    INCLUDES src)
+
+miacode_add_dev_tool(hand_order_pressure_adapter_spec TEST
+    SOURCES src/tools/analysis/HandOrderPressureAdapterSpec.cpp
+    LIBS miacode_analysis Qt6::Core
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_experiment_spec TEST
+    SOURCES
+        src/tools/analysis/HandOrderExperimentSpec.cpp
+    LIBS miacode_analysis Qt6::Core
+    INCLUDES src)
+
+miacode_add_dev_tool(hand_order_experiment_service_spec TEST
+    SOURCES
+        src/tools/services/HandOrderExperimentServiceSpec.cpp
+        src/app/services/HandOrderExperimentService.cpp
+        src/app/services/HandOrderExperimentService.h
+        src/app/services/ChartWorkspace.cpp
+        src/app/services/ChartWorkspace.h
+        src/app/services/JobProgressService.cpp
+        src/app/services/JobProgressService.h
+    LIBS miacode_analysis Qt6::Core Qt6::Test
+    INCLUDES src)
+
+miacode_add_dev_tool(hand_order_feature_policy_spec TEST
+    SOURCES src/tools/services/HandOrderFeaturePolicySpec.cpp src/app/services/PreferenceDocument.cpp
+    LIBS miacode_export Qt6::Core
+    INCLUDES src)
+target_compile_definitions(hand_order_feature_policy_spec PRIVATE
+    MIACODE_HAND_ORDER_FIXTURE_VERIFIER=\"d86b7deb3cd60139633631d30eb8ff1188042ad0c9f6cf74d770815d8c552519\"
+    "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\"")

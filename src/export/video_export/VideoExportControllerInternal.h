@@ -91,74 +91,20 @@ using miacode::video_export::raw_pipe::chooseRawVideoPipePlan;
 // ---- helper structs / enums (verbatim) ----
 struct VideoEncoderConfig {
     QString codec;
-    QStringList extraArgs;
     bool isHardware = false;
-    int explicitBframes = -1;
     bool needsVaapiHwUpload = false;
     QString vaapiDevicePath;
+    // Empty when frames reach the encoder through the VAAPI upload filter.
+    QString pixelFormat;
+    VideoRateControl rateControl = VideoRateControl::ConstantQuality;
+    // Encoder options placed after `-c:v`: fixed tuning plus the rate control.
+    QStringList codecArgs;
 };
 
 struct SystemMemoryInfo {
     bool valid = false;
     quint64 totalPhysicalBytes = 0;
     quint64 availablePhysicalBytes = 0;
-};
-
-struct VideoBitratePlan {
-    qint64 bitrateKbps = 0;
-    qint64 maxRateKbps = 0;
-    qint64 bufSizeKbps = 0;
-
-    QStringList toArgs() const
-    {
-        return QStringList{
-            QStringLiteral("-b:v"), QString::number(bitrateKbps) + QLatin1String("k"),
-            QStringLiteral("-maxrate"), QString::number(maxRateKbps) + QLatin1String("k"),
-            QStringLiteral("-bufsize"), QString::number(bufSizeKbps) + QLatin1String("k")
-        };
-    }
-};
-
-struct X264TuningPlan {
-    // beta25 — defaults retuned for compactness. The previous
-    // {preset=fast, crf=21, bf=0} chased fast wallclock encode at the
-    // cost of ~25-35% larger files than the x264 stock defaults at the
-    // same visual quality. An interim {crf=23, bf=3} pass leaned toward
-    // stock x264 behaviour for size, but bf=3 reorders chroma references
-    // and produced visible dark "ringing" halos around high-contrast
-    // playfield overlays on yuv420p exports (see izanai_MAS export logs
-    // 2026-05-12). Current defaults {preset=fast, crf=22, bf=0,
-    // tune=animation} pull back from bf=3 to eliminate that artifact
-    // while keeping crf one notch tighter than the bf=3 era so file
-    // size doesn't balloon: dropping bf=3 typically costs ~10% size, and
-    // crf=22 vs crf=23 recovers most of that. The animation tune
-    // adjusts deblocking + aq-strength to favour the sharp-edge graphic
-    // content that dominates the chart layer. The autotuner below adds
-    // another one-step preset bump (faster→fast, fast→medium) so the
-    // assembly defaults emit roughly stock x264 behaviour.
-    QString preset = QStringLiteral("fast");
-    int crf = 22;
-    int bframes = 0;
-    QString tune;
-
-    QStringList toArgs() const
-    {
-        QStringList args{
-            QStringLiteral("-preset"), preset,
-            QStringLiteral("-crf"), QString::number(crf),
-            QStringLiteral("-bf"), QString::number(bframes)
-        };
-        if (!tune.isEmpty()) {
-            args << QStringLiteral("-tune") << tune;
-        }
-        return args;
-    }
-};
-
-enum class EncoderAutoMode {
-    Balanced,
-    Compatibility,
-    Hardware,
 };
 
 struct ExportRenderBackendOptions {
@@ -185,15 +131,10 @@ struct ExportDiagOptions {
 };
 
 struct ExportRuntimeConfig {
-    EncoderAutoMode encoderMode = EncoderAutoMode::Balanced;
     QString forcedEncoder;
     bool skipEncoderRuntimeProbe = false;
     int encoderThreadsOverride = -1;
     int filterThreadsOverride = -1;
-    QString x264PresetOverride;
-    int x264CrfOverride = -1;
-    int x264BframesOverride = -1;
-    std::optional<bool> premultipliedPipeOverride;
     ExportRenderBackendOptions renderBackend;
     ExportDiagOptions diag;
 };
@@ -337,6 +278,7 @@ struct ReadyFramePayload {
 // this frame was submitted with rather than the state of whichever frame the
 // loop has reached by then.
 struct ExportFrameRenderParams {
+    double outputSecond = 0.0;
     int frameIndex = -1;
     double exportSecond = 0.0;
     bool showTimestamp = false;
@@ -375,7 +317,7 @@ constexpr double kDiagJudgeEffectDurationSeconds = miacode::preview_gameplay::kJ
 constexpr double kDiagJudgeEffectTouchDurationSeconds = miacode::preview_gameplay::kJudgeEffectTouchDurationSeconds;
 constexpr double kDiagJudgeEffectFireworkTouchTriggerDelaySeconds =
     miacode::preview_gameplay::kJudgeEffectFireworkTouchTriggerDelaySeconds;
-constexpr double kDiagJudgeEffectFireworkDurationSeconds = miacode::preview_gameplay::kJudgeEffectFireworkDurationSeconds;
+constexpr double kDiagJudgeEffectFireworkDurationSeconds = miacode::preview_gameplay::kFireworkMaxDurationSeconds;
 constexpr double kDiagLogicalCanvasSize = miacode::preview_gameplay::kLogicalCanvasSize;
 constexpr double kDiagLogicalCanvasCenter = kDiagLogicalCanvasSize / 2.0;
 
@@ -392,44 +334,12 @@ struct DiagTapApproachSample {
 qint64 bytesToMiB(quint64 bytes);
 SystemMemoryInfo querySystemMemoryInfo();
 QString memoryInfoToLog(const SystemMemoryInfo& info);
-QString fasterX264Preset(const QString& preset);
-QString slowerX264Preset(const QString& preset);
-QString videoExportPresetToken(VideoExportPreset preset);
-QString encoderAutoModeToken(EncoderAutoMode mode);
-EncoderAutoMode resolveEncoderAutoMode();
 ExportRuntimeConfig loadExportRuntimeConfig();
-bool shouldPreferHardwareEncoderInAutoMode(
-    EncoderAutoMode mode,
-    VideoExportPreset preset,
-    int outputWidth,
-    int outputHeight,
-    int fps,
-    int idealThreadCount,
-    const SystemMemoryInfo& memoryInfo,
-    QString* reason
-);
-VideoBitratePlan chooseVideoBitratePlan(
-    VideoExportPreset preset,
-    VideoExportSizePreset sizePreset,
-    int outputWidth,
-    int outputHeight,
-    int fps
-);
-X264TuningPlan chooseX264TuningPlan(
-    VideoExportPreset preset,
-    VideoExportSizePreset sizePreset,
-    const ExportRuntimeConfig& exportConfig,
-    const SystemMemoryInfo& memoryInfo,
-    int outputWidth,
-    int outputHeight,
-    int fps,
-    int idealThreadCount
-);
 bool fileIsExecutable(const QString& path);
 QString resolveFfmpegExecutable();
 QString resolveFfprobeExecutable(const QString& ffmpegPath);
 bool hasEncoderToken(const QString& encodersOutput, const QString& encoderName);
-bool probeEncoderRuntimeAvailability(
+bool probeHardwareEncoderRuntime(
     const QString& ffmpegPath,
     const VideoEncoderConfig& candidate,
     int outputWidth,
@@ -437,17 +347,25 @@ bool probeEncoderRuntimeAvailability(
     int fps,
     QString* detail
 );
+// Picks the first available encoder that can carry the plan, probing hardware
+// candidates with their final options. Quality plans fall back to the plan's
+// reference bitrate on an encoder whose constant-quality mode fails.
 VideoEncoderConfig chooseVideoEncoder(
     const QString& ffmpegPath,
+    const VideoRatePlan& plan,
     int outputWidth,
     int outputHeight,
     int fps,
-    VideoExportPreset preset,
-    VideoExportSizePreset sizePreset,
-    const SystemMemoryInfo& memoryInfo,
     const ExportRuntimeConfig& exportConfig,
     QString* probeLog
 );
+
+// VideoExportEncoderProfiles.cpp
+// Encoder options for one rate control, or nullopt when this encoder cannot honour it.
+std::optional<VideoEncoderConfig> configureVideoEncoder(
+    const QString& codec,
+    VideoRateControl control,
+    const VideoRatePlan& plan);
 
 // VideoExportFrameRender.cpp
 void appendRenderBackendFallbackDetail(QString* detail, const QString& entry);
@@ -489,34 +407,8 @@ bool drainPendingExportFrame(
     ReadyFramePayload* readyFrame,
     QString* errorMessage
 );
-QImage buildCircularDimMaskImage(
-    int frameWidth,
-    int frameHeight,
-    double outerDimAlpha,
-    double innerDimAlpha,
-    double layoutRingDiameterRatio,
-    double layoutSquareScale,
-    bool smoothBrightness
-);
-QImage buildCircularMediaMaskImage(
-    int frameWidth,
-    int frameHeight,
-    double layoutSquareScale
-);
-QRectF staticMediaTargetRect(
-    const QSize& mediaSize,
-    const QSize& outputSize,
-    PreviewBackgroundScaleMode scaleMode);
-bool stageStaticBackgroundImageForExport(
-    const QString& sourcePath,
-    const QSize& outputSize,
-    PreviewBackgroundScaleMode scaleMode,
-    double layoutSquareScale,
-    const QString& stagedPath,
-    QString* detail);
 bool preparePackedRgbaFrame(
     const QImage& frame,
-    bool preservePremultiplied,
     QImage* convertedFrame,
     QByteArray* packedScratch,
     const char** data,

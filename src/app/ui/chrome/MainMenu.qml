@@ -23,8 +23,13 @@ Item {
     property bool documentAvailable: true
     property bool editorCommandsEnabled: true
     property bool chartCommandsEnabled: true
+    property bool playbackCommandsEnabled: true
     property bool toolCommandsEnabled: true
     property bool nativeMenuMode: false
+    property bool handOrderKeyboardEnabled: false
+    readonly property bool leftHandOwnsAltW: root.documentSession.handOrderFeaturesEnabled === true && root.commands.canTransform && !root.shortcuts.captureActive
+        && (root.handOrderKeyboardEnabled || root.Window.window?.sourceEditorFocused === true)
+        && root.shortcuts.revision >= 0 && root.shortcuts.sequence("hand_order.set_left") === "Alt+W"
     // Re-read each time the menu opens rather than kept live: the list only
     // changes when a document is opened, and a menu nobody is looking at has no
     // reason to hold a copy.
@@ -35,8 +40,8 @@ Item {
     readonly property int overflowButtonWidth: 30
     readonly property real fullWidth: fileButton.implicitWidth + editButton.implicitWidth
         + adjustButton.implicitWidth + toolsButton.implicitWidth + previewButton.implicitWidth
-        + majnetButton.implicitWidth + extrasButton.implicitWidth
-    property int visibleCount: 7
+        + majnetButton.implicitWidth + extrasButton.implicitWidth + workspaceButton.implicitWidth
+    property int visibleCount: 8
     property bool layoutReady: false
     property var _activeMenu: null
 
@@ -54,15 +59,42 @@ Item {
     }
 
     function topButtons() {
-        return [fileButton, editButton, adjustButton, toolsButton, previewButton, majnetButton, extrasButton]
+        return [fileButton, editButton, adjustButton, toolsButton, previewButton, workspaceButton, majnetButton, extrasButton]
     }
 
     function topMenus() {
-        return [fileMenu, editMenu, adjustMenu, toolsMenu, previewMenu, majnetMenu, extrasMenu]
+        return [fileMenu, editMenu, adjustMenu, toolsMenu, previewMenu, workspaceMenu, majnetMenu, extrasMenu]
     }
 
     function nativeMenus() {
         return root.topMenus()
+    }
+
+    function toggleWorkspaceMenu(anchor) {
+        if (anchor) {
+            if (workspaceMenu.visible) {
+                workspaceMenu.close()
+            } else {
+                root.closeActiveMenu()
+                workspaceMenu.dockedParent = workspaceMenu.parent
+                workspaceMenu.floatingPopup = true
+                workspaceMenu.closePolicy = Popup.CloseOnEscape | Popup.CloseOnPressOutside
+                workspaceMenu.popup(anchor, 12, 12)
+            }
+            return
+        }
+        if (root.nativeMenuMode) {
+            if (workspaceMenu.visible) workspaceMenu.close()
+            else workspaceMenu.open()
+            return
+        }
+        root.toggleAnchoredMenu(workspaceMenu, workspaceButton.visible ? workspaceButton : moreButton)
+    }
+
+    Shortcut {
+        sequence: "Alt+W"
+        enabled: root.visible && root.commandsEnabled && !root.nativeMenuMode && !root.leftHandOwnsAltW
+        onActivated: root.toggleWorkspaceMenu()
     }
 
     function menuTitle(text) {
@@ -254,15 +286,20 @@ Item {
             menuIndex: 4
         }
         TopLevelItem {
+            id: workspaceButton
+            menu: workspaceMenu
+            menuIndex: 5
+        }
+        TopLevelItem {
             id: majnetButton
             menu: majnetMenu
-            menuIndex: 5
+            menuIndex: 6
             enabled: root.commandsEnabled
         }
         TopLevelItem {
             id: extrasButton
             menu: extrasMenu
-            menuIndex: 6
+            menuIndex: 7
         }
         IconButton {
             id: moreButton
@@ -270,7 +307,7 @@ Item {
             width: root.overflowButtonWidth
             y: (root.height - height) / 2
             height: Math.min(Theme.controlMinHeight, root.height)
-            visible: root.visibleCount < 7
+            visible: root.visibleCount < root.topButtons().length
             iconSource: Qt.resolvedUrl("icons/more.svg")
             filledIconSource: Qt.resolvedUrl("icons/more-fill.svg")
             iconWidth: 16
@@ -292,6 +329,7 @@ Item {
         height: 0
 
         AppMenu {
+            retainBackdrop: true
             id: fileMenu
             title: root.menuTitle(qsTrId("menu.file"))
             // 新建 / 打开 keep v1's Ctrl+Shift+N / Ctrl+Shift+O rather than the
@@ -319,6 +357,7 @@ Item {
                 onTriggered: root.commands.openRequested()
             }
             AppMenu {
+                retainBackdrop: true
                 id: recentMenu
                 title: qsTrId("cover.open_recent")
                 enabled: root.commandsEnabled
@@ -349,6 +388,7 @@ Item {
                 }
             }
             AppMenu {
+                retainBackdrop: true
                 id: restoreBackupMenu
                 title: qsTrId("qml.restore_backup")
                 enabled: root.commandsEnabled
@@ -408,9 +448,15 @@ Item {
                 enabled: root.commandsEnabled && root.documentAvailable
                 onTriggered: root.commands.saveAsRequested()
             }
+            AppMenuAction {
+                text: qsTrId("action.export_plain_simai")
+                enabled: root.documentSession.handOrderFeaturesEnabled === true && root.commandsEnabled && root.documentAvailable
+                onTriggered: root.commands.exportPlainSimaiRequested()
+            }
         }
 
         AppMenu {
+            retainBackdrop: true
             id: editMenu
             title: root.menuTitle(qsTrId("metadata.edit_e"))
             AppMenuAction {
@@ -454,7 +500,7 @@ Item {
                 text: qsTrId("metadata.find")
                 shortcut: StandardKey.Find
                 shortcutText: root.shortcuts.standardDisplayText(StandardKey.Find)
-                enabled: root.commandsEnabled && root.editorCommandsEnabled
+                enabled: root.commandsEnabled && root.commands.canFind
                 onTriggered: root.commands.findRequested()
             }
             AppMenuAction {
@@ -466,14 +512,10 @@ Item {
             }
             AppMenuAction {
                 text: qsTrId("qml.select_current_line")
-                enabled: root.commandsEnabled && root.editorCommandsEnabled
+                enabled: root.commandsEnabled && root.commands.canFind
                 onTriggered: root.commands.selectCurrentLineRequested()
             }
-        }
-
-        AppMenu {
-            id: toolsMenu
-            title: root.menuTitle(qsTrId("menu.tools"))
+            AppMenuSeparator {}
             AppMenuAction {
                 text: qsTrId("tools.dx_loss.title")
                 enabled: root.commandsEnabled && root.documentAvailable
@@ -484,12 +526,17 @@ Item {
                 enabled: root.commandsEnabled && root.documentAvailable
                 onTriggered: root.commands.bpmExportRequested()
             }
-
             AppMenuAction {
                 text: qsTrId("dialog.unsaved_field_changes.field.metadata")
                 enabled: root.commandsEnabled && root.toolCommandsEnabled
                 onTriggered: root.commands.metadataRequested()
             }
+        }
+
+        AppMenu {
+            retainBackdrop: true
+            id: toolsMenu
+            title: root.menuTitle(qsTrId("menu.tools"))
             AppMenuAction {
                 text: qsTrId("qml.latency_calibration")
                 enabled: root.commandsEnabled && root.toolCommandsEnabled
@@ -518,6 +565,7 @@ Item {
         }
 
         AppMenu {
+            retainBackdrop: true
             id: adjustMenu
             objectName: "adjustMenu"
             title: root.menuTitle(qsTrId("menu.transform"))
@@ -595,6 +643,30 @@ Item {
             }
 
             AppMenu {
+                title: qsTrId("hand_order.title")
+                enabled: root.documentSession.handOrderFeaturesEnabled === true && root.commandsEnabled && root.chartCommandsEnabled
+                    && !root.shortcuts.captureActive
+                Repeater {
+                    model: root.documentSession.handOrderFeaturesEnabled ? root.documentSession.handOrderMenu() : []
+                    delegate: AppMenuItem {
+                        id: handOrderItem
+                        required property var modelData
+                        action: AppMenuAction {
+                            text: qsTrId(handOrderItem.modelData.labelKey)
+                            shortcut: root.nativeMenuMode && root.handOrderKeyboardEnabled && root.shortcuts.revision >= 0
+                                ? root.shortcuts.sequence(handOrderItem.modelData.id) : ""
+                            shortcutText: root.shortcuts.displayText(handOrderItem.modelData.id)
+                            enabled: root.commandsEnabled && root.chartCommandsEnabled
+                                && (handOrderItem.modelData.requiresSelection === false || root.commands.canTransform)
+                                && !root.shortcuts.captureActive
+                            onTriggered: root.commands.chartTransformRequested(handOrderItem.modelData.id)
+                        }
+                    }
+                }
+            }
+
+            AppMenu {
+                retainBackdrop: true
                 id: adjustMoreMenu
                 objectName: "adjustMoreMenu"
                 enabled: root.commandsEnabled && root.chartCommandsEnabled
@@ -624,6 +696,7 @@ Item {
         }
 
         AppMenu {
+            retainBackdrop: true
             id: previewMenu
             title: root.menuTitle(qsTrId("metadata.preview_p"))
             // The native menu owns these bindings on macOS so Cocoa can render
@@ -634,7 +707,7 @@ Item {
                     ? root.shortcuts.sequence("preview.speed_down", "Ctrl+O")
                     : ""
                 shortcutText: root.shortcuts.displayText("preview.speed_down", "Ctrl+O")
-                enabled: root.commandsEnabled && root.chartCommandsEnabled
+                enabled: root.commandsEnabled && root.playbackCommandsEnabled
                 onTriggered: root.commands.previewRateStepRequested(-1)
             }
             AppMenuAction {
@@ -643,7 +716,7 @@ Item {
                     ? root.shortcuts.sequence("preview.speed_up", "Ctrl+P")
                     : ""
                 shortcutText: root.shortcuts.displayText("preview.speed_up", "Ctrl+P")
-                enabled: root.commandsEnabled && root.chartCommandsEnabled
+                enabled: root.commandsEnabled && root.playbackCommandsEnabled
                 onTriggered: root.commands.previewRateStepRequested(1)
             }
             AppMenuSeparator {}
@@ -667,6 +740,200 @@ Item {
         }
 
         AppMenu {
+            id: workspaceMenu
+            property Item dockedParent: null
+            property bool floatingPopup: false
+            retainBackdrop: true
+            onClosed: {
+                if (floatingPopup) {
+                    parent = dockedParent
+                    dockedParent = null
+                    floatingPopup = false
+                }
+            }
+            title: root.menuTitle(qsTrId("workspace.menu"))
+            readonly property var workspace: root.commands.workspace
+
+            AppMenuAction {
+                text: qsTrId("workspace.manage")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: Qt.callLater(workspaceMenu.workspace.showManager)
+            }
+
+            AppMenuAction {
+                text: qsTrId("workspace.classic")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("default")
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.editing")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("editing")
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.preview")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("preview")
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.analysis")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("analysis")
+            }
+            AppMenuSeparator {}
+            AppMenu {
+                id: shownPanels
+                title: qsTrId("workspace.panels")
+
+                Instantiator {
+                    model: workspaceMenu.workspace?.panelIds ?? []
+                    delegate: AppMenuItem {
+                        required property string modelData
+                        text: workspaceMenu.workspace?.panelTitle(modelData) ?? ""
+                        enabled: !!workspaceMenu.workspace
+                        checkable: true
+                        checked: workspaceMenu.workspace?.panelShown(modelData) ?? false
+                        onTriggered: workspaceMenu.workspace.setPanelShown(modelData, checked)
+                    }
+                    onObjectAdded: (index, object) => shownPanels.insertItem(index, object)
+                    onObjectRemoved: (index, object) => shownPanels.removeItem(object)
+                }
+            }
+
+            AppMenu {
+                title: qsTrId("dialog.preferences.interface_layout")
+
+                AppMenuAction {
+                    text: qsTrId("dialog.preferences.layout.editor_preview")
+                    enabled: !!workspaceMenu.workspace
+                    checkable: true
+                    checked: !(workspaceMenu.workspace?.preferencesModel?.previewOnLeft ?? false)
+                    onTriggered: workspaceMenu.workspace.applyPreviewSide(false)
+                }
+                AppMenuAction {
+                    text: qsTrId("dialog.preferences.layout.preview_editor")
+                    enabled: !!workspaceMenu.workspace
+                    checkable: true
+                    checked: workspaceMenu.workspace?.preferencesModel?.previewOnLeft ?? false
+                    onTriggered: workspaceMenu.workspace.applyPreviewSide(true)
+                }
+            }
+
+            AppMenu {
+                title: qsTrId("dialog.preferences.sidebar_mode")
+
+                AppMenuAction {
+                    text: qsTrId("dialog.preferences.sidebar_mode.standard")
+                    enabled: !!workspaceMenu.workspace
+                    checkable: true
+                    checked: !(workspaceMenu.workspace?.preferences.efficientSidebarEnabled ?? false)
+                    onTriggered: workspaceMenu.workspace.preferences.efficientSidebarEnabled = false
+                }
+                AppMenuAction {
+                    text: qsTrId("dialog.preferences.sidebar_mode.efficient")
+                    enabled: !!workspaceMenu.workspace
+                    checkable: true
+                    checked: workspaceMenu.workspace?.preferences.efficientSidebarEnabled ?? false
+                    onTriggered: workspaceMenu.workspace.preferences.efficientSidebarEnabled = true
+                }
+            }
+
+            AppMenu {
+                id: timelineLayoutMenu
+                title: qsTrId("dialog.preferences.group.timeline")
+
+                Instantiator {
+                    model: [
+                        { mode: "horizontal", label: qsTrId("timeline.layout.horizontal") },
+                        { mode: "vertical_before_editor", label: qsTrId("timeline.layout.before_editor") },
+                        { mode: "vertical_after_editor", label: qsTrId("timeline.layout.after_editor") }
+                    ]
+                    delegate: AppMenuItem {
+                        required property var modelData
+                        text: modelData.label
+                        enabled: !!workspaceMenu.workspace
+                        checkable: true
+                        checked: workspaceMenu.workspace?.preferences.timelineLayoutMode === modelData.mode
+                        onTriggered: workspaceMenu.workspace.applyTimelinePlacement(modelData.mode)
+                    }
+                    onObjectAdded: (index, object) => timelineLayoutMenu.insertItem(index, object)
+                    onObjectRemoved: (index, object) => timelineLayoutMenu.removeItem(object)
+                }
+
+                AppMenu {
+                    title: qsTrId("timeline.layout.direction")
+                    AppMenuAction {
+                        text: qsTrId("timeline.layout.falling")
+                        enabled: !!workspaceMenu.workspace
+                        checkable: true
+                        checked: workspaceMenu.workspace?.preferences.timelineVerticalDirection === "falling"
+                        onTriggered: workspaceMenu.workspace.preferences.timelineVerticalDirection = "falling"
+                    }
+                    AppMenuAction {
+                        text: qsTrId("timeline.layout.rising")
+                        enabled: !!workspaceMenu.workspace
+                        checkable: true
+                        checked: workspaceMenu.workspace?.preferences.timelineVerticalDirection === "rising"
+                        onTriggered: workspaceMenu.workspace.preferences.timelineVerticalDirection = "rising"
+                    }
+                }
+
+                AppMenu {
+                    id: laneOrderMenu
+                    title: qsTrId("timeline.layout.lane_order")
+
+                    Instantiator {
+                        model: [
+                            { order: "natural", label: "1-2-3-4-5-6-7-8" },
+                            { order: "rotated", label: "5-6-7-8-1-2-3-4" },
+                            { order: "reversed", label: "8-7-6-5-4-3-2-1" },
+                            { order: "rotated_reversed", label: "4-3-2-1-8-7-6-5" }
+                        ]
+                        delegate: AppMenuItem {
+                            required property var modelData
+                            text: modelData.label
+                            enabled: !!workspaceMenu.workspace
+                            checkable: true
+                            checked: workspaceMenu.workspace?.preferences.timelineLaneOrder === modelData.order
+                            onTriggered: workspaceMenu.workspace.preferences.timelineLaneOrder = modelData.order
+                        }
+                        onObjectAdded: (index, object) => laneOrderMenu.insertItem(index, object)
+                        onObjectRemoved: (index, object) => laneOrderMenu.removeItem(object)
+                    }
+                }
+            }
+
+            AppMenuSeparator {}
+            AppMenuAction {
+                text: workspaceMenu.workspace?.targetMaximized ? qsTrId("workspace.restore_panel") : qsTrId("workspace.maximize_panel")
+                shortcutText: "`"
+                enabled: (workspaceMenu.workspace?.maximizationTarget.length ?? 0) > 0
+                onTriggered: workspaceMenu.workspace.toggleCurrentPanelMaximization()
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.save")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: Qt.callLater(workspaceMenu.workspace.showSaveDialog)
+            }
+            AppMenuAction {
+                text: qsTrId("workspace.reset")
+                enabled: !!workspaceMenu.workspace
+                onTriggered: workspaceMenu.workspace.applyBuiltin("default")
+            }
+            Instantiator {
+                model: workspaceMenu.workspace?.savedNames ?? []
+                delegate: AppMenuItem {
+                    required property string modelData
+                    text: modelData
+                    onTriggered: workspaceMenu.workspace.applySaved(modelData)
+                }
+                onObjectAdded: (index, object) => workspaceMenu.insertItem(5 + index, object)
+                onObjectRemoved: (index, object) => workspaceMenu.removeItem(object)
+            }
+        }
+
+        AppMenu {
+            retainBackdrop: true
             id: extrasMenu
             title: root.menuTitle(qsTrId("menu.extras"))
             // Cocoa guesses action roles from the leading word (About / Config /
@@ -690,6 +957,7 @@ Item {
 
     // Overflowed top-level AppMenus are inserted via addMenu() as submenus.
     AppMenu {
+        retainBackdrop: true
         id: overflowMenu
     }
 }

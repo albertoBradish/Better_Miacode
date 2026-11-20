@@ -38,6 +38,7 @@ public:
     Q_INVOKABLE void toggleMaximized();
     Q_INVOKABLE void handleTitleBarDoubleClick();
     Q_INVOKABLE void saveWindowState();
+    Q_INVOKABLE QRect normalWindowGeometry() const;
     qreal titleBarLeadingInset() const { return titleBarLeadingInset_; }
     qreal titleBarHeight() const { return titleBarHeight_; }
     bool nativeMaterialAvailable() const { return nativeMaterialAvailable_; }
@@ -58,9 +59,11 @@ signals:
 private:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void refreshNativeMaterial();
+#ifdef Q_OS_WIN
+    void invalidateNativeMaterial();
+#endif
 #ifdef Q_OS_MACOS
     void refreshMaterialAfterPresentation();
-    void setMacOsAlwaysOnTop(bool enabled);
 #endif
     bool extendDwmFrame() const;
     void observeMacOsWindow(QWindow* window);
@@ -84,12 +87,16 @@ private:
     QString stateKey_;
     QTimer stateCaptureTimer_;
     QTimer materialUpdateTimer_;
-#ifdef Q_OS_MACOS
+#if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
     bool materialPresentationPending_ = false;
 #endif
     quintptr nativeHandle_ = 0;
 #ifdef Q_OS_WIN
     NativeWindowTheme::AppliedState dwmState_;
+    bool restoreMaximizedPending_ = false;
+    quint64 materialGeneration_ = 0;
+    QMetaObject::Connection materialSyncConnection_;
+    QMetaObject::Connection materialFrameConnection_;
 #endif
     bool nativeMaterialAvailable_ = false;
     QVariantList materialRegions_;

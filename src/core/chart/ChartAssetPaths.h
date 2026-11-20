@@ -3,6 +3,9 @@
 #include "core/chart/IntroConfig.h"
 
 #include <QDir>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QFileInfo>
 #include <QImage>
 #include <QString>
@@ -62,17 +65,31 @@ inline bool isTrackFileName(const QString& fileName)
     return trackCandidateFileNames().contains(QFileInfo(fileName).fileName(), Qt::CaseInsensitive);
 }
 
+// ZIP and merged charts can own editable notes while continuing to use the source media.
+inline QStringList mediaDirectories(const QString& directory)
+{
+    QStringList paths{directory};
+    QFile references(QDir(directory).filePath(".miamedia"));
+    if (references.open(QIODevice::ReadOnly) && references.size() <= 65536) {
+        for (const auto& v : QJsonDocument::fromJson(references.readAll()).array()) {
+            const QString path=v.toString();
+            if (QDir::isAbsolutePath(path) && !paths.contains(path)) paths.append(path);
+        }
+    }
+    return paths;
+}
+
 inline QString resolveTrackPathForDirectory(const QString& directoryPath)
 {
     if (directoryPath.isEmpty()) {
         return QString();
     }
 
-    const QDir directory(directoryPath);
+    for (const QString& path : mediaDirectories(directoryPath))
     for (const QString& name : trackCandidateFileNames()) {
-        const QString path = directory.filePath(name);
-        if (QFileInfo::exists(path)) {
-            return QDir::cleanPath(path);
+        const QString candidate = QDir(path).filePath(name);
+        if (QFileInfo(candidate).isFile()) {
+            return QDir::cleanPath(candidate);
         }
     }
     return QString();
@@ -126,11 +143,11 @@ inline QString resolveBackgroundMediaPathForDirectory(const QString& directoryPa
         return QString();
     }
 
-    const QDir directory(directoryPath);
+    for (const QString& path : mediaDirectories(directoryPath))
     for (const QString& name : backgroundMediaCandidateFileNames(includeVideoCandidates)) {
-        const QString path = directory.filePath(name);
-        if (QFileInfo::exists(path)) {
-            return QDir::cleanPath(path);
+        const QString candidate = QDir(path).filePath(name);
+        if (QFileInfo(candidate).isFile()) {
+            return QDir::cleanPath(candidate);
         }
     }
     return QString();
@@ -235,7 +252,10 @@ inline QString resolveChartVideoPath(
         if (overrideInfo.isAbsolute()) {
             candidate = QDir::cleanPath(trimmedOverride);
         } else {
-            candidate = QDir::cleanPath(QDir(chartDir).filePath(trimmedOverride));
+            for (const auto& dir : mediaDirectories(chartDir)) {
+                candidate = QDir::cleanPath(QDir(dir).filePath(trimmedOverride));
+                if (isSupportedBackgroundMediaPath(candidate)) return candidate;
+            }
         }
         if (isSupportedBackgroundMediaPath(candidate, /*includeVideoCandidates=*/true)) {
             return candidate;

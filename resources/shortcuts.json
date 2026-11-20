@@ -5,16 +5,111 @@
     "Users may copy this file next to MiaCode.exe as shortcuts.json and override action/shortcut sequences without rebuilding."
   ],
   "editable": [
-    "transform.mirror_lr", "transform.mirror_ud", "transform.rotate_180",
+    "hand_order.basic_layout", "hand_order.analyze", "hand_order.optimize", "hand_order.play_review", "hand_order.set_left", "hand_order.set_right", "hand_order.set_either", "hand_order.split_annotation", "hand_order.bisect_annotation", "hand_order.swap_hands", "hand_order.screen_split", "hand_order.alternate", "hand_order.split_native_slide",
+    "transform.mirror_lr", "transform.mirror_lr_swap_hands", "transform.mirror_ud",
+    "transform.mirror_ud_swap_hands", "transform.rotate_180",
     "transform.rotate_ccw_45", "transform.rotate_cw_45", "transform.subdivision_up",
     "transform.subdivision_down", "transform.subdivision_half_up", "transform.subdivision_half_down",
     "transform.toggle_break", "transform.toggle_ex", "transform.toggle_firework",
     "transform.random_rotate", "transform.clear_complete_elements", "transform.reset_tap_notes",
-    "preview.stop_or_play", "preview.play_pause_global", "preview.speed_down", "preview.speed_up",
-    "preview.pause_display_hold", "timeline.zoom_in", "timeline.zoom_out",
+    "preview.stop_or_play", "preview.play_pause_global", "preview.play_pause_non_text",
+    "preview.speed_down", "preview.speed_up",
+    "timeline.zoom_in", "timeline.zoom_out",
     "ui.zoom_out", "ui.zoom_in", "ui.zoom_reset", "editor.overwrite_mode"
   ],
   "actions": {
+    "hand_order.basic_layout": {
+      "label_key": "hand_order.basic_layout", "label_zh": "基础排布",
+      "label_en": "Basic Layout", "default": "Ctrl+Alt+B",
+      "context": "window", "owner": "EditorController"
+    },
+    "hand_order.analyze": {
+      "label_key": "hand_order.analyze", "label_zh": "基础自动手序（实验性）",
+      "label_en": "Basic Automatic Hand Order (Experimental)", "default": "Ctrl+Alt+H",
+      "context": "window", "owner": "HandOrderAnalysisService"
+    },
+    "hand_order.optimize": {
+      "label_key": "hand_order.optimize", "label_zh": "优化已有手序（实验性）",
+      "label_en": "Optimize Existing Hand Order (Experimental)", "default": "",
+      "context": "window", "owner": "HandOrderAnalysisService"
+    },
+    "hand_order.play_review": {
+      "label_key": "hand_order.play_review", "label_zh": "游玩复核",
+      "label_en": "Playability Review", "default": "",
+      "context": "window", "owner": "HandOrderAnalysisService"
+    },
+    "hand_order.set_left": {
+          "label_key": "hand_order.set_left",
+          "label_zh": "选中内容设为左手",
+          "label_en": "Set Selection to Left Hand",
+          "default": "Alt+W",
+          "context": "window",
+          "owner": "EditorController"
+    },
+    "hand_order.set_right": {
+          "label_key": "hand_order.set_right",
+          "label_zh": "选中内容设为右手",
+          "label_en": "Set Selection to Right Hand",
+          "default": "Alt+E",
+          "context": "window",
+          "owner": "EditorController"
+    },
+    "hand_order.set_either": {
+          "label_key": "hand_order.set_either",
+          "label_zh": "选中内容设为无色/任选",
+          "label_en": "Set Selection to Either Hand",
+          "default": "Alt+Y",
+          "context": "window",
+          "owner": "EditorController"
+    },
+    "hand_order.split_annotation": {
+          "label_key": "hand_order.split_annotation",
+          "label_zh": "拆分手序区间",
+          "label_en": "Split Hand-order Intervals",
+          "default": "Alt+T",
+          "context": "window",
+          "owner": "EditorController"
+    },
+    "hand_order.bisect_annotation": {
+      "label_key": "hand_order.bisect_annotation",
+      "label_zh": "一键二分手序区间",
+      "label_en": "Bisect Sticking Intervals",
+      "default": "Alt+C",
+      "context": "window",
+      "owner": "EditorController"
+    },
+    "hand_order.swap_hands": {
+      "label_key": "hand_order.swap_hands",
+      "label_zh": "交换选中内容左右手",
+      "label_en": "Swap Left and Right Hands in Selection",
+      "default": "Alt+Q",
+      "context": "window",
+      "owner": "EditorController"
+    },
+    "hand_order.alternate": {
+      "label_key": "hand_order.alternate",
+      "label_zh": "按逗号顺序一键拆解交互",
+      "label_en": "Alternate Sticking by Beat Slots",
+      "default": "Alt+G",
+      "context": "window",
+      "owner": "EditorController"
+    },
+    "hand_order.screen_split": {
+      "label_key": "hand_order.screen_split",
+      "label_zh": "按共同对称轴一键分屏（实验性）",
+      "label_en": "Split Sticking by Common Screen Axis (Experimental)",
+      "default": "Alt+B",
+      "context": "window",
+      "owner": "EditorController"
+    },
+    "hand_order.split_native_slide": {
+      "label_key": "hand_order.split_native_slide",
+      "label_zh": "拆成独立 slide",
+      "label_en": "Split into Independent Slides",
+      "default": "Ctrl+Alt+5",
+      "context": "window",
+      "owner": "EditorController"
+    },
     "file.quit": {
       "label_key": "shortcut.file.quit",
       "label_zh": "退出",
@@ -31,11 +126,27 @@
       "context": "application",
       "owner": "MainWindow.BootstrapAndMenus"
     },
+    "transform.mirror_lr_swap_hands": {
+      "label_key": "action.transform.mirror_lr_swap_hands",
+      "label_zh": "左右镜像并交换左右手",
+      "label_en": "Mirror Left/Right and Swap Hands",
+      "default": "",
+      "context": "application",
+      "owner": "MainWindow.BootstrapAndMenus"
+    },
     "transform.mirror_ud": {
       "label_key": "action.transform.mirror_ud",
       "label_zh": "上下镜像",
       "label_en": "Mirror Up/Down",
       "default": "Ctrl+K",
+      "context": "application",
+      "owner": "MainWindow.BootstrapAndMenus"
+    },
+    "transform.mirror_ud_swap_hands": {
+      "label_key": "action.transform.mirror_ud_swap_hands",
+      "label_zh": "上下镜像并交换左右手",
+      "label_en": "Mirror Up/Down and Swap Hands",
+      "default": "",
       "context": "application",
       "owner": "MainWindow.BootstrapAndMenus"
     },
@@ -147,7 +258,7 @@
       "label_en": "Stop or Play Preview",
       "default": "Ctrl+Shift+C",
       "context": "window",
-      "owner": "MainWindow.BootstrapAndMenus"
+      "owner": "QML PreviewShortcuts"
     },
     "preview.play_pause_global": {
       "label_key": "shortcut.preview.play_pause_global",
@@ -155,31 +266,31 @@
       "label_en": "Play/Pause Preview",
       "default": "Ctrl+Shift+X",
       "context": "window",
-      "owner": "MainWindow.BootstrapAndMenus"
+      "owner": "QML PreviewShortcuts"
+    },
+    "preview.play_pause_non_text": {
+      "label_key": "shortcut.preview.play_pause_non_text",
+      "label_zh": "播放/暂停预览（编辑器外）",
+      "label_en": "Play/Pause Preview (Outside Editor)",
+      "default": "Space",
+      "context": "window",
+      "owner": "QML PreviewShortcuts"
     },
     "preview.speed_down": {
       "label_key": "shortcut.preview.speed_down",
       "label_zh": "播放速度降低",
       "label_en": "Playback Speed -",
       "default": "Ctrl+O",
-      "context": "application",
-      "owner": "MainWindow.BootstrapAndMenus"
+      "context": "window",
+      "owner": "QML PreviewShortcuts / native preview menu"
     },
     "preview.speed_up": {
       "label_key": "shortcut.preview.speed_up",
       "label_zh": "播放速度提高",
       "label_en": "Playback Speed +",
       "default": "Ctrl+P",
-      "context": "application",
-      "owner": "MainWindow.BootstrapAndMenus"
-    },
-    "preview.pause_display_hold": {
-      "label_key": "shortcut.preview.pause_display_hold",
-      "label_zh": "暂停时切换 判定区 / PV（按住）",
-      "label_en": "Flip Judge Area / PV While Paused (Hold)",
-      "default": "Alt",
-      "context": "application",
-      "owner": "MainWindow.WindowInteraction"
+      "context": "window",
+      "owner": "QML PreviewShortcuts / native preview menu"
     },
     "timeline.zoom_in": {
       "label_key": "shortcut.timeline.zoom_in",

@@ -9,41 +9,56 @@ PetModelNode {
     property real lifeTime: 0
     property real rhythmQuarterBeat: 0
     property real rhythmWeight: 0
-    // One relaxed left/right head circle spans two chart beats. These are
-    // analytic, periodic pose samples: no animation timer advances the beat.
+    property real rhythmDropWeight: 0
+    property real rhythmDropEyeClosure: 0
+    readonly property var blinkStarts: [2.4, 6.1, 9.0, 9.35, 14.2, 19.6]
+    readonly property real eyeClosure: Math.max(sleepingWeight, rhythmDropEyeClosure, blinkAt(lifeTime))
+    function blinkAt(seconds) {
+        const cycle = seconds % 23
+        for (const start of blinkStarts) {
+            const elapsed = cycle - start
+            if (elapsed >= 0 && elapsed < 0.18) {
+                const t = Math.min(1, elapsed / 0.055, (0.18 - elapsed) / 0.095)
+                return t * t * (3 - 2 * t)
+            }
+        }
+        return 0
+    }
+    // The jump and grounded pose share the transport phase for a continuous blend.
     readonly property real rhythmPhase: ((rhythmQuarterBeat % 2) + 2) % 2
     readonly property real rhythmStrength: Math.max(0, Math.min(1, rhythmWeight))
         * (1 - sittingWeight) * (1 - sleepingWeight)
+    readonly property real jumpStrength: rhythmStrength * rhythmDropWeight
+    readonly property real groundedStrength: rhythmStrength - jumpStrength
     readonly property real bodyBeatAngle: rhythmPhase * Math.PI * 2
     readonly property real bodySwayAngle: rhythmPhase * Math.PI
     readonly property real headSwayAngle: (rhythmPhase - 0.10) * Math.PI
     readonly property real tailSwayAngle: (rhythmPhase - 0.24) * Math.PI
-    // Broad cosine bounce, with no short attack or high-frequency harmonics.
-    // The body leads; the neck and tail follow by a fraction of a chart beat.
-    readonly property real rhythmBodyLift: rhythmStrength * (0.030 - 0.038 * Math.cos(bodyBeatAngle))
+    readonly property real rhythmBodyLift: jumpStrength * (0.030 - 0.038 * Math.cos(bodyBeatAngle))
     readonly property vector3d rhythmBodyOffset: Qt.vector3d(
-        rhythmStrength * 0.025 * Math.sin(bodySwayAngle), rhythmBodyLift,
-        rhythmStrength * 0.012 * Math.sin(bodyBeatAngle - 0.25))
+        jumpStrength * 0.025 * Math.sin(bodySwayAngle), rhythmBodyLift,
+        jumpStrength * 0.012 * Math.sin(bodyBeatAngle - 0.25))
     readonly property vector3d rhythmBodyRotation: Qt.vector3d(
-        rhythmStrength * 3.8 * Math.sin(bodyBeatAngle - 0.20),
-        rhythmStrength * 6.0 * Math.sin(bodySwayAngle),
-        rhythmStrength * 4.5 * Math.sin(bodySwayAngle + 0.35))
+        jumpStrength * 3.8 * Math.sin(bodyBeatAngle - 0.20),
+        (jumpStrength * 6.0 + groundedStrength * 1.2) * Math.sin(bodySwayAngle),
+        (jumpStrength * 4.5 + groundedStrength * 0.8) * Math.sin(bodySwayAngle + 0.35))
     readonly property vector3d rhythmHeadOffset: Qt.vector3d(
-        rhythmStrength * 0.025 * Math.sin(headSwayAngle),
-        rhythmStrength * (0.020 + 0.020 * Math.cos(headSwayAngle)),
-        -rhythmStrength * 0.018 * Math.cos(headSwayAngle))
+        (jumpStrength * 0.025 + groundedStrength * 0.010) * Math.sin(headSwayAngle),
+        jumpStrength * (0.020 + 0.020 * Math.cos(headSwayAngle))
+            + groundedStrength * 0.006 * Math.sin(bodyBeatAngle - 0.55),
+        -(jumpStrength * 0.018 + groundedStrength * 0.008) * Math.cos(headSwayAngle))
     readonly property vector3d rhythmHeadRotation: Qt.vector3d(
-        rhythmStrength * (12.0 + 12.0 * Math.cos(headSwayAngle + 0.25)),
-        rhythmStrength * 38.0 * Math.sin(headSwayAngle),
-        rhythmStrength * 8.0 * Math.cos(headSwayAngle + 0.80))
-    readonly property real rhythmLegFlex: rhythmStrength * 6.0 * Math.sin(bodyBeatAngle - 0.15)
-    // The legs counter the body lift so its small bounce keeps the feet close
-    // to the floor, instead of moving four rigid legs up and down together.
+        jumpStrength * (12.0 + 12.0 * Math.cos(headSwayAngle + 0.25))
+            + groundedStrength * (3.2 + 4.6 * Math.sin(headSwayAngle + 0.25)
+                + 1.25 * Math.sin(bodyBeatAngle - 0.8)),
+        (jumpStrength * 38.0 + groundedStrength * 14.0) * Math.sin(headSwayAngle),
+        (jumpStrength * 8.0 + groundedStrength * 3.3) * Math.cos(headSwayAngle + 0.80))
+    readonly property real rhythmLegFlex: jumpStrength * 6.0 * Math.sin(bodyBeatAngle - 0.15)
     readonly property real rhythmLegStretch: 1 + rhythmBodyLift / 0.375
     readonly property vector3d rhythmTailRotation: Qt.vector3d(
-        rhythmStrength * 7.0 * Math.cos(tailSwayAngle + 0.40),
-        rhythmStrength * 18.0 * Math.sin(tailSwayAngle),
-        rhythmStrength * 8.0 * Math.sin(tailSwayAngle - 0.45))
+        (jumpStrength * 7.0 + groundedStrength * 1.0) * Math.cos(tailSwayAngle + 0.40),
+        (jumpStrength * 18.0 + groundedStrength * 4.0) * Math.sin(tailSwayAngle),
+        (jumpStrength * 8.0 + groundedStrength * 1.5) * Math.sin(tailSwayAngle - 0.45))
     property real sleepTime: 0
     property real wiggleTime: 0
     onClipChanged: {
@@ -60,8 +75,10 @@ PetModelNode {
     property real wiggleWeight: clip === "animation.fox.wiggle" ? 1 : 0
     readonly property int transitionDuration: clip === "animation.fox.wiggle" ? 150 : 650
     readonly property bool sleeping: sleepingWeight > 0.5
-    readonly property real idleMotion: (1 - sleepingWeight) * (1 - wiggleWeight) * (1 - rhythmWeight)
-    readonly property real breathing: Math.sin(lifeTime * Math.PI / 2) * (1 - wiggleWeight) * (1 - rhythmWeight)
+    readonly property real idleMotion: (1 - sleepingWeight) * (1 - wiggleWeight)
+        * (1 - rhythmWeight + 0.25 * groundedStrength)
+    readonly property real breathing: Math.sin(lifeTime * Math.PI / 2) * (1 - wiggleWeight)
+        * (1 - rhythmWeight + 0.35 * groundedStrength)
     Behavior on sittingWeight { NumberAnimation { duration: fox.transitionDuration; easing.type: Easing.InOutSine } }
     Behavior on sleepingWeight { NumberAnimation { duration: fox.transitionDuration; easing.type: Easing.InOutSine } }
     Behavior on wiggleWeight { NumberAnimation { duration: fox.transitionDuration; easing.type: Easing.InOutSine } }
@@ -159,7 +176,7 @@ PetModelNode {
                     PetModelNode {
                         objectName: "head_mesh"
 
-                        visible: !fox.sleeping
+                        textureBlend: fox.eyeClosure
                         geometry: PetMesh {
                             positions: [
                                 Qt.vector3d(0.25, 0.125, 0),
@@ -358,217 +375,34 @@ PetModelNode {
                                 Qt.vector2d(0.0471191406, 0.0942382812),
                                 Qt.vector2d(0.109130859, 0.0942382812)
                             ]
+                            // The head cube uses the closed-eye patch of the same atlas.
+                            alternateUvs: [
+                                Qt.vector2d(0.000244140625, 0.437011719),
+                                Qt.vector2d(0.0935058594, 0.437011719),
+                                Qt.vector2d(0.000244140625, 0.250488281),
+                                Qt.vector2d(0.0935058594, 0.250488281),
+                                Qt.vector2d(0.218994141, 0.437011719),
+                                Qt.vector2d(0.312255859, 0.437011719),
+                                Qt.vector2d(0.218994141, 0.250488281),
+                                Qt.vector2d(0.312255859, 0.250488281),
+                                Qt.vector2d(0.218505859, 0.437988281),
+                                Qt.vector2d(0.0939941406, 0.437988281),
+                                Qt.vector2d(0.218505859, 0.624511719),
+                                Qt.vector2d(0.0939941406, 0.624511719),
+                                Qt.vector2d(0.343505859, 0.624511719),
+                                Qt.vector2d(0.218994141, 0.624511719),
+                                Qt.vector2d(0.343505859, 0.437988281),
+                                Qt.vector2d(0.218994141, 0.437988281),
+                                Qt.vector2d(0.312744141, 0.437011719),
+                                Qt.vector2d(0.437255859, 0.437011719),
+                                Qt.vector2d(0.312744141, 0.250488281),
+                                Qt.vector2d(0.437255859, 0.250488281),
+                                Qt.vector2d(0.0939941406, 0.437011719),
+                                Qt.vector2d(0.218505859, 0.437011719),
+                                Qt.vector2d(0.0939941406, 0.250488281),
+                                Qt.vector2d(0.218505859, 0.250488281)
+                            ]
                             indexes: [0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22, 21, 22, 23, 21, 24, 26, 25, 26, 27, 25, 28, 30, 29, 30, 31, 29, 32, 34, 33, 34, 35, 33, 36, 38, 37, 38, 39, 37, 40, 42, 41, 42, 43, 41, 44, 46, 45, 46, 47, 45, 48, 50, 49, 50, 51, 49, 52, 54, 53, 54, 55, 53, 56, 58, 57, 58, 59, 57, 60, 62, 61, 62, 63, 61, 64, 66, 65, 66, 67, 65, 68, 70, 69, 70, 71, 69, 72, 74, 73, 74, 75, 73, 76, 78, 77, 78, 79, 77, 80, 82, 81, 82, 83, 81, 84, 86, 85, 86, 87, 85, 88, 90, 89, 90, 91, 89, 92, 94, 93, 94, 95, 93]
-                        }
-                    }
-                    PetModelNode {
-                        objectName: "head_sleeping"
-                        position: Qt.vector3d(-(0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16)
-                        rotation: fox.rotationZYX((0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))))
-                        PetModelNode {
-                            objectName: "head_sleeping_mesh"
-
-                            visible: fox.sleeping
-                            geometry: PetMesh {
-                                positions: [
-                                    Qt.vector3d(0.25, 0.125, 0),
-                                    Qt.vector3d(0.25, 0.125, -0.375),
-                                    Qt.vector3d(0.25, -0.25, 0),
-                                    Qt.vector3d(0.25, -0.25, -0.375),
-                                    Qt.vector3d(-0.25, 0.125, -0.375),
-                                    Qt.vector3d(-0.25, 0.125, 0),
-                                    Qt.vector3d(-0.25, -0.25, -0.375),
-                                    Qt.vector3d(-0.25, -0.25, 0),
-                                    Qt.vector3d(-0.25, 0.125, -0.375),
-                                    Qt.vector3d(0.25, 0.125, -0.375),
-                                    Qt.vector3d(-0.25, 0.125, 0),
-                                    Qt.vector3d(0.25, 0.125, 0),
-                                    Qt.vector3d(-0.25, -0.25, 0),
-                                    Qt.vector3d(0.25, -0.25, 0),
-                                    Qt.vector3d(-0.25, -0.25, -0.375),
-                                    Qt.vector3d(0.25, -0.25, -0.375),
-                                    Qt.vector3d(-0.25, 0.125, 0),
-                                    Qt.vector3d(0.25, 0.125, 0),
-                                    Qt.vector3d(-0.25, -0.25, 0),
-                                    Qt.vector3d(0.25, -0.25, 0),
-                                    Qt.vector3d(0.25, 0.125, -0.375),
-                                    Qt.vector3d(-0.25, 0.125, -0.375),
-                                    Qt.vector3d(0.25, -0.25, -0.375),
-                                    Qt.vector3d(-0.25, -0.25, -0.375),
-                                    Qt.vector3d(0.25, 0.25, -0.25),
-                                    Qt.vector3d(0.25, 0.25, -0.3125),
-                                    Qt.vector3d(0.25, 0.125, -0.25),
-                                    Qt.vector3d(0.25, 0.125, -0.3125),
-                                    Qt.vector3d(0.125, 0.25, -0.3125),
-                                    Qt.vector3d(0.125, 0.25, -0.25),
-                                    Qt.vector3d(0.125, 0.125, -0.3125),
-                                    Qt.vector3d(0.125, 0.125, -0.25),
-                                    Qt.vector3d(0.125, 0.25, -0.3125),
-                                    Qt.vector3d(0.25, 0.25, -0.3125),
-                                    Qt.vector3d(0.125, 0.25, -0.25),
-                                    Qt.vector3d(0.25, 0.25, -0.25),
-                                    Qt.vector3d(0.125, 0.125, -0.25),
-                                    Qt.vector3d(0.25, 0.125, -0.25),
-                                    Qt.vector3d(0.125, 0.125, -0.3125),
-                                    Qt.vector3d(0.25, 0.125, -0.3125),
-                                    Qt.vector3d(0.125, 0.25, -0.25),
-                                    Qt.vector3d(0.25, 0.25, -0.25),
-                                    Qt.vector3d(0.125, 0.125, -0.25),
-                                    Qt.vector3d(0.25, 0.125, -0.25),
-                                    Qt.vector3d(0.25, 0.25, -0.3125),
-                                    Qt.vector3d(0.125, 0.25, -0.3125),
-                                    Qt.vector3d(0.25, 0.125, -0.3125),
-                                    Qt.vector3d(0.125, 0.125, -0.3125),
-                                    Qt.vector3d(-0.125, 0.25, -0.25),
-                                    Qt.vector3d(-0.125, 0.25, -0.3125),
-                                    Qt.vector3d(-0.125, 0.125, -0.25),
-                                    Qt.vector3d(-0.125, 0.125, -0.3125),
-                                    Qt.vector3d(-0.25, 0.25, -0.3125),
-                                    Qt.vector3d(-0.25, 0.25, -0.25),
-                                    Qt.vector3d(-0.25, 0.125, -0.3125),
-                                    Qt.vector3d(-0.25, 0.125, -0.25),
-                                    Qt.vector3d(-0.25, 0.25, -0.3125),
-                                    Qt.vector3d(-0.125, 0.25, -0.3125),
-                                    Qt.vector3d(-0.25, 0.25, -0.25),
-                                    Qt.vector3d(-0.125, 0.25, -0.25),
-                                    Qt.vector3d(-0.25, 0.125, -0.25),
-                                    Qt.vector3d(-0.125, 0.125, -0.25),
-                                    Qt.vector3d(-0.25, 0.125, -0.3125),
-                                    Qt.vector3d(-0.125, 0.125, -0.3125),
-                                    Qt.vector3d(-0.25, 0.25, -0.25),
-                                    Qt.vector3d(-0.125, 0.25, -0.25),
-                                    Qt.vector3d(-0.25, 0.125, -0.25),
-                                    Qt.vector3d(-0.125, 0.125, -0.25),
-                                    Qt.vector3d(-0.125, 0.25, -0.3125),
-                                    Qt.vector3d(-0.25, 0.25, -0.3125),
-                                    Qt.vector3d(-0.125, 0.125, -0.3125),
-                                    Qt.vector3d(-0.25, 0.125, -0.3125),
-                                    Qt.vector3d(0.125, -0.125, -0.375),
-                                    Qt.vector3d(0.125, -0.125, -0.5625),
-                                    Qt.vector3d(0.125, -0.25, -0.375),
-                                    Qt.vector3d(0.125, -0.25, -0.5625),
-                                    Qt.vector3d(-0.125, -0.125, -0.5625),
-                                    Qt.vector3d(-0.125, -0.125, -0.375),
-                                    Qt.vector3d(-0.125, -0.25, -0.5625),
-                                    Qt.vector3d(-0.125, -0.25, -0.375),
-                                    Qt.vector3d(-0.125, -0.125, -0.5625),
-                                    Qt.vector3d(0.125, -0.125, -0.5625),
-                                    Qt.vector3d(-0.125, -0.125, -0.375),
-                                    Qt.vector3d(0.125, -0.125, -0.375),
-                                    Qt.vector3d(-0.125, -0.25, -0.375),
-                                    Qt.vector3d(0.125, -0.25, -0.375),
-                                    Qt.vector3d(-0.125, -0.25, -0.5625),
-                                    Qt.vector3d(0.125, -0.25, -0.5625),
-                                    Qt.vector3d(-0.125, -0.125, -0.375),
-                                    Qt.vector3d(0.125, -0.125, -0.375),
-                                    Qt.vector3d(-0.125, -0.25, -0.375),
-                                    Qt.vector3d(0.125, -0.25, -0.375),
-                                    Qt.vector3d(0.125, -0.125, -0.5625),
-                                    Qt.vector3d(-0.125, -0.125, -0.5625),
-                                    Qt.vector3d(0.125, -0.25, -0.5625),
-                                    Qt.vector3d(-0.125, -0.25, -0.5625)
-                                ]
-
-                                uv0s: [
-                                    Qt.vector2d(0.000244140625, 0.437011719),
-                                    Qt.vector2d(0.0935058594, 0.437011719),
-                                    Qt.vector2d(0.000244140625, 0.250488281),
-                                    Qt.vector2d(0.0935058594, 0.250488281),
-                                    Qt.vector2d(0.218994141, 0.437011719),
-                                    Qt.vector2d(0.312255859, 0.437011719),
-                                    Qt.vector2d(0.218994141, 0.250488281),
-                                    Qt.vector2d(0.312255859, 0.250488281),
-                                    Qt.vector2d(0.218505859, 0.437988281),
-                                    Qt.vector2d(0.0939941406, 0.437988281),
-                                    Qt.vector2d(0.218505859, 0.624511719),
-                                    Qt.vector2d(0.0939941406, 0.624511719),
-                                    Qt.vector2d(0.343505859, 0.624511719),
-                                    Qt.vector2d(0.218994141, 0.624511719),
-                                    Qt.vector2d(0.343505859, 0.437988281),
-                                    Qt.vector2d(0.218994141, 0.437988281),
-                                    Qt.vector2d(0.312744141, 0.437011719),
-                                    Qt.vector2d(0.437255859, 0.437011719),
-                                    Qt.vector2d(0.312744141, 0.250488281),
-                                    Qt.vector2d(0.437255859, 0.250488281),
-                                    Qt.vector2d(0.0939941406, 0.437011719),
-                                    Qt.vector2d(0.218505859, 0.437011719),
-                                    Qt.vector2d(0.0939941406, 0.250488281),
-                                    Qt.vector2d(0.218505859, 0.250488281),
-                                    Qt.vector2d(0.000244140625, 0.968261719),
-                                    Qt.vector2d(0.0153808594, 0.968261719),
-                                    Qt.vector2d(0.000244140625, 0.906738281),
-                                    Qt.vector2d(0.0153808594, 0.906738281),
-                                    Qt.vector2d(0.0471191406, 0.968261719),
-                                    Qt.vector2d(0.0622558594, 0.968261719),
-                                    Qt.vector2d(0.0471191406, 0.906738281),
-                                    Qt.vector2d(0.0622558594, 0.906738281),
-                                    Qt.vector2d(0.0466308594, 0.969238281),
-                                    Qt.vector2d(0.0158691406, 0.969238281),
-                                    Qt.vector2d(0.0466308594, 0.999511719),
-                                    Qt.vector2d(0.0158691406, 0.999511719),
-                                    Qt.vector2d(0.0778808594, 0.999511719),
-                                    Qt.vector2d(0.0471191406, 0.999511719),
-                                    Qt.vector2d(0.0778808594, 0.969238281),
-                                    Qt.vector2d(0.0471191406, 0.969238281),
-                                    Qt.vector2d(0.0627441406, 0.968261719),
-                                    Qt.vector2d(0.0935058594, 0.968261719),
-                                    Qt.vector2d(0.0627441406, 0.906738281),
-                                    Qt.vector2d(0.0935058594, 0.906738281),
-                                    Qt.vector2d(0.0158691406, 0.968261719),
-                                    Qt.vector2d(0.0466308594, 0.968261719),
-                                    Qt.vector2d(0.0158691406, 0.906738281),
-                                    Qt.vector2d(0.0466308594, 0.906738281),
-                                    Qt.vector2d(0.343994141, 0.968261719),
-                                    Qt.vector2d(0.359130859, 0.968261719),
-                                    Qt.vector2d(0.343994141, 0.906738281),
-                                    Qt.vector2d(0.359130859, 0.906738281),
-                                    Qt.vector2d(0.390869141, 0.968261719),
-                                    Qt.vector2d(0.406005859, 0.968261719),
-                                    Qt.vector2d(0.390869141, 0.906738281),
-                                    Qt.vector2d(0.406005859, 0.906738281),
-                                    Qt.vector2d(0.390380859, 0.969238281),
-                                    Qt.vector2d(0.359619141, 0.969238281),
-                                    Qt.vector2d(0.390380859, 0.999511719),
-                                    Qt.vector2d(0.359619141, 0.999511719),
-                                    Qt.vector2d(0.421630859, 0.999511719),
-                                    Qt.vector2d(0.390869141, 0.999511719),
-                                    Qt.vector2d(0.421630859, 0.969238281),
-                                    Qt.vector2d(0.390869141, 0.969238281),
-                                    Qt.vector2d(0.406494141, 0.968261719),
-                                    Qt.vector2d(0.437255859, 0.968261719),
-                                    Qt.vector2d(0.406494141, 0.906738281),
-                                    Qt.vector2d(0.437255859, 0.906738281),
-                                    Qt.vector2d(0.359619141, 0.968261719),
-                                    Qt.vector2d(0.390380859, 0.968261719),
-                                    Qt.vector2d(0.359619141, 0.906738281),
-                                    Qt.vector2d(0.390380859, 0.906738281),
-                                    Qt.vector2d(0.000244140625, 0.155761719),
-                                    Qt.vector2d(0.0466308594, 0.155761719),
-                                    Qt.vector2d(0.000244140625, 0.0942382812),
-                                    Qt.vector2d(0.0466308594, 0.0942382812),
-                                    Qt.vector2d(0.109619141, 0.155761719),
-                                    Qt.vector2d(0.156005859, 0.155761719),
-                                    Qt.vector2d(0.109619141, 0.0942382812),
-                                    Qt.vector2d(0.156005859, 0.0942382812),
-                                    Qt.vector2d(0.109130859, 0.156738281),
-                                    Qt.vector2d(0.0471191406, 0.156738281),
-                                    Qt.vector2d(0.109130859, 0.249511719),
-                                    Qt.vector2d(0.0471191406, 0.249511719),
-                                    Qt.vector2d(0.171630859, 0.249511719),
-                                    Qt.vector2d(0.109619141, 0.249511719),
-                                    Qt.vector2d(0.171630859, 0.156738281),
-                                    Qt.vector2d(0.109619141, 0.156738281),
-                                    Qt.vector2d(0.156494141, 0.155761719),
-                                    Qt.vector2d(0.218505859, 0.155761719),
-                                    Qt.vector2d(0.156494141, 0.0942382812),
-                                    Qt.vector2d(0.218505859, 0.0942382812),
-                                    Qt.vector2d(0.0471191406, 0.155761719),
-                                    Qt.vector2d(0.109130859, 0.155761719),
-                                    Qt.vector2d(0.0471191406, 0.0942382812),
-                                    Qt.vector2d(0.109130859, 0.0942382812)
-                                ]
-                                indexes: [0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22, 21, 22, 23, 21, 24, 26, 25, 26, 27, 25, 28, 30, 29, 30, 31, 29, 32, 34, 33, 34, 35, 33, 36, 38, 37, 38, 39, 37, 40, 42, 41, 42, 43, 41, 44, 46, 45, 46, 47, 45, 48, 50, 49, 50, 51, 49, 52, 54, 53, 54, 55, 53, 56, 58, 57, 58, 59, 57, 60, 62, 61, 62, 63, 61, 64, 66, 65, 66, 67, 65, 68, 70, 69, 70, 71, 69, 72, 74, 73, 74, 75, 73, 76, 78, 77, 78, 79, 77, 80, 82, 81, 82, 83, 81, 84, 86, 85, 86, 87, 85, 88, 90, 89, 90, 91, 89, 92, 94, 93, 94, 95, 93]
-                            }
                         }
                     }
                     PetModelNode {
@@ -579,7 +413,7 @@ PetModelNode {
                 }
                 PetModelNode {
                     objectName: "leg0"
-                    eulerRotation: Qt.vector3d(fox.rhythmLegFlex, 0, -fox.rhythmBodyRotation.z * 0.65 + 1 * fox.rhythmStrength * 1.5 * Math.sin(fox.bodySwayAngle))
+                    eulerRotation: Qt.vector3d(fox.rhythmLegFlex, 0, -fox.rhythmBodyRotation.z * 0.65 + fox.jumpStrength * 1.5 * Math.sin(fox.bodySwayAngle))
                     scale: Qt.vector3d(1, fox.rhythmLegStretch, 1)
                     position: Qt.vector3d(-(-3 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (-2 + (0 + fox.sittingWeight * ((0 + 4.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 1.6) - (0)))) / 16, (6 + (0 + fox.sittingWeight * ((0 + 2.5) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + -15.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))
@@ -647,7 +481,7 @@ PetModelNode {
                 }
                 PetModelNode {
                     objectName: "leg1"
-                    eulerRotation: Qt.vector3d(fox.rhythmLegFlex, 0, -fox.rhythmBodyRotation.z * 0.65 + -1 * fox.rhythmStrength * 1.5 * Math.sin(fox.bodySwayAngle))
+                    eulerRotation: Qt.vector3d(fox.rhythmLegFlex, 0, -fox.rhythmBodyRotation.z * 0.65 - fox.jumpStrength * 1.5 * Math.sin(fox.bodySwayAngle))
                     scale: Qt.vector3d(1, fox.rhythmLegStretch, 1)
                     position: Qt.vector3d(-(1 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (-2 + (0 + fox.sittingWeight * ((0 + 4.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 1.6) - (0)))) / 16, (6 + (0 + fox.sittingWeight * ((0 + 2.5) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + -15.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))
@@ -715,7 +549,7 @@ PetModelNode {
                 }
                 PetModelNode {
                     objectName: "leg2"
-                    eulerRotation: Qt.vector3d(-fox.rhythmLegFlex, 0, -fox.rhythmBodyRotation.z * 0.65 + 1 * fox.rhythmStrength * 1.5 * Math.sin(fox.bodySwayAngle))
+                    eulerRotation: Qt.vector3d(-fox.rhythmLegFlex, 0, -fox.rhythmBodyRotation.z * 0.65 + fox.jumpStrength * 1.5 * Math.sin(fox.bodySwayAngle))
                     scale: Qt.vector3d(1, fox.rhythmLegStretch, 1)
                     position: Qt.vector3d(-(-3 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (-2 + (0 + fox.sittingWeight * ((0 + 0.75) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 1.6) - (0)))) / 16, (-1 + (0 + fox.sittingWeight * ((0 + 3.5) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + 40.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))
@@ -783,7 +617,7 @@ PetModelNode {
                 }
                 PetModelNode {
                     objectName: "leg3"
-                    eulerRotation: Qt.vector3d(-fox.rhythmLegFlex, 0, -fox.rhythmBodyRotation.z * 0.65 + -1 * fox.rhythmStrength * 1.5 * Math.sin(fox.bodySwayAngle))
+                    eulerRotation: Qt.vector3d(-fox.rhythmLegFlex, 0, -fox.rhythmBodyRotation.z * 0.65 - fox.jumpStrength * 1.5 * Math.sin(fox.bodySwayAngle))
                     scale: Qt.vector3d(1, fox.rhythmLegStretch, 1)
                     position: Qt.vector3d(-(1 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (-2 + (0 + fox.sittingWeight * ((0 + 0.75) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 1.6) - (0)))) / 16, (-1 + (0 + fox.sittingWeight * ((0 + 3.5) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + 40.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))

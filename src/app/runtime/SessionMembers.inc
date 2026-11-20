@@ -377,6 +377,8 @@
         double previewBackgroundBrightnessInner_ = miacode::preview_video::kBackgroundBrightnessInnerDefault;
         double previewLayoutSquareScale_ = miacode::preview_video::kLayoutSquareScaleDefault;
         double previewFireworkBrightness_ = miacode::preview_video::kFireworkBrightnessDefault;
+        CompletionDisplay completionDisplay_ = CompletionDisplay::Automatic;
+        PreviewFireworkStyle previewFireworkStyle_ = PreviewFireworkStyle::Standard;
         bool previewSmoothBrightness_ = miacode::preview_video::kSmoothBrightnessDefault;
         // The preview appearance values that used to live here now belong to
         // miacode::PreviewAppearanceState (owned by ApplicationServices).
@@ -387,14 +389,17 @@
         PreviewBackgroundScaleMode previewBackgroundScaleMode_ = PreviewBackgroundScaleMode::FillCrop;
         double previewTapFlowSpeed_ = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
         double previewTouchFlowSpeed_ = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
+        double previewStarFadeTiming_ = 0.0;
+        bool lowPerformanceMode_ = false;
         PreviewCanvasFrameRateMode previewCanvasFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
-        PreviewCanvasFrameRateMode previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::Fps30;
+        PreviewCanvasFrameRateMode previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::SourceRate;
         // Preview video decode mode preference: false = hardware (default), true =
         // software. Pushed to PreviewStageMediaHost::setVideoDecodePreference.
         bool videoDecodePrefersSoftware_ = false;
         double previewCanvasAspectRatio_ = 1.0;
         bool previewAutoRestoreSquareAfterExport_ = false;
         bool previewForceLabeledJudgeLineWhenPaused_ = true;
+        bool previewShowStageMediaWhenPaused_ = true;
         bool previewTouchPadAuthoringShortcutEnabled_ = true;
         bool touchPadAuthoringCtrlHoldActive_ = false;
         // Transient (not persisted): what the last touch-pad authoring click
@@ -412,14 +417,10 @@
         // ("暂停时显示判定区") is ignored so PV/BG renders exactly as it will in the
         // exported video. Normal preview leaves this false → option behaves as usual.
         bool exportPreviewActive_ = false;
-        // Transient (not persisted): true while Alt is held with the preview
-        // paused. Inverts the effective "暂停时显示判定区" option so the paused view
-        // flips judge area ⇄ PV/BG until Alt is released (or the app
-        // deactivates, e.g. Alt+Tab). Set from Session::eventFilter via
-        // Session::setPauseDisplayAltHoldActive.
-        bool pauseDisplayAltHoldActive_ = false;
+        QJsonObject previewModeProfiles_;
         bool previewShowDebugInfo_ = false;
         bool previewShowTimestamp_ = true;
+        bool previewShowHandOrderAnnotations_ = false;
         bool previewShowMeasureLines_ = false;
         bool previewShowJudgementSkeleton_ = false;
         bool previewShowSlideJudgementTiming_ = false;
@@ -467,8 +468,7 @@
         // empty-pair backspace, the bracket suggestion popup, and the 'h' hold-
         // duration suggestions. Was three separate toggles before they merged.
         bool editorAutoCompletionEnabled_ = true;
-        QStringList editorCompletionDurationCandidates_;
-        QStringList editorCompletionDivisionCandidates_;
+        miacode::editor::SimaiCompletionConfig editorCompletionConfig_ = miacode::editor::defaultCompletionConfig();
         // beta51+ — "禁止中文輸入法輸入" preference. On by default (user-voted
         // default): the editor is for chart notation, so blocking the IME
         // candidate window avoids accidental CJK composition on first launch.
@@ -708,6 +708,7 @@
     double& previewBackgroundBrightnessInner_ = state_.previewBackgroundBrightnessInner_;
     double& previewLayoutSquareScale_ = state_.previewLayoutSquareScale_;
     double& previewFireworkBrightness_ = state_.previewFireworkBrightness_;
+    PreviewFireworkStyle& previewFireworkStyle_ = state_.previewFireworkStyle_;
     bool& previewSmoothBrightness_ = state_.previewSmoothBrightness_;
     PreviewOutlineVariant& previewOutlineVariant_ = previewAppearanceValues_.outlineVariant;
     bool& previewOutlineVariantUsesAutoSelection_ = state_.previewOutlineVariantUsesAutoSelection_;
@@ -715,6 +716,7 @@
     PreviewBackgroundScaleMode& previewBackgroundScaleMode_ = state_.previewBackgroundScaleMode_;
     double& previewTapFlowSpeed_ = state_.previewTapFlowSpeed_;
     double& previewTouchFlowSpeed_ = state_.previewTouchFlowSpeed_;
+    double& previewStarFadeTiming_ = state_.previewStarFadeTiming_;
     bool& previewSlideEarlierSecondAndTextOnTop_ =
         previewAppearanceValues_.slideEarlierSecondAndTextOnTop;
     PreviewTapJudgeTextDistance& previewTapJudgeTextDistance_ =
@@ -731,6 +733,7 @@
     bool& exportPreviewActive_ = state_.exportPreviewActive_;
     bool& previewShowDebugInfo_ = state_.previewShowDebugInfo_;
     bool& previewShowTimestamp_ = state_.previewShowTimestamp_;
+    bool& previewShowHandOrderAnnotations_ = state_.previewShowHandOrderAnnotations_;
     bool& previewShowObjectStatsHud_ = state_.previewShowObjectStatsHud_;
     bool& exportShowObjectStatsHud_ = state_.exportShowObjectStatsHud_;
     bool& previewShowChartInfoHud_ = state_.previewShowChartInfoHud_;

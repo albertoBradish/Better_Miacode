@@ -6,7 +6,6 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/ProcessDiagnostics.h"
@@ -570,6 +569,24 @@ void miacode::runtime::PlaybackCoordinator::stopQtPreviewTimers()
     setPreviewFixedTimerHighResolutionActive(state_, false);
 }
 
+void miacode::runtime::PlaybackCoordinator::updateTimelinePlaybackCadence()
+{
+    // Start on the watchdog until the first live render-cadence sample.
+    state_.qtPreviewLastTimelineCadenceMs_ = -1;
+    state_.qtPreviewLastTimelineCadenceFlushNs_ = -1;
+    const bool active = state_.playing_ && !state_.lowPerformanceMode_;
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setPlaybackCadenceActive(active);
+    }
+    if (ui_.qtPreviewTimelineTimer_ != nullptr) {
+        if (active) {
+            ui_.qtPreviewTimelineTimer_->start();
+        } else {
+            ui_.qtPreviewTimelineTimer_->stop();
+        }
+    }
+}
+
 void miacode::runtime::PlaybackCoordinator::finalizeQtPreviewPlaybackStart(double effectiveStartSecond)
 {
     state_.pausedPreviewMediaSeekPending_ = false;
@@ -622,15 +639,7 @@ void miacode::runtime::PlaybackCoordinator::finalizeQtPreviewPlaybackStart(doubl
     } else {
         requestNextFixedIntervalPreviewFrame();
     }
-    // Start on the watchdog: the first afterAnimating tick claims the sampling phase.
-    state_.qtPreviewLastTimelineCadenceMs_ = -1;
-    state_.qtPreviewLastTimelineCadenceFlushNs_ = -1;
-    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
-        state_.timeline_.timelineQuickStateBridge_->setPlaybackCadenceActive(true);
-    }
-    if (ui_.qtPreviewTimelineTimer_ != nullptr && !ui_.qtPreviewTimelineTimer_->isActive()) {
-        ui_.qtPreviewTimelineTimer_->start();
-    }
+    updateTimelinePlaybackCadence();
     if (ui_.previewStatsUiTimer_ != nullptr && !ui_.previewStatsUiTimer_->isActive()) {
         ui_.previewStatsUiTimer_->start();
     }
@@ -1053,7 +1062,7 @@ void miacode::runtime::PlaybackCoordinator::emitChartSwitchResourceGauge()
     // a line reports the state the process is ENTERING this chart with — i.e. it
     // carries the accumulation of every previous switch, not this switch's own
     // texture builds. That is exactly what detecting accumulation needs: across an
-    // A→B→A→B… loop, `tex` / `tex_pix` at "entering A" must be flat. A monotonic
+    // A→B→A→B… loop, `tex` at "entering A" must be flat. A monotonic
     // climb is the leak signature (F-1); a flat count with climbing private bytes
     // is Qt RHI deferred release, not our accumulation.
     //

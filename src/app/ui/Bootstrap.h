@@ -22,11 +22,6 @@ namespace miacode::net {
 class NetHttpTransport;
 class NetProvider;
 }
-namespace miacode::update {
-class NetworkUpdateFetcher;
-class UpdateService;
-class UpdateStateStore;
-}
 namespace miacode::ui {
 class ApplicationContext;
 class CoverExportWindow;
@@ -63,13 +58,6 @@ private:
     // Declared before backend_ so it is destroyed after it: the window's
     // teardown still talks to these services.
     std::unique_ptr<miacode::ApplicationServices> applicationServices_;
-    // 更新检查这三件东西的顺序是有意义的：成员按声明的逆序析构，所以
-    // service 先走，然后才是它引用的 fetcher 与 store。构造留在 Bootstrap
-    // 而不是 ApplicationServices，因为 store 的生产实现会把 PreferenceDocument
-    // 拖进链接闭包，而那个装配体的几个 spec 只链 Core 与 Gui。
-    std::unique_ptr<miacode::update::UpdateStateStore> updateStateStore_;
-    std::unique_ptr<miacode::update::NetworkUpdateFetcher> updateFetcher_;
-    std::unique_ptr<miacode::update::UpdateService> updateService_;
     std::unique_ptr<miacode::JobRegistry> jobRegistry_;
     std::unique_ptr<miacode::net::NetHttpTransport> netTransport_;
     std::unique_ptr<miacode::net::NetProvider> netProvider_;

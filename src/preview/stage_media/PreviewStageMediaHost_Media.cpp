@@ -1,5 +1,8 @@
 #include "preview/stage_media/PreviewStageMediaHost.h"
 
+#include <QMutex>
+#include <QMutexLocker>
+
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -46,6 +49,39 @@
 
 using namespace miacode::preview::psmh_detail;
 
+struct PreviewVideoFrameDeliveryState {
+    struct Delivery { QAVVideoFrame frame; };
+    QMutex mutex;
+    std::shared_ptr<Delivery> pending;
+    bool coalesce = false;
+    bool active = true;
+};
+
+void PreviewStageMediaHost::setPreviewFrameRateLimit(double fps)
+{
+    previewFrameRateLimit_ = std::isfinite(fps) && fps > 0.0 ? fps : 0.0;
+    frameRateGate_.reset();
+}
+
+void PreviewStageMediaHost::sealPendingVideoFrameDelivery()
+{
+    frameRateGate_.reset();
+    if (!videoFrameDelivery_) return;
+    QMutexLocker lock(&videoFrameDelivery_->mutex);
+    videoFrameDelivery_->coalesce = false;
+    videoFrameDelivery_->pending.reset();
+}
+
+void PreviewStageMediaHost::updateVideoFrameCoalescing()
+{
+    if (!videoFrameDelivery_) return;
+    QMutexLocker lock(&videoFrameDelivery_->mutex);
+    videoFrameDelivery_->coalesce = videoPlaybackActive_
+        && !preparedPlaybackPending_ && !pausedSeekCompletionPending_
+        && !staleEndOfMediaResumePending_;
+}
+
+
 namespace {
 
 QString normalizedLocalPath(const QString& path)
@@ -76,6 +112,31 @@ bool PreviewStageMediaHost::chartHasVideoBackground() const
         resolved = resolveMediaPath(chartPath_);
     }
     return miacode::chart_assets::isVideoBackgroundPath(resolved);
+}
+
+void PreviewStageMediaHost::setBackgroundPolicy(BackgroundPolicy policy)
+{
+    if (backgroundPolicy_ == policy) return;
+    backgroundPolicy_ = policy;
+    if (!chartIntroBackgroundActive_) reloadCurrentMediaPreservingPlayback();
+}
+
+void PreviewStageMediaHost::setChartIntroBackgroundActive(bool active)
+{
+    if (chartIntroBackgroundActive_ == active) return;
+    chartIntroBackgroundActive_ = active;
+    const bool changesMediaPolicy = !usesBackgroundMedia(backgroundPolicy_);
+    const bool changesPlaceholder = missingMediaFallbackEnabled_
+        && (mediaPath_.isEmpty() || mediaPath_.startsWith(QLatin1Char(':')));
+    if (changesMediaPolicy || changesPlaceholder) reloadCurrentMediaPreservingPlayback();
+}
+
+void PreviewStageMediaHost::setExportIncludePv(std::optional<bool> include)
+{
+    const bool previouslyIncluded = exportIncludePv_.value_or(!hidePv_);
+    exportIncludePv_ = include;
+    if (previouslyIncluded != exportIncludePv_.value_or(!hidePv_))
+        reloadCurrentMediaPreservingPlayback();
 }
 
 bool PreviewStageMediaHost::hidePv() const
@@ -235,7 +296,7 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
     // still force a re-decode. Phase 4c — explicit `&video=` beats the sibling
     // heuristic; fall back to the legacy resolver for image-only backgrounds.
     QString resolvedPath;
-    if (!normalizedChartPath.isEmpty()) {
+    if ((chartIntroBackgroundActive_ || usesBackgroundMedia(backgroundPolicy_)) && !normalizedChartPath.isEmpty()) {
         resolvedPath = resolveStageMediaPath(normalizedChartPath, chartVideoOverridePath);
     }
     const QString mediaStamp = miacode::fs::fileContentStamp(resolvedPath);
@@ -283,7 +344,23 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
 
 void PreviewStageMediaHost::clearMedia()
 {
+    frameRateGate_.reset();
+    if (sourceFrameRate_ != 0.0) {
+        sourceFrameRate_ = 0.0;
+        emit sourceFrameRateChanged();
+    }
     clearPvMemorySource();
+    if (videoFrameBoundaryConnection_) {
+        QObject::disconnect(videoFrameBoundaryConnection_);
+        videoFrameBoundaryConnection_ = {};
+    }
+    if (videoFrameDelivery_) {
+        QMutexLocker lock(&videoFrameDelivery_->mutex);
+        videoFrameDelivery_->active = false;
+        if (videoFrameDelivery_->pending) videoFrameDelivery_->pending->frame = QAVVideoFrame();
+        videoFrameDelivery_->pending.reset();
+    }
+    videoFrameDelivery_.reset();
     if (videoFrameConnection_) {
         QObject::disconnect(videoFrameConnection_);
         videoFrameConnection_ = QMetaObject::Connection();
@@ -412,16 +489,17 @@ QString PreviewStageMediaHost::resolveStageMediaPath(
     if (resolved.isEmpty()) {
         resolved = resolveMediaPath(chartPath);
     }
+    const bool allowPlaceholder = missingMediaFallbackEnabled_ && !chartIntroBackgroundActive_;
     if (resolved.isEmpty()) {
-        return missingMediaFallbackEnabled_
+        return allowPlaceholder
             ? miacode::chart_assets::resolveDisplayBackgroundImagePath(chartPath)
             : QString();
     }
-    if (!hidePv_ && miacode::chart_assets::isVideoBackgroundPath(resolved)) {
+    if (exportIncludePv_.value_or(!hidePv_) && miacode::chart_assets::isVideoBackgroundPath(resolved)) {
         return resolved;
     }
     const QString imagePath = miacode::chart_assets::resolveUsableBackgroundImagePath(chartPath);
-    if (!imagePath.isEmpty() || !missingMediaFallbackEnabled_) {
+    if (!imagePath.isEmpty() || !allowPlaceholder) {
         return imagePath;
     }
     return miacode::chart_assets::resolveDisplayBackgroundImagePath(chartPath);
@@ -492,30 +570,49 @@ void PreviewStageMediaHost::loadVideoMedia(const QString& path)
     beginPvMemorySource();
 
     // (Re)connect the decoded-frame stream, capturing the current source
-    // generation by value (clearMedia() bumped it just before this). Any
-    // in-flight frame from a previous source carries the old generation and is
-    // dropped in handleDecodedVideoFrame. Default (auto/queued) connection ->
-    // the handler runs on the GUI thread.
-    if (videoFrameConnection_) {
-        QObject::disconnect(videoFrameConnection_);
-        videoFrameConnection_ = QMetaObject::Connection();
-    }
+    if (videoFrameConnection_) QObject::disconnect(videoFrameConnection_);
+    if (videoFrameBoundaryConnection_) QObject::disconnect(videoFrameBoundaryConnection_);
     const quint64 sourceGeneration = videoSourceGeneration_;
+    const auto deliveryState = std::make_shared<PreviewVideoFrameDeliveryState>();
+    videoFrameDelivery_ = deliveryState;
+    // Seal the frame preceding a seek notification so delivery preserves event order.
+    videoFrameBoundaryConnection_ = connect(player_, &QAVPlayer::seeked, this,
+        [deliveryState](qint64) {
+            QMutexLocker lock(&deliveryState->mutex);
+            deliveryState->coalesce = false;
+            deliveryState->pending.reset();
+        }, Qt::DirectConnection);
     videoFrameConnection_ = connect(player_, &QAVPlayer::videoFrame, this,
-        [this, sourceGeneration](const QAVVideoFrame& avFrame) {
-            const double ptsSeconds = avFrame.pts();
-            const double durationSeconds = avFrame.duration();
-            // Implicit QAVVideoFrame -> QVideoFrame; a platform hardware frame
-            // keeps its RHI texture handle through this conversion.
-            QVideoFrame vf = avFrame;
-            handleDecodedVideoFrame(vf, ptsSeconds, durationSeconds, sourceGeneration);
-        });
+        [this, deliveryState, sourceGeneration](const QAVVideoFrame& avFrame) {
+            QMutexLocker lock(&deliveryState->mutex);
+            if (!deliveryState->active) return;
+            if (deliveryState->coalesce && deliveryState->pending
+                && avFrame.pts() >= deliveryState->pending->frame.pts()) {
+                deliveryState->pending->frame = avFrame;
+                return;
+            }
+            const auto delivery = std::make_shared<PreviewVideoFrameDeliveryState::Delivery>();
+            delivery->frame = avFrame;
+            if (deliveryState->coalesce) deliveryState->pending = delivery;
+            QMetaObject::invokeMethod(this, [this, deliveryState, delivery, sourceGeneration]() {
+                {
+                    QMutexLocker lock(&deliveryState->mutex);
+                    if (!deliveryState->active) return;
+                    if (deliveryState->pending == delivery) deliveryState->pending.reset();
+                }
+                // Convert on the GUI thread, retaining the hardware texture handle.
+                const QAVVideoFrame& frame = delivery->frame;
+                handleDecodedVideoFrame(QVideoFrame(frame), frame.pts(), frame.duration(), sourceGeneration);
+            }, Qt::QueuedConnection);
+        }, Qt::DirectConnection);
 
     player_->setSource(path);
     player_->setSpeed(static_cast<qreal>(playbackRate_));
     // Queued before LoadedMedia by QtAVPlayer; lands the player paused on the
     // first frame so the bg shows immediately and playback is timeline-driven.
+    sealPendingVideoFrameDelivery();
     player_->pause();
+    sealPendingVideoFrameDelivery();
     player_->seek(0);
     updateClockDelta();
     emit imageSourceChanged();

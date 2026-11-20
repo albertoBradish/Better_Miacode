@@ -33,7 +33,7 @@ PreviewSpriteDescriptors buildPreviewMaimuriDxJudgeLayerSprites(
 )
 {
     PreviewSpriteDescriptors sprites;
-    if (state.muriRenderOptions.renderMode != RenderMode::MaimuriDxStyle
+    if (!renderModeUsesMaimuri(state.muriRenderOptions.renderMode)
         || activeEvents.isEmpty()
         || !hasAnyMaimuriDxJudgeAssets(state.judgeOverlay)) {
         return sprites;

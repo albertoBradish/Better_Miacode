@@ -1,5 +1,6 @@
 #include "app/services/ProjectPreferences.h"
 #include "common/DebugLog.h"
+#include "common/RuntimePaths.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -10,6 +11,11 @@
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
+    QString runtimeError;
+    if (!miacode::runtime_paths::initializeFromEnvironment(&runtimeError)) {
+        QTextStream(stderr) << runtimeError << '\n';
+        return 1;
+    }
     QTemporaryDir temporary;
     if (!temporary.isValid()) return 1;
     miacode::debug_log::setSessionProjectLogDirectory(temporary.path());

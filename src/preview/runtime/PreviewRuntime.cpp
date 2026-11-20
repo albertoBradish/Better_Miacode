@@ -1,4 +1,5 @@
 #include "preview/runtime/PreviewRuntime.h"
+#include "core/chart/IntroConfig.h"
 #include "core/scene/PreviewFireworkWarmupPolicy.h"
 #include "core/scene/TouchPadAuthoringState.h"
 
@@ -248,6 +249,17 @@ void PreviewRuntime::publishFrameStateSnapshot()
 {
     auto snapshot =
         std::make_shared<miacode::preview::scene::PreviewFrameState>(frameState_);
+    if (introOverlayActive_ && chartIntroPresentation_) {
+        miacode::preview::scene::applyChartIntroPresentation(*snapshot);
+        if (introOutlineVariant_) snapshot->assets = introOutlineAssets_;
+        if (introOverlayFrame_ >= miacode::intro::kPvPreviewHoldFrames) {
+            snapshot->render.backgroundPolicy = frameState_.render.backgroundPolicy;
+        } else {
+            snapshot->render.backgroundBrightnessInner = 1.0;
+            snapshot->render.backgroundBrightnessOuter = 1.0;
+            snapshot->render.backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
+        }
+    }
     miacode::preview::scene::refreshPreviewFrameStateHudStatsSnapshot(*snapshot);
     std::shared_ptr<const miacode::preview::scene::PreviewFrameState> publishedSnapshot =
         std::move(snapshot);
@@ -255,6 +267,33 @@ void PreviewRuntime::publishFrameStateSnapshot()
         &publishedFrameState_,
         std::move(publishedSnapshot),
         std::memory_order_release);
+}
+
+void PreviewRuntime::inheritDisplaySettings(const PreviewRuntime& source)
+{
+    const auto& other = source.frameState_;
+    const bool assetsChanged = inheritedAssetRevision_ != source.assetRevision_;
+    const bool measuresChanged = visualAidMode_ != source.visualAidMode_
+        || visualAidCustomBeats_ != source.visualAidCustomBeats_;
+    if (!assetsChanged && !measuresChanged && frameState_.render == other.render
+        && frameState_.hudFontSettings == other.hudFontSettings
+        && frameState_.muriRenderOptions == other.muriRenderOptions) return;
+
+    if (assetsChanged) {
+        inheritedAssetRevision_ = source.assetRevision_;
+        frameState_.assets = other.assets;
+        frameState_.skin = other.skin;
+        frameState_.judgeOverlay = other.judgeOverlay;
+        frameState_.judgeEffect = other.judgeEffect;
+    }
+    frameState_.render = other.render;
+    frameState_.hudFontSettings = other.hudFontSettings;
+    frameState_.muriRenderOptions = other.muriRenderOptions;
+    ++frameState_.sceneContentRevision;
+    if (measuresChanged)
+        setVisualAidSettings(other.render.showMeasureLines, other.render.showJudgementSkeleton,
+                             source.visualAidMode_, source.visualAidCustomBeats_);
+    else update();
 }
 
 void PreviewRuntime::setVisibleHostWindow(QQuickWindow* window)
@@ -394,53 +433,31 @@ void PreviewRuntime::setStageMediaPresentationMode(
     }
 }
 
-void PreviewRuntime::setExternalStageMediaDebugState(
-    miacode::preview::scene::PreviewExternalStageMediaType mediaType,
-    bool videoPlaybackActive,
-    double playbackSecond,
-    double clockDeltaSeconds,
-    qint64 videoFrameAgeMs,
-    bool videoFrameStalled,
-    bool requestUpdate)
+void PreviewRuntime::setExternalStageMediaState(const ExternalStageMediaState& state, bool requestUpdate)
 {
-    frameState_.media.externalMediaType = mediaType;
-    frameState_.media.externalVideoPlaybackActive = videoPlaybackActive;
-    frameState_.media.externalPlaybackSecond = qMax(0.0, playbackSecond);
-    frameState_.media.externalClockDeltaSeconds = clockDeltaSeconds;
-    frameState_.media.externalVideoFrameAgeMs = videoFrameAgeMs;
-    frameState_.media.externalVideoFrameStalled = videoFrameStalled;
+    frameState_.media.externalMediaType = state.mediaType;
+    frameState_.media.externalVideoPlaybackActive = state.videoPlaybackActive;
+    frameState_.media.externalPlaybackSecond = qMax(0.0, state.playbackSecond);
+    frameState_.media.externalClockDeltaSeconds = state.clockDeltaSeconds;
+    frameState_.media.externalVideoFrameAgeMs = state.videoFrameAgeMs;
+    frameState_.media.externalVideoFrameStalled = state.videoFrameStalled;
+    externalStageMediaSeparateSurfaceActive_ = state.separateSurfaceActive;
+    externalStageMediaHasResolvedMedia_ = state.hasResolvedMedia;
+    externalStageMediaHasVideoMedia_ = state.hasVideoMedia;
+    externalStageMediaMediaTypeName_ = state.mediaTypeName.trimmed().isEmpty()
+        ? QStringLiteral("none")
+        : state.mediaTypeName.trimmed();
+    frameState_.media.externalVideoFrameCountTotal = qMax<qint64>(0, state.videoFrameCountTotal);
+    frameState_.media.externalVideoFrameRate = qMax(0.0, state.videoFrameRate);
+    frameState_.media.externalVideoFrameIntervalAvgMs = qMax(0.0, state.videoFrameIntervalAvgMs);
+    frameState_.media.externalVideoFrameIntervalMaxMs = qMax(0.0, state.videoFrameIntervalMaxMs);
+    frameState_.media.externalVideoFrameStallCount = qMax<qint64>(0, state.videoFrameStallCount);
+    frameState_.media.externalVideoDecodeDesc = state.videoDecodeDesc;
     if (requestUpdate) {
         update();
     } else {
         publishFrameStateSnapshot();
     }
-}
-
-void PreviewRuntime::setExternalStageMediaProfileSummary(
-    bool separateSurfaceActive,
-    bool hasResolvedMedia,
-    bool hasVideoMedia,
-    const QString& mediaTypeName,
-    qint64 videoFrameCountTotal,
-    double videoFrameRate,
-    double videoFrameIntervalAvgMs,
-    double videoFrameIntervalMaxMs,
-    qint64 videoFrameStallCount,
-    const QString& videoDecodeDesc)
-{
-    externalStageMediaSeparateSurfaceActive_ = separateSurfaceActive;
-    externalStageMediaHasResolvedMedia_ = hasResolvedMedia;
-    externalStageMediaHasVideoMedia_ = hasVideoMedia;
-    externalStageMediaMediaTypeName_ = mediaTypeName.trimmed().isEmpty()
-        ? QStringLiteral("none")
-        : mediaTypeName.trimmed();
-    frameState_.media.externalVideoFrameCountTotal = qMax<qint64>(0, videoFrameCountTotal);
-    frameState_.media.externalVideoFrameRate = qMax(0.0, videoFrameRate);
-    frameState_.media.externalVideoFrameIntervalAvgMs = qMax(0.0, videoFrameIntervalAvgMs);
-    frameState_.media.externalVideoFrameIntervalMaxMs = qMax(0.0, videoFrameIntervalMaxMs);
-    frameState_.media.externalVideoFrameStallCount = qMax<qint64>(0, videoFrameStallCount);
-    frameState_.media.externalVideoDecodeDesc = videoDecodeDesc;
-    publishFrameStateSnapshot();
 }
 
 void PreviewRuntime::setFramePacingDebugState(
@@ -525,7 +542,17 @@ void PreviewRuntime::setIntroOverlayData(
     introBackgroundImage_ = backgroundImage;
     introLogoImage_ = logoImage;
     introBannerStyle_ = bannerStyle;
+    chartIntroPresentation_ = bannerStyle.value(QStringLiteral("chartPreviewMode")).toBool();
     emit introOverlayDataChanged();
+}
+
+void PreviewRuntime::setIntroChartOutline(PreviewOutlineVariant variant, const QString& imagePath)
+{
+    variant = chartIntroOutlineVariant(variant);
+    if (introOutlineVariant_ == variant && introOutlineImagePath_ == imagePath) return;
+    introOutlineVariant_ = variant;
+    introOutlineImagePath_ = imagePath;
+    introOutlineAssets_ = miacode::preview::runtime::PreviewSceneAssetLoader::loadAssetState(variant, imagePath);
 }
 
 void PreviewRuntime::setIntroOverlayFrame(int authoringFrame, bool active, bool requestUpdate)
@@ -744,6 +771,8 @@ void PreviewRuntime::setMuriAnalysisReport(const MuriAnalysisReport& report)
 void PreviewRuntime::setMuriRenderOptions(const MuriRenderOptions& options)
 {
     frameState_.muriRenderOptions = options;
+    refreshDebugInfoVisibility();
+    frameState_.render.backgroundPolicy = backgroundPolicyForRenderMode(options.renderMode);
     frameState_.sceneContentRevision += 1;
     update();
 }
@@ -812,6 +841,17 @@ void PreviewRuntime::setLayoutSquareScale(double scale)
     update();
 }
 
+void PreviewRuntime::setFireworkStyle(PreviewFireworkStyle style)
+{
+    if (frameState_.render.fireworkStyle == style) return;
+    frameState_.render.fireworkStyle = style;
+    removeFireworkWarmupMarkers();
+    fireworkWarmupArmed_ = false;
+    fireworkWarmupDone_ = false;
+    armFireworkPsoWarmupIfReady();
+    update();
+}
+
 void PreviewRuntime::setFireworkBrightness(double brightness)
 {
     frameState_.render.fireworkBrightness = miacode::preview_video::normalizedFireworkBrightness(brightness);
@@ -833,6 +873,12 @@ void PreviewRuntime::setBackgroundScaleMode(PreviewBackgroundScaleMode mode)
 void PreviewRuntime::setTapFlowSpeed(double flowSpeed)
 {
     frameState_.render.tapFlowSpeed = miacode::preview_gameplay::normalizePreviewTimingFlowSpeed(flowSpeed);
+    update();
+}
+
+void PreviewRuntime::setStarFadeTiming(double timing)
+{
+    frameState_.render.starFadeTiming = miacode::preview_gameplay::normalizedStarFadeTiming(timing);
     update();
 }
 
@@ -931,10 +977,16 @@ void PreviewRuntime::setTouchPadAuthoringEnabled(bool enabled)
     update();
 }
 
+void PreviewRuntime::refreshDebugInfoVisibility()
+{
+    frameState_.render.showDebugInfo = requestedShowDebugInfo_
+        && (!suppressDebugInfo_ || frameState_.muriRenderOptions.renderMode == RenderMode::Debug);
+}
+
 void PreviewRuntime::setShowDebugInfo(bool show)
 {
     requestedShowDebugInfo_ = show;
-    frameState_.render.showDebugInfo = requestedShowDebugInfo_ && !suppressDebugInfo_;
+    refreshDebugInfoVisibility();
     update();
 }
 
@@ -945,7 +997,7 @@ void PreviewRuntime::setSuppressDebugInfo(bool suppress)
     }
     const bool oldEffective = frameState_.render.showDebugInfo;
     suppressDebugInfo_ = suppress;
-    frameState_.render.showDebugInfo = requestedShowDebugInfo_ && !suppressDebugInfo_;
+    refreshDebugInfoVisibility();
     appendHudStateDiagLine(
         QStringLiteral("set_suppress_debug_info"),
         QStringLiteral("runtime=%1 state=%2 suppress=%3 requested=%4 old_effective=%5 new_effective=%6")
@@ -955,6 +1007,13 @@ void PreviewRuntime::setSuppressDebugInfo(bool suppress)
             .arg(requestedShowDebugInfo_ ? 1 : 0)
             .arg(oldEffective ? 1 : 0)
             .arg(frameState_.render.showDebugInfo ? 1 : 0));
+    update();
+}
+
+void PreviewRuntime::setCompletionDisplay(CompletionDisplay display)
+{
+    if (frameState_.render.completionDisplay == display) return;
+    frameState_.render.completionDisplay = display;
     update();
 }
 
@@ -1138,6 +1197,22 @@ void PreviewRuntime::setUseMineSkin(bool enabled)
         return;
     }
     frameState_.render.useMineSkin = enabled;
+    update();
+}
+
+void PreviewRuntime::setShowHandOrderWatermark(bool enabled)
+{
+    if (frameState_.render.showHandOrderWatermark == enabled) return;
+    frameState_.render.showHandOrderWatermark = enabled;
+    update();
+}
+
+void PreviewRuntime::setShowHandOrderAnnotations(bool enabled)
+{
+    if (frameState_.render.showHandOrderAnnotations == enabled) {
+        return;
+    }
+    frameState_.render.showHandOrderAnnotations = enabled;
     update();
 }
 
@@ -2144,6 +2219,7 @@ void PreviewRuntime::refreshAssetStateFromRepository()
     if (assets_ == nullptr) {
         return;
     }
+    ++assetRevision_;
     frameState_.assets = assets_->assetState();
     frameState_.skin = assets_->skinAssets();
     frameState_.judgeOverlay = assets_->judgeOverlayAssets();
@@ -2155,15 +2231,12 @@ void PreviewRuntime::armFireworkPsoWarmupIfReady()
     if (fireworkWarmupDone_ || fireworkWarmupArmed_) {
         return;
     }
-    // Need the core skin AND the firework colour-ball image present, so the
-    // layer takes the textured colour-ball branch — that's what forces Qt
-    // RHI to compile the firework material pipeline *and* upload the texture.
-    // (populateJudgeEffectAssets always supplies a procedural fallback ball,
-    // so this is non-null whenever core assets have loaded; the guard is
-    // belt-and-suspenders against an empty/uninitialised asset state.)
-    if (assets_ == nullptr || !assets_->hasCoreSkinAssetsLoaded()
-        || frameState_.judgeEffect.fireworkColorBallImage.isNull()) {
-        return;  // retried on the next assetsChanged / visible-window bind
+    // Warm the selected style after its textures and particle data are available.
+    const bool fireworkAssetsReady = frameState_.render.fireworkStyle == PreviewFireworkStyle::Standard
+        ? frameState_.judgeEffect.standardFirework.effect != nullptr
+        : !frameState_.judgeEffect.modernFireworkColorBallImage.isNull();
+    if (assets_ == nullptr || !assets_->hasCoreSkinAssetsLoaded() || !fireworkAssetsReady) {
+        return;
     }
     fireworkWarmupArmed_ = true;
     fireworkWarmupArmPresentCount_ = presentedFrameCountTotal_;

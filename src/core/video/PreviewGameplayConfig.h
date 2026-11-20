@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QtNumeric>
 
 namespace miacode::preview_gameplay {
 
@@ -96,6 +97,11 @@ inline constexpr double kSlideHeadRotationPathFramesNumerator = 194.36;
 inline constexpr double kSlideHeadRotationReferenceDurationSeconds = 0.5;
 inline constexpr double kSlideHeadRotationReferenceDegrees = 72.0;
 inline constexpr double kSlideHeadRotationMaxDegreesPerSecond = 1080.0;
+inline double normalizedStarFadeTiming(double value)
+{
+    return qIsFinite(value) ? qRound(qBound(-1.0, value, 1.0) * 10.0) / 10.0 : 0.0;
+}
+
 inline constexpr double normalizePreviewTimingFlowSpeed(double flowSpeed)
 {
     if (flowSpeed < kPreviewTimingFlowSpeedMin) {
@@ -189,7 +195,9 @@ inline constexpr double kJudgeEffectTouchDurationSeconds = 0.25;
 inline constexpr double kJudgeEffectFireworkTouchTriggerDelaySeconds = 0.0;
 inline constexpr double kJudgeEffectFireworkSpreadSeconds = 7.0 / 30.0;
 inline constexpr double kJudgeEffectFireworkSpreadAnimationTime = 0.20;
-inline constexpr double kJudgeEffectFireworkDurationSeconds = 1.10;
+inline constexpr double kModernFireworkDurationSeconds = 1.10;
+inline constexpr double kStandardFireworkDurationSeconds = 1.50;
+inline constexpr double kFireworkMaxDurationSeconds = kStandardFireworkDurationSeconds;
 
 inline constexpr double judgeEffectFireworkAnimationTime(double elapsedSeconds)
 {

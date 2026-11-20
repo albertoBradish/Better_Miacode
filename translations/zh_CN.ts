@@ -3,6 +3,58 @@
 <TS version="2.1" language="zh_CN">
 <context>
     <name></name>
+    <message id="toast.operation_failed">
+        <source>%1 failed: %2.</source>
+        <translation>%1失败，%2。</translation>
+    </message>
+    <message id="toast.operation_partially_failed">
+        <source>%1 partially failed: %2.</source>
+        <translation>%1部分失败，%2。</translation>
+    </message>
+    <message id="toast.selection_required">
+        <source>Select the chart text whose subdivision you want to adjust</source>
+        <translation>请选择需要调整分音的谱面</translation>
+    </message>
+    <message id="toast.subdivision_incompatible">
+        <source>The selected chart cannot be adjusted by this subdivision ratio</source>
+        <translation>选中片段无法按此分音比例调整</translation>
+    </message>
+    <message id="toast.subdivision_limit">
+        <source>The subdivision value exceeds the supported range</source>
+        <translation>分音数值超出支持范围</translation>
+    </message>
+    <message id="hand_order.auto.adjusted_slide_input_timing"><source>This local candidate uses slightly early or late slide input within the judge window; chart timing remains unchanged</source><translation>局部候选包含判定范围内略提前或延后的滑动输入，应用时仍保留原谱时间</translation></message>
+    <message id="hand_order.auto.player_effort"><source>Local candidate estimate: peak single-hand taps %1/s · load %2 times reference capacity</source><translation>局部候选负荷估计：峰值单手连打 %1 次/秒 · 体力负荷 %2 倍参考容量</translation></message>
+    <message id="preferences.hand_order_player.title"><source>Player ability and technique</source><translation>玩家能力与打法</translation></message>
+    <message id="preferences.hand_order_style.title"><source>Sticking style</source><translation>手序风格</translation></message>
+    <message id="preferences.hand_order_style.comprehensive"><source>Comprehensive</source><translation>综合</translation></message>
+    <message id="preferences.hand_order_style.hard"><source>Hard carry</source><translation>硬抗</translation></message>
+    <message id="preferences.hand_order_style.pagination"><source>Phrase paging</source><translation>分页</translation></message>
+    <message id="preferences.hand_order_style.decomposition"><source>Hand decomposition</source><translation>拆谱</translation></message>
+    <message id="preferences.hand_order_style.custom"><source>Custom</source><translation>自定义</translation></message>
+    <message id="preferences.hand_order_style.help"><source>Presets adjust player estimates together. Moving a slider switches to Custom; judgement and hand occupancy stay fixed.</source><translation>预设会一起调整玩家参数；手动移动下方滑块后切换为“自定义”。判定与占手约束不随风格放宽。</translation></message>
+    <message id="preferences.hand_order_budget.title"><source>Sticking search budget</source><translation>Sticking 搜索预算</translation></message>
+    <message id="preferences.hand_order_budget.low"><source>Low (50 million)</source><translation>低（5000 万）</translation></message>
+    <message id="preferences.hand_order_budget.standard"><source>Standard (300 million)</source><translation>中（3 亿，默认）</translation></message>
+    <message id="preferences.hand_order_budget.high"><source>High (600 million)</source><translation>高（6 亿）</translation></message>
+    <message id="preferences.hand_order_budget.custom"><source>Custom</source><translation>自定义</translation></message>
+    <message id="preferences.hand_order_budget.custom_millions"><source>Budget (millions of work units)</source><translation>预算（百万工作量单位）</translation></message>
+    <message id="preferences.hand_order_budget.help"><source>Limits Sticking search work, not RAM or CPU use. Higher values can resolve more complex charts but take longer.</source><translation>限制自动手序的搜索工作量，不是内存或 CPU 占用上限。调高后复杂谱面可能减少缺标，但分析时间会更长。</translation></message>
+    <message id="preferences.hand_order_player.description"><source>Tap rate and movement speed are reference limits for comfortable play, not hard limits. Stamina and recovery are model estimates; adjust them to your playing style.</source><translation>手速与位移速度是舒适区的参考上限，不是硬性限制。体力与恢复参数用于工程估计，可按实际打法调整。</translation></message>
+    <message id="preferences.hand_order_player.tap_rate"><source>Comfortable BPM per hand (16th notes)</source><translation>单手最大舒适BPM（16分连打）</translation></message>
+    <message id="preferences.hand_order_player.move_speed"><source>Comfortable screen-diameter moves/s</source><translation>舒适跨屏速度（直径/秒）</translation></message>
+    <message id="preferences.hand_order_player.stamina"><source>Sustained-action stamina multiplier</source><translation>持续动作耐力倍率</translation></message>
+    <message id="preferences.hand_order_player.recovery"><source>Rest needed to halve load (s)</source><translation>休息后负荷减半时间（秒）</translation></message>
+    <message id="preferences.hand_order_player.technique"><source>Movement/splitting ↔ repeated-hit preference</source><translation>位移拆解 ↔ 原位连打倾向</translation></message>
+    <message id="preferences.hand_order_player.technique_help"><source>Negative values favor movement and splitting patterns between hands; 0 is balanced; positive values favor repeated hits in place. Occupancy and judgement requirements still apply.</source><translation>负值偏向位移与双手拆解，0 为均衡，正值偏向原位硬抗。打法偏好不会放宽占手与判定要求。</translation></message>
+    <message id="preferences.hand_order_player.reset"><source>Reset player parameters</source><translation>重置玩家参数</translation></message>
+    <message id="preferences.hand_order_player.posture_weight"><source>Natural-side preference strength</source><translation>优先自然侧力度</translation></message>
+    <message id="preferences.hand_order_player.posture_help"><source>0 disables this natural-side weight. Higher values prefer each hand’s natural side more strongly. Hand occupancy and path safety still apply.</source><translation>0 关闭这项自然侧权重；数值越大，越优先使用各手的自然侧。占手与路径安全约束仍然有效。</translation></message>
+    <message id="dialog.preferences.group.hand_order"><source>Sticking</source><translation>Sticking</translation></message>
+    <message id="preferences.hand_order_return_speed"><source>Idle hand return speed</source><translation>空闲回正速度</translation></message>
+    <message id="preferences.hand_order_return_speed_unit"><source>field radii/s</source><translation>场地半径/秒</translation></message>
+    <message id="preferences.hand_order_sweep_threshold"><source>Sweep threshold (16th BPM equivalent)</source><translation>扫键速度阈值（等效16分BPM）</translation></message>
+    <message id="preferences.hand_order_sweep_threshold_help"><source>160 = 16th notes at 160 BPM; 300 = 32nd notes at 150 BPM. Higher values require faster spacing.</source><translation>160 对应 BPM 160 的 16 分；300 对应 BPM 150 的 32 分。数值越高，需更快的相邻间隔才判为扫。</translation></message>
     <message id="setup.completion_hint">
         <source>Customize completion candidates in Preferences.</source>
         <translation>可在首选项中自定义补全候选列表。</translation>
@@ -26,16 +78,16 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>欢迎使用 Better Miacode</translation>
     </message>
     <message id="setup.configure">
-        <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
-        <translation>接下来设置外观、布局、导航与编辑器，之后可在首选项中修改。</translation>
+        <source>Set up appearance and the editor. You can change these later in Preferences.</source>
+        <translation>接下来设置外观和编辑器，之后可在首选项中修改。</translation>
     </message>
     <message id="setup.imported">
-        <source>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</source>
-        <translation>旧版设置已迁入。接下来确认外观、布局、导航与编辑器，之后可在首选项中修改。</translation>
+        <source>Settings from the previous version are in place. You can review appearance and editor settings in Preferences.</source>
+        <translation>旧版设置已迁入。可在首选项中查看外观和编辑器设置。</translation>
     </message>
     <message id="setup.import_pending">
-        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</source>
-        <translation>旧版设置已读取，保存失败。请检查配置目录权限，并确认外观、布局、导航与编辑器。</translation>
+        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance and editor settings.</source>
+        <translation>已加载旧版设置，但保存失败。请检查配置目录权限，再确认外观和编辑器设置。</translation>
     </message>
     <message id="setup.wizard">
         <source>Setup wizard</source>
@@ -213,13 +265,25 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <source>Save As...</source>
         <translation>另存为</translation>
     </message>
+    <message id="action.export_plain_simai">
+        <source>Export plain Simai...</source>
+        <translation>导出纯 Simai...</translation>
+    </message>
     <message id="action.transform.mirror_lr">
         <source>Mirror Left/Right</source>
         <translation>左右镜像</translation>
     </message>
+    <message id="action.transform.mirror_lr_swap_hands">
+        <source>Mirror Left/Right and swap hands</source>
+        <translation>左右镜像并交换左右手</translation>
+    </message>
     <message id="action.transform.mirror_ud">
         <source>Mirror Up/Down</source>
         <translation>上下镜像</translation>
+    </message>
+    <message id="action.transform.mirror_ud_swap_hands">
+        <source>Mirror Up/Down and swap hands</source>
+        <translation>上下镜像并交换左右手</translation>
     </message>
     <message id="action.transform.more">
         <source>More...</source>
@@ -312,6 +376,10 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
     <message id="cli.export.chart_read_failed">
         <source>failed to read chart file</source>
         <translation>读取谱面文件失败</translation>
+    </message>
+    <message id="cli.export.hand_order_annotation_invalid">
+        <source>Sticking annotation is invalid</source>
+        <translation>Sticking 标注无效</translation>
     </message>
     <message id="cli.export.difficulty_invalid">
         <source>invalid difficulty token</source>
@@ -432,6 +500,14 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
     <message id="cli.video_export.hide_timestamp">
         <source>Hide timestamp overlay in output video.</source>
         <translation>隐藏输出视频中的时间戳。</translation>
+    </message>
+    <message id="cli.video_export.hand_order">
+        <source>Sticking display: annotated or original.</source>
+        <translation>Sticking 显示：annotated 或 original。</translation>
+    </message>
+    <message id="cli.video_export.hand_order_invalid">
+        <source>--hand-order must be annotated or original</source>
+        <translation>--hand-order 必须是 annotated 或 original</translation>
     </message>
     <message id="cli.video_export.inner_brightness">
         <source>Inner background brightness (0.0-1.0).</source>
@@ -1310,12 +1386,40 @@ Failed: %2</source>
         <translation>深色主题</translation>
     </message>
     <message id="dialog.preferences.theme.legacy">
+        <source>Classic</source>
+        <translation>经典</translation>
+    </message>
+    <message id="dialog.preferences.theme.default">
+        <source>Default</source>
+        <translation>默认</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_dark">
+        <source>Default Dark</source>
+        <translation>默认深色</translation>
+    </message>
+    <message id="dialog.preferences.theme.default_light">
+        <source>Default Light</source>
+        <translation>默认浅色</translation>
+    </message>
+    <message id="dialog.preferences.theme.legacy_dark">
         <source>Classic Dark</source>
         <translation>经典深色</translation>
     </message>
     <message id="dialog.preferences.theme.legacy_light">
         <source>Classic Light</source>
         <translation>经典浅色</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_mocha">
+        <source>Catppuccin Mocha</source>
+        <translation>摩卡</translation>
+    </message>
+    <message id="dialog.preferences.theme.catppuccin_latte">
+        <source>Catppuccin Latte</source>
+        <translation>拿铁</translation>
+    </message>
+    <message id="dialog.preferences.theme.nord">
+        <source>Nord</source>
+        <translation>北境</translation>
     </message>
     <message id="dialog.preferences.theme.light">
         <source>Light</source>
@@ -1561,6 +1665,10 @@ Failed: %2</source>
         <source>Show preview debug info</source>
         <translation>显示预览调试信息</translation>
     </message>
+    <message id="dialog.render_settings.gameplay.hand_order">
+        <source>Show Sticking annotations</source>
+        <translation>显示 Sticking 标注</translation>
+    </message>
     <message id="dialog.render_settings.preview_group">
         <source>Preview</source>
         <translation>预览</translation>
@@ -1621,6 +1729,18 @@ Failed: %2</source>
         <source>SD</source>
         <translation>SD</translation>
     </message>
+    <message id="dialog.skin_settings.firework">
+        <source>Firework effect</source>
+        <translation>烟花效果</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.modern">
+        <source>Modern</source>
+        <translation>现代</translation>
+    </message>
+    <message id="dialog.skin_settings.firework.standard">
+        <source>Standard</source>
+        <translation>标准</translation>
+    </message>
     <message id="dialog.render_settings.video.firework_brightness">
         <source>Firework brightness</source>
         <translation>烟花亮度</translation>
@@ -1632,6 +1752,10 @@ Failed: %2</source>
     <message id="dialog.render_settings.video.tap_flow_speed">
         <source>Tap Flow Speed</source>
         <translation>Tap流速</translation>
+    </message>
+    <message id="preview.game.star_fade_timing">
+        <source>Star fade-in timing</source>
+        <translation>星星淡入时间</translation>
     </message>
     <message id="dialog.render_settings.video.touch_flow_speed">
         <source>Touch Flow Speed</source>
@@ -1877,6 +2001,14 @@ Restore the backup from %1?</source>
         <source>Top-left export info</source>
         <translation>左上角导出信息</translation>
     </message>
+    <message id="preview.hud_extra_info">
+        <source>Top-right extra information</source>
+        <translation>右上角额外信息</translation>
+    </message>
+    <message id="preview.advanced_render_info">
+        <source>Advanced rendering information</source>
+        <translation>高级渲染信息</translation>
+    </message>
     <message id="dialog.video_export.option.hud_font_area.debug">
         <source>Debug info</source>
         <translation>调试信息</translation>
@@ -1896,6 +2028,22 @@ Restore the backup from %1?</source>
     <message id="dialog.video_export.option.show_object_stats">
         <source>Show object stats</source>
         <translation>显示物量统计</translation>
+    </message>
+    <message id="dialog.video_export.option.hand_order_mode">
+        <source>Sticking display</source>
+        <translation>Sticking 显示</translation>
+    </message>
+    <message id="dialog.video_export.hand_order.follow_preview">
+        <source>Follow preview</source>
+        <translation>跟随预览</translation>
+    </message>
+    <message id="dialog.video_export.hand_order.original">
+        <source>Original chart</source>
+        <translation>强制原谱</translation>
+    </message>
+    <message id="dialog.video_export.hand_order.annotated">
+        <source>Sticking colors</source>
+        <translation>强制 Sticking</translation>
     </message>
     <message id="dialog.video_export.option.show_timestamp">
         <source>Show bottom-left timestamp</source>
@@ -2169,6 +2317,10 @@ File: </source>
         <source>Save failed</source>
         <translation>保存失败</translation>
     </message>
+    <message id="document.plain_export_same_path">
+        <source>Choose a different file to keep the annotated chart.</source>
+        <translation>请选择其他文件，以保留含 Sticking 标注的原谱。</translation>
+    </message>
     <message id="document.selection_beats">
         <source>Selection beats: %1</source>
         <translation>选区拍数：%1</translation>
@@ -2395,7 +2547,7 @@ File: </source>
     </message>
     <message id="media_tools.audio_processing_track">
         <source>Audio Processing track.mp3</source>
-        <translation>音频处理 track.mp3</translation>
+        <translation>音频处理</translation>
     </message>
     <message id="media_tools.audio_video_processing">
         <source>Audio/Video Processing</source>
@@ -2403,7 +2555,7 @@ File: </source>
     </message>
     <message id="media_tools.align_pv_to_audio">
         <source>Auto-align Video to Track Audio</source>
-        <translation>自动对齐曲目音频</translation>
+        <translation>自动对齐音频</translation>
     </message>
     <message id="media_tools.background_mp4_video">
         <source>background .mp4 video</source>
@@ -2523,7 +2675,7 @@ File: </source>
     </message>
     <message id="media_tools.black_screen">
         <source>black screen</source>
-        <translation>黑幕</translation>
+        <translation>空白画面</translation>
     </message>
     <message id="media_tools.canceled">
         <source>Canceled.</source>
@@ -2671,15 +2823,15 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="media_tools.prepend_pv_black_screen">
         <source>Add Intro Black Screen</source>
-        <translation>添加片头黑幕</translation>
+        <translation>添加片头空白</translation>
     </message>
     <message id="media_tools.analyzing_audio_alignment">
         <source>Analyzing audio alignment...</source>
         <translation>正在分析音频对齐...</translation>
     </message>
     <message id="media_tools.video_audio_missing">
-        <source>The background video has no audio stream to align.</source>
-        <translation>背景视频没有可用于对齐的音轨。</translation>
+        <source>The background video has no audio stream and cannot be automatically aligned; no files were changed.</source>
+        <translation>背景视频没有音轨，无法自动对齐；未修改文件。</translation>
     </message>
     <message id="media_tools.video_alignment_cancelled">
         <source>Audio alignment canceled.</source>
@@ -2771,7 +2923,7 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="media_tools.video_processing_pv">
         <source>Video Processing pv.mp4</source>
-        <translation>视频处理 pv.mp4</translation>
+        <translation>视频处理</translation>
     </message>
     <message id="menu.clear_elements">
         <source>Clear Elements</source>
@@ -3531,7 +3683,7 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="qml.insert_a_black_screen_of_the_specified_duration_at_the_beginning">
         <source>Insert a black screen of the specified duration at the beginning of the background video and automatically back up the original file.</source>
-        <translation>在背景视频开头插入指定时长的黑幕，并自动备份原文件。</translation>
+        <translation>在背景视频开头插入指定时长的空白，并自动备份原文件。</translation>
     </message>
     <message id="qml.insert_blank_audio_of_the_specified_duration_at_the_beginning_of">
         <source>Insert blank audio of the specified duration at the beginning of track.mp3 and automatically back up the original file.</source>
@@ -3703,7 +3855,7 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="qml.prepend_black_screen">
         <source>Prepend black screen</source>
-        <translation>视频前置黑幕</translation>
+        <translation>视频前置空白</translation>
     </message>
     <message id="qml.prepend_blank_audio">
         <source>Prepend blank audio</source>
@@ -3962,12 +4114,12 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>停止或播放预览</translation>
     </message>
     <message id="shortcut.timeline.zoom_in">
-        <source>Timeline Zoom In</source>
-        <translation>Timeline 放大</translation>
+        <source>Timeline zoom in</source>
+        <translation>时间轴放大</translation>
     </message>
     <message id="shortcut.timeline.zoom_out">
-        <source>Timeline Zoom Out</source>
-        <translation>Timeline 缩小</translation>
+        <source>Timeline zoom out</source>
+        <translation>时间轴缩小</translation>
     </message>
     <message id="shortcut.transform.clear_complete_elements">
         <source>Clear Complete Elements</source>
@@ -4326,6 +4478,14 @@ Error: %1</source>
         <translation>时间轴</translation>
     </message>
 
+    <message id="net.ui.query_options">
+        <source>Search options</source>
+        <translation>筛选选项</translation>
+    </message>
+    <message id="net.ui.queue_hint">
+        <source>Choose a chart folder and add it to the queue.</source>
+        <translation>选择谱面文件夹，添加到上传队列。</translation>
+    </message>
     <message id="net.ui.download_page">
         <source>Majdata Net</source>
         <translation>谱面下载</translation>
@@ -4861,7 +5021,7 @@ Error: %1</source>
     </message>
     <message id="preferences.completion.division">
         <source>Beat subdivision</source>
-        <translation>节拍细分</translation>
+        <translation>节拍</translation>
     </message>
     <message id="preferences.completion.duration_hint">
         <source>Enter duration</source>
@@ -4935,202 +5095,6 @@ Error: %1</source>
         <source>The prepended PV exceeds its size budget or the 20 MB limit.</source>
         <translation>插入黑屏后的 PV 超出体积预算或 20 MB 上限。</translation>
     </message>
-    <message id="action.play_selection">
-        <source>Play Selection</source>
-        <translation>播放选区</translation>
-    </message>
-    <message id="preview.canvas.show_measure_lines">
-        <source>Show Measure Lines</source>
-        <translation>显示小节线</translation>
-    </message>
-    <message id="preview.canvas.show_judgement_skeleton">
-        <source>Show Judgement Skeleton</source>
-        <translation>显示判定骨骼</translation>
-    </message>
-    <message id="preview.canvas.slide_timing_from_launch_beat">
-        <source>Start on a matching launch beat</source>
-        <translation>有启动拍时从启动拍开始</translation>
-    </message>
-    <message id="preview.canvas.slide_timing_early_perfect_from_head">
-        <source>Fully bright from star head when Perfect starts before launch beat</source>
-        <translation>启动拍前已进入 Perfect 时，从头拍全亮</translation>
-    </message>
-    <message id="preview.canvas.show_slide_judgement_timing">
-        <source>Show Slide Judgement Timing</source>
-        <translation>显示 Slide 判定时值</translation>
-    </message>
-    <message id="preview.canvas.measure_mode">
-        <source>Measure Line Mode</source>
-        <translation>小节线模式</translation>
-    </message>
-    <message id="preview.canvas.measure_chart_clock">
-        <source>Chart clock_count (default 4 beats)</source>
-        <translation>谱面 clock_count（默认 4 拍）</translation>
-    </message>
-    <message id="preview.canvas.measure_custom_beats">
-        <source>Custom beats per measure</source>
-        <translation>自定义每小节拍数</translation>
-    </message>
-    <message id="preview.canvas.measure_text_lines">
-        <source>Text line starts</source>
-        <translation>按文本行首</translation>
-    </message>
-    <message id="dialog.render_settings.gameplay.judge_line.none">
-        <source>None</source>
-        <translation>无</translation>
-    </message>
-    <message id="dialog.video_export.option.show_bpm_hud">
-        <source>Show BPM (widescreen)</source>
-        <translation>显示 BPM（宽屏）</translation>
-    </message>
-    <message id="dialog.video_export.option.show_cps_hud">
-        <source>Show CPS (widescreen)</source>
-        <translation>显示 CPS（宽屏）</translation>
-    </message>
-    <message id="dialog.video_export.option.show_meter_hud">
-        <source>Show explicit meter (widescreen)</source>
-        <translation>显示显式拍号（宽屏）</translation>
-    </message>
-    <message id="dialog.video_export.option.show_mods_hud">
-        <source>Show Mods (widescreen)</source>
-        <translation>显示 Mods（宽屏）</translation>
-    </message>
-    <message id="tools.bpm.title">
-        <source>Export BPM</source>
-        <translation>BPM 导入 / 导出</translation>
-    </message>
-    <message id="tools.bpm.sequence">
-        <source>BPM sequence (xx.xx-xx.xx)</source>
-        <translation>BPM 顺序（xx.xx-xx.xx）</translation>
-    </message>
-    <message id="tools.bpm.audio_time">
-        <source>Audio timestamps (mm:ss:fff)</source>
-        <translation>音频时间（mm:ss:fff）</translation>
-    </message>
-    <message id="tools.bpm.empty_maidata">
-        <source>Empty maidata with timing</source>
-        <translation>保留时间轨的空 maidata</translation>
-    </message>
-    <message id="tools.bpm.preview">
-        <source>BPM export preview</source>
-        <translation>BPM 导出预览</translation>
-    </message>
-    <message id="tools.bpm.copy">
-        <source>Copy</source>
-        <translation>复制</translation>
-    </message>
-    <message id="tools.bpm.save">
-        <source>Save as…</source>
-        <translation>另存为…</translation>
-    </message>
-    <message id="tools.bpm.save_error">
-        <source>Could not save BPM export: %1</source>
-        <translation>无法保存 BPM 导出：%1</translation>
-    </message>
-    <message id="tools.chart.invalid_first">
-        <source>Invalid &amp;first value</source>
-        <translation>&amp;first 数值无效</translation>
-    </message>
-    <message id="tools.chart.parse_error">
-        <source>The chart contains parse errors</source>
-        <translation>谱面含有解析错误</translation>
-    </message>
-    <message id="tools.dx_loss.title">
-        <source>DX achievement loss</source>
-        <translation>DX 达成率失分</translation>
-    </message>
-    <message id="tools.dx_loss.attributes">
-        <source>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</source>
-        <translation>Break、Ex、Firework 是附加属性，不重复计数。Total 为计分物件总数，Mine 单列。最大个数按其余全部 Critical Perfect 计算，并限制 EX 实际可达判定（长 EX Hold 可因松手降档）。</translation>
-    </message>
-    <message id="tools.dx_loss.object">
-        <source>Object</source>
-        <translation>物件</translation>
-    </message>
-    <message id="tools.dx_loss.judgment">
-        <source>Judgment</source>
-        <translation>判定</translation>
-    </message>
-    <message id="tools.dx_loss.single">
-        <source>Loss per judgment</source>
-        <translation>单个判定失分</translation>
-    </message>
-    <message id="tools.dx_loss.empty">
-        <source>The chart has no scoring objects</source>
-        <translation>谱面没有计分物件，无法计算</translation>
-    </message>
-    <message id="tools.dx_loss.extensions">
-        <source>Unofficial extensions: counts are available; DX calculation is disabled</source>
-        <translation>谱面含非官方扩展：显示统计，禁用 DX 失分计算</translation>
-    </message>
-    <message id="tools.dx_loss.maximum_break">
-        <source>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</source>
-        <translation>实际满分：101%。其余物件按 Critical Perfect 计算。</translation>
-    </message>
-    <message id="tools.dx_loss.maximum_no_break">
-        <source>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</source>
-        <translation>实际满分：100%（无 Break）。其余物件按 Critical Perfect 计算。</translation>
-    </message>
-    <message id="tools.bpm.empty_timing_note">
-        <source>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</source>
-        <translation>空 maidata 保留 BPM 变更、显式拍号、&amp;first 与原谱终止拍位。删除长音符后，其尾部时长也随之移除，不会添加虚假 BPM。</translation>
-    </message>
-    <message id="cover.text_stroke">
-        <source>Text outline</source>
-        <translation>文字描边</translation>
-    </message>
-    <message id="cover.text_stroke_color">
-        <source>Outline color</source>
-        <translation>描边颜色</translation>
-    </message>
-    <message id="cover.text_stroke_width">
-        <source>Outline width</source>
-        <translation>描边宽度</translation>
-    </message>
-    <message id="cover.text_shadow">
-        <source>Text shadow</source>
-        <translation>文字阴影</translation>
-    </message>
-    <message id="cover.text_shadow_color">
-        <source>Shadow color</source>
-        <translation>阴影颜色</translation>
-    </message>
-    <message id="cover.text_shadow_opacity">
-        <source>Shadow opacity</source>
-        <translation>阴影不透明度</translation>
-    </message>
-    <message id="cover.text_shadow_blur">
-        <source>Shadow blur</source>
-        <translation>阴影模糊</translation>
-    </message>
-    <message id="cover.text_shadow_x">
-        <source>Shadow X offset</source>
-        <translation>阴影水平偏移</translation>
-    </message>
-    <message id="cover.text_shadow_y">
-        <source>Shadow Y offset</source>
-        <translation>阴影垂直偏移</translation>
-    </message>
-    <message id="dialog.video_export.cover_preset">
-        <source>Companion cover</source>
-        <translation>同步导出封面</translation>
-    </message>
-    <message id="dialog.video_export.cover_failed_video_kept">
-        <source>Cover export failed. The video was kept.</source>
-        <translation>封面导出失败，视频已保留。</translation>
-    </message>
-    <message id="cli.settings.title">
-        <source>Command line</source>
-        <translation>命令行</translation>
-    </message>
-    <message id="cli.settings.enable">
-        <source>Enable command-line support</source>
-        <translation>开启命令行支持</translation>
-    </message>
-    <message id="dialog.video_export.cover_source_changed">
-        <source>The chart changed while preparing the cover. Export again.</source>
-        <translation>准备封面时谱面已更改，请重新导出。</translation>
-    </message>
     <message id="file_picker.native_failed">
         <source>Could not open the system folder picker.</source>
         <translation>无法打开系统文件夹选择窗口。</translation>
@@ -5166,8 +5130,11 @@ Error: %1</source>
     <message id="video_template.export"><source>Export current template…</source><translation>导出当前模板…</translation></message>
     <message id="video_template.import"><source>Import and apply template…</source><translation>导入并应用模板…</translation></message>
     <message id="video_template.invalid"><source>This video template is invalid or uses an unsupported version.</source><translation>视频模板无效或版本不受支持。</translation></message>
-    <message id="video_cover.multiple"><source>Companion covers (multiple selection)</source><translation>同步导出封面（可多选）</translation></message>
-    <message id="video_size.target30"><source>30 MB (480p, no PV; video %1 kbps, audio %2 kbps)</source><translation>30 MB（480p、无 PV；视频 %1 kbps，音频 %2 kbps）</translation></message>
+    <message id="video_cover.multiple"><source>Companion covers</source><translation>同步导出封面</translation></message>
+    <message id="video_size.target30">
+        <source>30 MB (video %1 kbps, audio %2 kbps)</source>
+        <translation>30 MB（视频 %1 kbps，音频 %2 kbps）</translation>
+    </message>
     <message id="video_size.target100"><source>100 MB (video %1 kbps, audio %2 kbps)</source><translation>100 MB（视频 %1 kbps，音频 %2 kbps）</translation></message>
     <message id="video_size.target200"><source>200 MB (video %1 kbps, audio %2 kbps)</source><translation>200 MB（视频 %1 kbps，音频 %2 kbps）</translation></message>
     <message id="video_size.parameters"><source> (video %1 kbps, audio %2 kbps)</source><translation>（视频 %1 kbps，音频 %2 kbps）</translation></message>
@@ -5190,6 +5157,1691 @@ Error: %1</source>
 <message id="tools.bpm.import_preview"><source>Chart preview after applying BPM</source><translation>应用后的谱面预览</translation></message>
 <message id="tools.bpm.back_export"><source>Back to export</source><translation>返回导出</translation></message>
 <message id="tools.bpm.import_subdivisions"><source>Keeping note times requires subdivisions %1; check chart-converter compatibility.</source><translation>保持原时间需使用分音 %1；转谱兼容性请先核对。</translation></message>
+    <message id="dialog.preferences.font.family">
+        <source>Chart text font</source>
+        <translation>谱面文本字体</translation>
+    </message>
+    <message id="dialog.preferences.font.search">
+        <source>Search installed fonts…</source>
+        <translation>搜索已安装字体…</translation>
+    </message>
+    <message id="dialog.preferences.font.default_suffix"><source>Default</source><translation>默认</translation></message>
+    <message id="dialog.preferences.font.default">
+        <source>Default font</source>
+        <translation>默认字体</translation>
+    </message>
+    <message id="dialog.preferences.font.monospace">
+        <source>Monospace</source>
+        <translation>等宽</translation>
+    </message>
+    <message id="dialog.preferences.font.reset">
+        <source>Restore default</source>
+        <translation>恢复默认</translation>
+    </message>
+    <message id="dialog.preferences.font.sample">
+        <source>Example chart comment</source>
+        <translation>谱面注释示例</translation>
+    </message>
+    <message id="dialog.preferences.theme.midnight">
+        <source>Midnight</source>
+        <translation>午夜蓝</translation>
+    </message>
+    <message id="dialog.preferences.theme.forest">
+        <source>Forest</source>
+        <translation>森林绿</translation>
+    </message>
+    <message id="dialog.preferences.theme.paper">
+        <source>Warm Paper</source>
+        <translation>暖纸</translation>
+    </message>
+    <message id="dialog.preferences.theme.lavender">
+        <source>Lavender</source>
+        <translation>柔紫</translation>
+    </message>
+    <message id="dialog.preferences.theme.comment_sample">
+        <source>Comment</source>
+        <translation>注释</translation>
+    </message>
+    <message id="dialog.preferences.theme.yuzu"><source>Yuzu</source><translation>柚子</translation></message>
+    <message id="dialog.preferences.theme.sky"><source>Sky Blue</source><translation>天蓝</translation></message>
+    <message id="dialog.preferences.theme.dracula"><source>Dracula</source><translation>德古拉</translation></message>
+    <message id="dialog.preferences.theme.tokyo_night"><source>Tokyo Night</source><translation>东京之夜</translation></message>
+    <message id="dialog.preferences.theme.noah"><source>Noa</source><translation>诺亚</translation></message>
+
+<message id="hand_order.title">
+        <source>Sticking</source>
+        <translation>Sticking</translation>
+    </message>
+    <message id="hand_order.set_left">
+        <source>Set Selection to Left Hand</source>
+        <translation>选中内容设为左手</translation>
+    </message>
+    <message id="hand_order.set_right">
+        <source>Set Selection to Right Hand</source>
+        <translation>选中内容设为右手</translation>
+    </message>
+    <message id="hand_order.set_either">
+        <source>Set Selection to Either Hand</source>
+        <translation>选中内容设为无色/任选</translation>
+    </message>
+    <message id="hand_order.split_annotation">
+        <source>Split Sticking Intervals</source>
+        <translation>拆分 Sticking 区间</translation>
+    </message>
+    <message id="hand_order.bisect_annotation">
+        <source>Bisect Sticking Intervals</source>
+        <translation>一键二分 Sticking 区间</translation>
+    </message>
+    <message id="hand_order.swap_hands">
+        <source>Swap Left and Right Hands in Selection</source>
+        <translation>交换选中内容左右手</translation>
+    </message>
+    <message id="hand_order.alternate">
+        <source>Alternate Sticking by Beat Slots</source>
+        <translation>按逗号顺序一键拆解交互</translation>
+    </message>
+    <message id="hand_order.screen_split">
+        <source>Split Sticking by Common Screen Axis (Experimental)</source>
+        <translation>按共同对称轴一键分屏（实验性）</translation>
+    </message>
+    <message id="hand_order.selection_scope">
+        <source>Edit complete notes in the source selection, including slide heads and all branches</source>
+        <translation>对源文本选区中的完整音符操作；整条 slide 的头与全部分支一并修改</translation>
+    </message>
+    <message id="hand_order.feedback">
+        <source>Sticking: %1 changed, %2 partial tokens skipped, %3 unsupported, %4 diagnostics (click for details)</source>
+        <translation>Sticking：修改 %1 项，跳过部分 token %2 项、不支持 %3 项，诊断 %4 项（点击查看）</translation>
+    </message>
+    <message id="hand_order.diagnostic">
+        <source>Line %1, column %2: %3</source>
+        <translation>第 %1 行，第 %2 列：%3</translation>
+    </message>
+    <message id="hand_order.intervals">
+        <source>Sticking Intervals</source>
+        <translation>Sticking 区间</translation>
+    </message>
+    <message id="hand_order.draft_notice">
+        <source>Changes affect the corresponding interval. Assign every track interval, then write them to the chart in one edit. An unspecified head keeps its original skin. Unwritten choices remain in this session for the matching document version and are not saved with the chart.</source>
+        <translation>更改只作用于对应区间。所有轨迹区间都赋予手别后，点击“写入谱面”一次应用。未指定的头保持原皮肤。关闭后暂存于当前会话的对应文档版本，尚未写入的区间不会随谱面保存。</translation>
+    </message>
+    <message id="hand_order.head_row">
+        <source>%1:%2 · Head</source>
+        <translation>%1:%2 · 头</translation>
+    </message>
+    <message id="hand_order.track_row">
+        <source>%1:%2 · Branch %3 · %4–%5%</source>
+        <translation>%1:%2 · 分支 %3 · %4–%5%</translation>
+    </message>
+    <message id="hand_order.unspecified">
+        <source>Unspecified</source>
+        <translation>未指定</translation>
+    </message>
+    <message id="hand_order.left">
+        <source>Left</source>
+        <translation>左手</translation>
+    </message>
+    <message id="hand_order.right">
+        <source>Right</source>
+        <translation>右手</translation>
+    </message>
+    <message id="hand_order.either">
+        <source>Either</source>
+        <translation>无色/任选</translation>
+    </message>
+    <message id="hand_order.apply_intervals">
+        <source>Write to Chart</source>
+        <translation>写入谱面</translation>
+    </message>
+    <message id="hand_order.applied">
+        <source>Sticking intervals written; undo restores them in one step.</source>
+        <translation>Sticking 区间已写入谱面，可一次撤销。</translation>
+    </message>
+
+<message id="hand_order.analyze"><source>Hand Order Optimization</source><translation>手序优化</translation></message>
+    <message id="hand_order.auto.notice"><source>Review before applying. Context optimization may rearrange existing labels inside the range; enable protection to keep them. Outside annotations stay locked. Confidence is experimental, not a correctness or playability guarantee.</source><translation>应用前请人工复核。上下文优化默认可重排范围内已有手序；勾选保护可保留它们，范围外保持锁定。置信分为实验性估计，不是正确率或可玩性保证。</translation>
+    </message>
+    <message id="hand_order.auto.selection"><source>Calculate Selection (Empty: Current Difficulty)</source><translation>计算选区（空选区为当前难度）</translation>
+    </message>
+    <message id="hand_order.auto.difficulty"><source>Calculate Current Difficulty</source><translation>计算当前难度</translation>
+    </message>
+    <message id="hand_order.auto.cancel"><source>Exit Calculation</source><translation>退出计算</translation>
+    </message>
+    <message id="hand_order.auto.apply">
+        <source>Apply Writable Suggestions (Review Required)</source>
+        <translation>应用可写建议（需复核）</translation>
+    </message>
+    <message id="hand_order.auto.running">
+        <source>Building and searching basic action candidates…</source>
+        <translation>正在构建并搜索基础动作候选…</translation>
+    </message>
+    <message id="hand_order.auto.cancelled">
+        <source>Analysis cancelled.</source>
+        <translation>已取消分析。</translation>
+    </message>
+    <message id="hand_order.auto.stale">
+        <source>Document, difficulty or parameters changed; analyze again.</source>
+        <translation>文档、难度或参数已变化；请重新分析。</translation>
+    </message>
+    <message id="hand_order.auto.summary">
+        <source>Writable %1; preserved %2; conflicts %3; unresolved %4; unsupported/invalid/partial %5; read-only context %6.</source>
+        <translation>可写建议 %1；保留 %2；冲突 %3；未决 %4；不支持/无效/部分选中 %5；只读上下文 %6。</translation>
+    </message>
+    <message id="hand_order.auto.truncated">
+        <source> The search beam was pruned; a failed bounded search does not prove impossibility.</source>
+        <translation> 搜索束曾被裁剪；有限搜索未找到不代表无解。</translation>
+    </message>
+    <message id="hand_order.auto.invalid_parameters">
+        <source>Parameters exceed the basic model limits; no suggestions generated.</source>
+        <translation>参数超出基础模型支持范围，未生成建议。</translation>
+    </message>
+    <message id="hand_order.auto.invalid_output">
+        <source>Suggested output failed strict syntax validation; chart unchanged.</source>
+        <translation>建议无法通过严格语法校验，未写入谱面。</translation>
+    </message>
+    <message id="hand_order.auto.suggestion">
+        <source>Head: %1; track: %2. Block peak speed estimate %3 radii/s; block cost %4.</source>
+        <translation>头：%1；轨迹：%2。片段估计峰值速度 %3 半径/秒；片段代价 %4。</translation>
+    </message>
+    <message id="hand_order.auto.motion_metrics">
+        <source>Block peak speed estimate %1 radii/s; block cost %2.</source>
+        <translation>片段估计峰值速度 %1 半径/秒；片段代价 %2。</translation>
+    </message>
+    <message id="hand_order.auto.counterfactual">
+        <source> Reverse-hand component %1: signed complete-block cost gap %2, peak-tier gap %3 (not a probability).</source>
+        <translation> 反手对象 %1：完整片段的有符号代价差 %2、峰值档差 %3（非概率）。</translation>
+    </message>
+    <message id="hand_order.auto.no_counterfactual">
+        <source> No usable reverse-hand evidence; this does not prove the other hand infeasible.</source>
+        <translation> 未得到可用的反手证据，不能解释为另一只手不可行。</translation>
+    </message>
+    <message id="hand_order.auto.status.review">
+        <source>Suggestion: review required</source>
+        <translation>建议，待复核</translation>
+    </message>
+    <message id="hand_order.auto.status.heuristic">
+        <source>Default hand color: unverified</source>
+        <translation>默认手序补色，未经过完整回放验证</translation>
+    </message>
+    <message id="hand_order.auto.reason.layout_fallback_unverified">
+        <source>Unresolved note colored with its default hand by request; no full replay verification.</source>
+        <translation>按已勾选设置，用默认手序为未决音符补色；尚未通过完整回放。</translation>
+    </message>
+    <message id="hand_order.auto.status.preserved">
+        <source>Existing annotation preserved</source>
+        <translation>保留已有标注</translation>
+    </message>
+    <message id="hand_order.auto.status.unsupported">
+        <source>Unsupported</source>
+        <translation>尚未支持</translation>
+    </message>
+    <message id="hand_order.auto.status.invalid">
+        <source>Invalid input</source>
+        <translation>输入无效</translation>
+    </message>
+    <message id="hand_order.auto.status.skipped">
+        <source>Partial selection: skipped</source>
+        <translation>部分选中，跳过</translation>
+    </message>
+    <message id="hand_order.auto.status.conflict">
+        <source>Candidate constraint conflict</source>
+        <translation>候选约束冲突</translation>
+    </message>
+    <message id="hand_order.auto.status.not_found">
+        <source>No candidate found</source>
+        <translation>候选模型内未找到</translation>
+    </message>
+    <message id="hand_order.auto.status.undecided">
+        <source>Resource/search unresolved</source>
+        <translation>资源/搜索未决</translation>
+    </message>
+    <message id="hand_order.auto.reason.partial_token">
+        <source>Partial token is read as context and not written</source>
+        <translation>只读取完整上下文，部分 token 不写入</translation>
+    </message>
+    <message id="hand_order.auto.reason.invalid_native">
+        <source>Native chart errors make timing untrusted</source>
+        <translation>原生谱面存在错误，时序未被信任</translation>
+    </message>
+    <message id="hand_order.auto.reason.invalid_annotation">
+        <source>Invalid annotation preserved; repair it first</source>
+        <translation>非法标注已保留，请先修正</translation>
+    </message>
+    <message id="hand_order.auto.reason.unsupported_object">
+        <source>Touch, Touch Hold, Wifi or another object is not modeled</source>
+        <translation>Touch/Touch Hold/Wifi 等尚未建模</translation>
+    </message>
+    <message id="hand_order.auto.reason.mine_unsupported">
+        <source>Mine is not inferred as an ordinary strike</source>
+        <translation>Mine 不作为普通击打推断</translation>
+    </message>
+    <message id="hand_order.auto.reason.shared_action_unsupported">
+        <source>Shared contact, joins or overlapping paths require validation</source>
+        <translation>接触共享、接头或重合轨迹需要进一步验证</translation>
+    </message>
+    <message id="hand_order.auto.reason.branches_unsupported">
+        <source>Shared-head branches require a joint action model</source>
+        <translation>同头多分支尚未支持联合动作</translation>
+    </message>
+    <message id="hand_order.auto.reason.handoff_unsupported">
+        <source>Existing track handoffs exceed this basic model</source>
+        <translation>已有轨迹换手超出基础模型</translation>
+    </message>
+    <message id="hand_order.auto.reason.geometry_unsupported">
+        <source>Native path or duration is unavailable</source>
+        <translation>缺少有效的原生轨迹或时长</translation>
+    </message>
+    <message id="hand_order.auto.reason.unsupported_context">
+        <source>Associated with an unsupported risk window or spanning occupancy</source>
+        <translation>与未支持对象的风险窗口或跨窗占用有关联</translation>
+    </message>
+    <message id="hand_order.auto.reason.resource_limit">
+        <source>Dependency block exceeds task budget; no partial fragment applied</source>
+        <translation>该依赖片段超过任务预算，未应用近似残片</translation>
+    </message>
+    <message id="hand_order.auto.reason.button_down_conflict">
+        <source>Exterior button remains down; no fresh DOWN is available</source>
+        <translation>同一外键仍处于按住状态，无法产生新 DOWN</translation>
+    </message>
+    <message id="hand_order.auto.reason.candidate_search_failed">
+        <source>No independent two-hand fixed-event candidate found; this is not proof of unplayability</source>
+        <translation>独立双手固定时刻候选中未找到方案；不代表真实不可打</translation>
+    </message>
+    <message id="hand_order.auto.reason.counterfactual_unstable">
+        <source>Reverse-hand search still improves the complete plan; unresolved</source>
+        <translation>反手复算仍找到更好完整方案，保留未决</translation>
+    </message>
+    <message id="hand_order.auto.reason.existing_annotation">
+        <source>Source preserved exactly; existing labels constrain occupancy</source>
+        <translation>原文完全保留，已有 Sticking参与占用约束</translation>
+    </message>
+    <message id="hand_order.auto.reason.fixed_event_candidate">
+        <source>Exterior buttons, full occupancy and natural-path candidate; real judging and stray contact unverified</source>
+        <translation>外键/完整持续占用/自然轨迹候选；未验证真实判定及误触</translation>
+    </message>
+
+<message id="hand_order.auto.status.context">
+        <source>Read-only Context Candidate</source>
+        <translation>只读上下文候选</translation>
+    </message>
+    <message id="hand_order.auto.reason.context_hypothesis">
+        <source>Context assignment used by this complete candidate; not written</source>
+        <translation>本完整候选采用的上下文分配，不写入谱面</translation>
+    </message>
+    <message id="hand_order.auto.context_notice">
+        <source>Context hypothesis: not written. Only participating action components are shown.</source>
+        <translation>上下文假设，不写入。仅显示参与本候选的动作部分。</translation>
+    </message>
+    <message id="hand_order.auto.original_annotation">
+        <source>Original annotation retained: %1. The hands below belong to this conditional plan and do not replace it.</source>
+        <translation>原标注保持：%1；下面是本条件方案采用的手，不替换原标注。</translation>
+    </message>
+    <message id="hand_order.auto.original_unannotated">
+        <source>Source is unannotated; the context assignment below is for reviewing the complete plan.</source>
+        <translation>原文未标注；下面的上下文分配只供复核完整方案。</translation>
+    </message>
+
+<message id="hand_order.auto.interval">
+        <source>Branch %1: %2–%3% %4</source>
+        <translation>分支 %1：%2–%3% %4</translation>
+    </message>
+    <message id="hand_order.auto.both_contributors">
+        <source>Left and right contributors</source>
+        <translation>左右手共同贡献</translation>
+    </message>
+    <message id="hand_order.auto.cause">
+        <source>Source @%1 branch %2 (%3), %4 at %5s, motion %6%, %7</source>
+        <translation>来源 @%1 分支 %2（%3），%4 于 %5秒，运动进度 %6%，%7</translation>
+    </message>
+    <message id="hand_order.auto.judgement">
+        <source>%1 · %2 · %3s · target margin %4ms</source>
+        <translation>%1 · %2 · %3秒 · 目标判定余量 %4毫秒</translation>
+    </message>
+    <message id="hand_order.auto.handoffs">
+        <source>Track transfers: %1 · %2 · at-most-one baseline peak %3, cost %4 (zero means no baseline found)</source>
+        <translation>轨迹换手 %1 次 · %2 · 至多一次基线峰值 %3、代价 %4（零表示未找到基线）</translation>
+    </message>
+    <message id="hand_order.auto.conditions">
+        <source>Execution conditions:</source>
+        <translation>执行条件：</translation>
+    </message>
+    <message id="hand_order.auto.conditions_text">
+        <source>Community profile v2; high-quality target; finite contacts; combined candidate-scope replay; rolling local choices with committed inputs. Scores are experimental.</source>
+        <translation>社区参考 profile v2；高判定质量目标；有限接触；合并候选范围完整回放；局部滚动选择保留已承诺输入。评分仍为实验模型。</translation>
+    </message>
+    <message id="hand_order.auto.reason.joint_action_candidate">
+        <source>Joint motion and contact candidate</source>
+        <translation>联合运动与接触候选</translation>
+    </message>
+    <message id="hand_order.auto.reason.slide_cover">
+        <source>Triggered by a real slide contact; no extra press</source>
+        <translation>真实 slide 接触触发；无需额外按压</translation>
+    </message>
+    <message id="hand_order.auto.reason.direct_touch">
+        <source>Independent screen contact</source>
+        <translation>独立内屏触碰</translation>
+    </message>
+    <message id="hand_order.auto.reason.group_carry">
+        <source>Touchgroup threshold reached; no extra contact</source>
+        <translation>Touchgroup 达阈值联动；不产生额外接触</translation>
+    </message>
+    <message id="hand_order.auto.reason.mixed_touch_responsibility">
+        <source>Multiple contributors; current notation cannot express sole responsibility</source>
+        <translation>左右共同贡献；现有语法无法表达唯一责任，保留待复核</translation>
+    </message>
+    <message id="hand_order.auto.reason.one_handoff_candidate_not_found">
+        <source>At-most-one transfer search found no candidate in this model</source>
+        <translation>本候选模型未找到至多一次换手方案</translation>
+    </message>
+    <message id="hand_order.auto.reason.significant_context_improvement">
+        <source>Per-track counterfactual shows significant context improvement</source>
+        <translation>逐轨反事实显示上下文压力显著改善</translation>
+    </message>
+
+<message id="hand_order.auto.reason.touch_slide_side_effect_unverified">
+        <source>Screen contact may advance an active slide before its natural judging pad; review required</source>
+        <translation>内屏触碰可能提前推进活动 slide 的未来判定区，需复核</translation>
+    </message>
+    <message id="hand_order.auto.reason.unstable_touch_responsibility">
+        <source>Near-optimal candidates disagree on carry responsibility; review required</source>
+        <translation>已找到的近优候选对联动归属不一致，保留待复核</translation>
+    </message>
+    <message id="hand_order.auto.reason.single_handoff_occupation">
+        <source>One transfer with verified preparation and brief joint occupation; first-transfer cost included</source>
+        <translation>一次接手已验证准备时间与双方短暂占用，并计入首次接手成本</translation>
+    </message>
+    <message id="hand_order.auto.reason.existing_handoff_constraint">
+        <source>Transfers follow the preserved original interval constraints</source>
+        <translation>按保留的原 Sticking 区间执行换手约束</translation>
+    </message>
+    <message id="hand_order.auto.quality.critical">
+        <source>Target quality</source>
+        <translation>满足目标质量</translation>
+    </message>
+    <message id="hand_order.auto.quality.late_bad">
+        <source>Late / expired</source>
+        <translation>超时 / 失效</translation>
+    </message>
+    <message id="hand_order.auto.quality.outside_target">
+        <source>Outside target quality</source>
+        <translation>未满足目标质量</translation>
+    </message>
+    <message id="hand_order.auto.evidence_truncated">
+        <source> Optional reverse-hand evidence stopped at its work budget; the validated candidate is retained for review.</source>
+        <translation> 可选反手证据达到工作量预算；保留已验证候选供复核。</translation>
+    </message>
+
+<message id="hand_order.auto.handoff_branch">
+        <source>Branch %1: %2 transfers · %3</source>
+        <translation>分支 %1：换手 %2 次 · %3</translation>
+    </message>
+    <message id="hand_order.auto.handoff_baseline">
+        <source> · at-most-one baseline peak %1, cost %2</source>
+        <translation> · 至多一次基线峰值 %1、代价 %2</translation>
+    </message>
+    <message id="hand_order.auto.action.slide">
+        <source>Slide motion</source>
+        <translation>slide 运动</translation>
+    </message>
+    <message id="hand_order.auto.action.touch">
+        <source>Screen touch</source>
+        <translation>内屏触碰</translation>
+    </message>
+    <message id="hand_order.auto.action.touch_hold">
+        <source>Sustained screen contact</source>
+        <translation>内屏持续按压</translation>
+    </message>
+    <message id="hand_order.auto.component.head">
+        <source>Slide head</source>
+        <translation>slide 头</translation>
+    </message>
+    <message id="hand_order.auto.component.note">
+        <source>Note %1</source>
+        <translation>音符 %1</translation>
+    </message>
+    <message id="hand_order.auto.reason.expired">
+        <source>No valid contact before expiry</source>
+        <translation>有效窗口结束前无有效接触</translation>
+    </message>
+    <message id="hand_order.wifi_mode_notice">
+        <source>Wifi sectors 1/2 follow the native sides and exchange on reflection. Single mode selects one hand for the whole track; the circled 1 marks explicit single-hand execution. Either still means one selected hand.</source>
+        <translation>Wifi 扇区 1/2 对应原生两侧，镜像会交换扇区。单手模式整条选择同一只手；预览中的圈 1 表示显式单手，m 仍为左右任选一只手。</translation>
+    </message>
+    <message id="hand_order.wifi_single_row">
+        <source>%1:%2 branch %3 · whole-track single hand</source>
+        <translation>%1:%2 分支 %3 · 整条单手</translation>
+    </message>
+    <message id="hand_order.wifi_sector_row">
+        <source>%1:%2 branch %3 · sector %4 · %5–%6%</source>
+        <translation>%1:%2 分支 %3 · 扇区 %4 · %5–%6%</translation>
+    </message>
+    <message id="hand_order.wifi_legacy">
+        <source>Legacy whole track</source>
+        <translation>兼容整体轨迹</translation>
+    </message>
+    <message id="hand_order.wifi_split">
+        <source>Two sectors</source>
+        <translation>双扇区</translation>
+    </message>
+    <message id="hand_order.wifi_single">
+        <source>Explicit single hand</source>
+        <translation>显式单手</translation>
+    </message>
+    <message id="hand_order.auto.wifi_sector">
+        <source>Wifi sector %1 · %2</source>
+        <translation>Wifi 扇区 %1 · %2</translation>
+    </message>
+    <message id="hand_order.auto.wifi_single">
+        <source>Explicit single-hand Wifi · %1</source>
+        <translation>显式单手 Wifi · %1</translation>
+    </message>
+    <message id="hand_order.auto.full_replay_verified">
+        <source>Full judgement replay verified</source>
+        <translation>已通过完整判定回放</translation>
+    </message>
+    <message id="hand_order.auto.reason.full_replay_target_failed">
+        <source>No searched physical candidate met the full replay target</source>
+        <translation>有限搜索中未找到满足完整回放目标的实际动作</translation>
+    </message>
+    <message id="hand_order.auto.action.button">
+        <source>Exterior button press</source>
+        <translation>外键击打</translation>
+    </message>
+    <message id="hand_order.auto.action.screen_button">
+        <source>A-pad screen press</source>
+        <translation>A 区内屏击打</translation>
+    </message>
+    <message id="hand_order.auto.reason.tap">
+        <source>Tap judgement</source>
+        <translation>Tap 判定</translation>
+    </message>
+    <message id="hand_order.auto.reason.hold">
+        <source>Complete Hold judgement</source>
+        <translation>完整 Hold 判定</translation>
+    </message>
+    <message id="hand_order.auto.reason.slide">
+        <source>Complete slide judgement</source>
+        <translation>完整 slide 判定</translation>
+    </message>
+    <message id="hand_order.auto.reason.wifi">
+        <source>All three Wifi queues verified</source>
+        <translation>Wifi 三条判定队列全部通过</translation>
+    </message>
+    <message id="hand_order.auto.reason.star_head">
+        <source>Star head judgement</source>
+        <translation>星头判定</translation>
+    </message>
+    <message id="hand_order.auto.reason.direct_input">
+        <source>Direct physical input</source>
+        <translation>真实直接输入</translation>
+    </message>
+    <message id="hand_order.auto.input_preference">
+        <source>Input preference</source>
+        <translation>输入通道偏好</translation>
+    </message>
+    <message id="hand_order.auto.input_buttons">
+        <source>Exterior preferred</source>
+        <translation>外键优先</translation>
+    </message>
+    <message id="hand_order.auto.input_screen">
+        <source>Screen preferred</source>
+        <translation>内屏优先</translation>
+    </message>
+    <message id="hand_order.auto.input_mixed">
+        <source>Mixed channels</source>
+        <translation>混合通道</translation>
+    </message>
+    <message id="hand_order.auto.overwrite_existing">
+        <source>Recompute existing annotations within the selection; keep outside annotations locked</source>
+        <translation>重算选区已有 Sticking；选区外已有标注保持锁定</translation>
+    </message>
+    <message id="hand_order.auto.high_confidence_only">
+        <source>Apply only high-confidence complete dependency units</source>
+        <translation>仅应用高置信且完整闭合的依赖单元</translation>
+    </message>
+    <message id="hand_order.auto.color_unresolved">
+        <source>Color unresolved notes with default Sticking</source>
+        <translation>未决音符使用默认手序补色</translation>
+    </message>
+    <message id="hand_order.auto.color_unresolved_help">
+        <source>Off by default. Default colors are unverified and disabled in high-confidence mode. Existing annotations are preserved.</source>
+        <translation>默认关闭。默认补色未经验证；仅高置信模式会禁用补色。已有标注仍保留。</translation>
+    </message>
+    <message id="hand_order.auto.high_confidence_closed">
+        <source> Only complete high-confidence dependency units are writable.</source>
+        <translation> 仅完整闭合的高置信依赖单元可写入。</translation>
+    </message>
+    <message id="hand_order.auto.confidence_text">
+        <source>Heuristic score %1/100 · %2 (not a probability)</source>
+        <translation>启发分 %1/100 · %2（不是正确率）</translation>
+    </message>
+    <message id="hand_order.auto.confidence.high">
+        <source>High</source>
+        <translation>高</translation>
+    </message>
+    <message id="hand_order.auto.confidence.medium">
+        <source>Medium</source>
+        <translation>中</translation>
+    </message>
+    <message id="hand_order.auto.confidence.low">
+        <source>Low</source>
+        <translation>低</translation>
+    </message>
+    <message id="hand_order.auto.confidence.insufficient_evidence">
+        <source>Insufficient evidence</source>
+        <translation>证据不足</translation>
+    </message>
+    <message id="hand_order.auto.component.touch">
+        <source>Touch responsibility</source>
+        <translation>Touch 责任手</translation>
+    </message>
+    <message id="hand_order.auto.component.track">
+        <source>Branch %1 at movement %2%</source>
+        <translation>分支 %1 运动进度 %2%</translation>
+    </message>
+    <message id="hand_order.auto.evidence_limited">
+        <source>Evidence limited by the candidate or work budget</source>
+        <translation>候选或工作预算内证据不足</translation>
+    </message>
+    <message id="hand_order.auto.evidence_alternative">
+        <source>Opposite hand replayed in the full dependency unit</source>
+        <translation>已在完整依赖单元中回放反手方案</translation>
+    </message>
+    <message id="hand_order.auto.evidence_no_alternative">
+        <source>No opposite-hand candidate in the unpruned discrete search</source>
+        <translation>未剪枝的离散候选中未找到反手方案</translation>
+    </message>
+    <message id="hand_order.auto.evidence_gap">
+        <source> · risk tier %+1, peak tier %2, cost gap %3</source>
+        <translation> · 风险档差 %1，峰值档差 %2，代价差 %3</translation>
+    </message>
+    <message id="hand_order.auto.pressure.low">
+        <source>Low motion pressure</source>
+        <translation>移动压力低</translation>
+    </message>
+    <message id="hand_order.auto.pressure.medium">
+        <source>Moderate motion pressure</source>
+        <translation>移动压力中</translation>
+    </message>
+    <message id="hand_order.auto.pressure.high">
+        <source>High motion pressure</source>
+        <translation>移动压力高</translation>
+    </message>
+    <message id="hand_order.auto.pressure.extreme">
+        <source>Extreme motion pressure; requires review</source>
+        <translation>移动压力极高，必须复核</translation>
+    </message>
+    <message id="hand_order.auto.locate">
+        <source>Locate</source>
+        <translation>定位</translation>
+    </message>
+    <message id="hand_order.auto.reason.touch_hold">
+        <source>Complete Touch Hold replay</source>
+        <translation>完整 Touch Hold 回放</translation>
+    </message>
+    <message id="hand_order.split_native_slide">
+        <source>Split into Independent Slides</source>
+        <translation>拆成独立 slide</translation>
+    </message>
+    <message id="hand_order.native.notice">
+        <source>An applicable plan preserves native geometry and actual motion times, but gives each segment an independent judgement. Counting, scoring (especially Break), Each, track appearance/disappearance, sounds and Muri may change. Review every item. Any unreliable complete slide target blocks the batch; Cancel makes no edit.</source>
+        <translation>可应用方案保持原生几何与实际运动时刻，但每段会独立判定。物量、计分（尤其 Break）、Each、轨迹出现/消失、音效和 Muri 可能改变。请逐项复核；任一完整 slide 目标不可靠时整批不应用，取消不编辑。</translation>
+    </message>
+    <message id="hand_order.native.summary">
+        <source>Prepared %1 · ignored non-slides %2 · partial tokens skipped %3 · unsupported %4</source>
+        <translation>准备转换 %1 项 · 忽略非 slide %2 项 · 跳过部分 token %3 项 · 不支持 %4 项</translation>
+    </message>
+    <message id="hand_order.native.blocked">
+        <source>The whole batch is blocked. Close this preview and select convertible chains again.</source>
+        <translation>本批不可应用。请关闭预览，重新选择可转换的链式 slide。</translation>
+    </message>
+    <message id="hand_order.native.stale">
+        <source>The document, timing or parser policy changed. Prepare a new preview.</source>
+        <translation>文档、时序或解析策略已变化，请重新生成预览。</translation>
+    </message>
+    <message id="hand_order.native.counts">
+        <source>Tracks %1 → %2 · heads %3 → %4 · %5 additional independent judgement boundaries</source>
+        <translation>轨迹物件 %1 → %2 · 可打头 %3 → %4 · 新增 %5 个独立判定边界</translation>
+    </message>
+    <message id="hand_order.native.before">
+        <source>Before</source>
+        <translation>修改前</translation>
+    </message>
+    <message id="hand_order.native.after">
+        <source>Proposed result</source>
+        <translation>修改后草案</translation>
+    </message>
+    <message id="hand_order.native.apply">
+        <source>Apply Entire Prepared Batch</source>
+        <translation>应用整批拆分</translation>
+    </message>
+    <message id="hand_order.native.status.ready">
+        <source>Prepared draft</source>
+        <translation>转换草案</translation>
+    </message>
+    <message id="hand_order.native.status.partial">
+        <source>Skipped partial token</source>
+        <translation>跳过部分选中</translation>
+    </message>
+    <message id="hand_order.native.status.ignored">
+        <source>Ignored non-slide</source>
+        <translation>忽略非 slide</translation>
+    </message>
+    <message id="hand_order.native.status.unsupported">
+        <source>Blocks this batch</source>
+        <translation>阻止本批</translation>
+    </message>
+    <message id="hand_order.native.reason.empty_selection">
+        <source>Select complete native chains first.</source>
+        <translation>请先完整选中原生链式 slide。</translation>
+    </message>
+    <message id="hand_order.native.reason.partial_token">
+        <source>This token is only partly selected and will stay unchanged.</source>
+        <translation>此 token 仅部分选中，保持原文。</translation>
+    </message>
+    <message id="hand_order.native.reason.non_slide">
+        <source>This ordinary note is not a slide target and will stay unchanged.</source>
+        <translation>普通音符不是 slide 拆分目标，保持原文。</translation>
+    </message>
+    <message id="hand_order.native.reason.native_segments">
+        <source>Draft generated from the existing native segments.</source>
+        <translation>按已有原生链段生成的独立轨迹草案。</translation>
+    </message>
+    <message id="hand_order.native.reason.invalid_chart">
+        <source>Native syntax errors prevent a reliable conversion.</source>
+        <translation>原生语法错误使转换无法可靠完成。</translation>
+    </message>
+    <message id="hand_order.native.reason.invalid_annotation">
+        <source>A selected target has an invalid hand annotation.</source>
+        <translation>选中目标含非法 Sticking 标注。</translation>
+    </message>
+    <message id="hand_order.native.reason.wifi_not_supported">
+        <source>Wifi paths cannot be split into independent native segments here. Use Sticking interval splitting for colouring.</source>
+        <translation>Wifi 展开路径不在原生结构拆分范围；精细染色可用“拆分 Sticking 区间”。</translation>
+    </message>
+    <message id="hand_order.native.reason.missing_markers">
+        <source>Parsed native objects are missing.</source>
+        <translation>缺少可核对的原生解析对象。</translation>
+    </message>
+    <message id="hand_order.native.reason.single_segment">
+        <source>This slide has one native segment. Use Sticking interval splitting for colouring.</source>
+        <translation>此 slide 只有一个原生段；精细染色可用“拆分 Sticking 区间”。</translation>
+    </message>
+    <message id="hand_order.native.reason.invalid_geometry">
+        <source>Native geometry or motion times are missing or invalid.</source>
+        <translation>原生几何或运动时刻缺失/无效。</translation>
+    </message>
+    <message id="hand_order.native.reason.unrepresentable_native">
+        <source>The native segment cannot be represented reliably in Simai.</source>
+        <translation>此原生段无法可靠表示为合法 Simai。</translation>
+    </message>
+    <message id="hand_order.native.reason.hand_order_unrepresentable">
+        <source>The original hand intervals cannot be mapped reliably to every new segment.</source>
+        <translation>原有 Sticking无法可靠重映射到全部新段。</translation>
+    </message>
+    <message id="hand_order.native.reason.no_chain_selected">
+        <source>No convertible native chain is fully selected.</source>
+        <translation>未完整选中可转换的原生链式 slide。</translation>
+    </message>
+    <message id="hand_order.native.reason.round_trip_invalid">
+        <source>The proposed result failed strict Simai validation.</source>
+        <translation>转换草案未通过 Simai 严格验证。</translation>
+    </message>
+    <message id="hand_order.native.reason.round_trip_mismatch">
+        <source>Reparsing did not preserve geometry, actual motion times or annotations.</source>
+        <translation>复读核对未能保持几何、实际运动时刻或 Sticking。</translation>
+    </message>
+    <message id="hand_order.native.reason.head_count_mismatch">
+        <source>The proposed result would change the real shared-head count.</source>
+        <translation>转换草案改变了实际共享头数量。</translation>
+    </message>
+    <message id="hand_order.native.change.independent_judgement_boundaries">
+        <source>Each resulting segment has an independent judgement boundary.</source>
+        <translation>每个新段都会拥有独立判定边界。</translation>
+    </message>
+    <message id="hand_order.native.change.slide_count_changes">
+        <source>The number of slide track objects increases as shown above.</source>
+        <translation>slide 轨迹物件数量按上方实际计数增加。</translation>
+    </message>
+    <message id="hand_order.native.change.availability_may_change">
+        <source>Independent segments may accept input at different times or react differently to early contact.</source>
+        <translation>独立段的判定起效与提前接触关系可能改变。</translation>
+    </message>
+    <message id="hand_order.native.change.scoring_may_change">
+        <source>Scoring may change; this is not a per-chart score simulation.</source>
+        <translation>计分可能改变；此处不是逐谱计分模拟。</translation>
+    </message>
+    <message id="hand_order.native.change.each_may_change">
+        <source>Each relationships may change.</source>
+        <translation>Each 关系可能改变。</translation>
+    </message>
+    <message id="hand_order.native.change.disappearance_may_change">
+        <source>Track appearance and disappearance may change, including headless-track presentation.</source>
+        <translation>轨迹出现与消失方式可能改变，包括无头轨迹的显示。</translation>
+    </message>
+    <message id="hand_order.native.change.sfx_may_change">
+        <source>Sound events may change.</source>
+        <translation>音效事件可能改变。</translation>
+    </message>
+    <message id="hand_order.native.change.muri_may_change">
+        <source>Muri results may change; before/after Muri is not calculated in this preview.</source>
+        <translation>Muri 结果可能改变；本预览未计算前后 Muri 结果。</translation>
+    </message>
+    <message id="hand_order.native.change.break_count_scoring_changes">
+        <source>Split native Break segments retain Break, which may change Break counts and scoring.</source>
+        <translation>拆出的原生 Break 段保留 Break，Break 物量和计分可能改变。</translation>
+    </message>
+    <message id="hand_order.auto.search_scope">
+        <source> Solve %1 objects; audit %6 native judgements; %2 rolling windows; largest window %3 tasks; work %4/%5.</source>
+        <translation> 求解 %1 个物件；审计 %6 个原生判定；%2 个局部窗口，单窗最多 %3 项任务；工作量 %4/%5。</translation>
+    </message>
+    <message id="hand_order.auto.reason.task_limit">
+        <source>The inseparable local window exceeds the task limit; no candidate was validated</source>
+        <translation>不可分的局部窗口超过任务数上限，尚无已验证方案</translation>
+    </message>
+    <message id="hand_order.auto.reason.work_limit">
+        <source>The request work budget was exhausted; no candidate was validated for this window</source>
+        <translation>本次分析工作量预算耗尽，此窗口尚无已验证方案</translation>
+    </message>
+    <message id="hand_order.auto.reason.boundary_replay_failed">
+        <source>Combined inputs changed an earlier judgement; this dependent scope cannot be applied</source>
+        <translation>合并输入改变了先前判定，该依赖范围不能应用</translation>
+    </message>
+    <message id="hand_order.auto.reason.window_work_limit">
+        <source>This local window reached its work share; independent later windows can still be checked</source>
+        <translation>该局部窗口达到工作量份额，后续独立窗口仍可继续检查</translation>
+    </message>
+    <message id="hand_order.basic_layout">
+        <source>Basic Layout</source>
+        <translation>基础排布</translation>
+    </message>
+    <message id="hand_order.basic_layout_scope">
+        <source>Use complete selected notes, or the current difficulty when none is selected. Recognized local patterns may revise simple existing labels; complex annotations stay protected.</source>
+        <translation>处理选区内完整音符；无选区时处理当前难度。明确的局部模式可修正简单旧标注，复杂标注仍受保护。</translation>
+    </message>
+    <message id="hand_order.basic_layout_feedback">
+        <source>Basic layout: %1 changed; %2 existing annotations kept; %3 partial tokens skipped; %4 unsupported; %5 diagnostics.</source>
+        <translation>基础排布：改写 %1 个；保留已有标注 %2 个；跳过部分 token %3 个；不支持 %4 个；诊断 %5 条。</translation>
+    </message>
+    <message id="hand_order.basic_layout_notice">
+        <source>Fast sixteenth-note or finer repeats may alternate hands; eighth-note rebounds stay together even at high BPM. Paired winding taps stay on one hand per pair; complete fast circles favour one sweeping hand, with the opposite final each key on the other. Adjacent Touchgroup pairs and short Touch sweeps may share a hand; other each pairs use two. Slides and holds reserve hands, and overlapping alternating stars use alternating full tracks. No playability replay is performed.</source>
+        <translation>高速十六分及更密纵连可逐颗换手；八分同键回弹即使 BPM 高也保持组内同手。成对绕手组内同手；高速整圈扫优先单手完成，末尾对侧双押由另一手接键。临位 Touchgroup 双押与短 Touch 轻扫可同手，其他双押仍用两手。Slide／Hold 占手，重叠的交替星星整轨换手。本操作不做可玩性回放。</translation>
+    </message>
+    <message id="hand_order.basic_layout_next_step">
+        <source>Basic layout writes normal annotations. To optimize them, enable “Recompute existing annotations in selection” and analyze again.</source>
+        <translation>基础排布会写入正常标注；继续自动优化时，请勾选“重算选区已有 Sticking”并重新分析。</translation>
+    </message>
+    <message id="hand_order.basic_layout_unverified_defaults">
+        <source>%1 unresolved notes used default hand colors without playability verification.</source>
+        <translation>%1 个未决音符按默认手序补色，未经可玩性验证。</translation>
+    </message>
+    <message id="hand_order.optimize"><source>Pattern Optimization</source><translation>特化配置优化</translation></message>
+    <message id="hand_order.optimize.notice"><source>Detect registry-defined pattern structures and propose their standard hand assignments. Definite structures have reviewable defaults; ambiguous patterns have two or three alternatives in Pattern candidates. Full-chart baseline search is not required. Only complete selected tokens are changed.</source><translation>检测配置定义表中的结构，并推荐对应默认手法。结构明确的配置可预览应用默认方案；有歧义时，在“配置候选”中比较两到三种拆法。无需先完成整谱基准搜索，只修改完整选中的音符标注。</translation></message>
+    <message id="hand_order.optimize.preserve_existing"><source>Lock all existing annotations (no rearrangement)</source><translation>锁定全部已有标注（不重排）</translation></message>
+    <message id="hand_order.optimize.needs_annotations"><source>Complete left/right annotations first using Basic Layout or automatic Sticking. Unspecified and Either labels cannot form a fixed baseline.</source><translation>请先用基础排布或自动 Sticking 补全左右手标注；未标注及“任意手”不能作为固定基准。</translation></message>
+    <message id="hand_order.optimize.invalid_chart"><source>Resolve native syntax and annotation errors before optimization.</source><translation>请先修正原生谱面语法和手序标注错误。</translation></message>
+    <message id="hand_order.optimize.size_limit"><source>This difficulty exceeds the structural scan limit of 100,000 markers.</source><translation>当前难度超过结构检测的 100000 音符上限。</translation></message>
+    <message id="hand_order.optimize.locked"><source>All existing annotations are locked; no changes were made. To protect individual manual labels, exclude them from the selected range.</source><translation>全部已有标注已锁定，没有改动。只需保留个别手工标注时，请将它们排除在选区外。</translation></message>
+    <message id="hand_order.optimize.baseline_unverified"><source>The original assignment could not pass a complete physical and judgement replay within the budget. It was kept unchanged.</source><translation>原手序未能在预算内通过完整占手、路径与判定回放核验，保留原解。</translation></message>
+    <message id="hand_order.optimize.improved"><source>A safer lower-cost assignment is ready for review.</source><translation>已找到通过安全核验且代价更低的手序，请预览。</translation></message>
+    <message id="hand_order.optimize.unchanged"><source>No strictly improving safe candidate was found; original annotations were kept.</source><translation>未找到严格改善且通过安全核验的候选，保留原标注。</translation></message>
+    <message id="hand_order.optimize.summary"><source>
+Segments: %1; candidates checked: %2; accepted: %3. Estimated cost: %4 → %5.</source><translation>
+片段 %1；已检查候选 %2；接受 %3。估计代价：%4 → %5。</translation></message>
+    <message id="hand_order.optimize.limited"><source>
+The retained candidate-list limit was reached.</source><translation>
+保留的候选列表已达到数量上限。</translation></message>
+    <message id="preferences.hand_order_return_speed_help"><source>When idle, moving one field radius takes about %1 ms at this speed.</source><translation>空闲回正时，移动一个场地半径约需 %1 毫秒。</translation></message>
+    <message id="preferences.hand_order_player.tap_rate_help"><source>16th notes played by one hand: BPM = hits/s × 15. With even alternating hands, the same per-hand rate corresponds to about twice this chart BPM. This is a comfortable reference, not an absolute limit.</source><translation>按单手连续敲击16分音符换算：BPM = 每秒击打数 × 15。双手均匀交替时，同样的单手频率约对应两倍谱面 BPM。这是舒适参考值，不是硬性上限。</translation></message>
+    <message id="preferences.hand_order_player.move_speed_help"><source>One screen-diameter move takes about %1 ms. This is a distance/speed reference; actual moves need not cross the whole screen.</source><translation>以此速度跨越一个屏幕直径约需 %1 毫秒；实际动作按距离估算，无需每次横跨全屏。</translation></message>
+    <message id="preferences.hand_order_player.stamina_help"><source>1.0 is the reference. Higher values reduce the cost of sustained dense movement; they do not increase the comfortable hit or movement speed.</source><translation>1.0 为参考值；调高后更能承受持续密集动作，不会提高舒适连打或移动速度。</translation></message>
+    <message id="hand_order.progress.baseline"><source>Checking original assignment</source><translation>正在核验原手序</translation></message>
+    <message id="hand_order.progress.candidate"><source>Checking candidate %1</source><translation>正在核验候选 %1</translation></message>
+    <message id="hand_order.progress.preparing"><source>Parsing and preparing the calculation…</source><translation>正在解析与准备计算…</translation></message>
+    <message id="hand_order.progress.windows"><source>Calculation windows completed: %1/%2 (stage progress)</source><translation>已完成计算窗口：%1/%2（本阶段进度）</translation></message>
+    <message id="hand_order.progress.decisions"><source>Window %1/%2 · search %3
+Decisions completed: %4/%5 (stage progress)</source><translation>窗口 %1/%2 · 搜索 %3
+已完成决策：%4/%5（本阶段进度）</translation></message>
+    <message id="hand_order.progress.replay"><source>Replaying and verifying complete inputs… Duration is not yet predictable.</source><translation>正在进行完整输入回放与核验…本阶段耗时暂不确定。</translation></message>
+    <message id="hand_order.progress.complete"><source>This calculation stage is complete.</source><translation>本次计算阶段已完成。</translation></message>
+    <message id="hand_order.progress.eta"><source>Estimated time left in this stage: about %1 s (rough estimate)</source><translation>本阶段预计剩余约 %1 秒（粗略）</translation></message>
+    <message id="hand_order.progress.estimating"><source>Estimating remaining time for this stage…</source><translation>正在估算本阶段剩余时间…</translation></message>
+    <message id="hand_order.workflow.basic"><source>1. Basic Layout</source><translation>1. 基础排布</translation></message>
+    <message id="hand_order.workflow.context"><source>2. Hand Order Optimization</source><translation>2. 手序优化</translation></message>
+    <message id="hand_order.workflow.pattern"><source>3. Pattern Optimization</source><translation>3. 特化配置优化</translation></message>
+    <message id="hand_order.workflow.context_help"><source>Identify configurations and check context, timing and hand conflicts in one calculation.</source><translation>一次计算识别配置并复核上下文、判定时机和手部冲突。</translation></message>
+    <message id="hand_order.workflow.overview"><source>1. Basic Layout → 2. Hand Order Optimization → 3. Playability Review. Review and apply each result.</source><translation>1. 基础排布 → 2. 手序优化 → 3. 游玩复核。逐步预览并应用结果。</translation></message>
+    <message id="hand_order.workflow.settings"><source>Choose settings, then calculate the selection or current difficulty. Exact cached results may already be available for review.</source><translation>设置参数后，点击计算选区或当前难度。精确匹配的缓存可直接预览。</translation></message>
+    <message id="hand_order.workflow.protect_existing"><source>Protect existing annotations; only fill unlabelled notes</source><translation>保护已有手序标注（只补未标注音符）</translation></message>
+    <message id="hand_order.background.running"><source>Background…</source><translation>后台计算…</translation></message>
+    <message id="hand_order.background.progress"><source>Background %1%</source><translation>后台 %1%</translation></message>
+    <message id="hand_order.background.cached"><source>Context cached</source><translation>上下文已缓存</translation></message>
+    <message id="hand_order.background.failed"><source>Background unavailable</source><translation>后台未完成</translation></message>
+    <message id="hand_order.background.yielded"><source>Background yielded</source><translation>后台已让出</translation></message>
+    <message id="hand_order.background.promoted"><source>Continuing in foreground</source><translation>已转前台继续</translation></message>
+    <message id="hand_order.background.reused"><source>Reused an exact cached calculation; no new calculation was started.</source><translation>已复用精确匹配的计算缓存，没有重新计算。</translation></message>
+    <message id="hand_order.background.stopped"><source>Calculation stopped</source><translation>计算已退出</translation></message>
+    <message id="hand_order.compute.paused"><source>Pause requested; current state is retained. Continue resumes this calculation.</source><translation>已请求暂停，当前状态保留；继续将恢复本次计算。</translation></message>
+    <message id="hand_order.compute.pause"><source>Pause</source><translation>暂停</translation></message>
+    <message id="hand_order.compute.resume"><source>Continue</source><translation>继续</translation></message>
+    <message id="hand_order.compute.exit"><source>Exit Calculation</source><translation>退出计算</translation></message>
+    <message id="hand_order.background.paused"><source>Background paused</source><translation>后台已暂停</translation></message>
+    <message id="hand_order.context_guard.retained"><source>The verified original assignment was retained; no strictly better serialized candidate was proved within the shared budget.</source><translation>已保留核验通过的原手序；共享预算内未证明可写候选严格更优。</translation></message>
+    <message id="hand_order.context_guard.unverified"><source>The original assignment could not be completely verified within its reference allowance. Context search continued; no non-regression guarantee is implied.</source><translation>原手序未能在参考核验额度内通过完整核验，已继续上下文搜索；不宣称相对原解无退化。</translation></message>
+    <message id="hand_order.auto.reason.safe_baseline_retained"><source>Verified original assignment retained by the shared-budget comparison</source><translation>共享预算比较后保留已核验原手序</translation></message>
+    <message id="hand_order.pattern.tab"><source>Pattern candidates</source><translation>配置候选</translation></message>
+    <message id="hand_order.pattern.count"><source>%1 patterns have candidates</source><translation>%1 个配置有候选方案</translation></message>
+    <message id="hand_order.pattern.scan"><source>Detect this difficulty</source><translation>检测当前难度</translation></message>
+    <message id="hand_order.pattern.default"><source>Default</source><translation>默认方案</translation></message>
+    <message id="hand_order.pattern.choose"><source>Choose a solution</source><translation>待选择</translation></message>
+    <message id="hand_order.pattern.notice"><source>Compare the same native notes and syntax. Applying a solution changes hand annotations and supports Undo. These are structural recommendations; uncertain patterns require your choice.</source><translation>对照同一原生谱面的渲染与语法选择手法，应用后可撤销。结构明确的配置提供默认方案，有歧义的配置由你选择。</translation></message>
+    <message id="hand_order.pattern.empty"><source>No candidates.</source><translation>暂无候选。</translation></message>
+    <message id="hand_order.pattern.pause"><source>Pause example</source><translation>暂停示意</translation></message>
+    <message id="hand_order.pattern.play"><source>Play example</source><translation>播放示意</translation></message>
+    <message id="hand_order.pattern.apply"><source>Apply this solution</source><translation>应用此方案</translation></message>
+    <message id="hand_order.pattern.applied"><source>Applied</source><translation>已应用</translation></message>
+    <message id="hand_order.pattern.open"><source>View retained pattern candidates</source><translation>查看保留的配置候选</translation></message>
+    <message id="hand_order.pattern.summary"><source>
+Matched %1 patterns; %2 alternatives; %3 defaults would change annotations.</source><translation>
+识别 %1 个配置；%2 个候选；%3 个默认方案会修改标注。</translation></message>
+    <message id="hand_order.optimize.recognized"><source>Pattern rules matched. Review the defaults or choose an alternative in Pattern candidates.</source><translation>已识别配置结构。可应用默认方案，或在“配置候选”中比较并选择其他手法。</translation></message>
+    <message id="hand_order.optimize.no_patterns"><source>No supported pattern structure was detected in this range.</source><translation>此范围未检测到已支持的配置结构。</translation></message>
+    <message id="hand_order.pattern.name.forked_stars"><source>Shared-head forked stars</source><translation>同起点分岔星星</translation></message>
+    <message id="hand_order.pattern.name.umiyuri"><source>Umiyuri triplets</source><translation>海底谭连续组</translation></message>
+    <message id="hand_order.pattern.name.short_jacks"><source>Short jacks</source><translation>短纵连</translation></message>
+    <message id="hand_order.pattern.name.axis"><source>Fixed-axis interaction</source><translation>轴交互</translation></message>
+    <message id="hand_order.pattern.name.trill"><source>Trill</source><translation>交互</translation></message>
+    <message id="hand_order.pattern.name.triangle"><source>Triangle interaction</source><translation>三角交互</translation></message>
+    <message id="hand_order.pattern.name.four_cycle"><source>Four-key interaction cycle</source><translation>四键周期交互</translation></message>
+    <message id="hand_order.pattern.name.sweep"><source>Sweep / staircase alternatives</source><translation>扫键／楼梯候选</translation></message>
+    <message id="hand_order.pattern.name.point_run"><source>Regular scattered interaction alternatives</source><translation>等间隔散点交互候选</translation></message>
+    <message id="hand_order.pattern.strategy.track_sides"><source>Tracks by direction; shared head by near hand</source><translation>轨迹按方向分手，星头由自然侧手击打</translation></message>
+    <message id="hand_order.pattern.strategy.mirror"><source>Mirror / opposite start</source><translation>镜像／反侧起手</translation></message>
+    <message id="hand_order.pattern.strategy.umiyuri_triplets"><source>Head, off-lane tap, launch and trace by one hand; alternate groups</source><translation>星头、隔位 Tap、启动拍与滑动同手，逐组交替</translation></message>
+    <message id="hand_order.pattern.strategy.same_hand"><source>Keep one hand through the gesture</source><translation>保持同手完成这一组</translation></message>
+    <message id="hand_order.pattern.strategy.alternate"><source>Alternate hands without breaking phase</source><translation>保持相位的双手交替</translation></message>
+    <message id="hand_order.pattern.strategy.natural_sides"><source>Natural-side hand assignment</source><translation>按自然侧分手</translation></message>
+    <message id="hand_order.pattern.name.long_jacks"><source>Long jacks</source><translation>长纵连</translation></message>
+    <message id="hand_order.pattern.ignore"><source>Ignore</source><translation>忽略</translation></message>
+    <message id="hand_order.pattern.strategy.hold_constrained"><source>Keep the Hold hand locked</source><translation>保持 Hold 锁手的分工</translation></message>
+    <message id="hand_order.pattern.strategy.paginate"><source>Page into continuous hand groups</source><translation>分页（连续分段）</translation></message>
+    <message id="hand_order.pattern.sort"><source>Sort</source><translation>排序</translation></message>
+    <message id="hand_order.pattern.sort.time"><source>By time</source><translation>按时间</translation></message>
+    <message id="hand_order.pattern.sort.category"><source>By category</source><translation>按分类</translation></message>
+    <message id="hand_order.pattern.category.T"><source>Keys</source><translation>纯键</translation></message>
+    <message id="hand_order.pattern.category.S"><source>Slide</source><translation>Slide</translation></message>
+    <message id="hand_order.pattern.category.H"><source>Hold</source><translation>Hold</translation></message>
+    <message id="hand_order.pattern.category.U"><source>Touch</source><translation>Touch</translation></message>
+    <message id="hand_order.pattern.category.N"><source>Named patterns</source><translation>曲目配置</translation></message>
+    <message id="hand_order.pattern.category.A"><source>Techniques</source><translation>手法</translation></message>
+    <message id="hand_order.pattern.category.G"><source>Chart structure</source><translation>宏观结构</translation></message>
+    <message id="hand_order.pattern.strategy.existing"><source>Keep current assignment</source><translation>保留当前分工</translation></message>
+    <message id="hand_order.pattern.group.trill"><source>Trill</source><translation>交互</translation></message>
+    <message id="hand_order.pattern.group.triangle"><source>Triangle interaction</source><translation>三角交互</translation></message>
+    <message id="hand_order.pattern.group.axis"><source>Axis interaction</source><translation>轴交互</translation></message>
+    <message id="hand_order.pattern.group.four_cycle"><source>Four-key interaction</source><translation>四键交互</translation></message>
+    <message id="hand_order.pattern.group.point_run"><source>Scattered interaction</source><translation>散点交互</translation></message>
+    <message id="hand_order.pattern.group.sweep"><source>Sweep</source><translation>扫键</translation></message>
+    <message id="hand_order.pattern.group.short_jacks"><source>Short jacks</source><translation>短纵连</translation></message>
+    <message id="hand_order.pattern.group.long_jacks"><source>Long jacks</source><translation>长纵连</translation></message>
+    <message id="hand_order.pattern.group.umiyuri"><source>Umiyuri</source><translation>海底谭</translation></message>
+    <message id="hand_order.pattern.group.forked_stars"><source>Forked stars</source><translation>分岔星星</translation></message>
+    <message id="hand_order.pattern.similar_group"><source>Similar shape %1</source><translation>相似形态 %1</translation></message>
+    <message id="hand_order.pattern.select_instance"><source>Select this instance</source><translation>选择此配置</translation></message>
+    <message id="hand_order.pattern.select_similar"><source>Select all %1 similar instances</source><translation>选择全部 %1 个相似配置</translation></message>
+    <message id="hand_order.pattern.selected_count"><source>%1 selected</source><translation>已选择 %1 个</translation></message>
+    <message id="hand_order.pattern.apply_selected"><source>Apply to %1 selected instances</source><translation>应用到所选 %1 个配置</translation></message>
+    <message id="hand_order.pattern.strategy.umiyuri_share"><source>Share the middle tap; keep launch and trace together</source><translation>分担中间 Tap，启动拍与滑动同手</translation></message>
+    <message id="hand_order.pattern.strategy.same_key_return"><source>Keep the Each key hand for its return</source><translation>双押后的同键回击保持同手</translation></message>
+    <message id="hand_order.pattern.strategy.alternate_return"><source>Switch hands on the return</source><translation>回击时换手</translation></message>
+    <message id="hand_order.pattern.strategy.burst_groups"><source>Keep each pair together; share the burst endings</source><translation>连打对保持同手，尾键交给另一手</translation></message>
+    <message id="hand_order.pattern.strategy.continuous_tracks"><source>Keep one track hand through the stroke and dwell</source><translation>一笔画及短暂停顿保持同手滑动</translation></message>
+    <message id="hand_order.pattern.strategy.separate_tracks"><source>Separate track hands (special technique)</source><translation>各轨迹分别用手（特殊解）</translation></message>
+    <message id="hand_order.pattern.strategy.handoff"><source>Handoff at trace launch</source><translation>星头由原手击打，启动时换手；另一手击打旁边 Tap</translation></message>
+    <message id="hand_order.pattern.strategy.launch_track"><source>Match the launch note to the track hand; keep Holds locked</source><translation>启动音符跟随滑动手，Hold 保持锁手</translation></message>
+    <message id="hand_order.pattern.name.moving_interaction"><source>Moving interaction</source><translation>位移交互</translation></message>
+    <message id="hand_order.pattern.name.burst_bullets"><source>Burst bullets</source><translation>爆发子弹</translation></message>
+    <message id="hand_order.pattern.name.each_return"><source>Each with same-key return</source><translation>双押接同键回击</translation></message>
+    <message id="hand_order.pattern.name.one_stroke"><source>One-stroke tracks</source><translation>一笔画</translation></message>
+    <message id="hand_order.pattern.name.launch_beat"><source>Slide launch beat</source><translation>星星启动拍</translation></message>
+    <message id="hand_order.pattern.group.moving_interaction"><source>Moving interaction</source><translation>位移交互</translation></message>
+    <message id="hand_order.pattern.group.burst_bullets"><source>Burst bullets</source><translation>爆发子弹</translation></message>
+    <message id="hand_order.pattern.group.each_return"><source>Each with same-key return</source><translation>双押接同键回击</translation></message>
+    <message id="hand_order.pattern.group.one_stroke"><source>One-stroke tracks</source><translation>一笔画</translation></message>
+    <message id="hand_order.pattern.group.launch_beat"><source>Slide launch beat</source><translation>星星启动拍</translation></message>
+    <message id="action.play_selection">
+        <source>Play Selection</source>
+        <translation>播放选区</translation>
+    </message>
+    <message id="preview.canvas.show_measure_lines">
+        <source>Show Measure Lines</source>
+        <translation>显示小节线</translation>
+    </message>
+    <message id="preview.canvas.show_judgement_skeleton">
+        <source>Show Judgement Skeleton</source>
+        <translation>显示判定骨骼</translation>
+    </message>
+    <message id="preview.canvas.slide_timing_from_launch_beat">
+        <source>Start on a matching launch beat</source>
+        <translation>有启动拍时从启动拍开始</translation>
+    </message>
+    <message id="preview.canvas.slide_timing_early_perfect_from_head">
+        <source>Fully bright from star head when Perfect starts before launch beat</source>
+        <translation>启动拍前已进入 Perfect 时，从头拍全亮</translation>
+    </message>
+    <message id="preview.canvas.show_slide_judgement_timing">
+        <source>Show Slide Judgement Timing</source>
+        <translation>显示 Slide 判定时值</translation>
+    </message>
+    <message id="preview.canvas.measure_mode">
+        <source>Measure Line Mode</source>
+        <translation>小节线模式</translation>
+    </message>
+    <message id="preview.canvas.measure_chart_clock">
+        <source>Default (automatic)</source>
+        <translation>默认（自动检测）</translation>
+    </message>
+    <message id="preview.canvas.measure_custom_beats">
+        <source>Custom beats per measure</source>
+        <translation>自定义每小节拍数</translation>
+    </message>
+    <message id="preview.canvas.measure_text_lines">
+        <source>Text line starts</source>
+        <translation>按文本行首</translation>
+    </message>
+<message id="dialog.render_settings.gameplay.judge_line.none">
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+
+<message id="dialog.video_export.option.show_bpm_hud">
+        <source>Show BPM</source>
+        <translation>显示 BPM</translation>
+    </message>
+
+<message id="dialog.video_export.option.show_cps_hud">
+        <source>Show CPS</source>
+        <translation>显示 CPS</translation>
+    </message>
+
+<message id="dialog.video_export.option.show_meter_hud">
+        <source>Show explicit meter</source>
+        <translation>显示拍号</translation>
+    </message>
+
+<message id="dialog.video_export.option.show_mods_hud">
+        <source>Show Mods</source>
+        <translation>显示 Mods</translation>
+    </message>
+
+<message id="tools.bpm.title">
+        <source>Export BPM</source>
+        <translation>导出 BPM</translation>
+    </message>
+
+<message id="tools.bpm.sequence">
+        <source>BPM sequence (xx.xx-xx.xx)</source>
+        <translation>BPM 顺序（xx.xx-xx.xx）</translation>
+    </message>
+
+<message id="tools.bpm.audio_time">
+        <source>Audio timestamps (mm:ss:fff)</source>
+        <translation>音频时间（mm:ss:fff）</translation>
+    </message>
+
+<message id="tools.bpm.empty_maidata">
+        <source>Empty maidata with timing</source>
+        <translation>保留时间轨的空 maidata</translation>
+    </message>
+
+<message id="tools.bpm.preview">
+        <source>BPM export preview</source>
+        <translation>BPM 导出预览</translation>
+    </message>
+
+<message id="tools.bpm.copy">
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+
+<message id="tools.bpm.save">
+        <source>Save as…</source>
+        <translation>另存为…</translation>
+    </message>
+
+<message id="tools.bpm.save_error">
+        <source>Could not save BPM export: %1</source>
+        <translation>无法保存 BPM 导出：%1</translation>
+    </message>
+
+<message id="tools.chart.invalid_first">
+        <source>Invalid &amp;first value</source>
+        <translation>&amp;first 数值无效</translation>
+    </message>
+
+<message id="tools.chart.parse_error">
+        <source>The chart contains parse errors</source>
+        <translation>谱面含有解析错误</translation>
+    </message>
+
+<message id="tools.dx_loss.title">
+        <source>DX achievement loss</source>
+        <translation>DX 达成率失分</translation>
+    </message>
+
+<message id="tools.dx_loss.attributes">
+        <source>Break, Ex and Firework are attributes, not extra objects. Total counts scoring objects; Mine is listed separately. Capacities assume all other objects are Critical Perfect and respect reachable EX judgments (long EX holds can lose grades on release).</source>
+        <translation>Break、Ex、Firework 是附加属性，不重复计数。Total 为计分物件总数，Mine 单列。最大个数按其余全部 Critical Perfect 计算，并限制 EX 实际可达判定（长 EX Hold 可因松手降档）。</translation>
+    </message>
+
+<message id="tools.dx_loss.object">
+        <source>Object</source>
+        <translation>物件</translation>
+    </message>
+
+<message id="tools.dx_loss.judgment">
+        <source>Judgment</source>
+        <translation>判定</translation>
+    </message>
+
+<message id="tools.dx_loss.single">
+        <source>Loss per judgment</source>
+        <translation>单个判定失分</translation>
+    </message>
+
+<message id="tools.dx_loss.empty">
+        <source>The chart has no scoring objects</source>
+        <translation>谱面没有计分物件，无法计算</translation>
+    </message>
+
+<message id="tools.dx_loss.extensions">
+        <source>Unofficial extensions: counts are available; DX calculation is disabled</source>
+        <translation>谱面含非官方扩展：显示统计，禁用 DX 失分计算</translation>
+    </message>
+
+<message id="tools.dx_loss.maximum_break">
+        <source>Maximum achievement: 101%. Other objects are assumed Critical Perfect.</source>
+        <translation>实际满分：101%。其余物件按 Critical Perfect 计算。</translation>
+    </message>
+
+<message id="tools.dx_loss.maximum_no_break">
+        <source>Maximum achievement: 100% (no Break). Other objects are assumed Critical Perfect.</source>
+        <translation>实际满分：100%（无 Break）。其余物件按 Critical Perfect 计算。</translation>
+    </message>
+
+<message id="tools.bpm.empty_timing_note">
+        <source>The empty maidata preserves BPM changes, explicit meters, &amp;first and the source terminal beat. Removing long notes also removes their tail duration; no extra BPM changes are added.</source>
+        <translation>空 maidata 保留 BPM 变更、显式拍号、&amp;first 与原谱终止拍位。删除长音符后，其尾部时长也随之移除，不会添加虚假 BPM。</translation>
+    </message>
+
+<message id="cover.text_stroke">
+        <source>Text outline</source>
+        <translation>文字描边</translation>
+    </message>
+
+<message id="cover.text_stroke_color">
+        <source>Outline color</source>
+        <translation>描边颜色</translation>
+    </message>
+
+<message id="cover.text_stroke_width">
+        <source>Outline width</source>
+        <translation>描边宽度</translation>
+    </message>
+
+<message id="cover.text_shadow">
+        <source>Text shadow</source>
+        <translation>文字阴影</translation>
+    </message>
+
+<message id="cover.text_shadow_color">
+        <source>Shadow color</source>
+        <translation>阴影颜色</translation>
+    </message>
+
+<message id="cover.text_shadow_opacity">
+        <source>Shadow opacity</source>
+        <translation>阴影不透明度</translation>
+    </message>
+
+<message id="cover.text_shadow_blur">
+        <source>Shadow blur</source>
+        <translation>阴影模糊</translation>
+    </message>
+
+<message id="cover.text_shadow_x">
+        <source>Shadow X offset</source>
+        <translation>阴影水平偏移</translation>
+    </message>
+
+<message id="cover.text_shadow_y">
+        <source>Shadow Y offset</source>
+        <translation>阴影垂直偏移</translation>
+    </message>
+
+<message id="dialog.video_export.cover_preset">
+        <source>Companion cover</source>
+        <translation>同步导出封面</translation>
+    </message>
+
+<message id="dialog.video_export.cover_failed_video_kept">
+        <source>Cover export failed. The video was kept.</source>
+        <translation>封面导出失败，视频已保留。</translation>
+    </message>
+
+<message id="cli.settings.title">
+        <source>Command line</source>
+        <translation>命令行</translation>
+    </message>
+
+<message id="cli.settings.enable">
+        <source>Enable command-line support</source>
+        <translation>开启命令行支持</translation>
+    </message>
+
+<message id="dialog.video_export.cover_source_changed">
+        <source>The chart changed while preparing the cover. Export again.</source>
+        <translation>准备封面时谱面已更改，请重新导出。</translation>
+    </message>
+
+<message id="hand_order.object_selection_requires_contiguous"><source>This command requires a contiguous selection. Select one continuous source range first.</source><translation>此命令需要连续选区。请先在源码中选择一个连续范围。</translation></message>
+    <message id="preferences.advanced_metadata">
+        <source>Enable advanced chart information</source>
+        <translation>启用高级信息编辑</translation>
+    </message>
+    <message id="preferences.low_performance">
+        <source>Low performance mode (prioritize 60 Hz preview)</source>
+        <translation>低性能模式（优先保证 60 Hz 预览）</translation>
+    </message>
+    <message id="preferences.space_guard">
+        <source>Prevent accidental spaces (press 3 times to unlock)</source>
+        <translation>防空格误触（三连按解锁输入）</translation>
+    </message>
+    <message id="preferences.auto_normalize">
+        <source>Automatically normalize charts</source>
+        <translation>自动整理谱面</translation>
+    </message>
+    <message id="preferences.warn_empty_difficulty">
+        <source>Warn before exporting empty difficulties</source>
+        <translation>导出 ZIP 前提示空难度</translation>
+    </message>
+    <message id="editor.space_unlocked">
+        <source>Space input unlocked · relocks on focus loss</source>
+        <translation>空格输入已解锁 · 失焦后重新锁定</translation>
+    </message>
+    <message id="metadata.advanced.title">
+        <source>Advanced chart information</source>
+        <translation>高级谱面信息</translation>
+    </message>
+    <message id="metadata.advanced.song">
+        <source>Song identifiers</source>
+        <translation>歌曲标识</translation>
+    </message>
+    <message id="metadata.advanced.artist_id">
+        <source>Artist ID</source>
+        <translation>曲师 ID</translation>
+    </message>
+    <message id="metadata.advanced.song_id">
+        <source>Song ID</source>
+        <translation>曲目 ID</translation>
+    </message>
+    <message id="metadata.advanced.timing">
+        <source>Timing and demo</source>
+        <translation>时间与试听</translation>
+    </message>
+    <message id="metadata.advanced.whole_bpm">
+        <source>BPM metadata</source>
+        <translation>BPM 资料</translation>
+    </message>
+    <message id="metadata.advanced.demo_start">
+        <source>Demo start (seconds)</source>
+        <translation>试听起点（秒）</translation>
+    </message>
+    <message id="metadata.advanced.demo_length">
+        <source>Demo length (seconds)</source>
+        <translation>试听长度（秒）</translation>
+    </message>
+    <message id="metadata.advanced.compatibility">
+        <source>Legacy compatibility</source>
+        <translation>旧格式兼容</translation>
+    </message>
+    <message id="metadata.advanced.legacy_seek">
+        <source>Legacy seek (seconds)</source>
+        <translation>旧 seek（秒）</translation>
+    </message>
+    <message id="metadata.advanced.legacy_wait">
+        <source>Legacy wait (seconds)</source>
+        <translation>旧 wait（秒）</translation>
+    </message>
+    <message id="metadata.advanced.legacy_warning">
+        <source>The current Fanmade Portal form does not support seek/wait. Keep existing values when needed; use first for timing adjustment.</source>
+        <translation>当前 Fanmade Portal 新版表单不支持 seek/wait。按需保留旧值；时间偏移请使用 first。</translation>
+    </message>
+    <message id="metadata.advanced.catalog">
+        <source>Category and version</source>
+        <translation>分类与版本</translation>
+    </message>
+    <message id="metadata.advanced.genre">
+        <source>Genre</source>
+        <translation>分类</translation>
+    </message>
+    <message id="metadata.advanced.genre_id">
+        <source>Genre ID</source>
+        <translation>分类 ID</translation>
+    </message>
+    <message id="metadata.advanced.cabinet">
+        <source>Cabinet (SD / DX)</source>
+        <translation>谱面制式（SD / DX）</translation>
+    </message>
+    <message id="metadata.advanced.version">
+        <source>Version</source>
+        <translation>版本</translation>
+    </message>
+    <message id="metadata.advanced.author">
+        <source>Creator information</source>
+        <translation>作者资料</translation>
+    </message>
+    <message id="metadata.advanced.video_url">
+        <source>Chart video URL</source>
+        <translation>谱面视频链接</translation>
+    </message>
+    <message id="metadata.advanced.created">
+        <source>Creation date (YYYYMMDD)</source>
+        <translation>创建日期（YYYYMMDD）</translation>
+    </message>
+    <message id="metadata.advanced.comment">
+        <source>Creator comment</source>
+        <translation>作者评论</translation>
+    </message>
+    <message id="metadata.advanced.difficulty">
+        <source>Difficulty metadata</source>
+        <translation>难度资料</translation>
+    </message>
+    <message id="metadata.advanced.creator_id">
+        <source>Creator IDs (comma separated)</source>
+        <translation>谱师 ID（多人以逗号分隔）</translation>
+    </message>
+    <message id="metadata.advanced.constant">
+        <source>Chart constant</source>
+        <translation>谱面定数</translation>
+    </message>
+    <message id="metadata.advanced.regulation">
+        <source>Regulation</source>
+        <translation>谱面规则分类</translation>
+    </message>
+    <message id="metadata.advanced.single_line">
+        <source>This field accepts one line only.</source>
+        <translation>此字段只允许一行文字。</translation>
+    </message>
+    <message id="metadata.advanced.embedded_field">
+        <source>A field value cannot contain another &amp;key= assignment.</source>
+        <translation>字段值不能包含另一条 &amp;key= 赋值。</translation>
+    </message>
+    <message id="metadata.advanced.invalid_date">
+        <source>Enter a valid date as YYYYMMDD.</source>
+        <translation>请输入有效的 YYYYMMDD 日期。</translation>
+    </message>
+    <message id="metadata.advanced.invalid_url">
+        <source>Enter a valid HTTP or HTTPS URL.</source>
+        <translation>请输入有效的 HTTP 或 HTTPS 链接。</translation>
+    </message>
+    <message id="metadata.advanced.invalid_id">
+        <source>Use digits for IDs; separate collaborating creator IDs with commas.</source>
+        <translation>ID 请使用数字；多人谱师 ID 用逗号分隔。</translation>
+    </message>
+    <message id="metadata.advanced.positive_number">
+        <source>Enter a finite number greater than zero.</source>
+        <translation>请输入大于 0 的有限数字。</translation>
+    </message>
+    <message id="metadata.advanced.nonnegative_number">
+        <source>Enter a finite number of zero or greater.</source>
+        <translation>请输入大于或等于 0 的有限数字。</translation>
+    </message>
+    <message id="metadata.advanced.no_document">
+        <source>No chart is open.</source>
+        <translation>尚未打开谱面。</translation>
+    </message>
+    <message id="metadata.advanced.unknown_field">
+        <source>Unsupported advanced field.</source>
+        <translation>不支持的高级字段。</translation>
+    </message>
+    <message id="metadata.advanced.update_failed">
+        <source>The metadata change could not be applied.</source>
+        <translation>无法应用元数据修改。</translation>
+    </message>
+    <message id="timeline.layout.horizontal">
+        <source>Horizontal</source>
+        <translation>横向</translation>
+    </message>
+    <message id="timeline.layout.before_editor">
+        <source>Before editor</source>
+        <translation>编辑区左侧</translation>
+    </message>
+    <message id="timeline.layout.after_editor">
+        <source>After editor</source>
+        <translation>编辑区右侧</translation>
+    </message>
+    <message id="timeline.layout.direction">
+        <source>Vertical note direction</source>
+        <translation>纵向音符方向</translation>
+    </message>
+    <message id="timeline.layout.falling">
+        <source>Falling</source>
+        <translation>下落</translation>
+    </message>
+    <message id="timeline.layout.rising">
+        <source>Rising</source>
+        <translation>上落</translation>
+    </message>
+    <message id="timeline.layout.lane_order">
+        <source>Lane order</source>
+        <translation>键位排列</translation>
+    </message>
+    <message id="timeline.drop_region">
+        <source>Drop</source>
+        <translation>Drop</translation>
+    </message>
+    <message id="export.document_changed_retry">
+        <source>The chart changed while the export dialog was open. Please export again.</source>
+        <translation>导出对话框打开期间谱面发生了变化，请重新导出。</translation>
+    </message>
+    <message id="export.empty_difficulty_warning">
+        <source>Empty difficulties were detected. Continue exporting?</source>
+        <translation>检测到有空难度，还要继续导出吗？</translation>
+    </message>
+    <message id="export.empty_difficulty_continue">
+        <source>I know what I am doing!</source>
+        <translation>我知道我在做什么！</translation>
+    </message>
+    <message id="qml.debug_rendering">
+        <source>Debug rendering</source>
+        <translation>调试渲染</translation>
+    </message>
+    <message id="qml.debug_labeled_judge_area">
+        <source>Labeled judgement areas</source>
+        <translation>带编号的判定区</translation>
+    </message>
+    <message id="qml.debug_muri_markers">
+        <source>Muri judgement markers</source>
+        <translation>无理判定标记</translation>
+    </message>
+    <message id="qml.debug_touch_trail">
+        <source>Touch trails</source>
+        <translation>触摸轨迹</translation>
+    </message>
+    <message id="dialog.video_export.less_display">
+        <source>Show less</source>
+        <translation>收起更多</translation>
+    </message>
+    <message id="video_size.custom">
+        <source>Custom</source>
+        <translation>自定义</translation>
+    </message>
+    <message id="video_size.target_mbps">
+        <source>Target video bitrate (Mbps)</source>
+        <translation>目标视频码率（Mbps）</translation>
+    </message>
+    <message id="video_size.estimated_mb">
+        <source>Estimated size: %1 MB</source>
+        <translation>预计体积：%1 MB</translation>
+    </message>
+    <message id="video_export.include_pv">
+        <source>Export PV</source>
+        <translation>导出 PV</translation>
+    </message>
+    <message id="video_export.intro_style_chart_preview">
+        <source>Chart preview</source>
+        <translation>谱面预览</translation>
+    </message>
+    <message id="video_export.drop_range">
+        <source>Drop: %1 – %2</source>
+        <translation>Drop：%1 – %2</translation>
+    </message>
+    <message id="video_export.use_drop_range">
+        <source>Use drop range</source>
+        <translation>采用 Drop 区间</translation>
+    </message>
+    <message id="video_export.intro_automatic_segment">
+        <source>Use recommended segment</source>
+        <translation>使用推荐片段</translation>
+    </message>
+    <message id="video_template.file_filter">
+        <source>MiaCode video template (*.miatemplate)</source>
+        <translation>MiaCode 视频模板 (*.miatemplate)</translation>
+    </message>
+    <message id="video_template.compatible_file_filter">
+        <source>MiaCode video template (*.miatemplate *.json)</source>
+        <translation>MiaCode 视频模板 (*.miatemplate *.json)</translation>
+    </message>
+    <message id="video_export.intro_source_manual">
+        <source>Custom segment</source>
+        <translation>自定义片段</translation>
+    </message>
+    <message id="video_export.intro_source_demo">
+        <source>Chart demo</source>
+        <translation>谱面试听</translation>
+    </message>
+    <message id="video_export.intro_source_drop">
+        <source>Drop</source>
+        <translation>Drop</translation>
+    </message>
+    <message id="video_export.intro_source_default">
+        <source>Default segment</source>
+        <translation>默认片段</translation>
+    </message>
+    <message id="video_export.intro_follow_drop">
+        <source>Follow drop</source>
+        <translation>跟随 Drop</translation>
+    </message>
+    <message id="video_export.intro_automatic">
+        <source>Automatic</source>
+        <translation>自动</translation>
+    </message>
+    <message id="structure.session_only">
+        <source>Drop changes are in this session only</source>
+        <translation>Drop 修改仅保留在本次会话</translation>
+    </message>
+    <message id="structure.manual_outside">
+        <source>Manual drop is outside the media duration</source>
+        <translation>手动 Drop 超出媒体时长</translation>
+    </message>
+    <message id="structure.manual_audio_changed">
+        <source>Audio changed. Review the manual drop</source>
+        <translation>音频已更换，请复核手动 Drop</translation>
+    </message>
+    <message id="structure.manual">
+        <source>Manual drop</source>
+        <translation>手动 Drop</translation>
+    </message>
+    <message id="structure.detected">
+        <source>Detected drop</source>
+        <translation>已检测到 Drop</translation>
+    </message>
+    <message id="structure.analyzing">
+        <source>Analyzing chart and audio…</source>
+        <translation>正在分析谱面与音频…</translation>
+    </message>
+    <message id="structure.canceled">
+        <source>Structure analysis canceled</source>
+        <translation>已取消结构分析</translation>
+    </message>
+    <message id="structure.wait_for_pause">
+        <source>Analysis waits for playback to pause</source>
+        <translation>暂停播放后开始分析</translation>
+    </message>
+    <message id="structure.syntax_estimate">
+        <source>Pressure estimate from a chart with syntax errors</source>
+        <translation>谱面有语法错误，压力为估计值</translation>
+    </message>
+    <message id="structure.no_audio">
+        <source>Pressure estimate · Audio unavailable</source>
+        <translation>压力估计 · 无法读取音频</translation>
+    </message>
+    <message id="structure.candidates">
+        <source>Drop candidates · Select a range to confirm</source>
+        <translation>Drop 候选 · 选择区间以确认</translation>
+    </message>
+    <message id="structure.no_clear_drop">
+        <source>Pressure estimate · No clear drop</source>
+        <translation>压力估计 · 未找到明显的 Drop</translation>
+    </message>
+    <message id="structure.cancel_analysis">
+        <source>Cancel analysis</source>
+        <translation>取消分析</translation>
+    </message>
+    <message id="structure.edit_button">
+        <source>Drop…</source>
+        <translation>Drop…</translation>
+    </message>
+    <message id="structure.pressure_tooltip">
+        <source>%1 s · Chart pressure %2/100
+Judgement TPS %3 · Simultaneous %4
+Movement %5 · Rhythm %6 · Sustained load %7
+Held %8 · Slides %9 · Overlap %10</source>
+        <translation>%1 秒 · 谱面压力 %2/100
+判定 TPS %3 · 同时触击 %4
+位移 %5 · 节奏 %6 · 持续负荷 %7
+长按 %8 · 滑轨 %9 · 操作重叠 %10</translation>
+    </message>
+    <message id="structure.edit_title">
+        <source>Edit drop range</source>
+        <translation>编辑 Drop 区间</translation>
+    </message>
+    <message id="structure.start_seconds">
+        <source>Start (seconds)</source>
+        <translation>起点（秒）</translation>
+    </message>
+    <message id="structure.end_seconds">
+        <source>End (seconds)</source>
+        <translation>终点（秒）</translation>
+    </message>
+    <message id="structure.recommendation">
+        <source>Recommendation · %1–%2 s</source>
+        <translation>推荐 · %1–%2 秒</translation>
+    </message>
+    <message id="structure.candidate">
+        <source>Candidate · %1–%2 s</source>
+        <translation>候选 · %1–%2 秒</translation>
+    </message>
+    <message id="structure.undo">
+        <source>Undo drop edit</source>
+        <translation>撤销区间编辑</translation>
+    </message>
+    <message id="structure.redo">
+        <source>Redo drop edit</source>
+        <translation>重做区间编辑</translation>
+    </message>
+    <message id="structure.clear">
+        <source>Clear drop</source>
+        <translation>清除 Drop</translation>
+    </message>
+    <message id="structure.analyze_again">
+        <source>Analyze again</source>
+        <translation>重新分析</translation>
+    </message>
+    <message id="structure.save_drop">
+        <source>Save drop</source>
+        <translation>保存 Drop</translation>
+    </message>
+    <message id="structure.apply_manual">
+        <source>Apply manual drop</source>
+        <translation>应用手动 Drop</translation>
+    </message>
+    <message id="editor.slide_component_edit_rejected">
+        <source>This edit would change an unselected Slide component. Select the whole Slide and try again.</source>
+        <translation>这项操作会改动未选中的 Slide 组件。请选中整条 Slide 后重试。</translation>
+    </message>
+    <message id="metadata.advanced.conflict_warning">
+        <source>The original file contains conflicting fields: %1. Review the complete source before saving; automatic metadata saves are blocked.</source>
+        <translation>原文件包含值冲突的重复字段：%1。请在全文编辑中确认后保存；已阻止自动元数据覆盖。</translation>
+    </message>
+    <message id="export.syntax_before_zip">
+        <source>The chart contains syntax errors. Fix them before exporting ZIP.</source>
+        <translation>谱面存在语法错误，请修复后再导出 ZIP。</translation>
+    </message>
+    <message id="video_template.path_exists">
+        <source>A template with that name already exists.</source>
+        <translation>已存在同名模板。</translation>
+    </message>
+    <message id="timeline.note_scale">
+        <source>Note size</source>
+        <translation>音符大小</translation>
+    </message>
+    <message id="workspace.menu">
+        <source>Workspace(&amp;W)</source>
+        <translation>工作区(&amp;W)</translation>
+    </message>
+    <message id="workspace.panels">
+        <source>Panels</source>
+        <translation>面板</translation>
+    </message>
+    <message id="workspace.default">
+        <source>Default layout</source>
+        <translation>默认布局</translation>
+    </message>
+    <message id="workspace.editing">
+        <source>Editing layout</source>
+        <translation>编辑布局</translation>
+    </message>
+    <message id="workspace.preview">
+        <source>Preview layout</source>
+        <translation>预览布局</translation>
+    </message>
+    <message id="workspace.maximize_panel">
+        <source>Maximize active panel</source>
+        <translation>最大化当前面板</translation>
+    </message>
+    <message id="workspace.restore_panel">
+        <source>Restore active panel</source>
+        <translation>还原当前面板</translation>
+    </message>
+    <message id="workspace.save">
+        <source>Save current layout…</source>
+        <translation>保存当前布局…</translation>
+    </message>
+    <message id="workspace.reset">
+        <source>Reset layout</source>
+        <translation>重置布局</translation>
+    </message>
+    <message id="workspace.name">
+        <source>Layout name</source>
+        <translation>布局名称</translation>
+    </message>
+    <message id="workspace.remove">
+        <source>Delete saved layout</source>
+        <translation>删除已保存布局</translation>
+    </message>
+    <message id="workspace.drag_panel">
+        <source>Drag a panel tab to dock, group, or float it</source>
+        <translation>拖动面板标签以停靠、合并或浮动</translation>
+    </message>
+    <message id="workspace.editor">
+        <source>Editor</source>
+        <translation>编辑器</translation>
+    </message>
+    <message id="workspace.sidebar">
+        <source>Chart outline</source>
+        <translation>谱面大纲</translation>
+    </message>
+    <message id="workspace.preview_panel">
+        <source>Preview</source>
+        <translation>预览</translation>
+    </message>
+    <message id="workspace.timeline">
+        <source>Show timeline</source>
+        <translation>显示时间轴</translation>
+    </message>
+    <message id="workspace.diagnostics">
+        <source>Diagnostics</source>
+        <translation>诊断</translation>
+    </message>
+    <message id="editor.set_selection_as_drop">
+        <source>Set selection as Drop</source>
+        <translation>将选区设为 Drop</translation>
+    </message>
+    <message id="editor.clear_drop">
+        <source>Clear Drop</source>
+        <translation>取消 Drop</translation>
+    </message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the
@@ -5301,4 +6953,506 @@ Error: %1</source>
 
 
 
+
+
+
+
+<context>
+    <name></name>
+    <message id="structure.hand_order_tooltip">
+        <source>Annotated hands · Load L %1 / R %2
+Movement L %3 / R %4 · Alternation %5</source>
+        <translation>人工手序 · 占用 左 %1 / 右 %2
+移动 左 %3 / 右 %4 · 交替 %5</translation>
+    </message>
+</context>
+<context>
+    <name></name>
+    <message id="preview.show_stage_media_when_paused"><source>Show PV / background while paused</source><translation>暂停时显示 PV / 背景</translation></message>
+    <message id="preferences.disable_alt_menu"><source>Disable menu activation by Alt alone</source><translation>禁用单按 Alt 激活应用菜单</translation></message>
+    <message id="preferences.pv_frame_rate_auto"><source>Auto detect</source><translation>自动检测</translation></message>
+    <message id="preferences.pv_frame_rate_help"><source>Auto detect follows the source PV timestamps, including fractional and variable frame rates. Other options cap preview updates; export FPS is separate.</source><translation>“自动检测”跟随源 PV 的时间戳，支持小数帧率和可变帧率；其他选项限制预览刷新频率，导出帧率另行设置。</translation></message>
+    <message id="editor.transform_review_title"><source>Change extends beyond the visible chart</source><translation>改动涉及屏幕外的谱面</translation></message>
+    <message id="editor.transform_review_apply"><source>Apply reviewed change</source><translation>应用本次更改</translation></message>
+    <message id="editor.transform_review_stale"><source>The document changed. Review and run the operation again.</source><translation>文档已变化，本次更改未应用。请检查后重新执行。</translation></message>
+</context>
+<context><name></name>
+<message id="hand_order.experiment.title"><source>Read-only hand analysis experiment</source><translation>只读手序分析实验</translation></message>
+<message id="hand_order.experiment.disclaimer"><source>Uncalibrated experiment. Existing annotations are protected. Shared contacts are brushing candidates, not verified player outcomes. Timing scenarios sample object groups from segment peaks; they do not replay complete palm trajectories or predict official scores.</source><translation>未做真人标定的实验。现有人工标注受保护；共享接触仅作蹭点候选。时序模拟按片段峰值对对象组采样，不重放完整手掌轨迹，也不预测官方得分。</translation></message>
+<message id="hand_order.experiment.analyze"><source>Analyze current difficulty</source><translation>分析当前难度</translation></message>
+<message id="hand_order.experiment.simulate"><source>Run timing scenario</source><translation>运行时序情景模拟</translation></message>
+<message id="hand_order.experiment.reaction"><source>Response delay</source><translation>反应延迟</translation></message>
+<message id="hand_order.experiment.movement"><source>Movement speed (field radii/s)</source><translation>移动速度（盘面半径/秒）</translation></message>
+<message id="hand_order.experiment.stamina"><source>Stamina capacity</source><translation>耐力容量</translation></message>
+<message id="hand_order.experiment.jitter"><source>Timing jitter range</source><translation>判定时刻扰动范围</translation></message>
+<message id="hand_order.experiment.window"><source>Scenario reference window</source><translation>情景参考时窗</translation></message>
+<message id="hand_order.experiment.trials"><source>Trials per object group</source><translation>每对象组采样轮数</translation></message>
+<message id="hand_order.experiment.seed"><source>Random seed</source><translation>随机种子</translation></message>
+<message id="hand_order.experiment.seed_help"><source>Same analysis, parameters and seed reproduce a scenario. Seed range: 0–4294967295.</source><translation>相同分析结果、参数和种子可复现模拟。种子范围：0–4294967295。</translation></message>
+<message id="hand_order.experiment.segment_title"><source>%1–%2 s · line %3, column %4 · %5 object groups</source><translation>%1–%2 秒 · 第 %3 行，第 %4 列 · %5 个对象组</translation></message>
+<message id="hand_order.experiment.segment_metrics"><source>Peak movement %1 · tap rate %2 · load %3 · shared contacts %4 · unresolved %5 · candidate support %6 (not probability)</source><translation>移动峰值 %1 · 手速 %2 · 负荷 %3 · 共享接触 %4 · 未解决 %5 · 候选支持度 %6（非概率）</translation></message>
+<message id="hand_order.experiment.segment_simulation"><source>Outside reference window: %1 / %2 samples · mean absolute offset %3 ms · P95 %4 ms</source><translation>超出参考时窗：%1 / %2 个样本 · 平均绝对偏移 %3 ms · P95 %4 ms</translation></message>
+<message id="hand_order.experiment.report"><source>Show versioned JSON report (selectable)</source><translation>显示带版本的 JSON 报告（可选择复制）</translation></message>
+<message id="hand_order.experiment.idle"><source>Choose Analyze to create a read-only baseline.</source><translation>点击“分析当前难度”生成只读基线。</translation></message>
+<message id="hand_order.experiment.analyzing"><source>Analyzing with a bounded inference budget…</source><translation>正在使用有限预算分析…</translation></message>
+<message id="hand_order.experiment.simulating"><source>Sampling the timing scenario…</source><translation>正在采样时序情景…</translation></message>
+<message id="hand_order.experiment.ready"><source>%1 segments · %2 search work units. Results are not calibrated player predictions.</source><translation>%1 个片段 · 使用 %2 搜索工作量。结果不是经标定的玩家表现预测。</translation></message>
+<message id="hand_order.experiment.simulated"><source>%1 samples; %2 outside the reference window; seed %3.</source><translation>%1 个样本；%2 个超出参考时窗；种子 %3。</translation></message>
+<message id="hand_order.experiment.failed"><source>Experiment failed: %1</source><translation>实验失败：%1</translation></message>
+<message id="hand_order.experiment.stale"><source>The chart or analysis profile changed. Run analysis again.</source><translation>谱面或分析配置已变化，请重新分析。</translation></message>
+<message id="hand_order.experiment.cancelled"><source>Experiment cancelled; no chart changes were made.</source><translation>实验已取消，谱面未被修改。</translation></message>
+<message id="hand_order.experiment.input_limit"><source>Input exceeds the experimental bound (256 KiB, 10,000 notes or parsing budget).</source><translation>输入超过实验上限（256 KiB、10000 音符或解析预算）。</translation></message>
+<message id="hand_order.experiment.invalid_input"><source>The chart, annotation or player parameters are invalid.</source><translation>谱面、标注或玩家参数无效。</translation></message>
+<message id="hand_order.experiment.worker_failed"><source>The background calculation could not complete.</source><translation>后台计算未能完成。</translation></message>
+<message id="hand_order.experiment.reason.unresolved"><source>Unresolved or unverified assignment</source><translation>分配未解决或未通过回放核验</translation></message>
+<message id="hand_order.experiment.reason.protected_annotation"><source>Existing annotation protected</source><translation>保留已有人工标注</translation></message>
+<message id="hand_order.experiment.reason.shared_contact"><source>Shared-contact brushing candidate</source><translation>共享接触蹭点候选</translation></message>
+<message id="hand_order.experiment.reason.unverified_replay"><source>Candidate replay not verified</source><translation>候选回放未核验</translation></message>
+<message id="hand_order.experiment.reason.tap_rate"><source>Tap rate exceeds profile reference</source><translation>手速超过配置参考值</translation></message>
+<message id="hand_order.experiment.reason.movement"><source>Movement exceeds profile reference</source><translation>移动速度超过配置参考值</translation></message>
+<message id="hand_order.experiment.reason.fatigue"><source>Load exceeds stamina reference</source><translation>负荷超过耐力参考值</translation></message>
+<message id="hand_order.experiment.reason.bounded_search"><source>Search budget reached; evidence is incomplete</source><translation>搜索达到预算，证据不完整</translation></message>
+<message id="hand_order.experiment.reason.uncalibrated"><source>Not calibrated against real players</source><translation>未经过真人标定</translation></message>
+<message id="hand_order.experiment.unlocated"><source>%1 result rows could not be mapped to source time and were excluded.</source><translation>%1 个结果无法映射到源时间，已排除，不参与模拟。</translation></message>
+</context>
+<context><name></name>
+<message id="workspace.manage"><source>Manage workspaces</source><translation>管理工作区</translation></message>
+<message id="workspace.manage_hint"><source>Layouts store panel positions and visibility. Switching them keeps the chart and undo history. Press ` outside text inputs to open this manager.</source><translation>布局只保存面板位置和显示状态，切换时保留谱面与撤销历史。在文本输入区外按 ` 打开管理器。</translation></message>
+<message id="workspace.shortcuts"><source>Workspace shortcuts</source><translation>工作区快捷槽位</translation></message>
+<message id="workspace.current_layout"><source>Current layout</source><translation>当前布局</translation></message>
+<message id="workspace.selected_layout"><source>Selected layout</source><translation>所选布局</translation></message>
+<message id="workspace.unbound"><source>No shortcut</source><translation>不绑定</translation></message>
+<message id="workspace.floating_panels"><source>Floating: %1</source><translation>浮动面板：%1</translation></message>
+<message id="workspace.classic"><source>Classic</source><translation>经典</translation></message>
+<message id="workspace.analysis"><source>Analysis</source><translation>分析</translation></message>
+<message id="workspace.saved_presets"><source>Saved layouts</source><translation>已保存布局</translation></message>
+<message id="workspace.no_saved_presets"><source>Save the current layout with a name to get started.</source><translation>输入名称，将当前布局保存为预设。</translation></message>
+<message id="workspace.apply"><source>Apply</source><translation>应用</translation></message>
+<message id="workspace.move_up"><source>Move up</source><translation>上移</translation></message>
+<message id="workspace.move_down"><source>Move down</source><translation>下移</translation></message>
+<message id="workspace.update_selected"><source>Update selected</source><translation>更新所选布局</translation></message>
+<message id="workspace.name_exists"><source>This name already exists. Use a different name, or update the selected layout.</source><translation>名称已存在，请换一个名称，或选择“更新所选布局”。</translation></message>
+<message id="workspace.save_new"><source>Save as new layout</source><translation>保存为新布局</translation></message>
+<message id="workspace.rename"><source>Rename</source><translation>重命名</translation></message>
+<message id="workspace.duplicate"><source>Duplicate</source><translation>复制</translation></message>
+<message id="workspace.confirm_remove"><source>Remove saved layout “%1”? The current layout and chart will stay unchanged.</source><translation>删除已保存布局“%1”？当前布局与谱面不会变化。</translation></message>
+<message id="workspace.confirm_update"><source>Replace saved layout “%1” with the current panel arrangement?</source><translation>用当前面板布局覆盖已保存的“%1”？</translation></message>
+<message id="workspace.metadata_tool"><source>Chart information</source><translation>谱面信息</translation></message>
+<message id="timeline.reset_zoom"><source>Reset timeline zoom to 100%</source><translation>重置时间轴缩放为 100%</translation></message>
+<message id="preview.debug_compact"><source>Diagnostics: compact</source><translation>诊断图层：精简</translation></message>
+<message id="preview.debug_detailed"><source>Diagnostics: detailed</source><translation>诊断图层：详细</translation></message>
+<message id="preview.heatmap_off"><source>Off</source><translation>关闭</translation></message>
+<message id="preview.heatmap_overlay"><source>Picture overlay</source><translation>画面叠加</translation></message>
+<message id="preview.hand_order_overlay"><source>Manual hand annotation overlay</source><translation>人工手序叠加</translation></message>
+<message id="preview.hand_order_overlay_help"><source>Render existing hand annotations with any rendering mode. Does not generate or change annotations. Video export follows this option unless explicitly overridden.</source><translation>在任意渲染模式下显示已有人工手序；不生成、不修改标注。视频导出默认跟随此选项，也可单独覆盖。</translation></message>
+<message id="preview.simulated_play"><source>Simulated Play</source><translation>模拟游玩</translation></message>
+<message id="preview.simulated_play_help"><source>Follow the current Sticking annotations with two simulated hands and show arm interference.</source><translation>按当前 Sticking 模拟双手动作并显示手臂干扰。</translation></message>
+<message id="preview.simulated_play_left"><source>Left hand</source><translation>左手</translation></message>
+<message id="preview.simulated_play_right"><source>Right hand</source><translation>右手</translation></message>
+<message id="preview.simulated_play_lift"><source>Lifted to pass</source><translation>抬手避让</translation></message>
+<message id="preview.simulated_play_conflict"><source>Interference</source><translation>动作受阻</translation></message>
+<message id="preview.simulated_play_unassigned"><source>Unassigned</source><translation>未标手序</translation></message>
+<message id="preview.simulated_play_palm_radius"><source>Palm radius (shared with Muri)</source><translation>手掌半径（与无理检测共用）</translation></message>
+<message id="window.play_checks"><source>Play Checks</source><translation>游玩检测</translation></message>
+<message id="play.settings.title"><source>Simulated Play Settings</source><translation>模拟游玩参数</translation></message>
+<message id="play.settings.height"><source>Player height</source><translation>玩家身高</translation></message>
+<message id="play.settings.distance"><source>Stand-off from screen center</source><translation>距屏幕圆心的水平站距</translation></message>
+<message id="play.settings.offset"><source>Standing height offset</source><translation>站立高度修正</translation></message>
+<message id="play.settings.reach"><source>Arm length scale</source><translation>手臂长度比例</translation></message>
+<message id="play.settings.heights"><source>Starting height above floor (cm) · shoulders %1 · hands %2 · screen center ≈%3</source><translation>离地起始高度（厘米） · 肩 %1 · 手 %2 · 屏幕圆心约 %3</translation></message>
+<message id="play.settings.auto_height"><source>Adjust body height automatically</source><translation>自动调整身体高度</translation></message>
+<message id="play.settings.lower"><source>Maximum lowering</source><translation>下蹲幅度</translation></message>
+<message id="play.settings.raise"><source>Maximum raising</source><translation>抬升幅度</translation></message>
+<message id="play.settings.speed"><source>Vertical movement speed</source><translation>身体升降速度</translation></message>
+<message id="play.settings.apply"><source>Apply</source><translation>应用</translation></message>
+<message id="play.issues.summary"><source>%1 movement warnings</source><translation>%1 处动作受阻</translation></message>
+<message id="play.issues.empty"><source>No movement interference detected</source><translation>未检出动作受阻</translation></message>
+<message id="play.issue.collision"><source>Arm interference</source><translation>手臂干扰</translation></message>
+<message id="play.issue.reach"><source>Out of reach</source><translation>超出臂展</translation></message>
+<message id="play.issue.occupied"><source>Hand already occupied</source><translation>同手占用</translation></message>
+<message id="play.issue.speed"><source>Insufficient travel time</source><translation>移动时间不足</translation></message>
+<message id="play.issue.both_hands"><source>Both hands</source><translation>双手</translation></message>
+<message id="play.issue.detail"><source>%1 · %2</source><translation>%1 · %2</translation></message>
+<message id="play.settings.reaction"><source>Reaction delay</source><translation>基础反应延迟</translation></message>
+<message id="play.settings.buttons"><source>Prefer cabinet buttons</source><translation>优先使用框体外键</translation></message>
+<message id="play.settings.adaptive_palm"><source>Adapt palm size to the pattern</source><translation>随配置调整手掌大小</translation></message>
+<message id="play.settings.auto_distance"><source>Automatically adjust standing distance</source><translation>自动调整前后站位</translation></message>
+<message id="play.settings.forward"><source>Maximum forward step</source><translation>最大前移距离</translation></message>
+<message id="play.settings.backward"><source>Maximum backward step</source><translation>最大后移距离</translation></message>
+<message id="play.settings.depth_speed"><source>Forward/backward speed</source><translation>前后移动速度</translation></message>
+<message id="play.issue.crossed"><source>Crossed hands</source><translation>双手交叉</translation></message>
+<message id="play.issue.judgement"><source>Judgement loss</source><translation>判定扣分</translation></message>
+<message id="play.issue.loss"><source>%1 at %2 · −%3%</source><translation>%2 · %1 · 扣 %3%</translation></message>
+<message id="hand_order.play_review"><source>Playability Review</source><translation>游玩复核</translation></message>
+<message id="hand_order.play_review.summary"><source>%1 groups reviewed, %2 improved, %3 annotations changed.</source><translation>复核 %1 组，改善 %2 组，建议修改 %3 处手序。</translation></message>
+<message id="hand_order.play_review.limited"><source>%1 groups reviewed, %2 improved, %3 annotations changed. The simulation reached its replay limit.</source><translation>复核 %1 组，改善 %2 组，建议修改 %3 处手序。已达模拟回放上限。</translation></message>
+<message id="hand_order.play_review.invalid"><source>Fix chart syntax or sticking annotations before reviewing.</source><translation>请先修复谱面语法或手序标注，再运行游玩复核。</translation></message>
+<message id="hand_order.play_review.truncated"><source> The group review reached its search limit.</source><translation> 已达本轮配置组搜索上限。</translation></message>
+<message id="hand_order.play_review.notice"><source>Review existing sticking with the current simulated player settings. Preview the proposed changes before applying.</source><translation>使用当前模拟游玩参数复核已有手序，可预览建议后再应用。</translation></message>
+<message id="hand_order.workflow.stage_normalize"><source>Organize chart for analysis</source><translation>整理谱面</translation></message>
+<message id="hand_order.workflow.stage_patterns"><source>Identify and rank patterns</source><translation>识别配置与确定优先级</translation></message>
+<message id="hand_order.workflow.stage_context"><source>Search hand assignments</source><translation>搜索手序</translation></message>
+<message id="hand_order.workflow.stage_verify"><source>Verify assignments and timing</source><translation>核验手序与判定时机</translation></message>
+<message id="hand_order.workflow.stage_conflicts"><source>Recheck action conflicts</source><translation>复核动作冲突</translation></message>
+<message id="hand_order.workflow.total_progress"><source>Overall progress %1%</source><translation>整体进度 %1%</translation></message>
+<message id="hand_order.workflow.total_eta"><source>Estimated time remaining %1 s</source><translation>整体预计剩余 %1 秒</translation></message>
+<message id="hand_order.workflow.combined_summary"><source>%1 patterns selected. %2 overlap intervals checked, %3 affected judgements, %4 edits suspended.</source><translation>选定 %1 组配置。复核 %2 段重叠，%3 个判定受影响，暂缓 %4 处修改。</translation></message>
+<message id="hand_order.workflow.original_grid"><source>The original rhythm grid was used because the organized chart could not be matched safely.</source><translation>整理后的谱面无法逐一映射，本次按原谱节奏网格识别。</translation></message>
+<message id="hand_order.workflow.conflict_limited"><source>Some input schedules could not be verified in the second replay.</source><translation>部分输入序列未完成二次判定回放。</translation></message>
+<message id="hand_order.workflow.combined_help"><source>Organize the chart in memory, rank overlapping patterns, search the assignments, then replay timing and action conflicts.</source><translation>在内存中整理谱面，按优先级识别重叠配置，将配置带入手序搜索，再复核判定与动作冲突。</translation></message>
+<message id="hand_order.auto.reason.physical_conflict_replay"><source>The second replay confirmed a lost judgement or hand responsibility during contact overlap.</source><translation>重叠触点的二次回放确认判定或击打手归属受影响。</translation></message>
+<message id="hand_order.progress.percent"><source>%1%</source><translation>%1%</translation></message>
+<message id="hand_order.pattern.strategy.follow_rails"><source>Follow both rails through the rotation</source><translation>两手分别沿各自轨道转圈</translation></message>
+<message id="hand_order.pattern.strategy.anchor_axis"><source>Keep the axis hand fixed</source><translation>固定轴手，另一只手补位</translation></message>
+<message id="hand_order.pattern.name.each"><source>Each</source><translation>双押</translation></message>
+<message id="hand_order.pattern.group.each"><source>Each</source><translation>双押</translation></message>
+<message id="hand_order.pattern.name.double_jacks"><source>Double jacks</source><translation>双纵</translation></message>
+<message id="hand_order.pattern.group.double_jacks"><source>Double jacks</source><translation>双纵</translation></message>
+<message id="hand_order.pattern.name.each_rotation"><source>Rotating Each</source><translation>双押转圈</translation></message>
+<message id="hand_order.pattern.group.each_rotation"><source>Rotating Each</source><translation>双押转圈</translation></message>
+<message id="hand_order.pattern.name.each_axis"><source>Each with a fixed axis</source><translation>轴叠键</translation></message>
+<message id="hand_order.pattern.group.each_axis"><source>Each with a fixed axis</source><translation>轴叠键</translation></message>
+<message id="hand_order.pattern.name.each_array"><source>Each array</source><translation>双押阵</translation></message>
+<message id="hand_order.pattern.group.each_array"><source>Each array</source><translation>双押阵</translation></message>
+<message id="hand_order.pattern.name.each_overlap"><source>Overlapping keys</source><translation>叠键</translation></message>
+<message id="hand_order.pattern.group.each_overlap"><source>Overlapping keys</source><translation>叠键</translation></message>
+<message id="hand_order.pattern.name.each_run"><source>Consecutive Each</source><translation>连续双押</translation></message>
+<message id="hand_order.pattern.group.each_run"><source>Consecutive Each</source><translation>连续双押</translation></message>
+<message id="hand_order.pattern.name.single_each"><source>Alternating single and Each</source><translation>单双押</translation></message>
+<message id="hand_order.pattern.group.single_each"><source>Alternating single and Each</source><translation>单双押</translation></message>
+<message id="hand_order.pattern.name.cut_keys"><source>Cut keys</source><translation>切键</translation></message>
+<message id="hand_order.pattern.group.cut_keys"><source>Cut keys</source><translation>切键</translation></message>
+<message id="hand_order.pattern.name.touch_sweep"><source>Touch sweep</source><translation>Touch 扫触</translation></message>
+<message id="hand_order.pattern.group.touch_sweep"><source>Touch sweep</source><translation>Touch 扫触</translation></message>
+<message id="hand_order.pattern.name.long_trill"><source>Long trill</source><translation>长交互</translation></message>
+<message id="hand_order.pattern.group.long_trill"><source>Long trill</source><translation>长交互</translation></message>
+<message id="hand_order.pattern.name.fixed_rails"><source>Fixed-rail trill</source><translation>定轨交互</translation></message>
+<message id="hand_order.pattern.group.fixed_rails"><source>Fixed-rail trill</source><translation>定轨交互</translation></message>
+<message id="hand_order.pattern.name.steering_interaction"><source>Steering interaction</source><translation>方向盘交互</translation></message>
+<message id="hand_order.pattern.group.steering_interaction"><source>Steering interaction</source><translation>方向盘交互</translation></message>
+<message id="hand_order.pattern.name.multiple_rotations"><source>Multiple rotations</source><translation>多圈转圈</translation></message>
+<message id="hand_order.pattern.group.multiple_rotations"><source>Multiple rotations</source><translation>多圈转圈</translation></message>
+<message id="hand_order.pattern.name.staircase"><source>Staircase</source><translation>楼梯</translation></message>
+<message id="hand_order.pattern.group.staircase"><source>Staircase</source><translation>楼梯</translation></message>
+<message id="hand_order.pattern.name.moving_burst_pairs"><source>Moving burst pairs</source><translation>位移子弹</translation></message>
+<message id="hand_order.pattern.group.moving_burst_pairs"><source>Moving burst pairs</source><translation>位移子弹</translation></message>
+<message id="hand_order.pattern.name.early_launch"><source>Tap in Slide wait</source><translation>早启动拍</translation></message>
+<message id="hand_order.pattern.group.early_launch"><source>Tap in Slide wait</source><translation>早启动拍</translation></message>
+<message id="hand_order.pattern.name.staircase_interaction"><source>Staircase interaction</source><translation>楼梯交互</translation></message>
+<message id="hand_order.pattern.group.staircase_interaction"><source>Staircase interaction</source><translation>楼梯交互</translation></message>
+<message id="hand_order.pattern.name.rotating_burst_pairs"><source>Rotating burst pairs</source><translation>子弹圈</translation></message>
+<message id="hand_order.pattern.group.rotating_burst_pairs"><source>Rotating burst pairs</source><translation>子弹圈</translation></message>
+<message id="hand_order.pattern.name.return_sweep"><source>Return sweep</source><translation>折返扫键</translation></message>
+<message id="hand_order.pattern.group.return_sweep"><source>Return sweep</source><translation>折返扫键</translation></message>
+<message id="hand_order.auto.quality.miss"><source>Miss</source><translation>漏判</translation></message>
+<message id="hand_order.auto.quality.bad"><source>Bad</source><translation>低判</translation></message>
+<message id="hand_order.pattern.name.variable_rotation"><source>Variable-speed rotation</source><translation>加减速转圈</translation></message>
+<message id="hand_order.pattern.group.variable_rotation"><source>Variable-speed rotation</source><translation>加减速转圈</translation></message>
+<message id="hand_order.workflow.play_review"><source>3. Playability Review</source><translation>3. 游玩复核</translation></message>
+<message id="metadata.reference.optional"><source>Optional field. Leave blank to omit it; unknown fields elsewhere are retained.</source><translation>可选字段，留空时不写入；其他未知字段仍会保留。</translation></message>
+<message id="metadata.reference.meter"><source>Global time signature</source><translation>全局拍号</translation></message>
+<message id="metadata.reference.clock_count"><source>Count-in beats</source><translation>预备拍数</translation></message>
+<message id="metadata.reference.extensions"><source>MiaCode fields and compatibility</source><translation>MiaCode 字段与兼容说明</translation></message>
+<message id="metadata.reference.drop"><source>Difficulty drop metadata</source><translation>当前难度 drop 元数据</translation></message>
+<message id="metadata.reference.drop_help"><source>MiaCode extension maintained by the preview-region editor. Start/end use media seconds; source is manual, auto or disabled. Version and fingerprint validate automatic results. No equivalent demo-field mapping is applied.</source><translation>由预览区间编辑器维护的 MiaCode 扩展。start/end 使用媒体秒；source 为 manual、auto 或 disabled；version 与 fingerprint 用于核对自动结果。不会映射成语义不同的试听字段。</translation></message>
+<message id="metadata.reference.demo_source"><source>Demo-window ownership</source><translation>试听区间来源</translation></message>
+<message id="metadata.reference.bookmarks"><source>Editor bookmarks</source><translation>编辑器书签</translation></message>
+<message id="metadata.reference.ids"><source>Decimal ID text. Leading zeros are preserved; creator IDs may use a comma-separated list. IDs do not replace author names.</source><translation>十进制编号文本，保留前导零；谱师 ID 可用逗号分隔多个编号。编号不代替姓名。</translation></message>
+<message id="metadata.reference.bpm"><source>Positive reference BPM used by count-in and metadata tools; it does not rewrite inline tempo changes.</source><translation>正数参考 BPM，供预备拍和信息工具使用；不会改写谱面中的变速。</translation></message>
+<message id="metadata.reference.meter_help"><source>Positive numerator/denominator, for example 4/4 or 7/8. Suggestions are editable and other valid meters are accepted.</source><translation>格式为正整数分子/分母，例如 4/4、7/8。参考选项不是限制，其他合法拍号也可输入。</translation></message>
+<message id="metadata.reference.clock_help"><source>Nonnegative integer. Zero disables count-in. Blank restores the document default (4).</source><translation>非负整数，0 表示不播放预备拍；清空后恢复文档默认值 4。</translation></message>
+<message id="metadata.reference.demo_start_help"><source>Preview audio start in media seconds, not chart beats. This is a demo window, independent of per-difficulty drop regions.</source><translation>试听起点，单位为媒体秒，不是谱面拍数；与各难度的 drop 区间独立。</translation></message>
+<message id="metadata.reference.demo_length_help"><source>Positive preview duration in seconds. It is a duration, not an end timestamp.</source><translation>正数试听时长，单位为秒；这是时长，不是结束时间戳。</translation></message>
+<message id="metadata.reference.legacy_help"><source>Legacy timing field. Kept for existing files; target tools may reject it. Do not substitute it for first without checking the target timing rules.</source><translation>旧版时间字段，为现有文件保留；目标工具可能不接受。未核对目标时序规则前，不应直接替换 first。</translation></message>
+<message id="metadata.reference.constant_help"><source>Positive chart constant, separate from the displayed level (for example 13+). Confirm the source before filling it.</source><translation>正数谱面定数，与 13+ 等显示等级分开；填写前核对来源。</translation></message>
+<message id="metadata.reference.date_help"><source>Calendar date in YYYYMMDD format.</source><translation>公历日期，格式为 YYYYMMDD。</translation></message>
+<message id="metadata.reference.url_help"><source>Full HTTP or HTTPS address. Saving this value does not upload or download media.</source><translation>完整的 HTTP/HTTPS 地址；保存地址不会自动上传或下载媒体。</translation></message>
+<message id="metadata.reference.catalog_help"><source>Free-form catalog information. Suggestions are examples only; verify the vocabulary required by the target library or platform.</source><translation>自由填写的分类信息。参考选项仅作示例；请按目标谱库或平台核对词表。</translation></message>
+<message id="metadata.reference.comment_help"><source>Multiline author comment. Lines that introduce another &amp;field= assignment are rejected.</source><translation>可多行填写作者留言；禁止在新行插入其他 &amp;字段= 赋值。</translation></message>
+<message id="metadata.reference.demo_source_help"><source>Read-only ownership marker: manual or auto. Editing demo_seek/demo_len marks the window manual. Do not rename this to a timestamp field.</source><translation>只读来源标记：manual 或 auto。编辑 demo_seek/demo_len 会标为 manual；不能改名为时间字段。</translation></message>
+<message id="metadata.reference.bookmarks_help"><source>Read-only serialized editor bookmarks. Edit them using the bookmark tools; there is no equivalent playback timing field.</source><translation>只读的编辑器书签序列化内容，请通过书签工具编辑；没有等价的播放时间字段。</translation></message>
+<message id="metadata.reference.invalid_meter"><source>Enter a positive numerator/denominator, such as 4/4.</source><translation>请输入正整数分子/分母，例如 4/4。</translation></message>
+<message id="metadata.reference.invalid_clock"><source>Count-in must be a nonnegative integer.</source><translation>预备拍数必须为非负整数。</translation></message>
+<message id="metadata.reference.managed_field"><source>This field is managed by its dedicated editor and is read-only here.</source><translation>此字段由专用编辑器维护，在此处只读。</translation></message>
+<message id="metadata.reference.use_suggestion"><source>Use suggestion %1</source><translation>使用参考值 %1</translation></message>
+<message id="tools.dx_loss.basis"><source>Base score %1 · Break %2 · Scoring objects %3 · Maximum %4%</source><translation>计分基数 %1 · Break %2 个 · 计分对象 %3 个 · 最高达成率 %4%</translation></message>
+<message id="tools.dx_loss.invalid_quantity"><source>Enter whole quantities from zero up to the eligible count in each row.</source><translation>请输入 0 至该行可用数量之间的整数。</translation></message>
+<message id="tools.dx_loss.inventory_exceeded"><source>Combined %1 judgments exceed their eligible note inventory. One note can receive only one judgment.</source><translation>%1 的组合判定数量超过可用音符数量；同一音符只能计入一种判定。</translation></message>
+<message id="tools.dx_loss.scenario_result"><source>%1 entered judgments · Loss %2% · Achievement %3% (maximum %4%)</source><translation>已输入 %1 次判定 · 失分 %2% · 达成率 %3%（最高 %4%）</translation></message>
+<message id="tools.dx_loss.rules"><source>Official DX achievement rules · Official EX behavior retained · Mine is not supported</source><translation>官方 DX 达成率规则 · 保留官方 EX 判定规则 · 不支持 Mine 计分</translation></message>
+<message id="tools.dx_loss.input_help"><source>Each note may be counted once. Unentered notes receive the best judgment; inputs reset when the chart revision changes. Break/EX counts are overlapping attributes, not extra notes.</source><translation>每个音符只能计入一行；未输入部分按最高判定计算，谱面版本变化后重置输入。Break/EX 属于重叠属性计数，不是额外音符。</translation></message>
+<message id="tools.dx_loss.show_tolerance"><source>Show independent SSS tolerance reference</source><translation>显示独立 SSS 容错参考</translation></message>
+<message id="tools.dx_loss.reset_quantities"><source>Reset quantities</source><translation>重置数量</translation></message>
+<message id="tools.dx_loss.eligible"><source>Eligible count</source><translation>可用数量</translation></message>
+<message id="tools.dx_loss.quantity"><source>Quantity</source><translation>判定数量</translation></message>
+<message id="preferences.advanced"><source>Advanced</source><translation>高级</translation></message>
+<message id="preview.comparison.add"><source>Add current chart to preview</source><translation>添加当前谱面到预览</translation></message>
+<message id="preview.comparison.remove"><source>Remove this preview</source><translation>移除此预览</translation></message>
+<message id="preview.comparison.seek"><source>Preview position</source><translation>预览播放位置</translation></message>
+<message id="preview.comparison.linked"><source>Linked</source><translation>同步</translation></message>
+<message id="preview.comparison.sync"><source>Synchronize playback for previews of the same song</source><translation>同一首歌的预览同步播放</translation></message>
+<message id="preview.heatmap"><source>Pressure map</source><translation>热力图</translation></message>
+<message id="preview.heatmap_youtube"><source>YouTube-style curve</source><translation>YouTube 风格曲线</translation></message>
+<message id="library.create"><source>New library</source><translation>新建谱库</translation></message>
+<message id="library.folder_name"><source>Chart Library</source><translation>谱库</translation></message>
+<message id="library.create_failed"><source>Could not create a library in %1</source><translation>无法在 %1 新建谱库</translation></message>
+<message id="library.choose_parent"><source>Create a library folder here</source><translation>选择新谱库的存放位置</translation></message>
+<message id="library.import"><source>Import packs</source><translation>批量导入</translation></message>
+<message id="library.choose_import"><source>Select folders to import as packs</source><translation>选择要导入的曲包文件夹</translation></message>
+<message id="library.importing"><source>Importing charts…</source><translation>正在导入谱面…</translation></message>
+<message id="library.imported"><source>Imported %1 · Already in library %2 · Failed %3</source><translation>已导入 %1 首，库中已有 %2 首，失败 %3 项</translation></message>
+<message id="library.import_stopped"><source>Import stopped.</source><translation>已停止导入。</translation></message>
+<message id="library.all_packs"><source>All packs</source><translation>全部曲包</translation></message>
+<message id="library.all_genres"><source>All genres</source><translation>全部分类</translation></message>
+<message id="library.empty_start"><source>Create or open a chart library.</source><translation>新建或打开一个谱库。</translation></message>
+<message id="library.empty_import"><source>Import a folder to add charts.</source><translation>选择「批量导入」添加曲包。</translation></message>
+<message id="library.utage"><source>UTAGE</source><translation>宴谱</translation></message>
+<message id="library.untitled"><source>Untitled</source><translation>未命名曲目</translation></message>
+<message id="library.kind"><source>Type</source><translation>谱种</translation></message>
+<message id="library.pack"><source>Pack</source><translation>曲包</translation></message>
+<message id="library.browse"><source>Browse charts</source><translation>浏览曲目</translation></message>
+<message id="library.source_tabs"><source>Source (%1)</source><translation>原文（%1）</translation></message>
+<message id="library.select_chart"><source>Select %1 for batch editing</source><translation>勾选 %1 以批量处理</translation></message>
+<message id="editor.transform_review_at"><source>This edit affects notes at %1. Apply the change?</source><translation>此次改动涉及 %1 附近的谱面。要应用吗？</translation></message>
+<message id="editor.transform_review_range"><source>This edit affects the chart from %1 to %2. Apply the change?</source><translation>此次改动涉及 %1 至 %2 的谱面。要应用吗？</translation></message>
+<message id="editor.transform_review_unmapped"><source>Time unavailable for lines %1–%2. Apply the change?</source><translation>第 %1 至 %2 行的时间暂时无法确定。要应用改动吗？</translation></message>
+<message id="library.choose_existing"><source>Choose existing</source><translation>选择已有项</translation></message>
+<message id="library.source_id"><source>Source song ID</source><translation>源曲目 ID</translation></message>
+<message id="library.difficulty"><source>Difficulty</source><translation>难度</translation></message>
+<message id="library.note_count"><source>Notes: %1</source><translation>音符数量　%1</translation></message>
+<message id="library.audition"><source>Audition track</source><translation>试听音轨</translation></message>
+<message id="library.open_difficulty"><source>Open this chart in editor</source><translation>在主编辑器打开此难度</translation></message>
+<message id="library.invalid_field"><source>This field cannot be edited here.</source><translation>此字段无法在乐曲资料中更改。</translation></message>
+<message id="library.duplicate_field"><source>Multiple entries for %1. Resolve them in the source editor.</source><translation>%1 出现多次，请先在原文中核对。</translation></message>
+<message id="library.batch"><source>Batch actions</source><translation>批量操作</translation></message>
+<message id="library.new_song"><source>Create song</source><translation>创建乐曲</translation></message>
+<message id="library.custom_pack"><source>My pack</source><translation>自制曲包</translation></message>
+<message id="library.invalid_song"><source>Enter a song name and a valid pack folder name.</source><translation>请填写曲名和有效的曲包名称。</translation></message>
+<message id="library.remove_song"><source>Remove from library</source><translation>移出谱库</translation></message>
+<message id="library.remove_prompt"><source>Move the chart for %1 to the library's removed folder? Shared media stays in place.</source><translation>将《%1》的谱面移到谱库的 removed 文件夹吗？共用音轨和曲绘会保留在原位置。</translation></message>
+<message id="library.removed"><source>Chart archived in %1</source><translation>谱面已移至 %1</translation></message>
+<message id="library.remove_failed"><source>Could not move this chart. Check the library folder.</source><translation>移动谱面失败，请检查谱库目录。</translation></message>
+<message id="library.manage_genres"><source>Manage genres</source><translation>流派管理</translation></message>
+<message id="library.manage_versions"><source>Manage versions</source><translation>版本管理</translation></message>
+<message id="library.category_name"><source>New name</source><translation>新名称</translation></message>
+<message id="library.category_usage"><source>Used by %1 songs</source><translation>%1 首乐曲正在使用</translation></message>
+<message id="library.category_add"><source>Add</source><translation>新增</translation></message>
+<message id="library.category_rename"><source>Rename (%1 songs)</source><translation>重命名并更新 %1 首</translation></message>
+<message id="library.category_remove"><source>Remove unused name</source><translation>移除未使用项</translation></message>
+<message id="library.category_exists"><source>This name already exists or has changed.</source><translation>名称已存在，或分类已发生变化。</translation></message>
+<message id="library.category_used"><source>This category is still in use.</source><translation>仍有乐曲使用此项。</translation></message>
+<message id="library.category_working"><source>Updating categories…</source><translation>正在更新分类…</translation></message>
+<message id="library.replace_track"><source>Replace audio</source><translation>替换音轨</translation></message>
+<message id="library.add_track"><source>Add audio</source><translation>添加音轨</translation></message>
+<message id="library.audio_copy"><source>Copying audio…</source><translation>正在复制音轨…</translation></message>
+<message id="library.audio_failed"><source>Could not copy the audio file.</source><translation>无法复制音轨，请检查文件和磁盘空间。</translation></message>
+<message id="library.audio_scope"><source>Choose another supported audio file of the same format as the current track.</source><translation>请选择另一份与现有音轨格式一致的音频文件。</translation></message>
+<message id="library.audio_shared"><source>The song folder is open in the editor or shared by several charts.</source><translation>请先关闭主编辑器中的同目录谱面。多份谱面共用目录时请单独整理音轨。</translation></message>
+<message id="library.audio_added"><source>Audio added.</source><translation>已添加音轨。</translation></message>
+<message id="library.audio_replaced"><source>Audio replaced. Original saved to %1</source><translation>音轨已替换，原文件保存在 %1</translation></message>
+<message id="library.import_packs"><source>Import packs</source><translation>导入曲包</translation></message>
+<message id="library.import_songs"><source>Import songs</source><translation>导入乐曲</translation></message>
+<message id="library.target_pack"><source>Destination pack</source><translation>目标曲包</translation></message>
+<message id="library.choose_folders"><source>Choose folders</source><translation>选择乐曲文件夹</translation></message>
+<message id="library.import_to"><source>Import songs into %1</source><translation>选择要导入「%1」的乐曲文件夹</translation></message>
+<message id="library.empty_song_manager"><source>Import a pack or create a song to start.</source><translation>导入一个曲包，或创建第一首乐曲。</translation></message>
+<message id="library.genre"><source>Genre</source><translation>流派</translation></message>
+<message id="library.version_category"><source>Version category</source><translation>版本分类</translation></message>
+<message id="library.all_versions"><source>All version categories</source><translation>全部版本分类</translation></message>
+<message id="library.multiline_field"><source>Edit this multiline field in the source editor.</source><translation>此字段含有多行内容，请在原文中编辑。</translation></message>
+<message id="library.discard_edits"><source>Discard edits</source><translation>放弃修改</translation></message>
+<message id="library.discard_song_prompt"><source>Discard all unsaved changes to %1?</source><translation>放弃《%1》尚未保存的修改吗？</translation></message>
+<message id="library.import_summary"><source>Imported %1 · Merged %2 · Duplicates %3 · Missing audio/art %4 · Conflicts %5 · Failed %6</source><translation>新增 %1，合并 %2，重复 %3，缺音轨或曲绘 %4，冲突 %5，失败 %6</translation></message>
+<message id="library.choose_zip"><source>Choose ZIP files</source><translation>选择 ZIP 压缩包</translation></message>
+<message id="library.batch_media_hint"><source>Packs skip charts missing music or jacket art. Import songs to include them.</source><translation>导入曲包会跳过缺音轨或曲绘的谱面。要保留这些谱面，请选「导入乐曲」。</translation></message>
+<message id="library.consolidate"><source>Consolidate duplicates</source><translation>整理重复曲目</translation></message>
+<message id="library.consolidate_hint"><source>Merge compatible difficulties. Conflicting editions keep one library entry. Source files stay in place.</source><translation>合并互补难度，同署名的冲突版本保留一个索引。源文件保留在原位置。</translation></message>
+<message id="preview.comparison.mix_audio"><source>Mix preview audio</source><translation>混合预览音频</translation></message>
+<message id="library.normalize_warning"><source>Chart formatting skipped</source><translation>已跳过谱面整理</translation></message>
+<message id="library.title"><source>Chart library</source><translation>谱库管理</translation></message>
+<message id="library.choose_root"><source>Open library</source><translation>打开谱库</translation></message>
+<message id="library.refresh"><source>Refresh</source><translation>刷新</translation></message>
+<message id="library.cancel"><source>Cancel</source><translation>取消</translation></message>
+<message id="library.search"><source>Search title, artist or ID…</source><translation>搜索曲名、曲师或 ID…</translation></message>
+<message id="library.duplicates"><source>Identical files only</source><translation>仅相同内容文件</translation></message>
+<message id="library.count"><source>%1 charts · %2 selected</source><translation>共 %1 首，已选 %2 首</translation></message>
+<message id="library.select_visible"><source>Select visible charts</source><translation>全选当前结果</translation></message>
+<message id="library.clear_visible"><source>Clear visible selection</source><translation>取消勾选当前结果</translation></message>
+<message id="library.edit_buffer"><source>Edit source</source><translation>编辑原文</translation></message>
+<message id="library.open_editor"><source>Open in main editor</source><translation>在主编辑器打开</translation></message>
+<message id="library.save"><source>Save with backup</source><translation>备份并保存</translation></message>
+<message id="library.undo"><source>Undo</source><translation>撤销</translation></message>
+<message id="library.redo"><source>Redo</source><translation>重做</translation></message>
+<message id="library.close_buffer"><source>Close session</source><translation>关闭会话</translation></message>
+<message id="library.discard_prompt"><source>Discard this session’s unsaved changes? Closing the library window alone preserves all sessions.</source><translation>放弃此会话的未保存修改吗？仅关闭谱库窗口会保留所有会话。</translation></message>
+<message id="library.discard"><source>Discard</source><translation>放弃</translation></message>
+<message id="library.prepare"><source>Preview selected formatting</source><translation>预览所选文件格式化</translation></message>
+<message id="library.review"><source>Review %1 changes</source><translation>查看 %1 项更改</translation></message>
+<message id="library.undo_batch"><source>Undo last batch</source><translation>撤销上次批量修改</translation></message>
+<message id="library.review_title"><source>Review formatting changes</source><translation>检查格式化差异</translation></message>
+<message id="library.review_help"><source>Compare the original (left) with the proposed change (right).</source><translation>左侧是原文，右侧是修改后的内容。</translation></message>
+<message id="library.apply"><source>Apply reviewed batch</source><translation>应用已检查的批量更改</translation></message>
+<message id="library.apply_prompt"><source>Apply formatting to %1 files? Original bytes will be backed up and every file checked again.</source><translation>将格式化写入 %1 份文件吗？将备份原始字节，并重新核对每份文件。</translation></message>
+<message id="library.invalid_root"><source>Choose the library’s .miabundle file.</source><translation>请选择谱库的 .miabundle 文件。</translation></message>
+<message id="library.close_sessions_first"><source>Close source sessions before switching library folders.</source><translation>切换谱库目录前请先关闭原文会话。</translation></message>
+<message id="library.scanning"><source>Refreshing charts…</source><translation>正在刷新谱库…</translation></message>
+<message id="library.canceled"><source>Canceled; existing index and source files are unchanged.</source><translation>已取消，原有索引及源文件未改变。</translation></message>
+<message id="library.indexed"><source>%1 charts · %2 skipped</source><translation>共 %1 首，跳过 %2 项</translation></message>
+<message id="library.session_limit"><source>At most five source sessions can be open.</source><translation>最多同时打开五份原文会话。</translation></message>
+<message id="library.close_editor_first"><source>Close the affected chart in the main editor and source sessions first.</source><translation>请先在主编辑器及原文会话中关闭涉及的谱面。</translation></message>
+<message id="library.conflict"><source>Content or selection changed; review the files and prepare again.</source><translation>内容或选择已变化，请核对文件并重新准备。</translation></message>
+<message id="library.saved"><source>Saved with a verified original backup.</source><translation>已保存，原文备份已校验。</translation></message>
+<message id="library.save_buffer_first"><source>Save or close this source session before opening its disk file.</source><translation>打开磁盘文件前，请先保存或关闭此原文会话。</translation></message>
+<message id="library.batch_limit"><source>Select at most 100 files for one batch.</source><translation>一次批量操作最多选择 100 份文件。</translation></message>
+<message id="library.preparing"><source>Preparing formatting differences without writing source files…</source><translation>正在生成格式化差异，不写入源文件…</translation></message>
+<message id="library.prepared"><source>%1 files would change. Review the differences before applying.</source><translation>预计更改 %1 份文件，请先检查差异再应用。</translation></message>
+<message id="library.recovered"><source>Recovered independent source sessions; disk conflicts are checked on save.</source><translation>已恢复独立原文会话，保存时会检查磁盘冲突。</translation></message>
+<message id="library.file_limit"><source>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</source><translation>草稿超过 4 MiB，请缩小内容后再保存或切换会话。</translation></message>
+</context>
+<context><name></name>
+<message id="workspace.library"><source>Chart library</source><translation>谱库浏览</translation></message>
+<message id="library.open_manager"><source>Manage library</source><translation>管理谱库</translation></message>
+<message id="library.dock_empty"><source>No matching charts.</source><translation>没有匹配的谱面。</translation></message>
+</context>
+<context><name></name><message id="library.recovery_failed"><source>Cannot save draft recovery: %1. Unsaved sessions remain in memory; resolve the error or save their files before closing.</source><translation>无法保存草稿恢复记录：%1。未保存会话仍在内存中，请先处理错误或保存文件，再关闭窗口。</translation></message></context>
+<context><name></name>
+<message id="library.recovery_unavailable"><source>Some saved sessions are unavailable. Their drafts remain in recovery storage; restore the folder or choose another library to archive them safely.</source><translation>部分待恢复会话的文件暂时不可用，草稿仍保留在恢复记录中。可恢复目录，或选择其他谱库并保留恢复快照。</translation></message>
+<message id="library.recovery_archived"><source>Unavailable session drafts were preserved at: %1</source><translation>不可用会话的草稿已另存恢复快照：%1</translation></message>
+</context>
+<context><name></name>
+    <message id="preview.hand_order_breakdown"><source>Hand-order breakdown</source><translation>手序拆解</translation></message>
+</context>
+<context><name></name><message id="cover.rotation">
+        <source>Rotation</source>
+        <translation>旋转</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.estimated_size">
+        <source>Estimated size: %1</source>
+        <translation>预计体积：%1</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.error.size_limit_too_small">
+        <source>The size limit cannot hold this export&apos;s audio. Raise the limit or lower the audio bitrate.</source>
+        <translation>体积上限装不下本次导出的音频，请调高上限或降低音频码率。</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.quality_level">
+        <source>Quality</source>
+        <translation>画质</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.quality_level.high">
+        <source>High</source>
+        <translation>高</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.quality_level.small">
+        <source>Compact</source>
+        <translation>精简</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.quality_level.standard">
+        <source>Standard</source>
+        <translation>标准</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.rate_mode">
+        <source>Export strategy</source>
+        <translation>导出策略</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.rate_mode.bitrate">
+        <source>Bitrate</source>
+        <translation>指定码率</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.rate_mode.file_size">
+        <source>Size limit</source>
+        <translation>限制体积</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.rate_mode.quality">
+        <source>Quality first</source>
+        <translation>画质优先</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.size_limit">
+        <source>Size limit</source>
+        <translation>体积上限</translation>
+    </message></context>
+<context><name></name><message id="dialog.video_export.video_bitrate">
+        <source>Video bitrate</source>
+        <translation>视频码率</translation>
+    </message></context>
+<context><name></name><message id="media_tools.recovery_files_1">
+        <source>Files preserved for recovery: %1</source>
+        <translation>用于恢复的文件已保留在：%1</translation>
+    </message></context>
+<context><name></name><message id="net.cancelling_download">
+        <source>Cancelling download…</source>
+        <translation>正在取消下载…</translation>
+    </message></context>
+<context><name></name><message id="net.waiting_for_download_1">
+        <source>Waiting for server response: %1</source>
+        <translation>等待服务器响应：%1</translation>
+    </message></context>
+<context><name></name><message id="net.preparing_download">
+        <source>Preparing download…</source>
+        <translation>正在准备下载…</translation>
+    </message></context>
+<context><name></name><message id="net.saving_download">
+        <source>Saving downloaded files…</source>
+        <translation>正在保存下载文件…</translation>
+    </message></context>
+<context><name></name><message id="qml.shortcut_moved">
+        <source>Moved shortcut %1 from %2 to %3.</source>
+        <translation>组合键“%1”已从“%2”转移到“%3”。</translation>
+    </message></context>
+<context><name></name><message id="qml.shortcut_reserved">
+        <source>Shortcut %1 is used by %2 and can't be assigned to %3.</source>
+        <translation>组合键“%1”已用于“%2”，不能分配给“%3”。</translation>
+    </message></context>
+<context><name></name><message id="qml.shortcut_unassigned">
+        <source>Not set</source>
+        <translation>未设置</translation>
+    </message></context>
+<context><name></name><message id="shortcut.preview.play_pause_non_text">
+        <source>Play/Pause Preview (Outside Editor)</source>
+        <translation>播放/暂停预览（编辑器外）</translation>
+    </message></context>
+<context><name></name><message id="preferences.completion.help">
+        <source>"Duration" sets the completion list shown when typing [.
+"Beat subdivision" sets the completion list shown when typing {.</source>
+        <translation>“时值”为设置输入[时的自动补全列表。
+“节拍”为设置输入{时的自动补全列表。</translation>
+    </message></context>
+<context><name></name><message id="preferences.completion.duration_suffix">
+        <source>Custom continuation</source>
+        <translation>自定义后续</translation>
+    </message></context>
+<context><name></name><message id="preferences.completion.duration_suffix_hint">
+        <source>Enter a suffix</source>
+        <translation>输入后续</translation>
+    </message></context>
+<context><name></name><message id="preferences.completion.invalid_duration_suffix">
+        <source>Enter a valid duration suffix</source>
+        <translation>请输入有效的时值后续</translation>
+    </message></context>
+<context><name></name><message id="color_picker.open">
+        <source>Pick color</source>
+        <translation>选择颜色</translation>
+    </message></context>
+
+<context><name></name>
+<message id="hand_order.features.title"><source>Hand-order breakdown</source><translation>手序拆解</translation></message>
+<message id="hand_order.features.password_notice"><source>This feature is in testing. It includes automatic features and is not publicly available yet. Contact the author for access.</source><translation>此功能还在测试，因带有自动功能暂不公开。若需使用请联系作者。</translation></message>
+<message id="hand_order.features.wrong_password"><source>Incorrect password</source><translation>密码错误</translation></message>
+<message id="hand_order.features.storage_error"><source>Could not save hand-order settings</source><translation>无法保存手序设置</translation></message>
+<message id="hand_order.features.enable"><source>Enable hand-order features</source><translation>启用手序拆解功能</translation></message>
+<message id="hand_order.features.watermark"><source>Show hand-order watermark</source><translation>显示手序拆解水印</translation></message>
+<message id="video_watermark.settings.title"><source>Video export watermark</source><translation>视频导出水印</translation></message>
+<message id="video_watermark.settings.enable"><source>Add diagonal watermark</source><translation>添加斜向防盗水印</translation></message>
+<message id="video_watermark.settings.text"><source>Watermark text</source><translation>水印文字</translation></message>
+<message id="video_watermark.settings.font_size"><source>Font size (1080 px)</source><translation>水印字号（1080 基准）</translation></message>
+<message id="hand_order.features.help"><source>Disabled by default. Enables hand-order editing, analysis and simulated play. The watermark is optional for preview and export.</source><translation>默认关闭。开启后可使用手序标注、分析和模拟游玩；水印可单独选择，应用于预览和导出。</translation></message>
+<message id="library.export"><source>Export library</source><translation>导出谱库</translation></message>
+<message id="library.export_done"><source>Exported to %1</source><translation>已导出到 %1</translation></message>
+<message id="library.export_failed"><source>Cannot export %1. Check the source and destination folder.</source><translation>无法导出到 %1，请检查来源或选择未包含同名谱库的目录。</translation></message>
+<message id="library.unlink_prompt"><source>Remove the library reference to %1?</source><translation>从谱库移除“%1”的索引？</translation></message>
+<message id="library.open_failed"><source>Cannot open %1</source><translation>无法打开 %1</translation></message>
+<message id="document.song_tab_owns_path"><source>Another open song uses this file: %1</source><translation>另一张曲目标签正在使用此文件：%1</translation></message>
+<message id="preview.auto_detect"><source>Auto detect</source><translation>自动检测</translation></message>
+<message id="preview.completion_display"><source>Achievement display</source><translation>完成度显示</translation></message>
+<message id="preview.completion_default"><source>Default</source><translation>默认</translation></message>
+</context>
 </TS>

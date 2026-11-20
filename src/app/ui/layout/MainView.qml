@@ -26,6 +26,11 @@ Item {
     readonly property var preferencesModel: applicationContext.preferencesModel
     readonly property var latency: applicationContext.latency
     readonly property var shortcutModel: applicationContext.shortcuts
+    readonly property var inputContext: splitView.inputContext
+    readonly property bool editingCommandsAllowed: inputContext && inputContext.editingCommandsAllowed
+        && !shortcutModel.captureActive && !beginnerGuideActive
+    readonly property bool editMenuEnabled: editingCommandsAllowed
+        && (inputContext.textInput !== null || editorCommandsAvailable)
     readonly property var updates: applicationContext.update
     readonly property string documentTitle: {
         if (!documentSession.hasDocument)
@@ -111,16 +116,24 @@ Item {
 
     MainMenuCommands {
         id: menuCommands
+        workspace: splitView.workspace
         netUploadEnabled: root.pages.netUploadEnabled
-        commandsEnabled: !root.beginnerGuideActive
-        canUndo: root.editorCommandsAvailable && splitView.canUndo
-        canRedo: root.editorCommandsAvailable && splitView.canRedo
-        canCut: root.editorCommandsAvailable && splitView.canCut
-        canCopy: root.editorCommandsAvailable && splitView.canCopy
-        canPaste: root.editorCommandsAvailable && splitView.canPaste
-        canTransform: root.editorCommandsAvailable && splitView.canTransform
-        canNormalize: root.editorCommandsAvailable && splitView.normalizationAvailable
-        canPlaySelection: root.chartEditorActive && root.editorSync.canPlaySelection
+        commandsEnabled: !root.beginnerGuideActive && root.inputContext
+            && !root.inputContext.modalBlocked && !root.shortcutModel.captureActive
+        canUndo: root.editingCommandsAllowed && (root.inputContext.textInput
+            ? root.inputContext.canUndo : root.editorCommandsAvailable && splitView.canUndo)
+        canRedo: root.editingCommandsAllowed && (root.inputContext.textInput
+            ? root.inputContext.canRedo : root.editorCommandsAvailable && splitView.canRedo)
+        canCut: root.editingCommandsAllowed && (root.inputContext.textInput
+            ? root.inputContext.canCut : root.editorCommandsAvailable && splitView.canCut)
+        canCopy: root.editingCommandsAllowed && (root.inputContext.textInput
+            ? root.inputContext.canCopy : root.editorCommandsAvailable && splitView.canCopy)
+        canPaste: root.editingCommandsAllowed && (root.inputContext.textInput
+            ? root.inputContext.canPaste : root.editorCommandsAvailable && splitView.canPaste)
+        canTransform: root.editorCommandsAvailable && root.hostWindow.workbenchCommandsAllowed && splitView.canTransform
+        canFind: root.editorCommandsAvailable && root.hostWindow.workbenchCommandsAllowed
+        canNormalize: root.editorCommandsAvailable && root.hostWindow.workbenchCommandsAllowed && splitView.normalizationAvailable
+        canPlaySelection: root.chartEditorActive && root.hostWindow.workbenchCommandsAllowed && root.editorSync.canPlaySelection
         onPlaySelectionRequested: root.editorSync.playSelection()
         onScoreLossRequested: {
             root.applicationContext.refreshChartTools()
@@ -134,9 +147,9 @@ Item {
         onExitRequested: root.requestClose()
         onUndoRequested: root.undo()
         onRedoRequested: root.redo()
-        onCutRequested: splitView.cut()
-        onCopyRequested: splitView.copy()
-        onPasteRequested: splitView.paste()
+        onCutRequested: root.editText("cut")
+        onCopyRequested: root.editText("copy")
+        onPasteRequested: root.editText("paste")
         onSelectAllRequested: root.selectAll()
         onFindRequested: splitView.showFindReplace()
         onSelectCurrentLineRequested: splitView.selectCurrentLine()
@@ -158,6 +171,10 @@ Item {
         onSaveAsRequested: {
             if (root.documentSession.hasDocument)
                 root.showSaveFileDialog()
+        }
+        onExportPlainSimaiRequested: {
+            if (root.documentSession.hasDocument)
+                root.showPlainSimaiExportDialog()
         }
         onChartTransformRequested: opId => {
             if (root.chartEditorActive)
@@ -183,27 +200,12 @@ Item {
         }
     }
 
-    function toggleSidebar() {
-        if (root.compact) {
-            if (!state.sidebarVisible) {
-                state.sidebarVisible = true
-                root.preferences.sidebarVisible = true
-            }
-            state.compactPanel = state.compactPanel === "sidebar" ? "" : "sidebar"
-            return
-        }
-        state.sidebarVisible = !state.sidebarVisible
-        root.preferences.sidebarVisible = state.sidebarVisible
-    }
-
     function showMediaToolsMenu() {
-        if (root.compact)
-            compactPanelLayer.showMediaToolsMenu()
-        else
-            splitView.showMediaToolsMenu()
+        splitView.showMediaToolsMenu()
     }
 
     function runMediaTool(toolId) {
+        if (toolId === "chartLibrary") { splitView.showLibrary(); return }
         if (!root.documentSession.hasDocument)
             return
         switch (toolId) {
@@ -235,20 +237,31 @@ Item {
     // projection in step with it even when a page is opened by a runtime signal
     // (for example, exporting a selection from the source editor).
     function syncSidebarViewToPage() {
-        state.activeSidebarView = root.pages.activePageId === "export" ? "export" : "chart"
+        const page = root.pages.activePageId
+        if (page === "export")
+            state.activeSidebarView = "export"
+        else if (page.startsWith("net-"))
+            state.activeSidebarView = "network"
+        else if (state.activeSidebarView !== "tools")
+            state.activeSidebarView = "chart"
     }
 
-    function undo() {
-        splitView.undo()
+    function editText(operation) {
+        if (!root.editingCommandsAllowed)
+            return
+        if (root.inputContext.textInput) {
+            root.inputContext.performEdit(operation)
+            return
+        }
+        if (root.editorCommandsAvailable)
+            splitView[operation]()
     }
 
-    function redo() {
-        splitView.redo()
-    }
+    function undo() { editText("undo") }
 
-    function selectAll() {
-        splitView.selectAll()
-    }
+    function redo() { editText("redo") }
+
+    function selectAll() { editText("selectAll") }
 
     function applyChartTransform(opId) {
         if (!root.chartEditorActive)
@@ -264,6 +277,7 @@ Item {
     function showOpenFileDialog() {
         const location = root.documentSession.fileDialogLocation(false)
         openFileDialog.currentFolder = location.folder
+        openFileDialog.nameFilters = root.documentSession.openFileNameFilters()
         openFileDialog.selectedFile = ""
         openFileDialog.open()
     }
@@ -273,6 +287,13 @@ Item {
         saveFileDialog.currentFolder = location.folder
         saveFileDialog.selectedFile = location.file
         saveFileDialog.open()
+    }
+
+    function showPlainSimaiExportDialog() {
+        const location = root.documentSession.plainSimaiExportLocation()
+        plainSimaiExportDialog.currentFolder = location.folder
+        plainSimaiExportDialog.selectedFile = location.file
+        plainSimaiExportDialog.open()
     }
 
     function saveDocument() {
@@ -303,6 +324,12 @@ Item {
         root.commands.openDocument(fileUrl)
     }
 
+    function flushLibrarySessions() {
+        if (splitView.flushLibrary() && root.applicationContext.chartLibrary.checkpoint()) return true
+        splitView.showLibrary()
+        return false
+    }
+
     function requestClose() {
         root.hostWindow.close()
     }
@@ -313,6 +340,12 @@ Item {
         state.resetEditorTabs(root.documentSession.currentDifficultyId)
         if (!root.preferences.setupCompleted)
             Qt.callLater(setupWizard.open)
+    }
+
+    Connections {
+        target: root.preferences
+        function onSidebarVisibleChanged() { state.sidebarVisible = root.preferences.sidebarVisible }
+        function onBottomPanelVisibleChanged() { state.bottomPanelVisible = root.preferences.bottomPanelVisible }
     }
 
     onCompactChanged: state.compactPanel = ""
@@ -351,8 +384,10 @@ Item {
                 saveEnabled: root.currentEditorSaveEnabled
                 wholeDocumentSaveEnabled: root.wholeDocumentSaveEnabled
                 documentAvailable: root.documentSession.hasDocument
-                editorCommandsEnabled: root.editorCommandsAvailable
-                chartCommandsEnabled: root.chartEditorActive
+                editorCommandsEnabled: root.editMenuEnabled
+                chartCommandsEnabled: root.chartEditorActive && root.hostWindow.workbenchCommandsAllowed
+                playbackCommandsEnabled: root.hostWindow.playbackCommandsEnabled
+                    && root.hostWindow.workbenchCommandsAllowed
                 toolCommandsEnabled: root.documentSession.hasDocument
                 leadingInset: root.applicationContext.windowChrome
                     ? root.applicationContext.windowChrome.titleBarLeadingInset / Theme.uiScale
@@ -378,24 +413,21 @@ Item {
                 windowChrome: root.applicationContext.windowChrome
                 integratedInTitleBar: root.platform.nativeMenuBar
                 titleBarLeadingInset: titleBar.leadingInset
+                shortcuts: root.shortcutModel
+                handOrderRows: root.documentSession.handOrderFeaturesEnabled ? root.documentSession.handOrderMenu() : []
+                handOrderBreakdown: root.previewSession.handOrderBreakdown
+                handOrderAnalyzeEnabled: root.chartEditorActive && !root.shortcutModel.captureActive
+                handOrderEnabled: menuCommands.canTransform && !root.shortcutModel.captureActive
+                onHandOrderRequested: command => root.applyChartTransform(command)
                 previewSettingsVisible: !splitView.previewDetached
-                sidebarActive: root.compact
-                               ? state.compactPanel === "sidebar"
-                               : state.sidebarVisible
-                bottomActive: (state.difficultyEditorActive || state.latencyEditorActive)
-                              && state.bottomPanelVisible && root.timelineSession.panelVisible
-                bottomPanelEnabled: state.difficultyEditorActive || state.latencyEditorActive
+                workspaceSlotTitles: splitView.workspace.slotKeys.map(key => splitView.workspace.layoutTitle(key))
                 saveEnabled: root.currentEditorSaveEnabled
                 wholeDocumentSaveEnabled: root.wholeDocumentSaveEnabled && !root.beginnerGuideActive
                 currentFolderAvailable: root.documentSession.hasDocument
                     && root.documentSession.currentFilePath.length > 0 && !root.beginnerGuideActive
                 canUndo: menuCommands.canUndo
                 canRedo: menuCommands.canRedo
-                onToggleSidebarRequested: root.toggleSidebar()
-                onToggleBottomRequested: {
-                    state.bottomPanelVisible = !state.bottomPanelVisible
-                    root.preferences.bottomPanelVisible = state.bottomPanelVisible
-                }
+                onWorkspaceSlotRequested: index => splitView.workspace.applyEntry(splitView.workspace.slotKeys[index])
                 onUndoRequested: root.undo()
                 onRedoRequested: root.redo()
                 onOpenRequested: root.showOpenFileDialog()
@@ -416,15 +448,18 @@ Item {
             MainSplitView {
                 id: splitView
                 anchors.fill: parent
+                backgroundSource: root.backgroundSource
+                backgroundOffset: root.mapToItem(root.backgroundSource, mainViewHost.x, mainViewHost.y)
                 timelineGuideActive: beginnerGuide.visible
                     && beginnerGuide.selectedSection.id === "timeline-options"
-                backgroundSource: root.backgroundSource
-                backgroundOffset: root.mapToItem(root.backgroundSource,
-                                                 mainViewHost.x, mainViewHost.y)
+                workspaceShortcutsEnabled: !root.beginnerGuideActive && !root.shortcutModel.captureActive
                 viewState: state
+                libraryModel: root.applicationContext.chartLibrary
                 documentSession: root.documentSession
                 analysisSession: root.analysisSession
                 preferences: root.preferences
+                shortcuts: root.shortcutModel
+                handOrderService: root.applicationContext.handOrderAnalysis
                 previewSession: root.previewSession
                 previewSettings: root.applicationContext.previewSettings
                 commands: root.commands
@@ -436,6 +471,27 @@ Item {
                 latency: root.latency
                 net: root.applicationContext.net
                 netUpload: root.applicationContext.netUpload
+                floatingEditorShortcuts: Component {
+                    DockEditorShortcuts {
+                        menuCommands: root.mainMenuCommands
+                        shortcutModel: root.shortcutModel
+                        commandService: root.commands
+                        previewSession: root.previewSession
+                        nativeMenuBar: root.platform.nativeMenuBar
+                        editorActive: root.editorActive
+                        saveEnabled: root.currentEditorSaveEnabled
+                        documentAvailable: root.documentSession.hasDocument
+                        chartEditorActive: root.chartEditorActive
+                        editorCommandsEnabled: root.editorCommandsAvailable
+                        onCloseEditorRequested: splitView.requestCloseActiveEditor()
+                        onWorkspaceMenuRequested: anchor => {
+                            if (root.platform.nativeMenuBar)
+                                root.hostWindow.nativeSystemMenu.menuDefinitions.toggleWorkspaceMenu(anchor)
+                            else
+                                titleBar.toggleWorkspaceMenuAt(anchor)
+                        }
+                    }
+                }
                 compact: root.compact
                 documentTitle: root.documentTitle
                 onOpenRequested: root.showOpenFileDialog()
@@ -454,8 +510,7 @@ Item {
                 preferences: root.preferences
                 commands: root.commands
                 pages: root.pages
-                compact: root.compact
-                onSettingsRequested: preferencesDialog.open()
+                compact: root.compact && !splitView.workspace.isFloating("sidebar")
                 onMediaToolRequested: toolId => root.runMediaTool(toolId)
             }
         }
@@ -470,6 +525,9 @@ Item {
             cursorColumn: state.editorCursorColumn
             selectionBeatText: splitView.selectionBeatStatusText
             selectionBeatTooltip: splitView.selectionBeatTooltipText
+            handOrderBackgroundText: root.applicationContext.handOrderAnalysis.backgroundStatus
+            handOrderBackgroundDetail: root.applicationContext.handOrderAnalysis.backgroundDetail
+            handOrderService: root.applicationContext.handOrderAnalysis
             metadataActive: state.metadataEditorActive && !root.pages.overlayActive
             difficultyActive: state.difficultyEditorActive && !root.pages.overlayActive
             updateAvailable: root.updates ? root.updates.updateAvailable : false
@@ -486,9 +544,8 @@ Item {
 
     FileDialog {
         id: openFileDialog
-        title: qsTrId("qml.open_simai_file")
+        title: qsTrId("action.open")
         fileMode: FileDialog.OpenFile
-        nameFilters: [qsTrId("qml.simai_files_txt_simai"), qsTrId("qml.all_files_2")]
         onAccepted: root.requestOpenFile(selectedFile)
     }
 
@@ -499,6 +556,15 @@ Item {
         defaultSuffix: "txt"
         nameFilters: [qsTrId("qml.simai_files_txt_simai"), qsTrId("qml.all_files_2")]
         onAccepted: root.commands.saveDocumentAs(selectedFile)
+    }
+
+    FileDialog {
+        id: plainSimaiExportDialog
+        title: qsTrId("action.export_plain_simai")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "txt"
+        nameFilters: [qsTrId("qml.simai_files_txt_simai"), qsTrId("qml.all_files_2")]
+        onAccepted: root.commands.exportPlainSimai(selectedFile)
     }
 
     // These actions remain discoverable while their dedicated QML pages and
@@ -589,8 +655,8 @@ Item {
         target: state
 
         function onApplicationEditorActivationRequested(key) {
-            if (root.pages.activePageId !== key)
-                root.pages.openNetPage(key)
+            if (!root.pages.openNetPage(key))
+                state.cancelApplicationEditorActivation()
         }
 
         function onActiveEditorKeyChanged() {
@@ -631,7 +697,7 @@ Item {
         }
 
         function onNetPageActivated(page) {
-            state.openEditor(page)
+            state.confirmApplicationEditor(page)
         }
 
         function onActivePageIdChanged() {
@@ -649,6 +715,7 @@ Item {
         }
 
         function onNavigationRejected() {
+            state.cancelApplicationEditorActivation()
             root.pendingDifficultyActivation = 0
             root.syncSidebarViewToPage()
         }
@@ -752,8 +819,8 @@ Item {
                     { icon: Qt.resolvedUrl("icons/audio-settings.svg"), label: qsTrId("action.audio_settings") },
                     { icon: Qt.resolvedUrl("icons/preview-settings.svg"), label: qsTrId("action.video_settings") },
                     {
-                        icons: [Qt.resolvedUrl("icons/panel-left.svg"), Qt.resolvedUrl("icons/panel-bottom.svg")],
-                        label: qsTrId("guide.panel_toggle")
+                        icons: [1, 2, 3].map(i => Qt.resolvedUrl("icons/workspace-" + i + ".svg")),
+                        label: qsTrId("workspace.shortcuts")
                     },
                     {
                         icons: [Qt.resolvedUrl("icons/circle.svg"), Qt.resolvedUrl("icons/important.svg")],
@@ -854,6 +921,7 @@ Item {
     PreviewSettingsDialog {
         id: previewSettingsDialog
         objectName: "shellPreviewSettingsDialog"
+        comparisons: root.previewSession.comparisons
         parent: splitView.settingsDialogParent
         previewSettings: root.applicationContext.previewSettings
     }
@@ -898,6 +966,7 @@ Item {
         previewSession: root.previewSession
         onCompletionSettingsClosed: splitView.sourceEditorItem.focusEditor()
         preferencesModel: root.preferencesModel
+        previewSettings: root.applicationContext.previewSettings
         shortcuts: root.shortcutModel
         preferences: root.preferences
         appBackground: root.appBackground

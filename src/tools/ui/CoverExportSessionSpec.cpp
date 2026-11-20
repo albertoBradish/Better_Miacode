@@ -4,6 +4,7 @@
 #include "common/DebugLog.h"
 #include "common/RuntimePaths.h"
 #include "export/cover_export/SceneFrameRenderer.h"
+#include "export/cover_export/CoverLayoutModel.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
 
 #include <QDir>
@@ -12,6 +13,9 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <QtQml/qqmlextensionplugin.h>
+
+Q_IMPORT_QML_PLUGIN(MiaCode_PreviewPlugin)
 
 namespace {
 class Engine final : public miacode::ExportEngine {
@@ -36,6 +40,69 @@ public:
     void setIntroAuditionPlaying(bool) override {}
     bool introAuditionPlaying() const override { return false; }
 };
+
+bool verifyTextEffects(const QString& directory, QTextStream& err)
+{
+    using namespace miacode::cover_export;
+    CoverLayoutModel layout;
+    layout.ensureDefaultLayers();
+    layout.layer(CoverLayoutModel::cardKey())->setVisible(false);
+    auto* text = layout.addTextLayer(QStringLiteral("Ag Text"));
+    text->setTextBold(true);
+    text->setTextColor(QStringLiteral("#ffffff"));
+    CoverComposerInputs inputs;
+    inputs.templateMap.insert(QStringLiteral("card"), QVariantMap{});
+    inputs.backgroundMode = CoverBackgroundMode::Transparent;
+    QString error;
+    const QSize size(640, 360);
+    const QImage plain = renderCoverComposite(&layout, inputs, size, &error);
+    text->setTextStrokeEnabled(true);
+    text->setTextStrokeWidth(12);
+    text->setTextStrokeColor(QStringLiteral("#ff0000"));
+    const QImage stroked = renderCoverComposite(&layout, inputs, size, &error);
+    text->setTextShadowEnabled(true);
+    text->setTextShadowColor(QStringLiteral("#0000ff"));
+    text->setTextShadowOffsetX(30);
+    text->setTextShadowOffsetY(30);
+    const QImage shaded = renderCoverComposite(&layout, inputs, size, &error);
+    if (plain.size() != size || stroked.size() != size || shaded.size() != size) {
+        err << error << Qt::endl;
+        return false;
+    }
+    int fillPixels = 0;
+    int strokePixels = 0;
+    int shadowPixels = 0;
+    for (int y = 0; y < size.height(); ++y) {
+        for (int x = 0; x < size.width(); ++x) {
+            const QColor fill = plain.pixelColor(x, y);
+            const QColor stroke = stroked.pixelColor(x, y);
+            const QColor shadow = shaded.pixelColor(x, y);
+            if (fill.alpha() > 220 && fill.red() > 220 && fill.green() > 220 && fill.blue() > 220
+                && stroke == fill && shadow.red() > 220 && shadow.green() > 220 && shadow.blue() > 220) {
+                ++fillPixels;
+            }
+            if (fill.alpha() == 0 && stroke.alpha() > 128 && stroke.red() > 220 && stroke.green() < 80) {
+                ++strokePixels;
+            }
+            if (stroke.alpha() == 0 && shadow.alpha() > 24 && shadow.blue() > 160 && shadow.red() < 80) {
+                ++shadowPixels;
+            }
+        }
+    }
+    const bool software = qEnvironmentVariable("QT_QUICK_BACKEND") == QLatin1String("software");
+    if (fillPixels > 0 && strokePixels > 0 && (software ? shadowPixels == 0 : shadowPixels > 0)) {
+        QTextStream(stdout) << "Text-effect pixels: fill=" << fillPixels << " stroke=" << strokePixels
+            << " shadow=" << shadowPixels << Qt::endl;
+        return true;
+    }
+    const QDir output(directory);
+    plain.save(output.filePath(QStringLiteral("plain.png")));
+    stroked.save(output.filePath(QStringLiteral("stroked.png")));
+    shaded.save(output.filePath(QStringLiteral("shaded.png")));
+    err << "Text-effect pixels: fill=" << fillPixels << " stroke=" << strokePixels
+        << " shadow=" << shadowPixels << Qt::endl;
+    return false;
+}
 }
 
 int main(int argc, char** argv)
@@ -46,13 +113,24 @@ int main(int argc, char** argv)
     QTemporaryDir temporary(QDir(QStringLiteral(MIACODE_TEST_OUTPUT_ROOT))
         .filePath(QStringLiteral("cover-session-spec-XXXXXX")));
     if (!temporary.isValid()) return 1;
-    QFile markerFile(temporary.filePath(QStringLiteral(".better-miacode-runtime")));
-    if (!markerFile.open(QIODevice::WriteOnly)) return 1;
-    markerFile.write("BetterMiacode.runtime.v1\n");
-    markerFile.close();
-    qputenv("BETTER_MIACODE_RUNTIME_ROOT", temporary.path().toUtf8());
+    // Synthetic workspace markers satisfy the internal runtime contract without
+    // reading any real installation, preference, recovery file or chart.
+    QDir fixtureRoot(temporary.path());
+    if (!fixtureRoot.mkpath(QStringLiteral("source"))) return 1;
+    for (const QString& name : {QStringLiteral("baseline.json"), QStringLiteral("source/AGENTS.md")}) {
+        QFile markerFile(fixtureRoot.filePath(name));
+        if (!markerFile.open(QIODevice::WriteOnly)) return 1;
+        markerFile.write(name.endsWith(QStringLiteral(".json")) ? "{}\n" : "Synthetic spec workspace\n");
+    }
+    const QDir runtime(fixtureRoot.filePath(QStringLiteral("runtime/sticking_cover_spec")));
+    if (!QDir().mkpath(runtime.path())) return 1;
+    QFile runtimeMarker(runtime.filePath(QStringLiteral(".better-miacode-runtime")));
+    const QByteArray identity = QByteArrayLiteral("BetterMiacode.runtime.v1\n");
+    if (!runtimeMarker.open(QIODevice::WriteOnly) || runtimeMarker.write(identity) != identity.size()) return 1;
+    runtimeMarker.close();
+    qputenv("BETTER_MIACODE_RUNTIME_ROOT", runtime.path().toUtf8());
     QString runtimeError;
-    if (!miacode::runtime_paths::initialize(&runtimeError)) {
+    if (!miacode::runtime_paths::initializeFromEnvironment(&runtimeError)) {
         QTextStream(stderr) << runtimeError << Qt::endl;
         return 1;
     }

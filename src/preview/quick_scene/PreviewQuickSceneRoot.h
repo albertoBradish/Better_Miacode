@@ -1,5 +1,8 @@
 #pragma once
 
+#include "preview/quick_scene/PreviewQuickHudLayer.h"
+#include <optional>
+
 #include <QElapsedTimer>
 #include <QColor>
 #include <QMetaObject>
@@ -47,6 +50,8 @@ class PreviewQuickSceneRoot : public QQuickItem
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(QObject* runtime READ runtimeObject WRITE setRuntimeObject NOTIFY runtimeChanged)
+    Q_PROPERTY(bool backgroundOnly READ backgroundOnly WRITE setBackgroundOnly FINAL)
+    Q_PROPERTY(bool stageBackgroundEnabled READ stageBackgroundEnabled WRITE setStageBackgroundEnabled NOTIFY stageBackgroundEnabledChanged)
     Q_PROPERTY(QColor backgroundColor READ backgroundColor WRITE setBackgroundColor NOTIFY backgroundColorChanged)
 
 public:
@@ -58,6 +63,13 @@ public:
     void setRuntimeObject(QObject* runtimeObject);
     void setFrameState(const miacode::preview::scene::PreviewFrameState* frameState);
     void setLayerFlags(miacode::preview::scene::PreviewRenderLayerFlags layerFlags);
+    bool backgroundOnly() const { return layerFlags_ == miacode::preview::scene::StageBackgroundLayer; }
+    void setBackgroundOnly(bool only) {
+        setLayerFlags(only ? miacode::preview::scene::StageBackgroundLayer
+                           : miacode::preview::scene::kPreviewAllRenderLayers);
+    }
+    bool stageBackgroundEnabled() const { return stageBackgroundEnabled_; }
+    void setStageBackgroundEnabled(bool enabled);
     QColor backgroundColor() const { return backgroundColor_; }
     void setBackgroundColor(const QColor& color);
 
@@ -67,6 +79,7 @@ public:
 signals:
     void runtimeChanged();
     void backgroundColorChanged();
+    void stageBackgroundEnabledChanged();
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* updatePaintNodeData) override;
@@ -92,6 +105,7 @@ private:
     void logNoteLayersEmptyAnomaly(const miacode::preview::scene::PreviewFrameState& state);
 
     QPointer<PreviewRuntime> runtime_;
+    bool stageBackgroundEnabled_ = true;
     QColor backgroundColor_{QStringLiteral("#191A1B")};
     Qt::MouseButton touchPadAuthoringPressedButton_ = Qt::NoButton;
     bool selectionDragActive_ = false;
@@ -156,6 +170,10 @@ private:
     PreviewQuickChartReviewLayer chartReviewShapeLayer_;
     PreviewQuickMaimuriDxJudgeLayer maimuriDxJudgeShapeLayer_;
     miacode::preview::scene::PreviewPreparedSceneCache preparedCache_;
+    miacode::preview::scene::PreviewLayerWindowCursor muriPadCursor_;
+    miacode::preview::scene::PreviewLayerWindowCursor muriActionCursor_;
+    QVector<int> muriPadIndices_;
+    QVector<int> muriActionIndices_;
     miacode::preview::scene::PreviewLayerWindowCursor guideCursor_;
     miacode::preview::scene::PreviewLayerWindowCursor headCursor_;
     miacode::preview::scene::PreviewLayerWindowCursor trackCursor_;
@@ -203,18 +221,5 @@ private:
     // GPU/driver context line (adapter, UMD version, VRAM budget) next to the profile so
     // the field report carries the variables §5.6 asks for. Render-thread only.
     bool renderStallContextEmitted_ = false;
-    // Center display cache — avoid per-frame QImage+texture regeneration.
-    miacode::preview_gameplay::CenterDisplayMode cachedCenterDisplayMode_ =
-        miacode::preview_gameplay::CenterDisplayMode::Off;
-    double cachedCenterDisplayPlayheadSeconds_ = -1.0;
-    QSize cachedCenterDisplayRenderSize_;
-    qreal cachedCenterDisplayDpr_ = 1.0;
-    // Stats-derived values that determine whether the center display text changed.
-    double cachedCenterDisplayDeluxeRate_ = -1.0;
-    double cachedCenterDisplayFinaleRate_ = -1.0;
-    int cachedCenterDisplayCombo_ = -1;
-    int cachedCenterDisplayDxScore_ = -1;
-    int cachedCenterDisplayDxScoreMax_ = -1;
-    int cachedCenterDisplayBreakCurrent_ = -1;
-    int cachedCenterDisplayBreakTotal_ = -1;
+    std::optional<miacode::preview::hud::CenterDisplayKey> cachedCenterDisplayKey_;
 };

@@ -117,6 +117,30 @@ void runStrictFormatChecks(ParseState* state, const QStringList& lines)
             }
         }
 
+        // Keep original columns while excluding annotation brackets from the
+        // base Simai format checks. Malformed suffixes have their own issue.
+        for (int i = 0; i < line.size(); ++i) {
+            if (line.at(i) != QChar('~')) {
+                continue;
+            }
+            int end = i;
+            bool openContainer = i + 1 < line.size() && line.at(i + 1) == QChar('[');
+            while (end < line.size()) {
+                const QChar next = line.at(end);
+                if ((next.isSpace() && !openContainer)
+                    || next == QChar(',') || next == QChar('/')
+                    || next == QChar('`')) {
+                    break;
+                }
+                if (next == QChar(']')) {
+                    openContainer = false;
+                }
+                line[end] = QChar(' ');
+                ++end;
+            }
+            i = end - 1;
+        }
+
         const QString strippedLine = stripControlBlocks(line);
         const QString strippedTrimmed = strippedLine.trimmed();
         if (strippedTrimmed.compare(QLatin1String("E"), Qt::CaseInsensitive) != 0
@@ -157,6 +181,8 @@ void appendNote(ParseState* state, const TimelineNoteMarker& marker, QVector<int
     }
     TimelineNoteMarker stored = marker;
     stored.parseOrder = state->result.noteMarkers.size();
+    stored.tempoBpm = state->bpm;
+    stored.subdivision = state->beats;
     stored.hsMultiplier = state->hs;
     state->result.noteMarkers.append(stored);
     if (groupIndices != nullptr) {

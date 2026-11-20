@@ -10,6 +10,7 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include "common/RuntimePaths.h"
 #include <QTemporaryDir>
 
 #include <algorithm>
@@ -165,7 +166,13 @@ bool compressJob(
         return false;
     }
 
-    QTemporaryDir passLogDirectory;
+    const QString passLogRoot = miacode::runtime_paths::tempDirectory();
+    if (passLogRoot.isEmpty()) {
+        *resultStatus = miacode::localizedText("media_tools.pass_log_directory_failed");
+        return false;
+    }
+    QTemporaryDir passLogDirectory(
+        QDir(passLogRoot).filePath(QStringLiteral("pv-batch-pass-XXXXXX")));
     if (!passLogDirectory.isValid()) {
         *resultStatus = miacode::localizedText("media_tools.batch_pv_ffmpeg_failed_1")
             .arg(miacode::localizedText("media_tools.pass_log_directory_failed"));

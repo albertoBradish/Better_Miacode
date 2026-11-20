@@ -132,6 +132,15 @@ void PreviewStageMediaHost::initializeBackendObjects()
     qRegisterMetaType<QAVVideoFrame>();
 
     player_ = new QAVPlayer(this);
+    connect(player_, &QAVPlayer::videoFrameRateChanged, this, [this](double secondsPerFrame) {
+        // QtAVPlayer's frameRate API returns a frame period (av_q2d(den/num)).
+        sourceFrameRate_ = std::isfinite(secondsPerFrame) && secondsPerFrame > 0.0
+            ? 1.0 / secondsPerFrame : 0.0;
+        frameRateGate_.reset();
+        emit sourceFrameRateChanged();
+        appendPreviewStageMediaLog(QStringLiteral("video_frame_rate_detected"),
+            QStringLiteral("source_fps=%1 native_timestamps=1").arg(sourceFrameRate_, 0, 'g', 12));
+    });
     // Windows installs D3D11 diagnostics here; other platforms use the
     // platform-neutral diagnostic hook.
     miacode::preview::installPreviewDecodeDiagnostics();
@@ -195,7 +204,7 @@ void PreviewStageMediaHost::initializeBackendObjects()
         const double mediaSecond = static_cast<double>(posMs) / 1000.0;
         lastTimelineSecond_ = qMax(0.0, mediaSecond - timelineOffsetSeconds_);
         settlePendingSeekAcks(mediaSecond, mediaSecond, false);
-        if (staleEndOfMediaResumePending_) {
+        if (staleEndOfMediaResumePending_ && transportPlaying_) {
             // The stale-EndOfMedia recovery seek landed, so the player's end-of-file
             // latch is cleared and play() will resume here instead of restarting the
             // clip from zero. See tryRecoverFromStaleEndOfMedia.
@@ -346,10 +355,12 @@ void PreviewStageMediaHost::maybeRetryWithSoftwareDecode()
     player_->setSource(QString());
     player_->setSource(mediaPath_);
     player_->setSpeed(static_cast<qreal>(playbackRate_));
+    sealPendingVideoFrameDelivery();
     player_->seek(resumeMs);
     if (resumePlaying) {
         player_->play();
     } else {
+        sealPendingVideoFrameDelivery();
         player_->pause();
     }
 }
@@ -381,10 +392,12 @@ void PreviewStageMediaHost::reloadVideoDecodeInPlace()
     player_->setSource(QString());
     player_->setSource(mediaPath_);
     player_->setSpeed(static_cast<qreal>(playbackRate_));
+    sealPendingVideoFrameDelivery();
     player_->seek(resumeMs);
     if (resumePlaying) {
         player_->play();
     } else {
+        sealPendingVideoFrameDelivery();
         player_->pause();
     }
 }

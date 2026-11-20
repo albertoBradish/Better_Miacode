@@ -5,7 +5,9 @@ layout(location = 1) in float vOpacity;
 layout(location = 2) in float vWave;
 layout(location = 3) in float vAbsWave;
 layout(location = 4) in float vEffect;
-layout(location = 5) in vec3 vBrightness;
+layout(location = 5) in float vHandOrderHand;
+layout(location = 6) in float vHandOrderClipDistance;
+layout(location = 7) in vec3 vBrightness;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -50,6 +52,7 @@ float selectionDilation(vec2 uv, vec2 dx, vec2 dy, float radius)
 
 void main()
 {
+    if (vHandOrderClipDistance < 0.0) discard;
     if (vOpacity <= 0.0) {
         fragColor = vec4(0.0);
         return;
@@ -82,6 +85,15 @@ void main()
     } else if (vEffect > 0.5) {
         float brightness = 0.95 + vAbsWave * 0.5;
         color *= brightness;
+    }
+
+    if (vHandOrderHand > 0.5) {
+        vec3 handColor = vHandOrderHand < 1.5 ? vec3(0.22, 0.55, 1.0)
+            : (vHandOrderHand < 2.5 ? vec3(1.0, 0.27, 0.33) : vec3(0.86, 0.88, 0.92));
+        float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+        // Keep source alpha, shading, and some original color: skin shape and
+        // Break/Each/Mine details remain visible beneath the hand color.
+        color = mix(color, handColor * luminance * 1.25, 0.72);
     }
 
     color = clamp(color, 0.0, 1.0);

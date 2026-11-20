@@ -9,20 +9,19 @@ links the host FFmpeg through pkg-config.
 
 | Target | SDK | Runtime |
 |---|---|---|
-| Windows x64 | source-built FFmpeg 8.1.2 decode profile | six trimmed `av*.dll` files |
+| Windows x64 | pinned BtbN FFmpeg 8.1 LGPL shared build | six `av*.dll` files |
 | Windows arm64 | pinned BtbN FFmpeg 8.1 LGPL shared build | six `av*.dll` files |
 | macOS arm64 | source-built FFmpeg 8.1.2 LGPL profile | six arm64 `dylib` files |
 
 The preview SDK enables LGPL components, file playback and the platform hardware
-decoder. `avdevice` and `postproc` stay outside the package. Windows x64 uses
-`scripts/ffmpeg/trim/trim-allowlist.psd1` to keep
-the runtime near the existing 15–20 MB target. The macOS build uses
+decoder. `avdevice` and `postproc` stay outside the package. The optional
+Windows x64 trim toolchain remains available for future size work. The macOS build uses
 `--disable-autodetect` and produces an arm64-only SDK.
 
 Provisioning commands:
 
 ```powershell
-scripts\ffmpeg\trim\build-trimmed-ffmpeg.ps1
+scripts\ffmpeg\ensure-windows-ffmpeg-dev.ps1 -Arch x64
 scripts\ffmpeg\ensure-windows-ffmpeg-dev.ps1 -Arch arm64
 ```
 

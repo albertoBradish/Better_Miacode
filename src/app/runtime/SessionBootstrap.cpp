@@ -20,7 +20,6 @@
 #include "app/services/ShortcutRegistry.h"
 #include "app/runtime/shell/WindowParityMetrics.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -184,6 +183,7 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
     connect(&applicationServices_.workspace(), &miacode::ChartWorkspace::changed,
             this, [this](quint64 revision) {
                 documents_->syncRuntimeFromWorkspace();
+                stageMedia_->refreshChartVersion();
                 playback_->setDocumentRevision(revision);
                 timelineHost_->setDocumentRevision(revision);
                 emit applicationServices_.shellNotifications().documentRevisionChanged(revision);
@@ -243,6 +243,8 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
     logStartupStage("preview_skin_async_dispatched");
 
     previewSfxRuntime_ = new QtPreviewSfxRuntime(this);
+    connect(&applicationServices_.shellNotifications(), &miacode::ShellNotifications::previewOutputRouteChanged,
+            previewSfxRuntime_, &QtPreviewSfxRuntime::setOutputRoute);
     connect(previewSfxRuntime_,
             &QtPreviewSfxRuntime::commandCompleted,
             this,
@@ -304,6 +306,25 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
     connect(scene_, &PreviewRuntime::framePresented, this, [this]() {
         playback_->handlePreviewStartupCanvasPresented();
         if (!playing_) {
+            return;
+        }
+        if (state_.lowPerformanceMode_) {
+            // Count real window presents without using them to drive the next update.
+            ++qtPreviewFixedGateFramePresentSeq_;
+            if (miacode::debug_options::previewFramePacingDiagnosticsEnabled()) {
+                const qint64 nowMs = qtPreviewWatchdogElapsed_.elapsed();
+                if (qtPreviewFramePacingDiagLastPresentLogMs_ < 0
+                    || nowMs - qtPreviewFramePacingDiagLastPresentLogMs_
+                        >= miacode::debug_options::previewFramePacingDiagnosticSampleMs()) {
+                    qtPreviewFramePacingDiagLastPresentLogMs_ = nowMs;
+                    appendPreviewFramePacingDiagLog(
+                        QStringLiteral("low_mode_present"),
+                        QStringLiteral("request_seq=%1 present_seq=%2 target_ms=%3")
+                            .arg(qtPreviewFixedGateFrameRequestSeq_)
+                            .arg(qtPreviewFixedGateFramePresentSeq_)
+                            .arg(previewCanvasTargetFrameIntervalNs() / 1000000.0, 0, 'f', 3));
+                }
+            }
             return;
         }
         if (previewCanvasUsesFrameSwappedPacing()) {
@@ -422,8 +443,14 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
             &TimelineQuickStateBridge::renderCadenceTick,
             this,
             &Session::onTimelineRenderCadenceTick);
-    connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::zoomScaleChanged, this, [this](double) {
-        savePortableState();
+    auto* zoomSaveTimer = new QTimer(this);
+    zoomSaveTimer->setSingleShot(true);
+    zoomSaveTimer->setInterval(250);
+    connect(zoomSaveTimer, &QTimer::timeout, this, [this] { savePortableState(); });
+    connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::zoomScaleChanged,
+            zoomSaveTimer, [zoomSaveTimer](double) { zoomSaveTimer->start(); });
+    connect(qApp, &QCoreApplication::aboutToQuit, this, [this, zoomSaveTimer] {
+        if (zoomSaveTimer->isActive()) { zoomSaveTimer->stop(); savePortableState(); }
     });
     connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::waveformBrightnessChanged, this, [this](double) {
         savePortableState();

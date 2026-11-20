@@ -4,16 +4,16 @@
 
 namespace {
 
-constexpr double kDefaultGlobalVolume = 0.30;
+constexpr double kDefaultGlobalVolume = 1.0;
 constexpr double kDefaultTrackVolume = 1.0;
-constexpr double kDefaultAnswerVolume = 0.80;
-constexpr double kDefaultTapVolume = 0.30;
-constexpr double kDefaultExVolume = 0.30;
-constexpr double kDefaultBreakVolume = 0.30;
-constexpr double kDefaultBreakSlideVolume = 0.30;
-constexpr double kDefaultSlideVolume = 0.30;
-constexpr double kDefaultTouchVolume = 0.30;
-constexpr double kDefaultFireworkVolume = 0.30;
+constexpr double kDefaultAnswerVolume = 1.0;
+constexpr double kDefaultTapVolume = 1.0;
+constexpr double kDefaultExVolume = 1.0;
+constexpr double kDefaultBreakVolume = 1.0;
+constexpr double kDefaultBreakSlideVolume = 1.0;
+constexpr double kDefaultSlideVolume = 1.0;
+constexpr double kDefaultTouchVolume = 1.0;
+constexpr double kDefaultFireworkVolume = 1.0;
 constexpr double kDefaultIntroVolume = 1.0;
 constexpr double kMaxGlobalVolume = 1.0;
 constexpr double kMuteThreshold = 0.0001;

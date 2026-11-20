@@ -38,11 +38,12 @@ enum class PreviewHudFontArea {
     CenterDisplay,
     ObjectStats,
     DebugInfo,
+    ExtraInfo,
 };
 
 // Empty paths select the area's bundled font; configuration belongs to a scene/task.
 struct PreviewHudFontSettings {
-    std::array<QString, 5> paths;
+    std::array<QString, 6> paths;
     bool operator==(const PreviewHudFontSettings&) const = default;
     QString path(PreviewHudFontArea area) const { return paths[static_cast<int>(area)]; }
 };

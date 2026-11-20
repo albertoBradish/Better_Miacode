@@ -231,6 +231,11 @@ void PreviewHost::prepareForShutdown()
     }
 }
 
+PreviewTimingSettings PreviewHost::audioTiming() const
+{
+    return legacySurface_ ? legacySurface_->audioTiming() : PreviewTimingSettings{};
+}
+
 PreviewAudioSettings PreviewHost::audioSettings() const
 {
     return legacySurface_ != nullptr ? legacySurface_->audioSettings() : PreviewAudioSettings();

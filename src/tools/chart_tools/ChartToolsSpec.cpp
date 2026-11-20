@@ -1,3 +1,4 @@
+#include "core/chart/document/AdvancedMetadata.h"
 #include "core/chart/ChartBpmExport.h"
 #include "core/chart/ChartBpmImport.h"
 #include "core/chart/ChartScoreLoss.h"
@@ -180,6 +181,66 @@ int main(int argc, char** argv)
         expect(!importChartBpm(QStringLiteral("120-180"), originals.first(), {}, 0).ok(), "untimed BPM sequences are rejected");
         expect(!importChartBpm(QStringLiteral("00:01:000/120 - 00:00:000/180"), originals.first(), {}, 0).ok(), "unordered timestamps are rejected");
         expect(!importChartBpm(QStringLiteral("&first=0\n&inote_1=(120){4}1,E"), originals.first(), {}, 0).ok(), "maidata with notes cannot masquerade as a timing skeleton");
+    }
+    {
+        ScoringEvents events;
+        events.events = {{0, ScoringKind::Tap, false, false}, {0, ScoringKind::Tap, false, true},
+                         {0, ScoringKind::Star, true, false}, {0, ScoringKind::Hold, true, true, false, true}};
+        const auto score = calculateScoreLoss(events);
+        QVector<int> values(score.rows.size(), 0);
+        auto rowFor = [&](const QString& object, const QString& judgment) {
+            for (int i = 0; i < score.rows.size(); ++i)
+                if (score.rows[i].object == object && score.rows[i].judgment == judgment) return i;
+            return -1;
+        };
+        const int tapGreat = rowFor("Tap", "Great"), tapGood = rowFor("Tap", "Good");
+        const int breakGreat = rowFor("Break", "Great 2000"), breakGood = rowFor("Break", "Good 1000");
+        expect(tapGreat >= 0 && tapGood >= 0 && breakGreat >= 0 && breakGood >= 0, "scenario fixture exposes nested official inventories");
+        const auto perfect = calculateScoreScenario(score, values);
+        expect(perfect.valid() && close(perfect.achievement, 101.0) && perfect.enteredJudgments == 0,
+            "zero entered judgments retain the official maximum achievement");
+        if (tapGreat >= 0 && tapGood >= 0 && breakGreat >= 0 && breakGood >= 0) {
+            values[tapGreat] = 1; values[tapGood] = 1;
+            expect(calculateScoreScenario(score, values).error == ScoreScenarioError::InventoryExceeded,
+                "Great and Good cannot both consume the same single non-EX tap");
+            values.fill(0); values[breakGreat] = 1; values[breakGood] = 1;
+            expect(calculateScoreScenario(score, values).valid(),
+                "non-EX break and degrading EX hold can supply distinct mixed judgments");
+            values[breakGood] = 2;
+            expect(calculateScoreScenario(score, values).error == ScoreScenarioError::InventoryExceeded,
+                "mixed break rows cannot exceed their shared physical inventory");
+            values.fill(0); values[tapGreat] = -1;
+            expect(calculateScoreScenario(score, values).error == ScoreScenarioError::InvalidQuantity,
+                "negative judgment quantities are rejected");
+        }
+        values.fill(0);
+        for (int i = 0; i < score.rows.size(); ++i)
+            if (score.rows[i].judgment == QLatin1String("Miss")) values[i] = score.rows[i].quantity;
+        const auto missed = calculateScoreScenario(score, values);
+        expect(missed.valid() && close(missed.achievement, 0.0), "all-Miss scenario reaches zero achievement without double counting attributes");
+        expect(!calculateScoreScenario(calculateScoreLoss({}), {}).valid(), "empty chart has no scenario result");
+        expect(!calculateScoreScenario(calculateScoreLoss(ScoringEvents{{}, true, 1}), {}).valid(),
+            "unsupported extension inventory cannot produce a misleading scenario");
+    }
+    {
+        using namespace miacode::metadata;
+        expect(validateField("whole_time_signature", "7/8").isEmpty()
+            && !validateField("whole_time_signature", "7/0").isEmpty(), "metadata meter references use parser validation");
+        expect(validateField("clock_count", "0").isEmpty() && !validateField("clock_count", "2.5").isEmpty(),
+            "count-in reference accepts zero and rejects noninteger values");
+        bool registeredDrop = false, openCabinet = false;
+        for (const auto& field : advancedFields(5)) {
+            if (field.key == QLatin1String("miacode_drop_start_5")) registeredDrop = field.readOnly && field.unit == QLatin1String("s");
+            if (field.key == QLatin1String("cabinet")) openCabinet = !field.suggestions.isEmpty() && !field.readOnly;
+        }
+        expect(registeredDrop && openCabinet && validateField("cabinet", "Custom cabinet").isEmpty(),
+            "managed drop fields are read-only and catalog suggestions do not reject custom values");
+        const auto doc = SimaiDocument::fromText(QStringLiteral("&title=Field fixture\n&demo_seek=5\n&demo_len=10\n&miacode_drop_start_5=20\n&miacode_drop_end_5=30\n&vendor_unknown=keep-me\n&lv_5=1\n&inote_5=(120){4}1,E\n"));
+        const auto again = SimaiDocument::fromText(doc.toText());
+        expect(fieldValue(again, "vendor_unknown") == QLatin1String("keep-me")
+            && fieldValue(again, "demo_seek") == QLatin1String("5")
+            && fieldValue(again, "miacode_drop_start_5") == QLatin1String("20"),
+            "field registry preserves unknown values and never aliases drop to the demo window");
     }
     return failures ? 1 : 0;
 }

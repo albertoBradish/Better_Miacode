@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import MiaCode.UI
 import "qrc:/preview/runtime/qml" as Preview
 
@@ -25,6 +26,7 @@ Rectangle {
     readonly property real minimumWidth: transport.minimumWidth
     signal detachRequested()
     signal dockRequested()
+    signal playChecksRequested()
     readonly property alias cornerSourceItem: heading
     readonly property Item transportItem: transport
     readonly property Item renderModeItem: renderModeButton
@@ -42,6 +44,15 @@ Rectangle {
                       : 1.0
         return Math.max(1.0, (ratio > 0 && isFinite(ratio)) ? ratio : 1.0)
     }
+
+    readonly property string heatmapStyle: root.previewSession.structure
+        ? root.previewSession.structure.heatmapStyle : "off"
+    readonly property bool pressureDisplayAvailable: root.documentAvailable && !root.latencyActive
+        && !root.exportPageActive && !root.exportSession.pageSessionActive
+        && !root.exportSession.introAuditionPlaying
+        && !(root.previewSession.runtime && root.previewSession.runtime.introOverlayActive)
+        && root.previewSession.structure && root.previewSession.structure.pressureAvailable
+        && root.previewSession.durationSeconds > 0
 
     color: Theme.surfaceColor(Theme.colors.background.panel)
     clip: true
@@ -112,6 +123,7 @@ Rectangle {
     PreviewRenderModeMenu {
         id: renderModeMenu
         previewSession: root.previewSession
+        onPlayChecksRequested: root.playChecksRequested()
     }
 
     Item {
@@ -124,12 +136,13 @@ Rectangle {
 
         Loader {
             id: previewSurfaceLoader
-            anchors.centerIn: parent
+            x: (parent.width - width) / 2
+            y: (parent.height - height) / 2
             width: root.freeAspectActive
                    ? parent.width
                    : root.fittedFrameWidth(parent.width, parent.height)
             height: root.freeAspectActive
-                    ? parent.height
+                    ? Math.max(0, parent.height)
                     : root.fittedFrameHeight(parent.width, parent.height)
             // Do not construct an invisible scene root: it still subscribes to
             // PreviewRuntime::frameStateChanged even when QSG skips painting it.
@@ -144,6 +157,107 @@ Rectangle {
                 backgroundColor: "transparent"
                 hudTextColor: Theme.colors.previewHud.text
                 hudShadowColor: Theme.colors.previewHud.shadow
+            }
+        }
+
+        Item {
+            id: pressureOverlay
+            objectName: "previewPressureOverlay"
+            readonly property bool smooth: root.heatmapStyle === "youtube"
+            anchors.left: previewSurfaceLoader.left
+            anchors.right: previewSurfaceLoader.right
+            anchors.bottom: previewSurfaceLoader.bottom
+            height: Math.min(36, previewSurfaceLoader.height * 0.075)
+            visible: root.heatmapStyle !== "off" && previewSurfaceLoader.active && root.pressureDisplayAvailable
+            readonly property var structure: root.previewSession.structure || null
+            readonly property bool introActive: root.previewSession.runtime
+                ? root.previewSession.runtime.introOverlayActive : false
+            readonly property real endSecond: root.previewSession.durationSeconds
+
+            function secondAt(x) {
+                return Math.max(0, Math.min(1, x / Math.max(1, width))) * endSecond
+            }
+
+            onEndSecondChanged: pressureShape.requestPaint()
+            onSmoothChanged: pressureShape.requestPaint()
+            onVisibleChanged: if (visible) pressureShape.requestPaint()
+            PressureShape {
+                id: pressureShape
+                anchors.fill: parent
+                opacity: pressureOverlay.smooth ? (pressureScrub.containsMouse ? 0.65 : 0.38) : (pressureScrub.containsMouse || pressureScrub.pressed ? 0.28 : 0.16)
+                smooth: pressureOverlay.smooth
+                endSecond: pressureOverlay.endSecond
+                spansForPaint: () => pressureOverlay.structure?.heatmapSpans(0, endSecond) ?? []
+            }
+
+            Connections {
+                target: pressureOverlay.structure
+                function onChanged() {
+                    if (pressureOverlay.visible)
+                        pressureShape.requestPaint()
+                }
+            }
+
+            MouseArea {
+                id: pressureScrub
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                hoverEnabled: true
+                preventStealing: true
+                scrollGestureEnabled: false
+                cursorShape: pressed ? Qt.SizeHorCursor : Qt.PointingHandCursor
+                property bool resumePlaying: false
+
+                function scrubTo(x) {
+                    root.previewSession.updateScrub(pressureOverlay.secondAt(x))
+                }
+
+                onPressed: function(mouse) {
+                    resumePlaying = root.previewSession.playing
+                    root.previewSession.beginScrub()
+                    scrubTo(mouse.x)
+                }
+                onPositionChanged: function(mouse) {
+                    if (pressed)
+                        scrubTo(mouse.x)
+                }
+                onReleased: function(mouse) {
+                    const second = pressureOverlay.secondAt(mouse.x)
+                    root.previewSession.endScrub(second)
+                    if (resumePlaying && second < pressureOverlay.endSecond - 0.001) {
+                        // The paused transport state is published on the event queue.
+                        Qt.callLater(function() {
+                            if (pressureOverlay.visible && !pressureScrub.pressed)
+                                root.previewSession.playing = true
+                        })
+                    }
+                    resumePlaying = false
+                }
+                onCanceled: {
+                    root.previewSession.endScrub(root.previewSession.positionSeconds)
+                    resumePlaying = false
+                }
+                onWheel: function(wheel) { wheel.accepted = false }
+            }
+            ToolTip.visible: pressureScrub.containsMouse && !pressureScrub.pressed && ToolTip.text.length > 0
+            ToolTip.delay: 500
+            ToolTip.text: {
+                if (!pressureOverlay.visible || !pressureScrub.containsMouse || pressureScrub.pressed)
+                    return ""
+                const second = secondAt(pressureScrub.mouseX)
+                const p = structure.pressureAt(second)
+                if (p.density === undefined)
+                    return ""
+                const baseline = qsTrId("structure.pressure_tooltip")
+                    .arg(second.toLocaleString(Qt.locale(), 'f', 3)).arg(Math.round(p.strength * 100))
+                    .arg(p.density.toFixed(1)).arg(p.simultaneous.toFixed(1)).arg(p.movement.toFixed(1))
+                    .arg(p.rhythm.toFixed(1)).arg(p.endurance.toFixed(1)).arg(p.held.toFixed(1))
+                    .arg(p.slides.toFixed(1)).arg(p.hybrid.toFixed(1))
+                if (p.leftOccupancy === undefined)
+                    return baseline
+                return baseline + "\n" + qsTrId("structure.hand_order_tooltip")
+                    .arg(p.leftOccupancy.toFixed(1)).arg(p.rightOccupancy.toFixed(1))
+                    .arg(p.leftMovement.toFixed(1)).arg(p.rightMovement.toFixed(1)).arg(p.alternation.toFixed(1))
             }
         }
 

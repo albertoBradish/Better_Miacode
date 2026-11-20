@@ -23,9 +23,13 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
         signature.append('|');
         signature.append(QByteArray::number(marker.sourceCol));
         signature.append('|');
+        signature.append(QByteArray::number(marker.slideTrackSourceCol));
+        signature.append('|');
         signature.append(QByteArray::number(marker.lane));
         signature.append('|');
         signature.append(QByteArray::number(marker.endLane));
+        signature.append('|');
+        signature.append(QByteArray::number(marker.hsMultiplier, 'g', 17));
         signature.append('|');
         signature.append(QByteArray::number(marker.second, 'f', 6));
         signature.append('|');
@@ -75,6 +79,10 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
         signature.append('|');
         signature.append(marker.isFirework ? '1' : '0');
         signature.append('|');
+        signature.append(marker.isMine ? '1' : '0');
+        signature.append(marker.headMine ? '1' : '0');
+        signature.append(marker.trackMine ? '1' : '0');
+        signature.append('|');
         signature.append(marker.headBreak ? '1' : '0');
         signature.append('|');
         signature.append(marker.trackBreak ? '1' : '0');
@@ -102,6 +110,30 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
         signature.append(marker.hasHeadStar ? '1' : '0');
         signature.append('|');
         signature.append(marker.headlessImmediate ? '1' : '0');
+        signature.append('|');
+        signature.append(QByteArray::number(static_cast<int>(marker.handOrderHead)));
+        signature.append('|');
+        signature.append(QByteArray::number(marker.handOrderTrackStops.size()));
+        signature.append('|');
+        for (const HandOrderTrackStop& stop : marker.handOrderTrackStops) {
+            signature.append(QByteArray::number(stop.progress, 'g', 17));
+            signature.append(':');
+            signature.append(QByteArray::number(static_cast<int>(stop.hand)));
+            signature.append(',');
+        }
+        signature.append('|');
+        signature.append(QByteArray::number(static_cast<int>(marker.handOrderWifiMode)));
+        for (const auto& sector : marker.handOrderWifiSectorStops) {
+            signature.append('&');
+            for (const auto& stop : sector) {
+                signature.append(QByteArray::number(stop.progress, 'g', 17));
+                signature.append(':');
+                signature.append(QByteArray::number(static_cast<int>(stop.hand)));
+                signature.append(',');
+            }
+        }
+        signature.append('|');
+        signature.append(QByteArray::number(marker.slideBranchIndex));
         signature.append('|');
         signature.append(marker.touchPad.toUtf8());
         signature.append('\n');
@@ -182,7 +214,9 @@ TimelinePreviewRefreshState buildTimelinePreviewRefreshState(const QString& char
     return buildTimelinePreviewRefreshState(SimaiParser::parseForTimeline(chartText), firstSeconds);
 }
 
-TimelineAnalysisRefreshResult buildTimelineAnalysisRefreshResult(const TimelineAnalysisRefreshRequest& request)
+TimelineAnalysisRefreshResult buildTimelineAnalysisRefreshResult(
+    const TimelineAnalysisRefreshRequest& request,
+    const std::function<void(const SimaiValidationReport&)>& validationReady)
 {
     miacode::task::CancellationScope::check();
     TimelineAnalysisRefreshResult result;
@@ -196,14 +230,12 @@ TimelineAnalysisRefreshResult buildTimelineAnalysisRefreshResult(const TimelineA
         request.validationLocale,
         request.timingMetadata);
     miacode::task::CancellationScope::check();
+    if (validationReady) validationReady(result.validationReport);
     result.noteMarkerSignature = request.noteMarkerSignature;
     result.analysisReport = MuriAnalyzer::analyze(
         request.noteMarkers,
         request.renderOptions,
-        request.staticTapOnSlideThresholdSeconds);
-    miacode::task::CancellationScope::check();
-    result.staticReferences = miacode::muri::buildStaticMuriReferences(
-        request.noteMarkers,
-        request.staticTapOnSlideThresholdSeconds);
+        request.staticTapOnSlideThresholdSeconds,
+        &result.staticReferences);
     return result;
 }

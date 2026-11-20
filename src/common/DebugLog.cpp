@@ -2,6 +2,7 @@
 
 #include "common/DebugOptions.h"
 #include "common/OperationLog.h"
+#include "common/RuntimePaths.h"
 
 #include <QByteArray>
 #include <QCoreApplication>
@@ -327,11 +328,17 @@ void appendCrashBreadcrumbPathHint(const QString& normalizedProjectLogDirectory)
     const QString explicitShadowPath =
         qEnvironmentVariable("MIACODE_OPLOG_SHADOW_PATH").trimmed();
     const QString envLogDir = qEnvironmentVariable("MIACODE_LOG_DIR").trimmed();
+    const QString workspaceLogDir = miacode::runtime_paths::logDirectory();
 
     QString source;
     QString breadcrumbDir;
     QString opChainPath;
-    if (!explicitShadowPath.isEmpty()) {
+    if (!workspaceLogDir.isEmpty()) {
+        source = QStringLiteral("runtime_paths");
+        breadcrumbDir = workspaceLogDir;
+        opChainPath = QDir(breadcrumbDir).filePath(
+            QStringLiteral("miacode_op_chain_%1.log").arg(pid));
+    } else if (!explicitShadowPath.isEmpty()) {
         source = QStringLiteral("MIACODE_OPLOG_SHADOW_PATH");
         opChainPath = QDir::cleanPath(explicitShadowPath);
         breadcrumbDir = QFileInfo(opChainPath).absolutePath();
@@ -349,11 +356,7 @@ void appendCrashBreadcrumbPathHint(const QString& normalizedProjectLogDirectory)
 
     const QString startupBeaconPath = QDir(breadcrumbDir).filePath(
         QStringLiteral("miacode_startup_beacon_%1.txt").arg(pid));
-    const QString runtimeOverride =
-        resolvedOverridePath(Channel::Runtime, channelPathOverride(Channel::Runtime));
-    const QString runtimePath = runtimeOverride.isEmpty()
-        ? QDir(logDirectory()).filePath(channelFileName(Channel::Runtime))
-        : runtimeOverride;
+    const QString runtimePath = logPath(Channel::Runtime);
 
     const QString payload =
         QStringLiteral(
@@ -953,6 +956,11 @@ QString timestampString()
 
 QString logDirectory()
 {
+    const QString workspaceLogDir = miacode::runtime_paths::logDirectory();
+    if (!workspaceLogDir.isEmpty()) {
+        return workspaceLogDir;
+    }
+
     const QString envDir = qEnvironmentVariable("MIACODE_LOG_DIR").trimmed();
     if (!envDir.isEmpty()) {
         return QDir::cleanPath(envDir);
@@ -1017,6 +1025,11 @@ void setSessionProjectLogDirectory(const QString& directoryPath)
 
 QString logPath(Channel channel)
 {
+    const QString workspaceLogDir = miacode::runtime_paths::logDirectory();
+    if (!workspaceLogDir.isEmpty()) {
+        return QDir(workspaceLogDir).filePath(channelFileName(channel));
+    }
+
     const QString overridePath = resolvedOverridePath(channel, channelPathOverride(channel));
     if (!overridePath.isEmpty()) {
         return overridePath;

@@ -1,4 +1,6 @@
 #include "export/session/PreviewQuickExportSession.h"
+#include "export/session/ExportQuickWatermarkOverlay.h"
+#include "export/session/ExportQuickBackgroundItem.h"
 
 #include "common/DebugLog.h"
 #include "preview/quick_scene/PreviewQuickHudLayer.h"
@@ -69,6 +71,20 @@ PreviewQuickExportSession::~PreviewQuickExportSession()
     invalidate();
 }
 
+void PreviewQuickExportSession::setBackgroundFrame(const QImage& image, bool cacheable, bool fullFrame, qreal brightness)
+{
+    backgroundEnabled_ = usesBackgroundMedia(frameState_.render.backgroundPolicy);
+    backgroundFullFrame_ = fullFrame;
+    backgroundBrightness_ = brightness;
+    frameState_.media.resolvedStageImage = image;
+    frameState_.media.resolvedStageImageCacheable = cacheable;
+    frameState_.media.stageMediaSerial = image.cacheKey();
+    if (backgroundItem_) {
+        backgroundItem_->setVisible(backgroundEnabled_);
+        backgroundItem_->setFrameState(frameState_, fullFrame, brightness);
+    }
+}
+
 void PreviewQuickExportSession::setFrameState(const miacode::preview::scene::PreviewFrameState& state)
 {
     frameState_ = state;
@@ -121,13 +137,18 @@ void PreviewQuickExportSession::setFrameSize(const QSize& size)
 bool PreviewQuickExportSession::initialize(
     const QSurfaceFormat& requestedFormat,
     QOpenGLContext* shareContext,
-    QString* errorMessage
+    QString* errorMessage,
+    const miacode::video_export::VideoWatermarkSettings& watermark
 )
 {
     if (isInitialized()) {
         return true;
     }
 
+    if (QQuickWindow::graphicsApi() != QSGRendererInterface::OpenGL) {
+        if (errorMessage) *errorMessage = QStringLiteral("OpenGL export requires the process Qt Quick graphics API to be OpenGL");
+        return false;
+    }
     requestedFormat_ = requestedFormat;
     shareContext_ = shareContext;
     clearOffscreenReadbackPboState();
@@ -216,7 +237,11 @@ bool PreviewQuickExportSession::initialize(
     }
 
     rootItem_ = new QQuickItem(quickWindow_->contentItem());
+    miacode::video_export::addVideoWatermarkOverlay(rootItem_, watermark);
 
+    backgroundItem_ = new ExportQuickBackgroundItem(rootItem_);
+    backgroundItem_->setZ(-1.0);
+    backgroundItem_->setVisible(backgroundEnabled_);
     sceneRoot_ = new PreviewQuickSceneRoot(rootItem_);
     sceneRoot_->setZ(0.0);
 
@@ -284,6 +309,7 @@ void PreviewQuickExportSession::invalidate()
         quickWindow_ = nullptr;
         rootItem_ = nullptr;
         sceneRoot_ = nullptr;
+    backgroundItem_ = nullptr;
         hudLayer_ = nullptr;
         renderControl_ = nullptr;
         context_ = nullptr;
@@ -303,6 +329,7 @@ void PreviewQuickExportSession::invalidate()
     quickWindow_ = nullptr;
     rootItem_ = nullptr;
     sceneRoot_ = nullptr;
+    backgroundItem_ = nullptr;
     hudLayer_ = nullptr;
 
     delete renderControl_;
@@ -377,7 +404,7 @@ QImage PreviewQuickExportSession::renderFrame(QString* errorMessage)
     );
     gl->glPixelStorei(GL_PACK_ALIGNMENT, previousPackAlignment);
     QImage* readbackSlot = nextReadbackRingSlot();
-    if (!convertBottomUpPremultipliedReadbackToStraightRgba(
+    if (!convertBottomUpReadbackToRgba(
             reinterpret_cast<const uchar*>(directReadbackBuffer_.constData()),
             static_cast<qsizetype>(pixelSize.width()) * 4,
             pixelSize,
@@ -757,7 +784,7 @@ void PreviewQuickExportSession::resetReadbackRing()
     readbackRingIndex_ = 0;
 }
 
-bool PreviewQuickExportSession::convertBottomUpPremultipliedReadbackToStraightRgba(
+bool PreviewQuickExportSession::convertBottomUpReadbackToRgba(
     const uchar* sourceBytes,
     qsizetype sourceBytesPerRow,
     const QSize& imageSize,
@@ -795,15 +822,20 @@ bool PreviewQuickExportSession::convertBottomUpPremultipliedReadbackToStraightRg
     // returns nullptr, so the per-pixel `dst[...] = ...` store faults on a
     // near-null address. Allocating explicitly here routes any OOM through the
     // checked isNull() path instead of crashing the export worker.
+    const bool preservePremultiplied = preservePremultipliedReadback_
+        || frameState_.render.backgroundPolicy == BackgroundPolicy::Transparent;
+    const QImage::Format outputFormat = preservePremultiplied
+        ? QImage::Format_RGBA8888_Premultiplied
+        : QImage::Format_RGBA8888;
     if (frame->isNull()
         || frame->size() != safeSize
-        || frame->format() != QImage::Format_RGBA8888
+        || frame->format() != outputFormat
         || !frame->isDetached()) {
-        *frame = QImage(safeSize, QImage::Format_RGBA8888);
+        *frame = QImage(safeSize, outputFormat);
     }
     if (frame->isNull()) {
         if (errorMessage != nullptr) {
-            *errorMessage = QStringLiteral("failed to allocate Quick export straight RGBA frame buffer");
+            *errorMessage = QStringLiteral("failed to allocate Quick export RGBA frame buffer");
         }
         return false;
     }
@@ -822,6 +854,10 @@ bool PreviewQuickExportSession::convertBottomUpPremultipliedReadbackToStraightRg
                     "Quick export readback scanLine returned null (out of memory?)");
             }
             return false;
+        }
+        if (preservePremultiplied) {
+            std::memcpy(outputRow, sourceRowBytes, static_cast<size_t>(expectedBytesPerRow));
+            continue;
         }
         for (int x = 0; x < safeSize.width(); ++x) {
             const uchar* src = sourceRowBytes + x * 4;
@@ -850,7 +886,7 @@ bool PreviewQuickExportSession::convertBottomUpPremultipliedReadbackToStraightRg
 
 // Convert worker. Pulls a (sourceBytes, size) handoff out of the
 // producer-set fields under convertMutex_, runs the existing
-// convertBottomUpPremultipliedReadbackToStraightRgba into the worker's
+// convertBottomUpReadbackToRgba into the worker's
 // own QImage, and signals back. The producer guarantees exclusive
 // access to the staging buffer between submit and wait, so the worker
 // can read sourceBytes lock-free during the conversion itself.
@@ -875,7 +911,7 @@ void PreviewQuickExportSession::convertWorkerLoop()
         }
         QImage output;
         QString err;
-        const bool ok = convertBottomUpPremultipliedReadbackToStraightRgba(
+        const bool ok = convertBottomUpReadbackToRgba(
             sourceBytes, sourceBytesPerRow, size, &output, &err);
         {
             std::lock_guard<std::mutex> lock(convertMutex_);
@@ -1138,7 +1174,7 @@ bool PreviewQuickExportSession::mapOffscreenReadbackPbo(
 
     const uchar* sourceBytes = static_cast<const uchar*>(mapped);
     QImage* readbackSlot = nextReadbackRingSlot();
-    const bool normalized = convertBottomUpPremultipliedReadbackToStraightRgba(
+    const bool normalized = convertBottomUpReadbackToRgba(
         sourceBytes,
         bytesPerRow,
         safeSize,
@@ -1185,7 +1221,8 @@ bool PreviewQuickExportSession::renderSceneIntoFramebuffer(QString* errorMessage
     }
 
     gl->glViewport(0, 0, framebuffer_->width(), framebuffer_->height());
-    gl->glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    gl->glClearColor(0.0f, 0.0f, 0.0f,
+        frameState_.render.backgroundPolicy == BackgroundPolicy::OpaqueBlack || introChartPreviewSplit_ ? 1.0f : 0.0f);
     gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     framebuffer_->release();
 
@@ -1292,15 +1329,28 @@ void PreviewQuickExportSession::applyFrameSize()
     rootItem_->setPosition(QPointF(0.0, 0.0));
     rootItem_->setSize(QSizeF(frameSize_));
 
-    sceneRoot_->setPosition(QPointF(0.0, 0.0));
-    sceneRoot_->setSize(QSizeF(frameSize_));
-    sceneRoot_->update();
-
-    hudLayer_->setPosition(QPointF(0.0, 0.0));
-    hudLayer_->setSize(QSizeF(frameSize_));
-    hudLayer_->update();
+    applyChartGeometry();
 
     applyIntroGeometry();
+}
+
+void PreviewQuickExportSession::applyChartGeometry()
+{
+    if (!sceneRoot_ || !hudLayer_) return;
+    const double x = introChartPreviewSplit_ ? frameSize_.width() * 0.5 : 0.0;
+    const QSizeF size(frameSize_.width() - x, frameSize_.height());
+    if (backgroundItem_) {
+        backgroundItem_->setPosition(QPointF());
+        backgroundItem_->setSize(frameSize_);
+    }
+    sceneRoot_->setPosition(QPointF(x, 0.0));
+    sceneRoot_->setSize(size);
+    sceneRoot_->setClip(introChartPreviewSplit_);
+    sceneRoot_->update();
+    hudLayer_->setPosition(QPointF(x, 0.0));
+    hudLayer_->setSize(size);
+    hudLayer_->setClip(introChartPreviewSplit_);
+    hudLayer_->update();
 }
 
 void PreviewQuickExportSession::applyIntroGeometry()
@@ -1312,15 +1362,16 @@ void PreviewQuickExportSession::applyIntroGeometry()
     // height around its centre and centre it horizontally; anything past the
     // frame edges is clipped by the framebuffer viewport, which gives the
     // requested "centre crop of the 16:9 intro" for 4:3 / 1:1 outputs.
-    constexpr double kNativeW = 1920.0;
     constexpr double kNativeH = 1080.0;
     const double frameW = qMax(1, frameSize_.width());
     const double frameH = qMax(1, frameSize_.height());
-    introItem_->setWidth(kNativeW);
+    const double nativeWidth = introItem_->property("chartPreviewMode").toBool()
+        ? frameW * kNativeH / frameH : 1920.0;
+    introItem_->setWidth(nativeWidth);
     introItem_->setHeight(kNativeH);
     introItem_->setTransformOrigin(QQuickItem::Center);
     introItem_->setScale(frameH / kNativeH);
-    introItem_->setX(frameW / 2.0 - kNativeW / 2.0);
+    introItem_->setX(frameW / 2.0 - nativeWidth / 2.0);
     introItem_->setY(frameH / 2.0 - kNativeH / 2.0);
 }
 
@@ -1330,6 +1381,7 @@ void PreviewQuickExportSession::destroyIntroOverlay()
     // with the window during invalidate(); here we only drop our references.
     introItem_ = nullptr;
     introActive_ = false;
+    introChartPreviewSplit_ = false;
 }
 
 bool PreviewQuickExportSession::setupIntroOverlay(const QUrl& qmlUrl, QString* errorMessage)
@@ -1403,6 +1455,7 @@ void PreviewQuickExportSession::setIntroBannerData(
     for (auto it = style.constBegin(); it != style.constEnd(); ++it) {
         introItem_->setProperty(it.key().toUtf8().constData(), it.value());
     }
+    applyIntroGeometry();
 }
 
 void PreviewQuickExportSession::setChartLayersVisible(bool visible)
@@ -1425,10 +1478,23 @@ void PreviewQuickExportSession::setIntroFrame(int authoringFrame, bool active)
         introItem_->setProperty("frame", authoringFrame);
     }
     introItem_->setVisible(active);
+    const bool split = active && introItem_->property("chartPreviewMode").toBool()
+        && authoringFrame < introItem_->property("pvPreviewHoldFrames").toInt();
+    if (introChartPreviewSplit_ != split) {
+        introChartPreviewSplit_ = split;
+        applyChartGeometry();
+    }
 }
 
 void PreviewQuickExportSession::applyFrameState()
 {
+    const BackgroundPolicy policy = frameState_.render.backgroundPolicy;
+    if (quickWindow_) quickWindow_->setColor(policy == BackgroundPolicy::OpaqueBlack || introChartPreviewSplit_
+        ? QColor(Qt::black) : QColor(Qt::transparent));
+    if (backgroundItem_) {
+        backgroundItem_->setVisible(backgroundEnabled_ && usesBackgroundMedia(policy));
+        backgroundItem_->setFrameState(frameState_, backgroundFullFrame_, backgroundBrightness_);
+    }
     bindFrameStateIfNeeded();
     applyLayerFlagsIfNeeded();
     requestFrameRefresh();

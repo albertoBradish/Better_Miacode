@@ -16,7 +16,7 @@
 #include "common/FileWriteFailure.h"
 #include "common/GpuDevicePolicy.h"
 #include "common/OperationLog.h"
-#include "audio/WaveformCache.h"
+#include "common/RuntimePaths.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "export/video_export/VideoExportController.h"
 #include "export/video_export/VideoExportRuntimePolicy.h"
@@ -92,86 +92,14 @@ QString buildWorkerRetryFailureDetails(
     return sections.join(QStringLiteral("\n\n"));
 }
 
-QString resolvedLogPathOverrideForUi(const QString& overridePath, const QString& defaultFileName)
+QString videoExportWorkerLogPathForUi()
 {
-    const QString trimmed = overridePath.trimmed();
-    if (trimmed.isEmpty()) {
-        return QString();
-    }
-
-    const bool looksLikeDirectory = trimmed.endsWith(QLatin1Char('/')) || trimmed.endsWith(QLatin1Char('\\'));
-    const QString cleanPath = QDir::cleanPath(trimmed);
-    const QFileInfo info(cleanPath);
-    const bool looksLikeDirectoryName = !info.exists()
-        && info.suffix().isEmpty()
-        && !info.fileName().contains(QLatin1Char('.'));
-    if (looksLikeDirectory || (info.exists() && info.isDir()) || looksLikeDirectoryName) {
-        return QDir(cleanPath).filePath(defaultFileName);
-    }
-    return cleanPath;
+    return miacode::debug_log::exportLogPath();
 }
 
-QString projectLogDirectoryForSnapshot(const VideoExportSnapshot& snapshot)
+QString videoExportWorkerFatalLogPathForUi()
 {
-    const QString chartPath = snapshot.originalChartPath.trimmed();
-    if (!chartPath.isEmpty()) {
-        const QString projectDataDirectoryPath = miacode::waveform::projectDataDirectoryPathForFile(chartPath);
-        if (!projectDataDirectoryPath.isEmpty()) {
-            return QDir(projectDataDirectoryPath).filePath(QStringLiteral("logs"));
-        }
-    }
-
-    const QString projectDir = snapshot.projectDir.trimmed();
-    if (!projectDir.isEmpty()) {
-        return miacode::runtime_paths::directory("logs");
-    }
-
-    return QString();
-}
-
-QString workerChannelLogPathForUi(
-    const VideoExportSnapshot& snapshot,
-    const QString& channelOverridePath,
-    const QString& defaultFileName,
-    const QString& fallbackPath
-)
-{
-    const QString overridePath = resolvedLogPathOverrideForUi(channelOverridePath, defaultFileName);
-    if (!overridePath.isEmpty()) {
-        return overridePath;
-    }
-
-    const QString sharedLogDirectory = qEnvironmentVariable("MIACODE_LOG_DIR").trimmed();
-    if (!sharedLogDirectory.isEmpty()) {
-        return QDir(QDir::cleanPath(sharedLogDirectory)).filePath(defaultFileName);
-    }
-
-    const QString projectLogDirectory = projectLogDirectoryForSnapshot(snapshot);
-    if (!projectLogDirectory.isEmpty()) {
-        return QDir(projectLogDirectory).filePath(defaultFileName);
-    }
-
-    return fallbackPath;
-}
-
-QString videoExportWorkerLogPathForUi(const VideoExportSnapshot& snapshot)
-{
-    return workerChannelLogPathForUi(
-        snapshot,
-        qEnvironmentVariable("MIACODE_EXPORT_LOG_PATH").trimmed(),
-        QStringLiteral("miacode_video_export.log"),
-        miacode::debug_log::exportLogPath()
-    );
-}
-
-QString videoExportWorkerFatalLogPathForUi(const VideoExportSnapshot& snapshot)
-{
-    return workerChannelLogPathForUi(
-        snapshot,
-        qEnvironmentVariable("MIACODE_FATAL_LOG_PATH").trimmed(),
-        QStringLiteral("miacode_fatal.log"),
-        miacode::debug_log::fatalLogPath()
-    );
+    return miacode::debug_log::fatalLogPath();
 }
 
 QString qProcessExitStatusForUi(QProcess::ExitStatus status)
@@ -603,6 +531,11 @@ miacode::LocalizedText localizeExportWorkerFailureForUiLanguage(
         {QStringLiteral("Unable to build export audio render plan."), "dialog.video_export.error.audio_failed"},
         {QStringLiteral("Failed to start WAV finalization."), "dialog.video_export.error.audio_failed"},
         {QStringLiteral("WAV finalization failed."), "dialog.video_export.error.audio_failed"},
+        {QStringLiteral("Failed to start audio encoding."), "dialog.video_export.error.audio_failed"},
+        {QStringLiteral("Audio encoding failed."), "dialog.video_export.error.audio_failed"},
+        {QString::fromLatin1(miacode::video_export::kVideoExportSizeBudgetTooSmallMessage),
+         "dialog.video_export.error.size_limit_too_small"},
+        {QStringLiteral("Unable to select video encoder."), "dialog.video_export.error.encode_failed"},
         {QStringLiteral("ffmpeg encode failed."), "dialog.video_export.error.encode_failed"},
         {QStringLiteral("ffmpeg process failed."), "dialog.video_export.error.encode_failed"},
         {QStringLiteral("ffmpeg exited unexpectedly during frame piping."), "dialog.video_export.error.encode_failed"},
@@ -659,10 +592,10 @@ bool miacode::runtime::VideoExportHost::startVideoExportWorkerProcess(
 
     process->setProcessChannelMode(QProcess::SeparateChannels);
     QProcessEnvironment workerEnvironment = QProcessEnvironment::systemEnvironment();
-    workerEnvironment.insert(QStringLiteral("BETTER_MIACODE_RUNTIME_ROOT"), miacode::runtime_paths::root());
-    workerEnvironment.insert(QStringLiteral("MIACODE_LOG_DIR"), miacode::runtime_paths::directory("logs"));
-    for (const char* name : {"TEMP", "TMP", "TMPDIR"})
-        workerEnvironment.insert(QString::fromLatin1(name), miacode::runtime_paths::directory("temp"));
+    const QString runtimeLogDirectory = miacode::runtime_paths::logDirectory();
+    if (!runtimeLogDirectory.isEmpty()) {
+        workerEnvironment.insert(QStringLiteral("MIACODE_LOG_DIR"), runtimeLogDirectory);
+    }
     if (forceDisableOffscreenPbo) {
         workerEnvironment.insert(QStringLiteral("MIACODE_EXPORT_DISABLE_OFFSCREEN_PBO"), QStringLiteral("1"));
     }
@@ -821,8 +754,8 @@ bool miacode::runtime::VideoExportHost::runVideoExportWorkerSync(
         const QString stderrText = QString::fromUtf8(stderrBuffer).trimmed();
         const QString stdoutTailText = QString::fromUtf8(stdoutBuffer).trimmed();
         const QString processErrorText = process.errorString().trimmed();
-        const QString workerExportLogPath = videoExportWorkerLogPathForUi(snapshot);
-        const QString workerFatalLogPath = videoExportWorkerFatalLogPathForUi(snapshot);
+        const QString workerExportLogPath = videoExportWorkerLogPathForUi();
+        const QString workerFatalLogPath = videoExportWorkerFatalLogPathForUi();
         const QString workerDiagnostics = buildWorkerProcessDiagnostics(
             process.exitCode(),
             process.exitStatus(),
@@ -940,8 +873,8 @@ bool miacode::runtime::VideoExportHost::launchVideoExportWorker(const VideoExpor
         miacode::video_export::exportEstimateProfileForSnapshot(snapshot));
     session_.videoExportWorkerJobId_ = snapshot.jobId;
     session_.videoExportWorkerOutputPath_ = snapshot.outputPath;
-    session_.videoExportWorkerExportLogPath_ = videoExportWorkerLogPathForUi(snapshot);
-    session_.videoExportWorkerFatalLogPath_ = videoExportWorkerFatalLogPathForUi(snapshot);
+    session_.videoExportWorkerExportLogPath_ = videoExportWorkerLogPathForUi();
+    session_.videoExportWorkerFatalLogPath_ = videoExportWorkerFatalLogPathForUi();
     session_.videoExportWorkerResultMessage_.clear();
     session_.videoExportWorkerResultDetails_.clear();
     session_.videoExportWorkerFirstCrashDiagnostics_.clear();

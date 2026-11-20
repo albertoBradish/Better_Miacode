@@ -3,9 +3,9 @@
 #include "export/video_export/BassExportAudioBackend.h"
 #include "export/video_export/RawVideoPipeTransport.h"
 #include "export/video_export/VideoExportAudioRenderPlan.h"
-#include "export/video_export/VideoExportMediaTimeline.h"
 #include "export/video_export/VideoExportQuickRenderBackend.h"
 #include "export/video_export/VideoExportRuntimePolicy.h"
+#include "export/video_export/VideoExportSettings.h"
 #include "core/video/AssetPaths.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "core/chart/IntroConfig.h"
@@ -65,6 +65,7 @@
 #include <windows.h>
 #endif
 #include "export/video_export/VideoExportControllerInternal.h"
+#include "common/RuntimePaths.h"
 
 // VideoExportPreparedTask.cpp — temp-dir registry (single-TU mutable state) and the VideoExportController::exportPreparedTask orchestration method.
 //
@@ -98,7 +99,11 @@ public:
         if (initialized_) {
             return true;
         }
-        rootPath_ = QDir(QDir::tempPath()).filePath(
+        const QString tempRoot = miacode::runtime_paths::tempDirectory();
+        if (tempRoot.isEmpty()) {
+            return false;
+        }
+        rootPath_ = QDir(tempRoot).filePath(
             QStringLiteral("miacode-video-export-%1").arg(QCoreApplication::applicationPid()));
         auto processLock = std::make_unique<QLockFile>(rootPath_ + QStringLiteral(".lock"));
         processLock->setStaleLockTime(0);
@@ -164,7 +169,7 @@ public:
 private:
     void cleanupStaleDirsLocked()
     {
-        QDir tempRoot(QDir::tempPath());
+        QDir tempRoot(miacode::runtime_paths::tempDirectory());
         const QFileInfoList entries = tempRoot.entryInfoList(
             QStringList(QStringLiteral("miacode-video-export-*")),
             QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable | QDir::Writable
@@ -230,6 +235,102 @@ QStringList buildExportAudioFilterParts(
     return filterParts;
 }
 
+struct AudioRenderStage {
+    QString progressText;
+    int preparePercent = 0;
+    int waitPercent = 0;
+    QString startFailure;
+    QString exitFailure;
+};
+
+// Mixes the opening SFX over the export audio and writes it with `outputArgs`.
+bool renderFinalAudioTrack(
+    const QString& ffmpegPath,
+    const QString& mixedAudioWavPath,
+    const QString& introSfxPath,
+    double totalSeconds,
+    double introSoundVolume,
+    const QStringList& outputArgs,
+    const QString& stagedOutputPath,
+    const AudioRenderStage& stage,
+    const std::function<bool(int, const QString&)>& setProgressPercent,
+    VideoExportResult* result,
+    qint64* elapsedMs)
+{
+    if (result == nullptr || stagedOutputPath.isEmpty()) {
+        return false;
+    }
+    if (setProgressPercent(stage.preparePercent, stage.progressText)) {
+        result->message = QStringLiteral("canceled");
+        result->details = withExportLogPath(result->details);
+        appendVideoExportLog(QStringLiteral("canceled"), QStringLiteral("stage=audio_render_prepare"));
+        return false;
+    }
+
+    QElapsedTimer timer;
+    timer.start();
+    QFile::remove(stagedOutputPath);
+    QStringList args{
+        QStringLiteral("-y"),
+        QStringLiteral("-hide_banner"),
+        QStringLiteral("-loglevel"),
+        QStringLiteral("error"),
+        QStringLiteral("-i"),
+        mixedAudioWavPath,
+    };
+    if (!introSfxPath.isEmpty()) {
+        args << QStringLiteral("-i") << introSfxPath;
+    }
+    const QStringList filterParts = buildExportAudioFilterParts(
+        0, introSfxPath.isEmpty() ? -1 : 1, totalSeconds, introSoundVolume);
+    args << QStringLiteral("-filter_complex")
+         << filterParts.join(QLatin1Char(';'))
+         << QStringLiteral("-map")
+         << QStringLiteral("[aout]")
+         << outputArgs
+         << stagedOutputPath;
+    appendVideoExportLog(
+        QStringLiteral("ffmpeg_audio_args"),
+        truncateForLog(ffmpegBaseArgsLog(ffmpegPath, args), 8000));
+
+    QProcess process;
+    process.setProcessChannelMode(QProcess::MergedChannels);
+    process.start(ffmpegPath, args, QIODevice::ReadOnly);
+    if (!process.waitForStarted(5000)) {
+        result->message = stage.startFailure;
+        result->details = withExportLogPath(process.errorString());
+        appendVideoExportLog(QStringLiteral("fail_audio_render_start"), process.errorString());
+        return false;
+    }
+    if (!waitForProcessWithProgress(
+            process,
+            QStringLiteral("ffmpeg_audio_wait_begin"),
+            QStringLiteral("ffmpeg_audio_wait_done"),
+            stage.progressText,
+            stage.waitPercent,
+            setProgressPercent,
+            QStringLiteral("stage=audio_render_wait"),
+            result)) {
+        QFile::remove(stagedOutputPath);
+        return false;
+    }
+    const QString processOutput = processOutputAndErrorForLog(process, 2000);
+    if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
+        result->message = stage.exitFailure;
+        result->details = withExportLogPath(processOutput);
+        appendVideoExportLog(
+            QStringLiteral("fail_audio_render_exit"),
+            QStringLiteral("%1 output=%2")
+                .arg(describeProcessForLog(process), truncateForLog(processOutput, 1000)));
+        QFile::remove(stagedOutputPath);
+        return false;
+    }
+    if (elapsedMs != nullptr) {
+        *elapsedMs = timer.elapsed();
+    }
+    return true;
+}
+
 bool prepareMixedAudioWavOutput(
     const QString& ffmpegPath,
     const QString& mixedAudioWavPath,
@@ -246,92 +347,43 @@ bool prepareMixedAudioWavOutput(
     if (result == nullptr || stagedOutputPath.isEmpty()) {
         return false;
     }
+    if (!introSfxPath.isEmpty()) {
+        return renderFinalAudioTrack(
+            ffmpegPath,
+            mixedAudioWavPath,
+            introSfxPath,
+            totalSeconds,
+            introSoundVolume,
+            {QStringLiteral("-c:a"), QStringLiteral("pcm_s16le"),
+             QStringLiteral("-ar"), QString::number(kMixSampleRate),
+             QStringLiteral("-ac"), QString::number(kMixChannels),
+             QStringLiteral("-f"), QStringLiteral("wav")},
+            stagedOutputPath,
+            {QStringLiteral("Finalizing WAV audio..."), prepareProgressPercent, waitProgressPercent,
+             QStringLiteral("Failed to start WAV finalization."), QStringLiteral("WAV finalization failed.")},
+            setProgressPercent,
+            result,
+            elapsedMs);
+    }
+    // Without an opening SFX the mixed track already is the WAV output.
     if (setProgressPercent(prepareProgressPercent, QStringLiteral("Finalizing WAV audio..."))) {
         result->message = QStringLiteral("canceled");
         result->details = withExportLogPath(result->details);
         appendVideoExportLog(QStringLiteral("canceled"), QStringLiteral("stage=wav_prepare"));
         return false;
     }
-
     QElapsedTimer timer;
     timer.start();
     QFile::remove(stagedOutputPath);
-    if (introSfxPath.isEmpty()) {
-        if (!QFile::copy(mixedAudioWavPath, stagedOutputPath)) {
-            result->message = QStringLiteral("Failed to stage WAV output file.");
-            result->details = withExportLogPath(
-                QStringLiteral("Source: %1\nStaged file: %2")
-                    .arg(mixedAudioWavPath, stagedOutputPath));
-            appendVideoExportLog(
-                QStringLiteral("fail_wav_stage_copy"),
-                QStringLiteral("source=%1 staged=%2")
-                    .arg(mixedAudioWavPath, stagedOutputPath));
-            return false;
-        }
-        if (elapsedMs != nullptr) {
-            *elapsedMs = timer.elapsed();
-        }
-        return true;
-    }
-
-    QStringList args{
-        QStringLiteral("-y"),
-        QStringLiteral("-hide_banner"),
-        QStringLiteral("-loglevel"),
-        QStringLiteral("error"),
-        QStringLiteral("-i"),
-        mixedAudioWavPath,
-    };
-    args << QStringLiteral("-i") << introSfxPath;
-    const QStringList filterParts = buildExportAudioFilterParts(
-        0, 1, totalSeconds, introSoundVolume);
-    args << QStringLiteral("-filter_complex")
-         << filterParts.join(QLatin1Char(';'))
-         << QStringLiteral("-map")
-         << QStringLiteral("[aout]")
-         << QStringLiteral("-c:a")
-         << QStringLiteral("pcm_s16le")
-         << QStringLiteral("-ar")
-         << QString::number(kMixSampleRate)
-         << QStringLiteral("-ac")
-         << QString::number(kMixChannels)
-         << QStringLiteral("-f")
-         << QStringLiteral("wav")
-         << stagedOutputPath;
-    appendVideoExportLog(
-        QStringLiteral("ffmpeg_wav_args"),
-        truncateForLog(ffmpegBaseArgsLog(ffmpegPath, args), 8000));
-
-    QProcess process;
-    process.setProcessChannelMode(QProcess::MergedChannels);
-    process.start(ffmpegPath, args, QIODevice::ReadOnly);
-    if (!process.waitForStarted(5000)) {
-        result->message = QStringLiteral("Failed to start WAV finalization.");
-        result->details = withExportLogPath(process.errorString());
-        appendVideoExportLog(QStringLiteral("fail_wav_start"), process.errorString());
-        return false;
-    }
-    if (!waitForProcessWithProgress(
-            process,
-            QStringLiteral("ffmpeg_wav_wait_begin"),
-            QStringLiteral("ffmpeg_wav_wait_done"),
-            QStringLiteral("Finalizing WAV audio..."),
-            waitProgressPercent,
-            setProgressPercent,
-            QStringLiteral("stage=wav_finalize_wait"),
-            result)) {
-        QFile::remove(stagedOutputPath);
-        return false;
-    }
-    const QString processOutput = processOutputAndErrorForLog(process, 2000);
-    if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
-        result->message = QStringLiteral("WAV finalization failed.");
-        result->details = withExportLogPath(processOutput);
+    if (!QFile::copy(mixedAudioWavPath, stagedOutputPath)) {
+        result->message = QStringLiteral("Failed to stage WAV output file.");
+        result->details = withExportLogPath(
+            QStringLiteral("Source: %1\nStaged file: %2")
+                .arg(mixedAudioWavPath, stagedOutputPath));
         appendVideoExportLog(
-            QStringLiteral("fail_wav_exit"),
-            QStringLiteral("%1 output=%2")
-                .arg(describeProcessForLog(process), truncateForLog(processOutput, 1000)));
-        QFile::remove(stagedOutputPath);
+            QStringLiteral("fail_wav_stage_copy"),
+            QStringLiteral("source=%1 staged=%2")
+                .arg(mixedAudioWavPath, stagedOutputPath));
         return false;
     }
     if (elapsedMs != nullptr) {
@@ -348,13 +400,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
 )
 {
     VideoExportTask task = requestedTask;
-    if (task.sizePreset == VideoExportSizePreset::Target30Mb) {
-        const double aspect = static_cast<double>(task.outputWidth) / qMax(1, task.outputHeight);
-        task.outputHeight = 480;
-        task.outputWidth = qMax(480, qRound(480 * aspect / 2) * 2);
-        // Cover/still backgrounds remain available; video PV is disabled below.
-        task.intro.pvPreview = false;
-    }
     MC_OP("VideoExportController::exportPreparedTask");
     _mc_op_.note(QStringLiteral("output=%1 chart=%2 size=%3x%4 fps=%5")
                      .arg(task.outputPath, task.chartPath)
@@ -367,7 +412,7 @@ VideoExportResult VideoExportController::exportPreparedTask(
     exportTimer.start();
     appendVideoExportLog(
         QStringLiteral("export_begin"),
-        QStringLiteral("output=%1 chart=%2 media=%3 track=%4 skin=%5 notes=%6 start=%7 duration=%8 size=%9x%10 fps=%11 preset=%12 sizePreset=%13 audioKbps=%14")
+        QStringLiteral("output=%1 chart=%2 media=%3 track=%4 skin=%5 notes=%6 start=%7 duration=%8 size=%9x%10 fps=%11 rateMode=%12 quality=%13 sizeLimitMb=%14 videoKbps=%15 audioKbps=%16")
             .arg(task.outputPath, task.chartPath, task.backgroundMediaPath, task.trackPath, task.skinDirectory)
             .arg(task.noteMarkers.size())
             .arg(task.exportStartSeconds, 0, 'f', 6)
@@ -375,10 +420,11 @@ VideoExportResult VideoExportController::exportPreparedTask(
             .arg(task.outputWidth)
             .arg(task.outputHeight)
             .arg(task.fps)
-            .arg(videoExportPresetToken(task.preset))
-            .arg(miacode::video_export::videoExportSizePresetToken(task.sizePreset))
-            .arg(miacode::video_export::effectiveVideoExportAudioBitrateKbps(
-                task.sizePreset, task.audioBitrateKbps))
+            .arg(miacode::video_export::videoRateModeToken(task.encoding.mode))
+            .arg(miacode::video_export::videoQualityLevelToken(task.encoding.quality))
+            .arg(task.encoding.sizeLimitMb)
+            .arg(task.encoding.videoBitrateKbps)
+            .arg(task.audioBitrateKbps)
     );
     if (task.skinDirectory.trimmed().isEmpty()) {
         result.message = QStringLiteral("Skin directory is empty.");
@@ -439,23 +485,21 @@ VideoExportResult VideoExportController::exportPreparedTask(
         return result;
     }
 
-    const int fullFrameCount = audioRenderPlan.frameCount;
     // Dev preview cap: render only the leading frames (intro preview) when
     // task.previewMaxOutputSeconds > 0, leaving the audio/intro plan untouched so
     // timing matches a real export. -shortest (added below) trims the mux.
+    const miacode::video_export::VideoExportTiming timing = miacode::video_export::videoExportTiming(task);
     const bool previewCapped = task.previewMaxOutputSeconds > 0.0;
-    const int frameCount = previewCapped
-        ? qBound(1, qRound(task.previewMaxOutputSeconds * qMax(1, task.fps)), fullFrameCount)
-        : fullFrameCount;
+    const int frameCount = timing.outputFrameCount;
     const double alignedTotalSeconds = audioRenderPlan.alignedTotalSeconds;
     const double timelineOriginSecond = audioRenderPlan.timelineOriginSecond;
     const bool partialRangeExport = !task.fullRangeExport;
     const int frameWidth = qMax(1, task.outputWidth);
     const int frameHeight = qMax(1, task.outputHeight);
     const QSize frameSize(frameWidth, frameHeight);
-    const QString explicitMediaPath = normalizePath(task.backgroundMediaPath);
-    const miacode::video_export::VideoExportSizePolicy sizePolicy =
-        miacode::video_export::videoExportSizePolicy(task.sizePreset);
+    const bool chartPreviewIntro = hasChartPreviewIntro(task.intro, task.fullRangeExport);
+    const bool includeBackground = usesBackgroundMedia(backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode))
+        || chartPreviewIntro;
     // Phase 4c — `task.backgroundMediaPath` is filled by the snapshot
     // builder using `resolveChartVideoPath` (`&video=` override first,
     // then sibling fallback). Trust that as the final choice when it
@@ -463,15 +507,15 @@ VideoExportResult VideoExportController::exportPreparedTask(
     // path inverts the priority (sibling first), which would silently
     // override the chart-author's explicit `&video=` choice.
     QString mediaPath;
-    const bool includeVideoBackground = !sizePolicy.disableVideoBackground;
-    if (miacode::chart_assets::isSupportedBackgroundMediaPath(
-            explicitMediaPath, includeVideoBackground)) {
-        mediaPath = explicitMediaPath;
-    } else {
-        mediaPath = miacode::chart_assets::resolvePreferredBackgroundMediaPath(
-            task.chartPath,
-            explicitMediaPath,
-            includeVideoBackground);
+    const bool includeVideoBackground = includeBackground && task.includePv;
+    if (includeBackground) {
+        const QString explicitMediaPath = normalizePath(task.backgroundMediaPath);
+        if (miacode::chart_assets::isSupportedBackgroundMediaPath(explicitMediaPath, includeVideoBackground)) {
+            mediaPath = explicitMediaPath;
+        } else {
+            mediaPath = miacode::chart_assets::resolvePreferredBackgroundMediaPath(
+                task.chartPath, explicitMediaPath, includeVideoBackground);
+        }
     }
     const bool hasMedia = !mediaPath.isEmpty();
     const bool mediaIsImage = hasMedia && isImageMediaPath(mediaPath);
@@ -480,19 +524,22 @@ VideoExportResult VideoExportController::exportPreparedTask(
         : QString();
     const bool hasTrack = !trackPath.isEmpty();
     const QVector<TimelineNoteMarker>& exportMarkers = audioRenderPlan.exportMarkers;
-    const MuriAnalysisReport exportMuriAnalysisReport = exportMarkers.isEmpty()
+    // Keep notes that began before the selected intro window, including active holds and slides.
+    // A mid-chart cut still needs the movements and posture leading into it.
+    const bool simulatePlay = task.showHandOrderAnnotations && task.muriRenderOptions.renderMode == RenderMode::SimulatedPlay;
+    const QVector<TimelineNoteMarker>& sceneMarkers = chartPreviewIntro || simulatePlay ? task.noteMarkers : exportMarkers;
+    const MuriAnalysisReport exportMuriAnalysisReport = sceneMarkers.isEmpty()
         ? MuriAnalysisReport{}
         : MuriAnalyzer::analyze(
-              exportMarkers,
+              sceneMarkers,
               task.muriRenderOptions,
               task.staticTapOnSlideThresholdSeconds);
     appendVideoExportLog(
         QStringLiteral("input_probe"),
-        QStringLiteral("media=%1 hasMedia=%2 mediaIsImage=%3 videoBackgroundEnabled=%4 track=%5 hasTrack=%6 segmentStart=%7 segmentEnd=%8 leadIn=%9 timelineOrigin=%10 fullRange=%11 markerFilter=marker.second within simulatedWindow frameWindow=%12..%13 visibleWindow=%14..%15 totalSeconds=%16 alignedSeconds=%17 frameCount=%18 size=%19x%20")
+        QStringLiteral("media=%1 hasMedia=%2 mediaIsImage=%3 track=%4 hasTrack=%5 segmentStart=%6 segmentEnd=%7 leadIn=%8 timelineOrigin=%9 fullRange=%10 markerFilter=marker.second within simulatedWindow frameWindow=%11..%12 visibleWindow=%13..%14 totalSeconds=%15 alignedSeconds=%16 frameCount=%17 size=%18x%19")
             .arg(mediaPath)
             .arg(hasMedia ? 1 : 0)
             .arg(mediaIsImage ? 1 : 0)
-            .arg(includeVideoBackground ? 1 : 0)
             .arg(trackPath)
             .arg(hasTrack ? 1 : 0)
             .arg(audioRenderPlan.segmentStartSecond, 0, 'f', 6)
@@ -546,6 +593,28 @@ VideoExportResult VideoExportController::exportPreparedTask(
     const QString encodedTempPath = QDir(tempDir.path()).filePath(QStringLiteral("encoded_raw.mp4"));
     const bool producesMp4 = videoExportProducesMp4(task.outputMode);
     const bool producesWav = videoExportProducesWav(task.outputMode);
+    miacode::video_export::VideoRateInputs rateInputs;
+    rateInputs.width = frameWidth;
+    rateInputs.height = frameHeight;
+    rateInputs.fps = task.fps;
+    rateInputs.videoFrameCount = frameCount;
+    rateInputs.seconds = timing.outputSeconds;
+    rateInputs.audioKbps = miacode::video_export::normalizedVideoExportAudioBitrateKbps(task.audioBitrateKbps);
+    rateInputs.encoder = miacode::video_export::plannedVideoEncoder();
+    miacode::video_export::VideoRatePlan ratePlan =
+        miacode::video_export::planVideoRate(task.encoding, rateInputs);
+    const auto failSizeBudget = [&]() {
+        result.message = QString::fromLatin1(miacode::video_export::kVideoExportSizeBudgetTooSmallMessage);
+        result.details = withExportLogPath(QStringLiteral("sizeLimitMb=%1 seconds=%2 audioKbps=%3")
+            .arg(task.encoding.sizeLimitMb)
+            .arg(rateInputs.seconds, 0, 'f', 3)
+            .arg(rateInputs.audioKbps));
+        appendVideoExportLog(QStringLiteral("fail_size_budget"), result.details);
+        return result;
+    };
+    if (producesMp4 && !ratePlan.valid) {
+        return failSizeBudget();
+    }
     const QString videoOutputPath = videoExportPathWithSuffix(task.outputPath, QStringLiteral("mp4"));
     const QString wavOutputPath = videoExportPathWithSuffix(task.outputPath, QStringLiteral("wav"));
     const QString remuxStagePath = producesMp4
@@ -564,31 +633,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
             .arg(videoExportOutputModeToken(task.outputMode), encodedTempPath, remuxStagePath,
                  videoOutputPath, wavStagePath, wavOutputPath)
     );
-
-    QString ffmpegMediaPath = mediaPath;
-    bool mediaUsesPreprocessedImage = false;
-    if (producesMp4 && hasMedia && mediaIsImage) {
-        const QString stagedImagePath = QDir(tempDir.path()).filePath(QStringLiteral("background_media_staged.png"));
-        QString stagedImageDetail;
-        if (stageStaticBackgroundImageForExport(
-                mediaPath,
-                frameSize,
-                task.backgroundScaleMode,
-                task.layoutSquareScale,
-                stagedImagePath,
-                &stagedImageDetail)) {
-            ffmpegMediaPath = stagedImagePath;
-            mediaUsesPreprocessedImage = true;
-            appendVideoExportLog(QStringLiteral("stage_static_media"), stagedImageDetail);
-        } else {
-            appendVideoExportLog(
-                QStringLiteral("stage_static_media_fallback"),
-                QStringLiteral("source=%1 failure=%2")
-                    .arg(mediaPath)
-                    .arg(stagedImageDetail.isEmpty() ? QStringLiteral("unknown") : stagedImageDetail)
-            );
-        }
-    }
 
     const QString mixedAudioWavPath = QDir(tempDir.path()).filePath(QStringLiteral("export_audio.wav"));
     QString audioBackendError;
@@ -710,6 +754,48 @@ VideoExportResult VideoExportController::exportPreparedTask(
         return result;
     }
 
+    // The final audio is encoded on its own first: a size limit budgets the video
+    // from the exact audio bytes, and the video pass only muxes the track.
+    const QString encodedAudioPath = QDir(tempDir.path()).filePath(QStringLiteral("export_audio.m4a"));
+    qint64 audioEncodeElapsedMs = 0;
+    if (!renderFinalAudioTrack(
+            ffmpegPath,
+            mixedAudioWavPath,
+            introSfxTempPath,
+            alignedTotalSeconds,
+            previewSfxVolumeForKind(task.audioSettings, QStringLiteral("track_start")),
+            {QStringLiteral("-c:a"), QStringLiteral("aac"),
+             QStringLiteral("-b:a"), QStringLiteral("%1k").arg(rateInputs.audioKbps)},
+            encodedAudioPath,
+            {QStringLiteral("Preparing SFX track..."), 4, 4,
+             QStringLiteral("Failed to start audio encoding."), QStringLiteral("Audio encoding failed.")},
+            setProgressPercent,
+            &result,
+            &audioEncodeElapsedMs)) {
+        return result;
+    }
+    rateInputs.audioBytes = QFileInfo(encodedAudioPath).size();
+    ratePlan = miacode::video_export::planVideoRate(task.encoding, rateInputs);
+    if (!ratePlan.valid) {
+        return failSizeBudget();
+    }
+    appendVideoExportLog(
+        QStringLiteral("rate_plan"),
+        QStringLiteral("mode=%1 quality=%2 control=%3 videoKbps=%4 maxRateKbps=%5 bufSizeKbps=%6 audioKbps=%7 audioBytes=%8 sizeLimitBytes=%9 estimatedBytes=%10 seconds=%11 frames=%12 plannedEncoder=%13")
+            .arg(miacode::video_export::videoRateModeToken(ratePlan.mode))
+            .arg(miacode::video_export::videoQualityLevelToken(ratePlan.quality))
+            .arg(miacode::video_export::videoRateControlToken(ratePlan.control))
+            .arg(ratePlan.videoKbps)
+            .arg(ratePlan.maxRateKbps)
+            .arg(ratePlan.bufSizeKbps)
+            .arg(ratePlan.audioKbps)
+            .arg(rateInputs.audioBytes)
+            .arg(ratePlan.sizeLimitBytes)
+            .arg(ratePlan.estimatedBytes)
+            .arg(rateInputs.seconds, 0, 'f', 3)
+            .arg(frameCount)
+            .arg(rateInputs.encoder));
+
     if (setProgressPercent(5, QStringLiteral("Starting ffmpeg..."))) {
         result.message = QStringLiteral("canceled");
         result.details = withExportLogPath(result.details);
@@ -763,357 +849,31 @@ VideoExportResult VideoExportController::exportPreparedTask(
          << QStringLiteral("-i")
          << rawVideoPipePump.pipe.inputPath;
 
-    const double outerDimAlpha = qBound(0.0, 1.0 - task.backgroundBrightnessOuter, 1.0);
-    const double innerDimAlpha = qBound(0.0, 1.0 - task.backgroundBrightnessInner, 1.0);
-    const bool hasDimMask = outerDimAlpha > 1e-6 || innerDimAlpha > 1e-6;
-
-    int mediaInputIndex = -1;
-    int innerMediaMaskInputIndex = -1;
-    int dimMaskInputIndex = -1;
-    int audioInputIndex = -1;
-    int currentInputIndex = 1;
-    const bool innerCircleFitOuterFill =
-        hasMedia
-        && task.backgroundScaleMode == PreviewBackgroundScaleMode::InnerCircleFitOuterFill
-        && !(mediaIsImage && mediaUsesPreprocessedImage);
-    if (hasMedia) {
-        mediaInputIndex = currentInputIndex++;
-        if (mediaIsImage) {
-            args << QStringLiteral("-loop")
-                 << QStringLiteral("1")
-                 << QStringLiteral("-framerate")
-                 << QString::number(task.fps);
-        }
-        args << QStringLiteral("-i") << ffmpegMediaPath;
-    }
-    // PV-preview intro: the chosen PV segment as its own input-seeked stream,
-    // so only that segment is decoded and it lands at output 0 under the card.
-    const bool introPvUnderlay =
-        introAudioEnabled && task.intro.pvPreview && hasMedia && !mediaIsImage;
-    const double introPvSegmentSeconds = miacode::intro::kPvPreviewHoldSeconds;
-    int introPvInputIndex = -1;
-    if (introPvUnderlay) {
-        introPvInputIndex = currentInputIndex++;
-        args << QStringLiteral("-ss")
-             << QString::number(qMax(0.0, task.intro.pvPreviewStartSeconds), 'f', 6)
-             << QStringLiteral("-t")
-             << QString::number(introPvSegmentSeconds, 'f', 6)
-             << QStringLiteral("-i") << ffmpegMediaPath;
-        appendVideoExportLog(
-            QStringLiteral("intro_pv_segment"),
-            QStringLiteral("media=%1 start=%2 duration=%3 inputIndex=%4")
-                .arg(ffmpegMediaPath)
-                .arg(task.intro.pvPreviewStartSeconds, 0, 'f', 3)
-                .arg(introPvSegmentSeconds, 0, 'f', 3)
-                .arg(introPvInputIndex));
-    }
-    if (innerCircleFitOuterFill) {
-        const QString innerMediaMaskPath = QDir(tempDir.path()).filePath(QStringLiteral("inner_circle_media_mask.png"));
-        const QImage innerMediaMask = buildCircularMediaMaskImage(
-            frameWidth,
-            frameHeight,
-            task.layoutSquareScale
-        );
-        if (innerMediaMask.isNull() || !innerMediaMask.save(innerMediaMaskPath)) {
-            result.message = QStringLiteral("Unable to create inner media mask image.");
-            result.details = withExportLogPath(innerMediaMaskPath);
-            appendVideoExportLog(
-                QStringLiteral("fail_inner_media_mask"),
-                QStringLiteral("path=%1 layoutScale=%2")
-                    .arg(innerMediaMaskPath)
-                    .arg(task.layoutSquareScale, 0, 'f', 6)
-            );
-            return result;
-        }
-        innerMediaMaskInputIndex = currentInputIndex++;
-        args << QStringLiteral("-loop")
-             << QStringLiteral("1")
-             << QStringLiteral("-framerate")
-             << QString::number(task.fps)
-             << QStringLiteral("-i")
-             << innerMediaMaskPath;
-        appendVideoExportLog(
-            QStringLiteral("inner_media_mask"),
-            QStringLiteral("path=%1 inputIndex=%2 layoutScale=%3")
-                .arg(innerMediaMaskPath)
-                .arg(innerMediaMaskInputIndex)
-                .arg(task.layoutSquareScale, 0, 'f', 6)
-        );
-    }
-    if (hasDimMask) {
-        const QString dimMaskPath = QDir(tempDir.path()).filePath(QStringLiteral("dim_mask.png"));
-        const double ringRatio =
-            miacode::preview::runtime::PreviewSceneAssetLoader::loadAssetState(
-                task.outlineVariant,
-                task.outlineImagePath).layoutRingDiameterRatio;
-        const QImage dimMask = buildCircularDimMaskImage(
-            frameWidth,
-            frameHeight,
-            outerDimAlpha,
-            innerDimAlpha,
-            ringRatio,
-            task.layoutSquareScale,
-            task.smoothBrightness
-        );
-        if (dimMask.isNull() || !dimMask.save(dimMaskPath)) {
-            result.message = QStringLiteral("Unable to create dim mask image.");
-            result.details = withExportLogPath(dimMaskPath);
-            appendVideoExportLog(
-                QStringLiteral("fail_dim_mask"),
-                QStringLiteral("path=%1 outer=%2 inner=%3 ratio=%4")
-                    .arg(dimMaskPath)
-                    .arg(outerDimAlpha, 0, 'f', 6)
-                    .arg(innerDimAlpha, 0, 'f', 6)
-                    .arg(ringRatio, 0, 'f', 6)
-            );
-            return result;
-        }
-        dimMaskInputIndex = currentInputIndex++;
-        args << QStringLiteral("-loop")
-             << QStringLiteral("1")
-             << QStringLiteral("-framerate")
-             << QString::number(task.fps)
-             << QStringLiteral("-i")
-             << dimMaskPath;
-        appendVideoExportLog(
-            QStringLiteral("dim_mask"),
-            QStringLiteral("path=%1 inputIndex=%2 outer=%3 inner=%4 ringRatio=%5")
-                .arg(dimMaskPath)
-                .arg(dimMaskInputIndex)
-                .arg(outerDimAlpha, 0, 'f', 6)
-                .arg(innerDimAlpha, 0, 'f', 6)
-                .arg(ringRatio, 0, 'f', 6)
-        );
-    }
-    audioInputIndex = currentInputIndex++;
-    args << QStringLiteral("-i") << mixedAudioWavPath;
-    int introAudioInputIndex = -1;
-    if (!introSfxTempPath.isEmpty()) {
-        introAudioInputIndex = currentInputIndex++;
-        args << QStringLiteral("-i") << introSfxTempPath;
-    }
-
-    const QString totalSecondsText = QString::number(alignedTotalSeconds, 'f', 6);
-    const QString baseFillColor = hasMedia ? QStringLiteral("#000000") : QStringLiteral("#1F2833");
+    // The GPU supplies complete opaque frames, including stage media and intro PV;
+    // the audio track is already encoded and is only muxed.
+    args << QStringLiteral("-i") << encodedAudioPath;
+    const bool introPvUnderlay = introAudioEnabled && task.intro.pvPreview && hasMedia && !mediaIsImage;
     QStringList filterParts;
-    filterParts << QStringLiteral("color=c=%1:s=%2x%3:r=%4:d=%5[base_fill]")
-                       .arg(baseFillColor)
-                       .arg(frameWidth)
-                       .arg(frameHeight)
-                       .arg(task.fps)
-                       .arg(totalSecondsText);
-    if (hasMedia) {
-        const int squareSide = qMax(1, qMin(frameWidth, frameHeight));
-        const int squareOffsetX = (frameWidth - squareSide) / 2;
-        const int squareOffsetY = (frameHeight - squareSide) / 2;
-        // Media placement on the output timeline, including the partial-range
-        // pre-roll freeze (PV held on the segment-start frame under the pause
-        // glyph). Shared by the outer/inner/plain chains below.
-        miacode::video_export::MediaTimelinePlan mediaTimelinePlan;
-        mediaTimelinePlan.mediaIsImage = mediaIsImage;
-        mediaTimelinePlan.partialRangeExport = partialRangeExport;
-        mediaTimelinePlan.timelineOriginSecond = timelineOriginSecond;
-        mediaTimelinePlan.leadInSeconds = audioRenderPlan.leadInSeconds;
-        mediaTimelinePlan.alignedTotalSeconds = alignedTotalSeconds;
-        const QStringList mediaTimingFilters =
-            miacode::video_export::buildMediaTimelineFilters(mediaTimelinePlan);
-        appendVideoExportLog(
-            QStringLiteral("media_timeline"),
-            QStringLiteral("image=%1 partialRange=%2 origin=%3 leadIn=%4 total=%5 filters=%6")
-                .arg(mediaIsImage ? 1 : 0)
-                .arg(partialRangeExport ? 1 : 0)
-                .arg(timelineOriginSecond, 0, 'f', 6)
-                .arg(audioRenderPlan.leadInSeconds, 0, 'f', 6)
-                .arg(alignedTotalSeconds, 0, 'f', 6)
-                .arg(mediaTimingFilters.join(QLatin1Char(',')))
-        );
-        const auto appendMediaTimingFilters = [&](QStringList& mediaFilters) {
-            mediaFilters += mediaTimingFilters;
-        };
-
-        if (innerCircleFitOuterFill) {
-            const int innerSide = qMax(
-                1,
-                qRound(miacode::preview_video::layoutSquareSideForStage(
-                    QRectF(0.0, 0.0, static_cast<double>(frameWidth), static_cast<double>(frameHeight)),
-                    task.layoutSquareScale
-                ))
-            );
-            const int innerOffsetX = (frameWidth - innerSide) / 2;
-            const int innerOffsetY = (frameHeight - innerSide) / 2;
-            filterParts << QStringLiteral("[%1:v]split=2[media_outer_in][media_inner_in]").arg(mediaInputIndex);
-
-            QStringList outerFilters;
-            outerFilters << QStringLiteral("scale=%1:%2:force_original_aspect_ratio=increase,crop=%1:%2")
-                                .arg(frameWidth)
-                                .arg(frameHeight)
-                         << QStringLiteral("setsar=1")
-                         << QStringLiteral("fps=%1").arg(task.fps)
-                         << QStringLiteral("format=rgba");
-            appendMediaTimingFilters(outerFilters);
-            filterParts << QStringLiteral("[media_outer_in]%1[media_outer]")
-                               .arg(outerFilters.join(QLatin1Char(',')));
-
-            QStringList innerFilters;
-            innerFilters << QStringLiteral(
-                                "scale=%1:%1:force_original_aspect_ratio=decrease,pad=%1:%1:(ow-iw)/2:(oh-ih)/2:color=black")
-                                .arg(innerSide)
-                         << QStringLiteral("setsar=1")
-                         << QStringLiteral("fps=%1").arg(task.fps)
-                         << QStringLiteral("format=rgba")
-                         << QStringLiteral("pad=%1:%2:%3:%4:color=black@0")
-                                .arg(frameWidth)
-                                .arg(frameHeight)
-                                .arg(innerOffsetX)
-                                .arg(innerOffsetY);
-            appendMediaTimingFilters(innerFilters);
-            filterParts << QStringLiteral("[media_inner_in]%1[media_inner_full]")
-                               .arg(innerFilters.join(QLatin1Char(',')));
-            filterParts << QStringLiteral("[%1:v]fps=%2,format=gray[media_inner_mask]")
-                               .arg(innerMediaMaskInputIndex)
-                               .arg(task.fps);
-            filterParts << QStringLiteral("[media_inner_full][media_inner_mask]alphamerge[media_inner_masked]");
-            filterParts << QStringLiteral("[base_fill][media_outer]overlay=0:0:format=rgb:alpha=straight[base_media_outer]");
-            filterParts << QStringLiteral("[base_media_outer][media_inner_masked]overlay=0:0:format=rgb:alpha=straight[base_media]");
-        } else {
-            QString mediaChain = QStringLiteral("[%1:v]").arg(mediaInputIndex);
-            QStringList mediaFilters;
-            if (!(mediaIsImage && mediaUsesPreprocessedImage)) {
-                if (task.backgroundScaleMode == PreviewBackgroundScaleMode::FitContain) {
-                    mediaFilters << QStringLiteral(
-                        "scale=%1:%2:force_original_aspect_ratio=decrease,pad=%1:%2:(ow-iw)/2:(oh-ih)/2:color=black")
-                                        .arg(frameWidth)
-                                        .arg(frameHeight);
-                } else if (task.backgroundScaleMode == PreviewBackgroundScaleMode::SquareFitContain) {
-                    mediaFilters << QStringLiteral(
-                        "scale=%1:%1:force_original_aspect_ratio=decrease,pad=%1:%1:(ow-iw)/2:(oh-ih)/2:color=black")
-                                        .arg(squareSide);
-                } else {
-                    mediaFilters << QStringLiteral(
-                        "scale=%1:%2:force_original_aspect_ratio=increase,crop=%1:%2")
-                                        .arg(frameWidth)
-                                        .arg(frameHeight);
-                }
-            }
-            mediaFilters << QStringLiteral("setsar=1")
-                         << QStringLiteral("fps=%1").arg(task.fps)
-                         << QStringLiteral("format=rgba");
-            appendMediaTimingFilters(mediaFilters);
-            mediaChain += mediaFilters.join(QLatin1Char(','));
-            mediaChain += QStringLiteral("[media_src]");
-            filterParts << mediaChain;
-            filterParts << QStringLiteral("[base_fill][media_src]overlay=%1:%2:format=rgb:alpha=straight[base_media]")
-                               .arg((task.backgroundScaleMode == PreviewBackgroundScaleMode::SquareFitContain
-                                        && !(mediaIsImage && mediaUsesPreprocessedImage))
-                                        ? squareOffsetX
-                                        : 0)
-                               .arg((task.backgroundScaleMode == PreviewBackgroundScaleMode::SquareFitContain
-                                        && !(mediaIsImage && mediaUsesPreprocessedImage))
-                                        ? squareOffsetY
-                                        : 0);
-        }
-    } else {
-        filterParts << QStringLiteral("[base_fill]null[base_media]");
-    }
-
-    if (hasDimMask) {
-        filterParts << QStringLiteral("[%1:v]fps=%2,format=rgba[dim_mask]")
-                           .arg(dimMaskInputIndex)
-                           .arg(task.fps);
-        filterParts << QStringLiteral("[base_media][dim_mask]overlay=0:0:format=rgb:alpha=straight[base_src]");
-    } else {
-        filterParts << QStringLiteral("[base_media]null[base_src]");
-    }
-
-    // Intro background fade-from-black: black the BACKGROUND base, then fade the
-    // "曲绘" in so it reaches full brightness EXACTLY at chart 0 (the song +
-    // clock_count start). chart 0 in output time is -timelineOriginSecond; the fade
-    // runs for kBgFadeDurationSeconds and ENDS there, so it plays out across the tail
-    // of the full-range lead-in preview (which runs on black before it). This only
-    // touches [base] (the bg); the playfield outline + HUD are composited later as
-    // [overlay_src], so they read normally over the black/fading background.
-    // fade=t=in holds black before start_time, so the bg is black throughout the
-    // covered intro and the early lead-in.
-    //
-    // CRITICAL: `fade` fades ALL planes of the RGBA base, INCLUDING alpha — so
-    // before start_time the base is transparent-black (a=0), not opaque-black. The
-    // final `[base][overlay_src]overlay=...:alpha=straight` step then composites the
-    // playfield over a transparent base, which blows every PARTIAL-alpha overlay
-    // pixel out to full opacity (a 12%-opacity antialiased / judge-area pixel renders
-    // as solid white over the black opening). The trailing `,format=rgb24` re-flattens
-    // the base to fully opaque after the fade — the RGB fade-from-black is preserved,
-    // only the (now-bogus) alpha plane is dropped — restoring correct straight-alpha
-    // compositing. Most visible with the heavy "判定区" outline (~30% partial-alpha
-    // pixels) over the still-black opening, before the bg has faded in.
-    if (introAudioEnabled) {
-        const double chartZeroOutputSecond = -timelineOriginSecond;
-        const double bgFadeStartSecond =
-            qMax(0.0, chartZeroOutputSecond - miacode::intro::kBgFadeDurationSeconds);
-        filterParts << QStringLiteral("[base_src]fade=t=in:st=%1:d=%2:color=black,format=rgb24[%3]")
-                           .arg(QString::number(bgFadeStartSecond, 'f', 6))
-                           .arg(QString::number(miacode::intro::kBgFadeDurationSeconds, 'f', 6))
-                           .arg(introPvUnderlay ? QStringLiteral("base_faded") : QStringLiteral("base"));
-        if (introPvUnderlay) {
-            // The PV segment sits on the faded (black) base for the card hold,
-            // full-frame and undimmed; the overlay's own fade-from-black and the
-            // cycle-2 hard cut frame it. Short media holds its last frame, and
-            // EOF passes the base through for the rest of the export.
-            filterParts << QStringLiteral(
-                               "[%1:v]scale=%2:%3:force_original_aspect_ratio=increase,crop=%2:%3,"
-                               "setsar=1,fps=%4,format=rgb24,setpts=PTS-STARTPTS,"
-                               "tpad=stop_mode=clone:stop_duration=%5,trim=duration=%5[intro_pv]")
-                               .arg(introPvInputIndex)
-                               .arg(frameWidth)
-                               .arg(frameHeight)
-                               .arg(task.fps)
-                               .arg(QString::number(introPvSegmentSeconds, 'f', 6));
-            filterParts << QStringLiteral(
-                "[base_faded][intro_pv]overlay=0:0:eof_action=pass:format=rgb,format=rgb24[base]");
-        }
-    } else {
-        filterParts << QStringLiteral("[base_src]null[base]");
-    }
-
-    // Quick export frames are already read back in top-left raster order.
-    filterParts << QStringLiteral("[0:v]format=rgba[overlay_src]");
-    filterParts += buildExportAudioFilterParts(
-        audioInputIndex, introAudioInputIndex, alignedTotalSeconds,
-        previewSfxVolumeForKind(task.audioSettings, QStringLiteral("track_start")));
+    filterParts << QStringLiteral("[0:v]null[vout]");
 
     const SystemMemoryInfo memoryInfo = querySystemMemoryInfo();
     appendVideoExportLog(QStringLiteral("memory_snapshot"), memoryInfoToLog(memoryInfo));
     QString encoderProbeLog;
-    // The export preset controls both readback and encoder tuning. Fast prefers
-    // hardware encoding and uses a faster libx264 fallback; HighQuality keeps
-    // the existing compactness-oriented policy.
-    VideoEncoderConfig encoderConfig = chooseVideoEncoder(
-        ffmpegPath,
-        frameWidth,
-        frameHeight,
-        task.fps,
-        task.preset,
-        miacode::video_export::videoExportTargetBytes(task.sizePreset) ? VideoExportSizePreset::Standard : task.sizePreset,
-        memoryInfo,
-        exportConfig,
-        &encoderProbeLog
-    );
-    qint64 targetVideoKbps = miacode::video_export::videoExportTargetBitrateKbps(
-        task.sizePreset, alignedTotalSeconds,
-        miacode::video_export::effectiveVideoExportAudioBitrateKbps(task.sizePreset, task.audioBitrateKbps));
-    if (miacode::video_export::videoExportTargetBytes(task.sizePreset)) {
-        if (targetVideoKbps < 64) {
-            result.message = QStringLiteral("The selected size budget is too small for this duration and audio bitrate.");
-            return result;
-        }
-        encoderConfig = VideoEncoderConfig{};
-        encoderConfig.codec = QStringLiteral("libx264");
-        encoderConfig.isHardware = false;
-        encoderConfig.extraArgs = {QStringLiteral("-preset"), QStringLiteral("veryfast"),
-            QStringLiteral("-b:v"), QStringLiteral("%1k").arg(targetVideoKbps),
-            QStringLiteral("-maxrate"), QStringLiteral("%1k").arg(targetVideoKbps),
-            QStringLiteral("-bufsize"), QStringLiteral("%1k").arg(targetVideoKbps * 2)};
-    }
+    const VideoEncoderConfig encoderConfig = chooseVideoEncoder(
+        ffmpegPath, ratePlan, frameWidth, frameHeight, task.fps, exportConfig, &encoderProbeLog);
     appendVideoExportLog(QStringLiteral("encoder_select"), encoderProbeLog);
+    if (encoderConfig.codec.isEmpty()) {
+        result.message = QStringLiteral("Unable to select video encoder.");
+        result.details = withExportLogPath(encoderProbeLog);
+        appendVideoExportLog(QStringLiteral("fail_video_encoder_select"), encoderProbeLog);
+        return result;
+    }
+    appendVideoExportLog(QStringLiteral("encoding_parameters"),
+        QStringLiteral("codec=%1 rate=%2 pixelFormat=%3 args=%4")
+            .arg(encoderConfig.codec)
+            .arg(miacode::video_export::videoRateControlToken(encoderConfig.rateControl))
+            .arg(encoderConfig.needsVaapiHwUpload ? QStringLiteral("vaapi_upload") : encoderConfig.pixelFormat)
+            .arg(encoderConfig.codecArgs.join(QLatin1Char(' '))));
     if (encoderConfig.needsVaapiHwUpload) {
         if (encoderConfig.vaapiDevicePath.isEmpty()) {
             result.message = QStringLiteral("VAAPI encoder selected but no DRM render node was found.");
@@ -1151,7 +911,7 @@ VideoExportResult VideoExportController::exportPreparedTask(
     const int effectiveEncoderThreads = encoderThreads;
     appendVideoExportLog(
         QStringLiteral("thread_plan"),
-        QStringLiteral("ideal=%1 encoderThreads=%2 effectiveEncoderThreads=%3 filterThreads=%4 encoder=%5 hw=%6 availMiB=%7 preset=%8")
+        QStringLiteral("ideal=%1 encoderThreads=%2 effectiveEncoderThreads=%3 filterThreads=%4 encoder=%5 hw=%6 availMiB=%7 rate=%8")
             .arg(idealThreadCount)
             .arg(encoderThreads)
             .arg(effectiveEncoderThreads)
@@ -1159,15 +919,15 @@ VideoExportResult VideoExportController::exportPreparedTask(
             .arg(encoderConfig.codec)
             .arg(encoderConfig.isHardware ? 1 : 0)
             .arg(memoryInfo.valid ? QString::number(availMiB) : QStringLiteral("na"))
-            .arg(videoExportPresetToken(task.preset))
+            .arg(miacode::video_export::videoRateControlToken(encoderConfig.rateControl))
     );
 
     VideoExportQuickRenderBackend exportCanvas;
     QString quickBootstrapError;
     if (!exportCanvas.bootstrap(
             task,
-            hasMedia,
-            exportMarkers,
+            mediaPath,
+            sceneMarkers,
             exportMuriAnalysisReport,
             frameSize,
             &quickBootstrapError)) {
@@ -1267,11 +1027,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
             offscreenInitError.isEmpty() ? result.message : offscreenInitError);
         return result;
     }
-    const bool usePremultipliedPipe = miacode::video_export::shouldUsePremultipliedExportPipe(
-        d3d11SessionActive,
-        task.preset == VideoExportPreset::Fast,
-        exportConfig.premultipliedPipeOverride);
-    exportCanvas.setPreservePremultipliedReadback(usePremultipliedPipe);
 
     // Pre-roll maimai track-start intro (full-range exports only). The audio
     // plan already front-padded the timeline by introLeadSeconds, so frames
@@ -1283,7 +1038,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
         && task.fullRangeExport
         && audioRenderPlan.introFrameCount > 0;
     const int introHudRevealFrame = introDurationFrames(task.intro);
-    const int introPvHoldFrames = miacode::intro::kPvPreviewHoldFrames;
     if (introEnabled) {
         QString introError;
         if (!exportCanvas.setupIntro(task.intro, introPvUnderlay, &introError)) {
@@ -1302,29 +1056,12 @@ VideoExportResult VideoExportController::exportPreparedTask(
                     .arg(introPvUnderlay ? 1 : 0));
         }
     }
-    // On OpenGL, the export preset selects the readback path:
-    //   HighQuality (default) -> synchronous non-PBO readback
-    //       (renderOverlayFrameOffscreen): glReadPixels through a CPU pointer
-    //       the driver must serialize, so it cannot tear. ~20-30% slower at
-    //       1080p60.
-    //   Fast -> pipelined async glReadPixels(FBO->PBO): faster, but on some
-    //       GL drivers prone to per-frame horizontal-band tearing that the
-    //       in-engine fence could not fully prevent (observed on a GL 4.6
-    //       context whose fence wait never failed). Speed-over-fidelity.
-    // D3D11 uses its staging-ring pipeline in both presets because it retains
-    // the same deterministic Map/convert contract as the synchronous path.
-    //
-    // MIACODE_EXPORT_DISABLE_PBO_READBACK=1 is a hard diagnostic override that
-    // forces the synchronous path regardless of the quality choice.
-    const bool highQualityForcesSyncReadback =
-        task.preset == VideoExportPreset::HighQuality;
     const bool disablePboReadbackViaEnv =
         qEnvironmentVariableIntValue("MIACODE_EXPORT_DISABLE_PBO_READBACK") == 1;
     const bool requestOffscreenPboReadback =
         useOffscreenGpu
         && exportConfig.renderBackend.requestOffscreenPboReadback
-        && !disablePboReadbackViaEnv
-        && (d3d11SessionActive || !highQualityForcesSyncReadback);
+        && !disablePboReadbackViaEnv;
     QString offscreenPboError;
     bool useOffscreenPboReadback = false;
     if (requestOffscreenPboReadback) {
@@ -1341,11 +1078,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
         appendVideoExportLog(
             QStringLiteral("pbo_readback_disabled_via_env"),
             QStringLiteral("MIACODE_EXPORT_DISABLE_PBO_READBACK=1"));
-    }
-    if (highQualityForcesSyncReadback && !d3d11SessionActive) {
-        appendVideoExportLog(
-            QStringLiteral("pbo_readback_disabled_by_quality"),
-            QStringLiteral("exportQuality=high_quality readback=synchronous"));
     }
     // P1/P5.3 — spell out which offscreen session the export uses (OpenGL
     // QQuickRenderControl by default; d3d11_qrhi via the hidden switch), the
@@ -1386,26 +1118,8 @@ VideoExportResult VideoExportController::exportPreparedTask(
                                     : QStringLiteral("GL_RGBA8"))
     );
     appendVideoExportLog(
-        QStringLiteral("premultiplied_pipe"),
-        QStringLiteral("override=%1 enabled=%2 backend=%3 preset=%4")
-            .arg(exportConfig.premultipliedPipeOverride.has_value()
-                     ? (exportConfig.premultipliedPipeOverride.value() ? QStringLiteral("on")
-                                                                       : QStringLiteral("off"))
-                     : QStringLiteral("default"))
-            .arg(usePremultipliedPipe ? 1 : 0)
-            .arg(d3d11SessionActive ? QStringLiteral("d3d11_qrhi")
-                                    : QStringLiteral("opengl"))
-            .arg(task.preset == VideoExportPreset::Fast ? QStringLiteral("fast")
-                                                        : QStringLiteral("high_quality")));
-
-    // Fast D3D11 preserves premultiplied bytes by default and changes ffmpeg's
-    // overlay alpha mode. HighQuality, OpenGL, and the rollback override keep
-    // packing straight RGBA8888.
-    const QString overlayAlphaMode = usePremultipliedPipe
-        ? QStringLiteral("premultiplied")
-        : QStringLiteral("straight");
-    filterParts << QStringLiteral("[base][overlay_src]overlay=0:0:format=rgb:alpha=%1[vout]")
-                       .arg(overlayAlphaMode);
+        QStringLiteral("frame_composition"),
+        QStringLiteral("backend=gpu readback=opaque_rgba stage_media=%1").arg(mediaPath));
     const QString mappedVideoPad = encoderConfig.needsVaapiHwUpload
         ? QStringLiteral("[vout_hw]")
         : QStringLiteral("[vout]");
@@ -1419,43 +1133,30 @@ VideoExportResult VideoExportController::exportPreparedTask(
     args << QStringLiteral("-map")
          << mappedVideoPad
          << QStringLiteral("-map")
-         << QStringLiteral("[aout]")
-         << QStringLiteral("-fps_mode")
-         << QStringLiteral("cfr")
+         << QStringLiteral("1:a:0")
+         // Output -r already enforces CFR; -fps_mode is unavailable in FFmpeg 5.0.
          << QStringLiteral("-r")
          << QString::number(task.fps)
-         << QStringLiteral("-frames:v")
-         << QString::number(frameCount)
+         // The pipe carries exactly frameCount frames (see frame_conservation). A
+         // -frames:v limit here made ffmpeg drop the last copied AAC packet behind
+         // a hardware encoder's output delay.
          << QStringLiteral("-g")
-         << QString::number(qMax(1, task.fps * sizePolicy.gopSeconds))
+         << QString::number(qMax(1, task.fps * miacode::video_export::kVideoGopSeconds))
          << QStringLiteral("-c:v")
          << encoderConfig.codec;
     if (!encoderConfig.needsVaapiHwUpload) {
-        args << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p");
+        args << QStringLiteral("-pix_fmt") << encoderConfig.pixelFormat;
     }
-    args << QStringLiteral("-c:a")
-         << QStringLiteral("aac")
-         << QStringLiteral("-b:a")
-         // Clamp into the dropdown's accepted range so any out-of-band
-         // value (e.g. an old preferences file with a stale int) still
-         // produces a valid AAC encoder argument. 320k is the AAC LC
-         // ceiling for stereo at 44.1/48 kHz; below 96k AAC quality
-         // collapses, so 96k is our floor.
-         << QStringLiteral("%1k")
-                .arg(miacode::video_export::effectiveVideoExportAudioBitrateKbps(
-                    task.sizePreset, task.audioBitrateKbps));
+    args << QStringLiteral("-c:a") << QStringLiteral("copy");
     if (previewCapped) {
-        // -frames:v already stops the video at the capped count; -shortest trims the
-        // (still full-length) audio so the preview output ends with the video.
+        // Only the capped frame count is rendered; -shortest trims the (still
+        // full-length) audio so the preview output ends with the video.
         args << QStringLiteral("-shortest");
-    }
-    if (encoderConfig.explicitBframes >= 0) {
-        args << QStringLiteral("-bf") << QString::number(encoderConfig.explicitBframes);
     }
     if (!encoderConfig.isHardware) {
         args << QStringLiteral("-threads") << QString::number(effectiveEncoderThreads);
     }
-    args << encoderConfig.extraArgs;
+    args << encoderConfig.codecArgs;
     args << encodedTempPath;
     appendVideoExportLog(
         QStringLiteral("ffmpeg_encode_args"),
@@ -1597,7 +1298,7 @@ VideoExportResult VideoExportController::exportPreparedTask(
         // to pay the compile cost and risk coming back as a transparent,
         // black-compositing overlay).
         const double warmupPlayheadSeconds = qMax(0.0, timelineOriginSecond);
-        const QImage warmupFrame = exportCanvas.renderOverlayFrameOffscreen(
+        const QImage warmupFrame = exportCanvas.renderFrameOffscreen(
             frameSize,
             warmupPlayheadSeconds,
             task.showTimestamp,
@@ -1617,15 +1318,22 @@ VideoExportResult VideoExportController::exportPreparedTask(
         }
     }
     if (diagObjectHashEnabled) {
-        diagReferenceCanvas.copyRenderStateFrom(exportCanvas);
+        QString copyError;
+        if (!diagReferenceCanvas.copyRenderStateFrom(exportCanvas, &copyError)) {
+            result.message = QStringLiteral("Failed to initialize diagnostic stage media.");
+            result.details = withExportLogPath(copyError);
+            return result;
+        }
         diagReferenceCanvas.setBackgroundBrightnessOuter(task.backgroundBrightnessOuter);
         diagReferenceCanvas.setBackgroundBrightnessInner(task.backgroundBrightnessInner);
         diagReferenceCanvas.setLayoutSquareScale(task.layoutSquareScale);
         diagReferenceCanvas.setFireworkBrightness(task.fireworkBrightness);
+        diagReferenceCanvas.setFireworkStyle(task.fireworkStyle);
         diagReferenceCanvas.setSmoothBrightness(task.smoothBrightness);
         diagReferenceCanvas.setBackgroundScaleMode(task.backgroundScaleMode);
         diagReferenceCanvas.setTapFlowSpeed(task.tapFlowSpeed);
         diagReferenceCanvas.setTouchFlowSpeed(task.touchFlowSpeed);
+        diagReferenceCanvas.setStarFadeTiming(task.starFadeTiming);
         diagReferenceCanvas.setTapJudgeTextDistance(task.tapJudgeTextDistance);
         diagReferenceCanvas.setShowDebugInfo(false);
         diagReferenceCanvas.setNoteMarkers({});
@@ -1750,7 +1458,7 @@ VideoExportResult VideoExportController::exportPreparedTask(
         if (diagObjectHashEnabled && diagReferenceReady) {
             QImage referenceFrame;
             if (diagReferenceUseOffscreen) {
-                referenceFrame = diagReferenceCanvas.renderOverlayFrameOffscreen(
+                referenceFrame = diagReferenceCanvas.renderFrameOffscreen(
                     frameSize,
                     exportSecond,
                     task.showTimestamp,
@@ -1758,7 +1466,7 @@ VideoExportResult VideoExportController::exportPreparedTask(
                 );
             }
             if (referenceFrame.isNull()) {
-                referenceFrame = diagReferenceCanvas.renderOverlayFrame(
+                referenceFrame = diagReferenceCanvas.renderFrame(
                     frameSize,
                     exportSecond,
                     task.showTimestamp,
@@ -1868,7 +1576,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
         qint64 packedFrameSize = 0;
         if (!preparePackedRgbaFrame(
                 frame,
-                usePremultipliedPipe,
                 &convertedRgbaFrame,
                 &packedFrameScratch,
                 &packedFrameData,
@@ -1886,70 +1593,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
         const quint64 packedHash = diagPipeHashEnabled
             ? fnv1a64Bytes(packedFrameData, packedFrameSize)
             : 0;
-
-        // Alpha-encoding sanity probe. We are claiming the bytes about to
-        // hit the FFmpeg pipe are straight-alpha RGBA8888 (declared via
-        // `-pix_fmt rgba` and consumed under `overlay=...:alpha=straight`).
-        // Premultiplied data masquerading as straight would manifest as
-        // every partial-alpha pixel having max(R,G,B) <= A. Conversely a
-        // single sampled pixel with max(R,G,B) > A is definitive proof
-        // the data really is straight.
-        //
-        // Sampling is gated to a tiny fixed set of frames (0, 1, 30, 60,
-        // 120) and a handful of fixed positions to keep the log to
-        // <= 5 short lines per export.
-        if (!usePremultipliedPipe
-            && packedFrameData != nullptr
-            && packedFrameSize >= static_cast<qint64>(frameWidth) * frameHeight * 4
-            && frameWidth > 0
-            && frameHeight > 0
-            && (frameIndex == 0 || frameIndex == 1 || frameIndex == 30
-                || frameIndex == 60 || frameIndex == 120)) {
-            static const double kSampleNorm[][2] = {
-                {0.50, 0.50}, {0.50, 0.20}, {0.50, 0.80},
-                {0.20, 0.50}, {0.80, 0.50}, {0.70, 0.30},
-                {0.55, 0.70}, {0.05, 0.05}, {0.95, 0.95},
-            };
-            const int sampleCount = static_cast<int>(sizeof(kSampleNorm) / sizeof(kSampleNorm[0]));
-            QStringList samplePieces;
-            samplePieces.reserve(sampleCount);
-            int partialAlphaCount = 0;
-            int strictlyStraightCount = 0;
-            for (int i = 0; i < sampleCount; ++i) {
-                const int sx = qBound(0, static_cast<int>(kSampleNorm[i][0] * frameWidth), frameWidth - 1);
-                const int sy = qBound(0, static_cast<int>(kSampleNorm[i][1] * frameHeight), frameHeight - 1);
-                const qint64 off = (static_cast<qint64>(sy) * frameWidth + sx) * 4;
-                const uchar r = static_cast<uchar>(packedFrameData[off + 0]);
-                const uchar g = static_cast<uchar>(packedFrameData[off + 1]);
-                const uchar b = static_cast<uchar>(packedFrameData[off + 2]);
-                const uchar a = static_cast<uchar>(packedFrameData[off + 3]);
-                const int rgbMax = qMax(qMax(r, g), b);
-                const bool partialAlpha = (a > 0 && a < 255);
-                const bool strictlyStraight = partialAlpha && (rgbMax > a);
-                if (partialAlpha) ++partialAlphaCount;
-                if (strictlyStraight) ++strictlyStraightCount;
-                samplePieces.append(QStringLiteral("(%1,%2)%3/%4/%5/%6%7")
-                    .arg(sx).arg(sy)
-                    .arg(static_cast<int>(r)).arg(static_cast<int>(g))
-                    .arg(static_cast<int>(b)).arg(static_cast<int>(a))
-                    .arg(strictlyStraight ? QStringLiteral("!") : QString()));
-            }
-            const QString alphaVerdict = strictlyStraightCount > 0
-                ? QStringLiteral("straight_confirmed")
-                : (partialAlphaCount == 0
-                    ? QStringLiteral("no_partial_alpha_sampled")
-                    : QStringLiteral("ambiguous_no_strict_straight_pixel"));
-            appendVideoExportLog(
-                QStringLiteral("alpha_sample"),
-                QStringLiteral("frame=%1 size=%2x%3 verdict=%4 partial=%5 strict_straight=%6 samples=%7")
-                    .arg(frameIndex)
-                    .arg(frameWidth).arg(frameHeight)
-                    .arg(alphaVerdict)
-                    .arg(partialAlphaCount)
-                    .arg(strictlyStraightCount)
-                    .arg(samplePieces.join(QLatin1Char(' ')))
-            );
-        }
 
         if (diagPipeHashEnabled && !traceItems.isEmpty()) {
             ++diagPipeHashObjectFrames;
@@ -2318,11 +1961,7 @@ VideoExportResult VideoExportController::exportPreparedTask(
         const bool inIntroCover =
             introEnabled && introAuthoringFrame < introHudRevealFrame;
         if (introEnabled) {
-            exportCanvas.setIntroFrame(introAuthoringFrame, inIntroWindow);
-            // The PV-preview hold leaves the overlay transparent around the card;
-            // the chart (still frozen at its lead-in) must not show over the PV.
-            exportCanvas.setChartLayersVisible(
-                !(task.intro.pvPreview && introAuthoringFrame < introPvHoldFrames));
+            exportCanvas.setIntroFrame(introAuthoringFrame, inIntroWindow, outputSecond);
         }
         const bool showTimestampThisFrame = task.showTimestamp && !inIntroCover;
         const bool showObjectStatsThisFrame = task.showObjectStatsHud && !inIntroCover;
@@ -2357,6 +1996,7 @@ VideoExportResult VideoExportController::exportPreparedTask(
 
         ExportFrameRenderParams renderParams;
         renderParams.frameIndex = frameIndex;
+        renderParams.outputSecond = outputSecond;
         renderParams.exportSecond = exportSecond;
         renderParams.showTimestamp = showTimestampThisFrame;
         renderParams.showObjectStatsHud = showObjectStatsThisFrame;
@@ -2750,6 +2390,17 @@ VideoExportResult VideoExportController::exportPreparedTask(
         return result;
     }
     const qint64 remuxElapsedMs = remuxTimer.elapsed();
+    const qint64 videoOutputBytes = QFileInfo(remuxStagePath).size();
+    if (ratePlan.sizeLimitBytes > 0 && videoOutputBytes > ratePlan.sizeLimitBytes) {
+        // The file is still delivered. The encoder ignored its VBV bound, so its
+        // profile in VideoExportEncoderProfiles.cpp needs correcting.
+        appendVideoExportLog(
+            QStringLiteral("size_cap_exceeded"),
+            QStringLiteral("codec=%1 limitBytes=%2 actualBytes=%3")
+                .arg(encoderConfig.codec)
+                .arg(ratePlan.sizeLimitBytes)
+                .arg(videoOutputBytes));
+    }
 
     qint64 wavFinalizeElapsedMs = 0;
     if (producesWav) {
@@ -2769,53 +2420,6 @@ VideoExportResult VideoExportController::exportPreparedTask(
             return result;
         }
     }
-
-    const qint64 targetBytes = miacode::video_export::videoExportTargetBytes(task.sizePreset);
-    const QString sizeSourcePath = QDir(tempDir.path()).filePath(QStringLiteral("size_source.mp4"));
-    if (targetBytes && QFileInfo(remuxStagePath).size() > targetBytes && !QFile::copy(remuxStagePath, sizeSourcePath)) {
-        result.message = QStringLiteral("Unable to prepare file size correction.");
-        QFile::remove(remuxStagePath);
-        return result;
-    }
-    for (int attempt = 0; targetBytes && QFileInfo(remuxStagePath).size() > targetBytes && attempt < 3; ++attempt) {
-        const qint64 actualBytes = QFileInfo(remuxStagePath).size();
-        targetVideoKbps = qMax<qint64>(32, static_cast<qint64>(targetVideoKbps * targetBytes / static_cast<double>(actualBytes) * 0.93));
-        const QString correctedPath = QDir(tempDir.path()).filePath(QStringLiteral("size_corrected_%1.mp4").arg(attempt));
-        QStringList correctionArgs{QStringLiteral("-y"), QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"), QStringLiteral("error"),
-            QStringLiteral("-i"), sizeSourcePath, QStringLiteral("-map"), QStringLiteral("0:v:0"),
-            QStringLiteral("-map"), QStringLiteral("0:a:0?"), QStringLiteral("-c:v"), QStringLiteral("libx264"),
-            QStringLiteral("-preset"), QStringLiteral("veryfast"), QStringLiteral("-threads"), QStringLiteral("4"),
-            QStringLiteral("-b:v"), QStringLiteral("%1k").arg(targetVideoKbps),
-            QStringLiteral("-maxrate"), QStringLiteral("%1k").arg(targetVideoKbps),
-            QStringLiteral("-bufsize"), QStringLiteral("%1k").arg(targetVideoKbps * 2),
-            QStringLiteral("-c:a"), QStringLiteral("copy"), QStringLiteral("-movflags"), QStringLiteral("+faststart"), correctedPath};
-        QProcess correction;
-        correction.setProcessChannelMode(QProcess::MergedChannels);
-        correction.start(ffmpegPath, correctionArgs);
-        if (!correction.waitForStarted(5000)
-            || !waitForProcessWithProgress(correction, QStringLiteral("size_correction_begin"), QStringLiteral("size_correction_end"),
-                QStringLiteral("Adjusting bitrate to the actual file size..."), 97, setProgressPercent,
-                QStringLiteral("size_correction"), &result)
-            || correction.exitStatus() != QProcess::NormalExit || correction.exitCode() != 0) {
-            if (result.message != QLatin1String("canceled")) result.message = QStringLiteral("Unable to meet the selected file size budget.");
-            result.details = processOutputAndErrorForLog(correction, 2000);
-            QFile::remove(remuxStagePath);
-            return result;
-        }
-        QString correctionError;
-        if (!replaceOutputFileAtomicallyBestEffort(correctedPath, remuxStagePath, &correctionError)) {
-            result.message = correctionError;
-            QFile::remove(remuxStagePath);
-            return result;
-        }
-    }
-    if (targetBytes && QFileInfo(remuxStagePath).size() > targetBytes) {
-        result.message = QStringLiteral("The completed video exceeds the selected file size budget.");
-        QFile::remove(remuxStagePath);
-        return result;
-    }
-    appendVideoExportLog(QStringLiteral("size_budget_verified"), QStringLiteral("budget=%1 actual=%2")
-        .arg(targetBytes).arg(QFileInfo(remuxStagePath).size()));
 
     QString promoteError;
     if (!replaceOutputFileAtomicallyBestEffort(remuxStagePath, videoOutputPath, &promoteError)) {
@@ -2860,14 +2464,28 @@ VideoExportResult VideoExportController::exportPreparedTask(
     setProgressPercent(100, QStringLiteral("Export completed."));
     result.success = true;
     result.message = QStringLiteral("ok");
+    // What the page promised against what was written.
+    appendVideoExportLog(
+        QStringLiteral("encoding_report"),
+        QStringLiteral("codec=%1 rate=%2 videoKbps=%3 audioKbps=%4 frames=%5 limitBytes=%6 estimatedBytes=%7 actualBytes=%8")
+            .arg(encoderConfig.codec)
+            .arg(miacode::video_export::videoRateControlToken(encoderConfig.rateControl))
+            .arg(encoderConfig.rateControl == miacode::video_export::VideoRateControl::ConstantQuality
+                     ? 0 : ratePlan.videoKbps)
+            .arg(ratePlan.audioKbps)
+            .arg(frameCount)
+            .arg(ratePlan.sizeLimitBytes)
+            .arg(ratePlan.estimatedBytes)
+            .arg(videoOutputBytes));
     appendVideoExportLog(
         QStringLiteral("stage_timing_summary"),
-        QStringLiteral("audioMixMs=%1 frameProductionMs=%2 encodePipelineMs=%3 remuxMs=%4 wavFinalizeMs=%5")
+        QStringLiteral("audioMixMs=%1 audioEncodeMs=%6 frameProductionMs=%2 encodePipelineMs=%3 remuxMs=%4 wavFinalizeMs=%5")
             .arg(audioMixElapsedMs)
             .arg(frameProductionElapsedMs)
             .arg(encodePipelineElapsedMs)
             .arg(remuxElapsedMs)
-            .arg(wavFinalizeElapsedMs));
+            .arg(wavFinalizeElapsedMs)
+            .arg(audioEncodeElapsedMs));
     const qint64 exportElapsedMs = exportTimer.elapsed();
     const double realtimeFactor = exportElapsedMs > 0
         ? alignedTotalSeconds * 1000.0 / static_cast<double>(exportElapsedMs)

@@ -57,6 +57,9 @@ AnalysisService::AnalysisService(
     diagnosticsTimer_.setSingleShot(true);
     diagnosticsTimer_.setInterval(kDiagnosticsIdleDelayMs);
     connect(&diagnosticsTimer_, &QTimer::timeout, this, &AnalysisService::dispatchDiagnostics);
+    playTimer_.setSingleShot(true);
+    playTimer_.setInterval(kDiagnosticsIdleDelayMs);
+    connect(&playTimer_, &QTimer::timeout, this, &AnalysisService::dispatchPlayAnalysis);
     connect(workspace_, &ChartWorkspace::changed, this, [this](quint64) {
         requestAnalysis();
     });
@@ -77,6 +80,8 @@ void AnalysisService::shutdown()
 {
     shuttingDown_ = true;
     cancelPendingAnalysis();
+    playTimer_.stop();
+    if (playCancellation_) playCancellation_->store(true, std::memory_order_relaxed);
 }
 
 void AnalysisService::cancelPendingAnalysis()
@@ -122,9 +127,16 @@ void AnalysisService::setMuriParameters(
         || renderOptions.handRadiusPx != renderOptions_.handRadiusPx
         || !qFuzzyCompare(effectiveThreshold(staticTapOnSlideThresholdSeconds) + 1.0,
                           effectiveThreshold(staticTapOnSlideThresholdSeconds_) + 1.0);
+    const bool playChanged = (renderOptions.renderMode == RenderMode::SimulatedPlay)
+            != (renderOptions_.renderMode == RenderMode::SimulatedPlay)
+        || renderOptions.playAnalysisEnabled != renderOptions_.playAnalysisEnabled
+        || renderOptions.handRadiusPx != renderOptions_.handRadiusPx || renderOptions.playProfile != renderOptions_.playProfile
+        || renderOptions.playTapFlowSpeed != renderOptions_.playTapFlowSpeed
+        || renderOptions.playTouchFlowSpeed != renderOptions_.playTouchFlowSpeed || renderOptions.wifiNeedC != renderOptions_.wifiNeedC;
     renderOptions_ = renderOptions;
     staticTapOnSlideThresholdSeconds_ = staticTapOnSlideThresholdSeconds;
     if (analysisChanged && parsedSnapshot_.available) requestDiagnostics();
+    if (playChanged) refreshPlayAnalysis(parseRequest(*workspace_));
 }
 
 void AnalysisService::requestAnalysis()
@@ -134,6 +146,13 @@ void AnalysisService::requestAnalysis()
     const bool reuseParse = sameParseSource(parsedSnapshot_, request);
     const bool reuseDiagnostics = reuseParse && snapshot_.available;
     cancelPendingAnalysis();
+    if (reuseParse) parsedSnapshot_.revision = request.revision;
+    if (reuseParse && !playSnapshot_.pending && playSnapshot_.enabled) {
+        playSnapshot_.revision = request.revision;
+        emit playSnapshotChanged();
+    } else {
+        refreshPlayAnalysis(request);
+    }
 
     if (reuseDiagnostics) {
         parsedSnapshot_.revision = request.revision;
@@ -177,7 +196,8 @@ AnalysisSnapshot AnalysisService::diagnose(
     const ParsedChartSnapshot& parsed,
     SimaiValidationLocale locale,
     const MuriRenderOptions& renderOptions,
-    double staticTapOnSlideThresholdSeconds)
+    double staticTapOnSlideThresholdSeconds,
+    const std::function<void(const SimaiValidationReport&)>& validationReady)
 {
     TimelineAnalysisRefreshRequest request;
     request.revision = parsed.revision;
@@ -191,18 +211,21 @@ AnalysisSnapshot AnalysisService::diagnose(
     request.staticTapOnSlideThresholdSeconds = staticTapOnSlideThresholdSeconds >= 0.0
         ? staticTapOnSlideThresholdSeconds
         : static_cast<double>(miacode::muri::kStaticTapOnSlideThresholdDefaultMs) / 1000.0;
-    TimelineAnalysisRefreshResult result = buildTimelineAnalysisRefreshResult(request);
+    TimelineAnalysisRefreshResult result = buildTimelineAnalysisRefreshResult(request, validationReady);
 
     AnalysisSnapshot snapshot;
     snapshot.revision = parsed.revision;
     snapshot.difficultyId = parsed.difficultyId;
     snapshot.available = true;
+    snapshot.validationReady = true;
     snapshot.locale = locale;
     snapshot.validation = std::move(result.validationReport);
     snapshot.noteMarkers = parsed.previewState.shiftedNoteMarkers;
     snapshot.noteMarkerSignature = parsed.previewState.noteMarkerSignature;
     snapshot.muri = std::move(result.analysisReport);
     snapshot.muriStaticReferences = std::move(result.staticReferences);
+    snapshot.muriPanelEntries = miacode::muri::selectVisibleMuriPanelEntries(
+        snapshot.muri, snapshot.muriStaticReferences);
     return snapshot;
 }
 
@@ -250,6 +273,7 @@ void AnalysisService::dispatchPendingParse()
                 && guard->identityIsCurrent(result->difficultyId, result->revision)) {
                 guard->parsedSnapshot_ = std::move(*result);
                 emit guard->parseReady(guard->parsedSnapshot_.difficultyId, guard->parsedSnapshot_.revision);
+                guard->dispatchPlayAnalysis();
                 guard->requestDiagnostics();
             }
             guard->dispatchPendingParse();
@@ -290,7 +314,22 @@ void AnalysisService::dispatchDiagnostics()
         miacode::task::CancellationScope scope(cancellation);
         try {
             miacode::task::CancellationScope::check();
-            result = diagnose(parsed, locale, renderOptions, threshold);
+            const auto publishValidation = [guard, cancellation, generation,
+                                            difficultyId = parsed.difficultyId, revision = parsed.revision](
+                                               const SimaiValidationReport& validation) {
+                if (guard.isNull()) return;
+                QMetaObject::invokeMethod(guard.data(),
+                    [guard, cancellation, generation, difficultyId, revision, report = validation]() mutable {
+                        if (guard.isNull() || cancellation->load(std::memory_order_relaxed)
+                            || generation != guard->diagnosticsGeneration_
+                            || !guard->identityIsCurrent(difficultyId, revision)) return;
+                        SimaiParser::localizeValidationReport(report, guard->locale_);
+                        guard->snapshot_.validation = std::move(report);
+                        guard->snapshot_.validationReady = true;
+                        emit guard->snapshotChanged(difficultyId, revision);
+                    }, Qt::QueuedConnection);
+            };
+            result = diagnose(parsed, locale, renderOptions, threshold, publishValidation);
             miacode::task::CancellationScope::check();
         } catch (const miacode::task::Cancelled&) {
             result.reset();
@@ -318,6 +357,55 @@ bool AnalysisService::identityIsCurrent(int difficultyId, quint64 revision) cons
     const ChartWorkspaceSnapshot current = workspace_->snapshot();
     return current.hasDocument && current.activeDifficultyId == difficultyId
         && current.revision == revision;
+}
+
+void AnalysisService::refreshPlayAnalysis(const ParsedChartSnapshot& request)
+{
+    if (shuttingDown_) return;
+    const bool enabled = renderOptions_.renderMode == RenderMode::SimulatedPlay && renderOptions_.playAnalysisEnabled;
+    if (!enabled && !playSnapshot_.enabled) return;
+    playTimer_.stop();
+    if (playCancellation_) playCancellation_->store(true, std::memory_order_relaxed);
+    playSnapshot_ = {request.revision, playSnapshot_.generation + 1, request.difficultyId,
+                    enabled, enabled && request.difficultyId > 0, {}};
+    emit playSnapshotChanged();
+    if (playSnapshot_.pending) playTimer_.start();
+}
+
+void AnalysisService::dispatchPlayAnalysis()
+{
+    if (shuttingDown_ || playWorkerRunning_ || playTimer_.isActive() || !playSnapshot_.pending
+        || !parsedSnapshot_.available || parsedSnapshot_.revision != playSnapshot_.revision
+        || parsedSnapshot_.difficultyId != playSnapshot_.difficultyId) return;
+    playWorkerRunning_ = true;
+    playCancellation_ = std::make_shared<std::atomic_bool>(false);
+    const auto cancellation = playCancellation_;
+    const auto generation = playSnapshot_.generation;
+    QPointer<AnalysisService> guard(this);
+    QThreadPool::globalInstance()->start([guard, cancellation, generation, options = renderOptions_,
+                                         marks = parsedSnapshot_.previewState.shiftedNoteMarkers]() {
+        QVector<hand_order::PlayIssue> issues;
+        try {
+            task::CancellationScope scope(cancellation);
+            task::CancellationScope::check();
+            issues = hand_order::HandPlaySimulation(marks, options, true).detectIssues(marks);
+        } catch (const task::Cancelled&) {
+            // Superseded by a chart or settings change.
+        }
+        if (guard.isNull()) return;
+        QMetaObject::invokeMethod(guard.data(), [guard, cancellation, generation, issues = std::move(issues)]() mutable {
+            if (guard.isNull()) return;
+            guard->playWorkerRunning_ = false;
+            auto& snapshot = guard->playSnapshot_;
+            if (!guard->shuttingDown_ && !cancellation->load(std::memory_order_relaxed)
+                && generation == snapshot.generation && guard->identityIsCurrent(snapshot.difficultyId, snapshot.revision)) {
+                snapshot.issues = std::move(issues);
+                snapshot.pending = false;
+                emit guard->playSnapshotChanged();
+            }
+            guard->dispatchPlayAnalysis();
+        }, Qt::QueuedConnection);
+    });
 }
 
 }  // namespace miacode

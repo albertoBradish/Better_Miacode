@@ -119,6 +119,7 @@ ChartWorkspaceResult ChartWorkspace::openSource(
     // inote, unmatched brackets, unknown tokens) stay on the result for the
     // validation panel; they must not refuse the file. v1 loadDocument uses
     // SimaiDocument::fromText the same way.
+    normalizationOriginals_.clear();
     document_ = preflight.candidate;
     const int requestedDifficulty = preferredDifficultyId > 0
         ? preferredDifficultyId : activeDifficultyId_;
@@ -126,7 +127,7 @@ ChartWorkspaceResult ChartWorkspace::openSource(
     filePath_ = filePath;
     origin_ = origin;
     hasDocument_ = true;
-    ++documentOpenGeneration_;
+    songIdentity_ = ++documentOpenGeneration_;
     // A new document arrives with the mode off. Whether the project's stored
     // preference may turn it back on is the application layer's decision, and
     // it is made without writing a single byte into the document.
@@ -412,6 +413,34 @@ ChartWorkspaceResult ChartWorkspace::closeDocument()
     return commit();
 }
 
+ChartWorkspaceResult ChartWorkspace::replaceExtraFields(const QVector<SimaiRawField>& fields)
+{
+    if (!hasDocument_) return reject();
+    if (fields == document_.extraFields) return acceptWithoutChange();
+    document_.extraFields = fields;
+    refreshSourceAndDirty();
+    return commit();
+}
+
+void ChartWorkspace::applyNormalizedDocument(const SimaiDocument& document, const QString& savedSource,
+                                            const QMap<int, QString>& originals)
+{
+    document_ = document;
+    savedSourceText_ = savedSource;
+    savedDocument_ = SimaiDocument::fromText(savedSource);
+    for (auto it = originals.cbegin(); it != originals.cend(); ++it)
+        normalizationOriginals_.insert(it.key(), it.value());
+    refreshSourceAndDirty();
+    commit();
+}
+
+QString ChartWorkspace::takeNormalizationOriginalChart(int difficultyId, const QString& normalized)
+{
+    const auto* difficulty = document_.difficulty(difficultyId);
+    if (!difficulty || difficulty->chart != normalized) return {};
+    return normalizationOriginals_.take(difficultyId);
+}
+
 ChartWorkspaceResult ChartWorkspace::revertDifficultyChart(int difficultyId)
 {
     if (!hasDocument_) return reject();
@@ -554,6 +583,31 @@ bool ChartWorkspace::metadataDirty() const
         if (document_.designerForSlot(id) != savedDocument_.designerForSlot(id)) return true;
     }
     return false;
+}
+
+ChartWorkspace::SongState ChartWorkspace::captureSong() const
+{
+    return {snapshot(), document_, savedDocument_, savedSourceText_, normalizationOriginals_,
+            unifiedDesignerEnabled_, songIdentity_};
+}
+
+void ChartWorkspace::restoreSong(const SongState& state)
+{
+    document_ = state.document;
+    savedDocument_ = state.savedDocument;
+    sourceText_ = state.snapshot.sourceText;
+    savedSourceText_ = state.savedSource;
+    normalizationOriginals_ = state.normalizationOriginals;
+    filePath_ = state.snapshot.filePath;
+    activeDifficultyId_ = state.snapshot.activeDifficultyId;
+    origin_ = state.snapshot.origin;
+    hasDocument_ = state.snapshot.hasDocument;
+    dirty_ = state.snapshot.dirty;
+    unifiedDesignerEnabled_ = state.unifiedDesigner;
+    songIdentity_ = state.identity;
+    // Invalidate work queued for the outgoing chart, even on a return to an earlier tab.
+    ++documentOpenGeneration_;
+    commit();
 }
 
 ChartWorkspaceSnapshot ChartWorkspace::snapshot() const

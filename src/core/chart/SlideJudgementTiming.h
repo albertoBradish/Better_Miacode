@@ -35,7 +35,7 @@ private:
     std::array<QVector<double>,8> moments_;
 };
 
-Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats = nullptr, bool earlyPerfectFromHead = false);
+Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats = nullptr, bool startAtLaunchBeat = true);
 // Selected-start-to-earliest-Perfect progress. If Perfect has already begun
 // at the selected start (star head or matching launch beat), light immediately.
 double brightnessProgress(const Timing& timing, double chartSecond);

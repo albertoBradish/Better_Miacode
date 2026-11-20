@@ -1,3 +1,4 @@
+#include "app/services/VideoEncodingRequest.h"
 #include "app/CliRequest.h"
 
 #include <QFile>
@@ -44,11 +45,15 @@ CliRequest parseCliRequest(const QStringList& arguments, const QByteArray* suppl
     static const QSet<QString> booleans{QStringLiteral("overwrite"), QStringLiteral("json"), QStringLiteral("ndjson"),
         QStringLiteral("show-bpm"), QStringLiteral("show-cps"), QStringLiteral("show-meter"), QStringLiteral("show-mods"),
         QStringLiteral("slide-judgement-timing"), QStringLiteral("slide-timing-from-launch-beat"), QStringLiteral("slide-timing-early-perfect-from-head"),
-        QStringLiteral("hide-timestamp"), QStringLiteral("show-object-stats"), QStringLiteral("show-chart-info"), QStringLiteral("intro")};
+        QStringLiteral("show-measure-lines"), QStringLiteral("hide-timestamp"), QStringLiteral("show-object-stats"), QStringLiteral("show-chart-info"), QStringLiteral("intro"), QStringLiteral("no-pv"), QStringLiteral("debug-render"),
+        QStringLiteral("intro-chart-preview")};
     static const QSet<QString> strings{QStringLiteral("chart"), QStringLiteral("difficulty"), QStringLiteral("output"),
-        QStringLiteral("format"), QStringLiteral("preset"), QStringLiteral("size-preset"), QStringLiteral("skin"), QStringLiteral("track"), QStringLiteral("request")};
+        QStringLiteral("format"), QStringLiteral("preset"), QStringLiteral("rate-mode"), QStringLiteral("quality"), QStringLiteral("skin"), QStringLiteral("track"), QStringLiteral("request"),
+        QStringLiteral("hand-order"), QStringLiteral("handOrderExportMode"),
+        QStringLiteral("intro-style"), QStringLiteral("intro-window")};
     static const QSet<QString> numbers{QStringLiteral("width"), QStringLiteral("height"), QStringLiteral("fps"),
-        QStringLiteral("start"), QStringLiteral("duration"), QStringLiteral("time"), QStringLiteral("flow-speed")};
+        QStringLiteral("start"), QStringLiteral("duration"), QStringLiteral("time"), QStringLiteral("flow-speed"), QStringLiteral("firework-brightness"),
+        QStringLiteral("video-bitrate"), QStringLiteral("size-limit-mb"), QStringLiteral("intro-pv-start")};
     for (int i = 1; i < arguments.size(); ++i) {
         QString argument = arguments[i];
         if (argument == QLatin1String("--help") || argument == QLatin1String("-h")) { positional = {QStringLiteral("help")}; break; }
@@ -130,6 +135,20 @@ CliRequest parseCliRequest(const QStringList& arguments, const QByteArray* suppl
         if (!positional.isEmpty()) { result.error = QStringLiteral("Unexpected positional argument: %1").arg(positional.first()); return result; }
     }
     for (auto it = flags.constBegin(); it != flags.constEnd(); ++it) values.insert(it.key(), it.value());
+    // Command-line flags override their JSON aliases as one logical option.
+    if (flags.contains(QStringLiteral("hand-order"))) values.insert(QStringLiteral("handOrderExportMode"), flags.value(QStringLiteral("hand-order")));
+    else if (flags.contains(QStringLiteral("handOrderExportMode"))) values.insert(QStringLiteral("hand-order"), flags.value(QStringLiteral("handOrderExportMode")));
+    const QString namedMode = values.value(QStringLiteral("handOrderExportMode")).toString().trimmed().toLower();
+    const QString flagMode = values.value(QStringLiteral("hand-order")).toString().trimmed().toLower();
+    const QString handOrderMode = !namedMode.isEmpty() ? namedMode : !flagMode.isEmpty() ? flagMode : QStringLiteral("annotated");
+    if ((values.contains(QStringLiteral("handOrderExportMode")) && namedMode.isEmpty())
+        || (values.contains(QStringLiteral("hand-order")) && flagMode.isEmpty())
+        || (!namedMode.isEmpty() && !flagMode.isEmpty() && namedMode != flagMode)
+        || (handOrderMode != QLatin1String("annotated") && handOrderMode != QLatin1String("original"))) {
+        result.error = QStringLiteral("handOrderExportMode/--hand-order must be annotated or original and cannot disagree."); return result;
+    }
+    values.insert(QStringLiteral("handOrderExportMode"), handOrderMode);
+    values.insert(QStringLiteral("hand-order"), handOrderMode);
     values.insert(QStringLiteral("schemaVersion"), 1);
     result.values = values;
     result.json = values.value(QStringLiteral("json")).toBool(result.json);
@@ -168,6 +187,21 @@ CliRequest parseCliRequest(const QStringList& arguments, const QByteArray* suppl
     for (const QString& key : {QStringLiteral("start"), QStringLiteral("duration"), QStringLiteral("time")})
         if (values.contains(key) && qAbs(values[key].toDouble()) > 86400)
             result.error = QStringLiteral("%1 exceeds the supported 24-hour timeline.").arg(key);
+    if (values.value(QStringLiteral("type")).toString() == QLatin1String("video")) {
+        miacode::video_export::VideoEncodingSettings encoding;
+        QString encodingError;
+        if (!miacode::video_export::readVideoEncodingRequest(values, &encoding, &encodingError)) result.error = encodingError;
+    }
+    if (values.contains(QStringLiteral("intro-pv-start"))
+        && (values.value(QStringLiteral("intro-pv-start")).toDouble() < 0.0
+            || values.value(QStringLiteral("intro-pv-start")).toDouble() > 86400.0))
+        result.error = QStringLiteral("intro-pv-start must be between 0 and 86400 seconds.");
+    if (values.contains(QStringLiteral("intro-style"))
+        && !QStringList{QStringLiteral("classic"), QStringLiteral("pv"), QStringLiteral("chart")}.contains(values.value(QStringLiteral("intro-style")).toString()))
+        result.error = QStringLiteral("intro-style must be classic, pv or chart.");
+    if (values.contains(QStringLiteral("intro-window"))
+        && !QStringList{QStringLiteral("automatic"), QStringLiteral("drop"), QStringLiteral("default")}.contains(values.value(QStringLiteral("intro-window")).toString()))
+        result.error = QStringLiteral("intro-window must be automatic, drop or default.");
     return result;
 }
 }

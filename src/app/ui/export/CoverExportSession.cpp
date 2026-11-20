@@ -608,7 +608,6 @@ void CoverExportSession::selectLayerKey(const QString& key)
     syncPlaybackFromActiveLayer();
     rebindLiveChartScene();
     emit activeChartFrameSecondsChanged();
-    emit inputsChanged();
 }
 
 bool CoverExportSession::renderChartFrame(miacode::cover_export::CoverLayer* layer,
@@ -1006,6 +1005,10 @@ void CoverExportSession::setActiveLayerSizeFraction(double sizeFraction)
 {
     if (auto* layer = activeCoverLayer()) { layer->setSizeFraction(qBound(0.05, sizeFraction, 2.0)); persistComposition(); }
 }
+void CoverExportSession::setActiveLayerRotation(double degrees)
+{
+    if (auto* layer = activeCoverLayer()) { layer->setRotation(degrees); persistComposition(); }
+}
 void CoverExportSession::setActiveLayerCenter(double nx, double ny)
 {
     if (auto* layer = activeCoverLayer()) {
@@ -1138,7 +1141,7 @@ void CoverExportSession::bindLiveChartScene(QObject* scene)
         return;
     }
     lastLiveChartScene_ = liveScene;
-    liveScene->setLayerFlags(miacode::preview::scene::kPreviewExportOverlayRenderLayers);
+    liveScene->setLayerFlags(miacode::preview::scene::kPreviewCoverRenderLayers);
     liveScene->setFrameState(
         frameRenderer_ != nullptr && chartFrameAvailable_ ? frameRenderer_->frameState() : nullptr);
     sceneBinder_->setFrameState(

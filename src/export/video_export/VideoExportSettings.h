@@ -48,13 +48,7 @@ inline constexpr double kFullRangeVideoExportStartEpsilonSeconds = 0.01;
 int normalizedVideoExportAudioBitrateKbps(int requested);
 int normalizedVideoExportFps(int requested);
 
-QString videoExportPreferencePresetToken(VideoExportPreset preset);
-VideoExportPreset videoExportPresetFromPreference(
-    const QJsonValue& value,
-    VideoExportPreset fallback);
-VideoExportSizePreset videoExportSizePresetFromPreference(
-    const QJsonValue& value,
-    VideoExportSizePreset fallback);
+VideoEncodingSettings encodingFromPreferences(const QJsonObject& settings, VideoEncodingSettings encoding = {});
 
 void applyVideoExportPreferences(const QJsonObject& settings, VideoExportTask* task);
 void appendVideoExportPreferences(QJsonObject* settings, const VideoExportTask& task);

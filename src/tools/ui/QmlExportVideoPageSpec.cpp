@@ -112,12 +112,25 @@ ApplicationWindow {
         property var fpsOptions: [30, 60, 120]
         property int audioBitrateKbps: 192
         property var audioBitrateOptions: [128, 192, 320]
-        property int presetIndex: 1
-        property var presetOptions: ["Fast", "High quality"]
-        property int sizePresetIndex: 0
-        property var sizePresetOptions: ["Standard"]
+        property int rateModeIndex: 0
+        property var rateModeOptions: [{ value: 0, label: "Quality first" }]
+        property int qualityLevelIndex: 1
+        property var qualityLevelOptions: [{ value: 1, label: "Standard" }]
+        property int sizeLimitMb: 100
+        property int sizeLimitMinMb: 5
+        property int sizeLimitMaxMb: 1000
+        property real videoBitrateMbps: 8
+        property real videoBitrateMinMbps: 0.1
+        property real videoBitrateMaxMbps: 100
+        property real estimatedSizeBytes: 96600000
         property bool showObjectStatsHud: false
         property bool showChartInfoHud: false
+        property int handOrderModeIndex: 0
+        property var handOrderModeOptions: [
+            { value: 0, label: "Follow preview" },
+            { value: 1, label: "Original chart" },
+            { value: 2, label: "Sticking colors" }
+        ]
         property bool clockCountEnabled: false
         property bool showSlideJudgementTiming: false
         property bool slideTimingFromLaunchBeat: false
@@ -251,6 +264,7 @@ ApplicationWindow {
             showDebugInfo: false,
             tapFlowSpeed: 7.5,
             touchFlowSpeed: 7.5,
+            starFadeTiming: 0,
             flowSpeedMin: 0,
             flowSpeedMax: 12,
             flowSpeedStep: 0.25,
@@ -270,6 +284,7 @@ ApplicationWindow {
             showDebugInfo: "Debug",
             tapFlowSpeed: "Tap flow",
             touchFlowSpeed: "Touch flow",
+            starFadeTiming: "Star fade-in timing",
             slideEarlierOnTop: "Slide stack",
             centerDisplay: "Center",
             tapJudgeTextDistance: "Judge text",
@@ -459,6 +474,13 @@ bool verifyRealExportPageControls(QTextStream& err)
             && session->property("introFontBodyPath").toString().isEmpty(),
         QStringLiteral("the card-font reset action restores both bundled defaults"), err);
 
+    session->setProperty("settingsTab", QStringLiteral("gameplay"));
+    QCoreApplication::processEvents();
+    auto* fade = root->findChild<QObject*>(QStringLiteral("previewStarFadeTimingSlider"));
+    ok &= require(fade && fade->property("from").toDouble() == -1.0 && fade->property("to").toDouble() == 1.0
+        && qFuzzyCompare(fade->property("stepSize").toDouble(), 0.1) && fade->property("value").toDouble() == 0.0,
+        QStringLiteral("star fade timing offers 21 steps around the default zero"), err);
+
     session->setProperty("settingsTab", QStringLiteral("skin"));
     QCoreApplication::processEvents();
     QObject* skinCombo = root->findChild<QObject*>(QStringLiteral("previewSkinCombo"));
@@ -593,35 +615,11 @@ bool verifyBatchInputsOwnASettingsTab(QTextStream& err)
     if (moreDisplay) moreDisplay->setProperty("checked",true);
     QCoreApplication::processEvents();
     ok &= require(moreOptions && moreOptions->isVisible(),QStringLiteral("More Display reveals existing export options"),err);
-    auto* earlySwitch=findVisualItem(contentItem,QStringLiteral("exportSlideTimingEarlyPerfectFromHeadSwitch"));
-    ok &= require(earlySwitch!=nullptr,QStringLiteral("video options expose the launch child switch"),err);
-    if(earlySwitch) {
-        ok &= require(!earlySwitch->isEnabled() && !earlySwitch->property("checked").toBool(),
-            QStringLiteral("launch child option defaults off and requires both ancestors"),err);
-        session->setProperty("showSlideJudgementTiming",true);
-        QCoreApplication::processEvents();
-        ok &= require(!earlySwitch->isEnabled(),QStringLiteral("main visibility alone does not enable the child"),err);
-        session->setProperty("slideTimingFromLaunchBeat",true);
-        QCoreApplication::processEvents();
-        ok &= require(earlySwitch->isEnabled(),QStringLiteral("matching-launch option enables its child"),err);
-        earlySwitch->setProperty("checked",true);
-        QMetaObject::invokeMethod(earlySwitch,"toggled");
-        ok &= require(session->property("slideTimingEarlyPerfectFromHead").toBool(),
-            QStringLiteral("toggling the child updates export settings"),err);
-        session->setProperty("slideTimingFromLaunchBeat",false);
-        QCoreApplication::processEvents();
-        ok &= require(!earlySwitch->isEnabled() && earlySwitch->property("checked").toBool(),
-            QStringLiteral("disabling the parent retains the child preference"),err);
-        session->setProperty("slideTimingFromLaunchBeat",true);
-        session->setProperty("showSlideJudgementTiming",false);
-        QCoreApplication::processEvents();
-        ok &= require(!earlySwitch->isEnabled(),QStringLiteral("disabling visibility also disables the child"),err);
-    }
 
     if (moreDisplay) moreDisplay->setProperty("checked",false);
     QCoreApplication::processEvents();
-    ok &= require(moreOptions && !moreOptions->isVisible() && earlySwitch && earlySwitch->property("checked").toBool(),
-        QStringLiteral("collapsing More Display retains the enabled child preference"),err);
+    ok &= require(moreOptions && !moreOptions->isVisible(),
+        QStringLiteral("collapsing More Display hides its settings"),err);
 
     session->setProperty("settingsTab", QStringLiteral("batch"));
     session->setProperty("activeTab", QStringLiteral("export"));
@@ -629,6 +627,8 @@ bool verifyBatchInputsOwnASettingsTab(QTextStream& err)
     ok &= require(session->property("settingsTab").toString() == QStringLiteral("output"),
                   QStringLiteral("leaving batch mode falls back to a settings tab that still exists"),
                   err);
+    ok &= require(findVisualItem(contentItem, QStringLiteral("exportHandOrderModeCombo")) != nullptr,
+                  QStringLiteral("output settings expose the hand-order export choice"), err);
     ok &= require(findVisualItem(contentItem, QStringLiteral("exportSettingsTab_batch")) == nullptr,
                   QStringLiteral("the batch settings tab disappears with batch mode"), err);
     ok &= require(!batchPage->isVisible(),

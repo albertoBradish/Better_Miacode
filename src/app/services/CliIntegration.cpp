@@ -63,7 +63,7 @@ QString binDirectory(const QString& testDirectory)
 {
     if (!testDirectory.isEmpty()) return testDirectory;
 #ifdef Q_OS_WIN
-    return QDir(miacode::runtime_paths::root()).filePath(QStringLiteral("cli"));
+    return QDir(miacode::runtime_paths::rootDirectory()).filePath(QStringLiteral("cli"));
 #else
     return QDir::home().filePath(QStringLiteral(".local/bin"));
 #endif
@@ -202,10 +202,7 @@ CliIntegration::CliIntegration(QObject* parent, QString testDirectory, QString t
 
 QString CliIntegration::commandName()
 {
-    const QString app = QCoreApplication::applicationName();
-    return app.contains(QStringLiteral("HandOrder"), Qt::CaseInsensitive)
-        || app.contains(QStringLiteral("Sticking"), Qt::CaseInsensitive)
-        ? QStringLiteral("miacode-handorder") : QStringLiteral("better-miacode");
+    return QStringLiteral("better-miacode");
 }
 bool CliIntegration::tasksEnabled()
 {
@@ -255,14 +252,13 @@ bool CliIntegration::setEnabled(bool enable)
     };
     if (enable) {
         const QString executable = QCoreApplication::applicationFilePath();
-        const QString runtime = runtime_paths::root();
+        const QString runtime = runtime_paths::rootDirectory();
         if (executable.contains('\n') || runtime.contains('\n'))
             return fail(tr("The application path cannot contain a newline."));
         QByteArray content;
 #ifdef Q_OS_WIN
         auto batch = [](QString value) { return value.replace('%', QStringLiteral("%%")); };
-        const QString runtimeVariable = commandName() == QStringLiteral("miacode-handorder")
-            ? QStringLiteral("MIACODE_HAND_ORDER_RUNTIME_ROOT") : QStringLiteral("BETTER_MIACODE_RUNTIME_ROOT");
+        const QString runtimeVariable = QStringLiteral("BETTER_MIACODE_RUNTIME_ROOT");
         content = (QStringLiteral("@echo off\r\nrem Managed by ") + commandName()
             + QStringLiteral("\r\nsetlocal DisableDelayedExpansion\r\nset \"_BETTER_MIACODE_CP=\"\r\n"
                 "for /f \"tokens=2 delims=:\" %%C in ('chcp') do for %%D in (%%C) do set \"_BETTER_MIACODE_CP=%%D\"\r\n"
@@ -271,8 +267,7 @@ bool CliIntegration::setEnabled(bool enable)
             + batch(QDir::toNativeSeparators(executable)) + QStringLiteral("\" %*\r\nset \"_BETTER_MIACODE_EXIT=%errorlevel%\"\r\n"
                 "if defined _BETTER_MIACODE_CP chcp %_BETTER_MIACODE_CP% >nul\r\nexit /b %_BETTER_MIACODE_EXIT%\r\n")).toUtf8();
 #else
-        const QString runtimeVariable = commandName() == QStringLiteral("miacode-handorder")
-            ? QStringLiteral("MIACODE_HAND_ORDER_RUNTIME_ROOT") : QStringLiteral("BETTER_MIACODE_RUNTIME_ROOT");
+        const QString runtimeVariable = QStringLiteral("BETTER_MIACODE_RUNTIME_ROOT");
         content = (QStringLiteral("#!/bin/sh\n# Managed by ") + commandName()
             + QStringLiteral("\nexport ") + runtimeVariable + '=' + quoteShell(runtime)
             + QStringLiteral("\nexec ") + quoteShell(executable) + QStringLiteral(" \"$@\"\n")).toUtf8();

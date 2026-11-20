@@ -7,6 +7,8 @@
 #include "app/ui/editor/EditorController.h"
 #include "app/ui/chrome/ShortcutModel.h"
 #include "app/ui/preview/PreviewModel.h"
+#include "app/ui/preview/ComparisonPreviews.h"
+#include "app/ui/preview/ChartStructureModel.h"
 #include "app/ui/shell/ShellLifecycle.h"
 #include "app/ui/timeline/TimelineModel.h"
 #include "app/ui/chrome/PlatformChrome.h"
@@ -22,8 +24,10 @@
 #include "app/ui/net/NetUploadModel.h"
 #include "app/services/ApplicationServices.h"
 #include "app/services/ImageResourceModel.h"
+#include "app/services/HandOrderAnalysisService.h"
 #include "app/services/CliIntegration.h"
 #include "app/ui/tools/ChartToolsModel.h"
+#include "app/ui/library/ChartLibraryModel.h"
 
 #include <QObject>
 
@@ -36,9 +40,11 @@ class ApplicationContext final : public QObject
     Q_OBJECT
     Q_PROPERTY(QObject* document READ document CONSTANT)
     Q_PROPERTY(QObject* analysis READ analysis CONSTANT)
+    Q_PROPERTY(QObject* handOrderAnalysis READ handOrderAnalysis CONSTANT)
     Q_PROPERTY(QObject* preferences READ preferences CONSTANT)
     Q_PROPERTY(QObject* appBackground READ appBackground CONSTANT)
     Q_PROPERTY(QObject* preview READ preview CONSTANT)
+    Q_PROPERTY(QObject* chartStructure READ chartStructure CONSTANT)
     Q_PROPERTY(QObject* commands READ commands CONSTANT)
     // Root-window close contract; the polling shell controller it replaced
     // is gone, so this is deliberately small.
@@ -66,6 +72,7 @@ class ApplicationContext final : public QObject
     Q_PROPERTY(QObject* netUpload READ netUpload CONSTANT)
     Q_PROPERTY(QObject* cli READ cli CONSTANT)
     Q_PROPERTY(QObject* chartTools READ chartTools CONSTANT)
+    Q_PROPERTY(QObject* chartLibrary READ chartLibrary CONSTANT)
 
 public:
     explicit ApplicationContext(miacode::ApplicationServices& services,
@@ -73,9 +80,12 @@ public:
 
     QObject* document();
     QObject* analysis();
+    QObject* handOrderAnalysis() { return &handOrderAnalysis_; }
     QObject* preferences();
     QObject* appBackground();
     QObject* preview();
+    QObject* chartStructure() { return &chartStructure_; }
+    const ChartStructureModel& chartStructureModel() const { return chartStructure_; }
     QObject* commands();
     QObject* shell();
     QObject* timeline();
@@ -100,6 +110,7 @@ public:
     QObject* netUpload() { return &netUpload_; }
     QObject* cli() { return &cli_; }
     QObject* chartTools() { return &chartTools_; }
+    QObject* chartLibrary() { return &chartLibrary_; }
     Q_INVOKABLE void refreshChartTools();
     void setWindowChrome(QObject* chrome);
     void setChartDropBridge(QObject* bridge);
@@ -114,7 +125,10 @@ private:
     miacode::ui::AppBackgroundModel appBackground_;
     DocumentModel document_;
     AnalysisModel analysis_;
+    miacode::HandOrderAnalysisService handOrderAnalysis_;
     PreviewModel preview_;
+    ComparisonPreviews comparisons_;
+    ChartStructureModel chartStructure_;
     miacode::ui::TimelineModel timeline_;
     CommandService commands_;
     PageHost pages_;
@@ -131,6 +145,7 @@ private:
     NetUploadModel netUpload_;
     miacode::CliIntegration cli_;
     ChartToolsModel chartTools_;
+    ChartLibraryModel chartLibrary_;
     miacode::ui::ShellLifecycle lifecycle_;
     QObject* windowChrome_ = nullptr;
     QObject* chartDropBridge_ = nullptr;

@@ -2,6 +2,8 @@
 
 #include "app/runtime/RuntimeContext.h"
 
+#include <optional>
+
 #include "app/services/AudioClockSource.h"
 #include "app/services/PlaybackControl.h"
 #include "app/services/PlaybackDocumentPort.h"
@@ -164,11 +166,13 @@ public:
     void refreshTimelineWaveformPhaseCompensation();
     void resetQtPreviewFixedFramePacing();
     void scheduleNextQtPreviewTick();
+    void onLowPerformancePreviewFrameDeadline();
     void requestNextDisplayRefreshPreviewFrame();
     void requestNextFixedIntervalPreviewFrame();
     void advanceFixedIntervalGateAfterPresent();
     void requestNextPreviewCanvasFrame();
     void refreshPreviewFrameRateTimers();
+    void setLowPerformanceMode(bool enabled);
     void setPreviewCanvasFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState);
     void setPreviewStageMediaFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState);
     void setVideoDecodePrefersSoftware(bool preferSoftware, bool persistState);
@@ -250,8 +254,8 @@ public:
     void handlePreviewAudioPrepared(const miacode::preview_audio::PreviewAudioCompletion& completion);
     void handlePreviewRetainedPlaybackCompleted(
         const miacode::preview_audio::PreviewAudioCompletion& completion);
-    void finishQtPreviewPlaybackAndReturnToEntry();
-    void stopQtPreviewPlayback(bool keepPosition = true);
+    void finishQtPreviewPlaybackAndReturnToEntry(double endSecond);
+    void stopQtPreviewPlayback(bool keepPosition = true, std::optional<double> finalSecond = {});
     void applyQtPreviewPosition(double second, bool centerView);
     void syncPausedPreviewMediaTimestamps(double second);
     void flushQtPreviewTimelinePosition();
@@ -275,6 +279,7 @@ public:
     double durationSeconds() const;
     double lowerBoundSeconds() const;
     void togglePlayback() override;
+    void pausePlayback();
     void stopOrPlay() override;
     void setPlaybackRangeEnabled(bool enabled, double startSecond, double endSecond) override;
     void stop() override;
@@ -326,6 +331,7 @@ public:
     void applySfxLevels();
     void prepareForShutdown();
     PreviewAudioSettings audioSettings() const;
+    PreviewTimingSettings audioTiming() const { return state_.previewTimingSettings_; }
     void applyAudioSettings(const PreviewAudioSettings& settings);
     void saveAudioSettingsAsSoftwareDefault();
     void restoreAudioSettingsFromSoftwareDefault();
@@ -357,6 +363,8 @@ public:
     double authoritativeAudioClockSecond() const;
 
 private:
+    void restartPreviewFramePacing();
+    void updateTimelinePlaybackCadence();
     bool bottomTabsTabVisibleFromState(RuntimeContext::BottomTabsTabId tabId) const;
     static QString bottomTabsTabIdToString(RuntimeContext::BottomTabsTabId tabId);
     static RuntimeContext::BottomTabsTabId bottomTabsTabIdFromString(const QString& tabId);

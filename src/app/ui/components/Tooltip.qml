@@ -6,7 +6,7 @@ import MiaCode.UI
 ToolTip {
     id: root
 
-    readonly property Window hostWindow: root.parent ? root.parent.Window.window : null
+    readonly property var hostWindow: root.parent ? root.parent.Window.window : null
     popupType: Popup.Item
     z: 1000
     margins: 6

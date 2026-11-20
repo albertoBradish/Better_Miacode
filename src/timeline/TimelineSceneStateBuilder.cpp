@@ -8,6 +8,7 @@
 #include <tuple>
 
 #include "core/video/PreviewSkinConfig.h"
+#include "core/scene/PreviewHandOrderRendering.h"
 #include "timeline/TimelineThemeConfig.h"
 #include "timeline/TimelineNoteAssets.h"
 
@@ -28,6 +29,7 @@ using miacode::timeline::TimelineThemeColors;
 constexpr int kPlayableLaneCount = 8;
 constexpr int kLaneCount = kPlayableLaneCount + 1;
 constexpr int kHeaderHeight = 36;
+constexpr int kVerticalHeaderWidth = 42;
 constexpr int kLaneHeight = 20;
 constexpr double kMinimumContentScale = 0.25;
 constexpr double kMinimumTextScale = 0.5;
@@ -65,35 +67,35 @@ struct HeaderLineLabel {
     int screenX = 0;
 };
 
-QString laneLabelForIndex(int laneIndex)
+QString laneLabelForIndex(miacode::timeline::TimelineLaneOrder order, int laneIndex)
 {
     if (laneIndex >= 0 && laneIndex < kPlayableLaneCount) {
-        return QString::number(laneIndex + 1);
+        return QString::number(miacode::timeline::timelineLaneForSlot(order, laneIndex + 1));
     }
     return QString();
 }
 
-const miacode::timeline::TimelineNoteAssetSet& fallbackSceneNoteAssets()
+const QHash<QString, miacode::timeline::TimelineNoteMetrics>& fallbackSceneNoteMetrics()
 {
-    static const miacode::timeline::TimelineNoteAssetSet assets = miacode::timeline::loadTimelineNoteAssets();
-    return assets;
+    static const auto metrics = miacode::timeline::loadTimelineNoteMetrics();
+    return metrics;
 }
 
-const miacode::timeline::TimelineNoteAssetSet& sceneNoteAssets(const TimelineSceneBuildRequest& request)
+const QHash<QString, miacode::timeline::TimelineNoteMetrics>& sceneNoteMetrics(const TimelineSceneBuildRequest& request)
 {
     if (request.skinDirectory.trimmed().isEmpty()) {
-        return fallbackSceneNoteAssets();
+        return fallbackSceneNoteMetrics();
     }
 
     thread_local QString cachedSkinDirectory;
-    thread_local miacode::timeline::TimelineNoteAssetSet cachedAssets;
+    thread_local QHash<QString, miacode::timeline::TimelineNoteMetrics> cachedMetrics;
     const QString trimmed = request.skinDirectory.trimmed();
     const QString normalized = trimmed.isEmpty() ? QString() : QDir::cleanPath(trimmed);
     if (cachedSkinDirectory != normalized) {
         cachedSkinDirectory = normalized;
-        cachedAssets = miacode::timeline::loadTimelineNoteAssets(normalized);
+        cachedMetrics = miacode::timeline::loadTimelineNoteMetrics(normalized);
     }
-    return cachedAssets.noteIcons.isEmpty() ? fallbackSceneNoteAssets() : cachedAssets;
+    return cachedMetrics.isEmpty() ? fallbackSceneNoteMetrics() : cachedMetrics;
 }
 
 QFont timelineHeaderLabelFont(const QFont& sourceFont)
@@ -214,7 +216,8 @@ qreal muriMarkerAnchorY(
     const TimelineRenderNote& note,
     double triggerSecond)
 {
-    const int startLane = qBound(1, note.lane, kPlayableLaneCount);
+    const int startLane = miacode::timeline::timelineSlotForLane(
+        state.laneOrder, qBound(1, note.lane, kPlayableLaneCount));
     const qreal startY = static_cast<qreal>(
         state.timelineTop + (startLane - 1) * state.laneHeight + state.laneHeight / 2);
     if (note.kind != TimelineRenderNoteKind::Slide && note.kind != TimelineRenderNoteKind::Wifi) {
@@ -232,7 +235,8 @@ qreal muriMarkerAnchorY(
         return startY;
     }
 
-    const int endLane = qBound(1, note.endLane, kPlayableLaneCount);
+    const int endLane = miacode::timeline::timelineSlotForLane(
+        state.laneOrder, qBound(1, note.endLane, kPlayableLaneCount));
     const qreal endY = static_cast<qreal>(
         state.timelineTop + (endLane - 1) * state.laneHeight + state.laneHeight / 2);
     if (triggerSecond <= traceSecond) {
@@ -350,17 +354,19 @@ void appendSprite(
 
 TimelineSceneLayoutMetrics buildLayoutMetrics(const TimelineSceneBuildRequest& request)
 {
+    const int headerSize = request.axisMode == miacode::timeline::TimelineAxisMode::Horizontal
+        ? kHeaderHeight : kVerticalHeaderWidth;
     double contentScale = normalizedContentScale(request.contentScale);
     if (request.fitViewportHeight) {
         const double viewportScale =
-            static_cast<double>(request.viewportSize.height() - kHeaderHeight)
+            static_cast<double>(request.viewportSize.height() - headerSize)
                 / (kLaneCount * kLaneHeight);
         contentScale = qBound(kMinimumContentScale, viewportScale, 1.0);
     }
     TimelineSceneLayoutMetrics metrics;
     metrics.viewportSize = request.viewportSize;
     metrics.timelineLeft = kTimelineLeftMargin;
-    metrics.timelineTop = kHeaderHeight;
+    metrics.timelineTop = headerSize;
     if (request.fitViewportHeight) {
         metrics.timelineHeight = qMax<qreal>(
             0.0,
@@ -378,9 +384,10 @@ TimelineSceneLayoutMetrics buildLayoutMetrics(const TimelineSceneBuildRequest& r
     metrics.displayStartSeconds =
         qMin(-kTimelineDisplayLeadInSeconds, request.snapshot.minimumSecond - kTimelineDisplayLeadInSeconds);
     metrics.displayEndSeconds = qMax(metrics.displayStartSeconds + 1.0, metrics.maxNavigableSecond + 1.0);
+    const qreal playheadAnchor = timelinePlayheadAnchor(request.axisMode, request.viewportSize.width(), metrics.timelineLeft);
     metrics.leadingCenteringPadding = qMax(
         0,
-        (request.viewportSize.width() / 2)
+        qCeil(playheadAnchor)
             - rawSecondToX(0.0, metrics.displayStartSeconds, metrics.pixelsPerSecond, metrics.timelineLeft));
     metrics.trailingCenteringPadding = qMax(
         0,
@@ -389,7 +396,7 @@ TimelineSceneLayoutMetrics buildLayoutMetrics(const TimelineSceneBuildRequest& r
             metrics.displayStartSeconds,
             metrics.pixelsPerSecond,
             metrics.timelineLeft)
-                + (request.viewportSize.width() / 2)
+                + qCeil(request.viewportSize.width() - playheadAnchor)
             - rawContentWidth(
                 metrics.displayStartSeconds,
                 metrics.displayEndSeconds,
@@ -462,6 +469,8 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
     TimelineSceneState state;
     const TimelineSceneLayoutMetrics metrics = buildLayoutMetrics(request);
     applyLayoutMetrics(&state, metrics);
+    state.axisMode = request.axisMode;
+    state.laneOrder = request.laneOrder;
     state.horizontalScrollValue = qMax(0.0, request.horizontalScrollValue);
     state.headerLeftLimit = qMax(0, request.headerLeftLimit);
     state.headerRightLimit = request.headerRightLimit > 0 ? request.headerRightLimit : request.viewportSize.width();
@@ -566,7 +575,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
             continue;
         }
         TimelineSceneTextLabel label;
-        label.text = laneLabelForIndex(lane);
+        label.text = laneLabelForIndex(state.laneOrder, lane);
         if (label.text.isEmpty()) {
             continue;
         }
@@ -581,6 +590,32 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
             qRound(y + (state.laneHeight - laneLabelInkRect.height()) * 0.5
                    - laneLabelInkRect.top() - laneLabelMetrics.ascent() - kTimelineTextVerticalPadding));
         state.laneLabels.append(label);
+    }
+
+    if (request.dropRegion.valid() && state.timelineHeight > 0.0) {
+        const qreal start = secondToSceneXExact(state, request.dropRegion.start);
+        const qreal end = secondToSceneXExact(state, request.dropRegion.end);
+        const QColor marker = theme.base.lightnessF() < 0.5
+            ? QColor(255, 214, 112, 65) : QColor(140, 94, 0, 70);
+        state.dropRegionRects = {
+            {QRectF(start, state.timelineTop, end - start, state.timelineHeight), QColor(255, 212, 108, 18)},
+            {QRectF(start, state.timelineTop, 1, state.timelineHeight), marker},
+            {QRectF(end, state.timelineTop, 1, state.timelineHeight), marker},
+        };
+        const QString& text = request.dropRegion.label;
+        QFont dropLabelFont(laneLabelFont);
+        dropLabelFont.setPixelSize(9);
+        const QSizeF size = timelineTextLogicalSize(dropLabelFont, text);
+        const bool vertical = state.axisProjection().vertical();
+        const qreal timeSize = vertical ? size.height() : size.width();
+        const qreal crossSize = vertical ? size.width() : size.height();
+        if (!text.isEmpty() && end - start >= timeSize + 8 && state.timelineHeight >= crossSize + 6) {
+            const QPointF center((start + end) * 0.5, state.timelineTop + crossSize * 0.5 + 3);
+            state.dropRegionLabel = TimelineSceneTextLabel{
+                text, center - QPointF(size.width() * 0.5, size.height() * 0.5),
+                dropLabelFont, theme.label, size,
+            };
+        }
     }
 
     if (request.waveformData && request.waveformData->durationSeconds > 0.0) {
@@ -871,8 +906,9 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
     // node trees rebuild at bucket boundaries, not on every scroll tick.
     for (const HeaderLineLabel& label : collapsedHeaderLabels) {
         const QString labelText = QString::number(label.lineNumber);
-        const qreal labelHalfWidth =
-            (headerMetrics.horizontalAdvance(labelText) * 0.5) + kTimelineTextHorizontalPadding;
+        const QSizeF labelSize = timelineTextLogicalSize(headerFont, labelText);
+        const qreal labelHalfWidth = (state.axisProjection().vertical()
+            ? labelSize.height() : labelSize.width()) * 0.5;
         if (headerLabelEmitSpanFits(label.screenX, labelHalfWidth)
             && (headerLabels.isEmpty()
                 || (label.screenX - headerLabels.constLast().screenX >= headerLabelMinSpacing
@@ -887,7 +923,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                     headerTextBottom - headerMetrics.height() - kTimelineTextVerticalPadding),
                 headerFont,
                 theme.textSecondary,
-                timelineTextLogicalSize(headerFont, labelText),
+                labelSize,
             });
         }
         if (markerHeight >= 2.0
@@ -1007,6 +1043,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         return QStringLiteral("slide");
     };
 
+    const qreal baseIconScale = state.contentScale * request.noteScale;
     const auto appendNoteForRef = [&](const TimelineVisibleNoteRef& visibleRef, bool trackLayer) {
         const TimelineRenderLine& line = request.snapshot.lines.at(visibleRef.lineIndex);
         const TimelineRenderNote& note = line.notes.at(visibleRef.noteIndex);
@@ -1027,7 +1064,8 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         const bool isHold = note.kind == TimelineRenderNoteKind::Hold && endSecond >= startSecond;
         const bool isTouchHold = note.kind == TimelineRenderNoteKind::TouchHold && endSecond > startSecond;
         const bool isSlideLike = note.kind == TimelineRenderNoteKind::Slide || note.kind == TimelineRenderNoteKind::Wifi;
-        const bool isSlideTrack = isSlideLike && traceSecond > startSecond && endSecond > traceSecond;
+        const bool isSlideTrack = isSlideLike && traceSecond >= startSecond && endSecond > traceSecond;
+        const quint64 trackLocation = timelineRenderTrackLocationId(line, note);
 
         const int x = secondToSceneX(state, startSecond);
         const int holdEndX = isHold ? secondToSceneX(state, endSecond) : x;
@@ -1054,17 +1092,15 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                 extentRight = qMax(extentRight, markerX);
             }
         }
-        const int noteCullPadding = scaledMetric(kNoteSize, state.contentScale);
+        const int noteCullPadding = qCeil(kNoteSize * baseIconScale);
         if (extentRight < state.timelineLeft - noteCullPadding
             || extentLeft > state.contentWidth + noteCullPadding) {
             return;
         }
 
-        const qreal rowTop = state.timelineTop + (note.lane - 1) * state.laneHeight;
+        const int laneSlot = timelineSlotForLane(state.laneOrder, note.lane);
+        const qreal rowTop = state.timelineTop + (laneSlot - 1) * state.laneHeight;
         const qreal rowCenterY = rowTop + (state.laneHeight / 2.0);
-        const qreal baseIconScale =
-            request.zoomScale <= 0.25 ? qMin<qreal>(0.5, state.contentScale)
-                                      : static_cast<qreal>(state.contentScale);
         QString iconType;
         switch (note.kind) {
         case TimelineRenderNoteKind::Tap:
@@ -1146,13 +1182,34 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
             }
         }
 
+        const HandOrderHand headHand = request.showHandOrderAnnotations
+            ? note.handOrderHead : HandOrderHand::Unspecified;
+        bool hasHandArtwork = false;
+        if (headHand != HandOrderHand::Unspecified) {
+            // The native Touch Hold border stays neutral. Its annotated body
+            // uses the same pre-rendered quarter/point artwork as the stage.
+            QString annotatedNativeType = iconType;
+            if (note.kind == TimelineRenderNoteKind::TouchHold
+                && !timelineRenderFlagSet(note, TimelineRenderFlagIsMine)) {
+                annotatedNativeType = timelineRenderFlagSet(note, TimelineRenderFlagIsBreak)
+                    ? QStringLiteral("touch_hold_break")
+                    : timelineRenderFlagSet(note, TimelineRenderFlagIsEach)
+                    ? QStringLiteral("touch_hold_each") : QStringLiteral("touch_hold");
+            }
+            const QString artworkType = miacode::timeline::handOrderNoteType(sceneNoteMetrics(request), annotatedNativeType, headHand);
+            hasHandArtwork = artworkType != annotatedNativeType;
+            if (hasHandArtwork) iconType = artworkType;
+        }
+
         if (trackLayer) {
             if (!request.showSlideTracks || !isSlideTrack) {
                 return;
             }
-            const auto& noteAssets = sceneNoteAssets(request);
-            const int startLane = qBound(1, note.lane, kPlayableLaneCount);
-            const int endLane = qBound(1, note.endLane, kPlayableLaneCount);
+            const auto& noteMetrics = sceneNoteMetrics(request);
+            const int startLane = timelineSlotForLane(
+                state.laneOrder, qBound(1, note.lane, kPlayableLaneCount));
+            const int endLane = timelineSlotForLane(
+                state.laneOrder, qBound(1, note.endLane, kPlayableLaneCount));
             const int startY =
                 state.timelineTop + (startLane - 1) * state.laneHeight + state.laneHeight / 2;
             const int endY =
@@ -1169,16 +1226,10 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
             } else if (timelineRenderFlagSet(note, TimelineRenderFlagSlideEach)) {
                 baseTrackType = QStringLiteral("slide_track_each");
             }
-            const qreal zoomTrackScale = qBound<qreal>(0.25, request.zoomScale, 1.0);
-            const qreal zoomAdjustedTrackScale = request.zoomScale <= 0.25
-                ? 0.5
-                : qBound<qreal>(
-                    0.5,
-                    zoomTrackScale * static_cast<qreal>(state.contentScale),
-                    1.0);
-            const qreal trackScale = qMin<qreal>(state.contentScale, zoomAdjustedTrackScale);
+            // Keep the path lighter than its head so dense tracks stay distinguishable.
+            const qreal trackScale = qMin<qreal>(1.65 * state.contentScale, baseIconScale * 0.75);
             const QSize trackTargetSize =
-                miacode::timeline::targetSizeForNoteType(noteAssets, baseTrackType, trackScale);
+                noteMetrics.value(baseTrackType, noteMetrics.value(QStringLiteral("tap"))).targetSize(trackScale);
             if (!trackTargetSize.isValid()) {
                 return;
             }
@@ -1193,19 +1244,37 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                 const qreal t = static_cast<qreal>(step) / static_cast<qreal>(steps);
                 const qreal cx = static_cast<qreal>(slideStartX) + dx * t;
                 const qreal cy = static_cast<qreal>(startY) + dy * t;
+                QString trackType = baseTrackType;
+                if (request.showHandOrderAnnotations) {
+                    if (note.kind == TimelineRenderNoteKind::Wifi && note.handOrderWifiMode == HandOrderWifiMode::Split
+                        && note.handOrderWifiSectorStops.size() == 2) {
+                        trackType = miacode::timeline::handOrderSplitNoteType(noteMetrics, baseTrackType,
+                            miacode::preview::scene::previewHandOrderAtProgress(note.handOrderWifiSectorStops.at(0), t),
+                            miacode::preview::scene::previewHandOrderAtProgress(note.handOrderWifiSectorStops.at(1), t));
+                    } else {
+                        trackType = miacode::timeline::handOrderNoteType(noteMetrics, baseTrackType,
+                            miacode::preview::scene::previewHandOrderAtProgress(note.handOrderTrackStops, t));
+                    }
+                }
                 appendSprite(
                     &state.trackSprites,
                     QPointF(cx, cy),
-                    baseTrackType,
+                    trackType,
                     trackScale,
                     angleDegrees,
                     forward);
-                if (selected) state.trackSprites.last().selected = true;
+                if (request.selectedNoteLocations.contains(trackLocation)) state.trackSprites.last().selected = true;
                 TimelineSceneGlyph hit;
-                hit.locationId = locationId;
+                hit.locationId = trackLocation;
                 const qreal hitSize = qMax(trackTargetSize.width(), trackTargetSize.height());
                 hit.rect = QRectF(cx - hitSize / 2, cy - hitSize / 2, hitSize, hitSize);
                 state.noteHitAreas.append(hit);
+            }
+            if (request.showHandOrderAnnotations && note.kind == TimelineRenderNoteKind::Wifi
+                && note.handOrderWifiMode == HandOrderWifiMode::Single) {
+                appendSprite(&state.trackSprites,
+                    QPointF(slideStartX, startY - state.laneHeight * 0.45),
+                    QStringLiteral("wifi_single_badge"), baseIconScale * 0.8);
             }
             return;
         }
@@ -1241,9 +1310,15 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                     QPointF(x, rowCenterY+dy), QPointF(secondToSceneX(state, endSecond), rowCenterY+dy),
                     QColor(255,220,80,204),1.0);
             }
-            const QColor touchHoldColor = timelineRenderFlagSet(note, TimelineRenderFlagIsEach)
+            QColor touchHoldColor = timelineRenderFlagSet(note, TimelineRenderFlagIsEach)
                 ? QColor(255, 214, 64, 120)
                 : QColor(44, 214, 255, 120);
+            // Match the pre-rendered body's hand palette for the timeline span.
+            if (hasHandArtwork) {
+                if (headHand == HandOrderHand::Left) touchHoldColor = QColor(0x38, 0x8c, 0xff, 120);
+                else if (headHand == HandOrderHand::Right) touchHoldColor = QColor(0xff, 0x45, 0x54, 120);
+                else if (headHand == HandOrderHand::Either) touchHoldColor = QColor(0xdb, 0xe0, 0xeb, 120);
+            }
             appendTrackLine(
                 &state.touchHoldLines,
                 QPointF(x, rowCenterY),
@@ -1278,8 +1353,9 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
 
         const bool shouldDrawHead = !isSlideLike || timelineRenderFlagSet(note, TimelineRenderFlagHasHeadStar);
         if (!isHold && shouldDrawHead) {
-            const QSize iconTargetSize =
-                miacode::timeline::targetSizeForNoteType(sceneNoteAssets(request), iconType, baseIconScale);
+            const auto& noteMetrics = sceneNoteMetrics(request);
+            const QSize iconTargetSize = noteMetrics.value(
+                iconType, noteMetrics.value(QStringLiteral("tap"))).targetSize(baseIconScale);
             if (!iconTargetSize.isValid()) {
                 return;
             }
@@ -1354,9 +1430,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
 
     // Exact, like the scroll offset: these ride on top of a sub-pixel scroll now, and the
     // playhead in particular must stay pinned. With follow on, scroll is
-    // exactPlayheadX - viewportWidth/2, so an exact playheadX puts the line at exactly the
-    // viewport centre every frame; a rounded one would shimmer +-0.5px against content that
-    // is now moving smoothly underneath it.
+    // exactPlayheadX minus the viewport anchor. Rounding would make the line shimmer.
     const qreal entryX = secondToXExact(state, request.playbackEntrySeconds);
     if (entryX > state.timelineLeft && headerMarkerSpanFits(entryX, playbackMarkerHalfWidth)) {
         state.hasEntryMarker = true;
@@ -1398,7 +1472,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         };
     }
     if (request.dragActive) {
-        const qreal dragCenterX = request.viewportSize.width() / 2.0;
+        const qreal dragCenterX = timelinePlayheadAnchor(state.axisMode, request.viewportSize.width(), state.timelineLeft);
         if (dragCenterX > state.timelineLeft) {
             state.hasDragCenterLine = true;
             state.dragCenterLine = TimelineSceneLine{

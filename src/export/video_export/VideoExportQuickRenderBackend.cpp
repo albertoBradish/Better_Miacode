@@ -6,6 +6,7 @@
 #include "core/video/PreviewGameplayConfig.h"
 #include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/scene/PreviewProgressStatsCache.h"
+#include "common/DebugLog.h"
 #include "export/video_export/FontLibrary.h"
 
 #include <QFile>
@@ -41,13 +42,36 @@ std::shared_ptr<const miacode::preview::scene::PreviewProgressStatsCache> buildP
 
 bool VideoExportQuickRenderBackend::bootstrap(
     const VideoExportTask& task,
-    bool stageMediaAvailable,
+    const QString& stageMediaPath,
     const QVector<TimelineNoteMarker>& noteMarkers,
     const MuriAnalysisReport& muriAnalysisReport,
     const QSize& frameSize,
     QString* errorMessage)
 {
     assets_.setOutlineSelection(task.outlineVariant, task.outlineImagePath);
+    const BackgroundPolicy policy = backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode);
+    stageMediaPath_.clear();
+    const bool hasChartIntro = hasChartPreviewIntro(task.intro, task.fullRangeExport);
+    if (usesBackgroundMedia(policy) || hasChartIntro) {
+        stageMediaPath_ = task.includePv || !miacode::chart_assets::isVideoBackgroundPath(stageMediaPath)
+            ? stageMediaPath
+            : miacode::chart_assets::resolvePreferredBackgroundMediaPath(task.chartPath, stageMediaPath, false);
+    }
+    QString mediaError;
+    if (!stageMedia_.open(stageMediaPath_, frameSize, &mediaError)) {
+        if (errorMessage) *errorMessage = mediaError;
+        return false;
+    }
+    const bool stageMediaAvailable = usesBackgroundMedia(policy) && !stageMediaPath_.isEmpty();
+    backgroundFade_ = task.fullRangeExport && task.intro.enabled;
+    intro_ = task.intro;
+    watermark_ = task.videoWatermark;
+    introOutlineAssets_.reset();
+    if (hasChartIntro) {
+        const auto outline = intro_.chartOutline.value_or(ChartIntroOutline{task.outlineVariant, task.outlineImagePath});
+        introOutlineAssets_ = miacode::preview::runtime::PreviewSceneAssetLoader::loadAssetState(
+            chartIntroOutlineVariant(outline.variant), outline.imagePath);
+    }
     assets_.setStageMediaAvailable(stageMediaAvailable);
     if (!assets_.loadSkinDirectorySync(task.skinDirectory)) {
         if (errorMessage != nullptr) {
@@ -57,9 +81,10 @@ bool VideoExportQuickRenderBackend::bootstrap(
     }
 
     frameState_ = miacode::preview::scene::PreviewFrameState();
+    frameState_.render.backgroundPolicy = policy;
     frameState_.hudFontSettings = task.hudFontSettings;
     frameState_.noteMarkers = noteMarkers;
-    if (task.slideTimingFromLaunchBeat)
+    if (task.showSlideJudgementTiming)
         frameState_.slideTimingLaunchBeats=std::make_shared<const miacode::slide_judge::LaunchBeatIndex>(task.noteMarkers);
     frameState_.timingPoints = task.timingPoints;
     frameState_.measureLineSeconds = task.measureLineSeconds;
@@ -77,15 +102,20 @@ bool VideoExportQuickRenderBackend::bootstrap(
     frameState_.render.backgroundBrightnessInner = task.backgroundBrightnessInner;
     frameState_.render.layoutSquareScale = normalizedLayoutScale(task.layoutSquareScale);
     frameState_.render.fireworkBrightness = task.fireworkBrightness;
+    frameState_.render.completionDisplay = task.completionDisplay;
+    frameState_.render.fireworkStyle = task.fireworkStyle;
     frameState_.render.smoothBrightness = task.smoothBrightness;
     frameState_.render.backgroundScaleMode = task.backgroundScaleMode;
     frameState_.render.tapFlowSpeed = normalizedFlowSpeed(task.tapFlowSpeed);
     frameState_.render.touchFlowSpeed = normalizedFlowSpeed(task.touchFlowSpeed);
+    frameState_.render.starFadeTiming = miacode::preview_gameplay::normalizedStarFadeTiming(task.starFadeTiming);
     frameState_.render.slideEarlierSecondAndTextOnTop = task.slideEarlierSecondAndTextOnTop;
     frameState_.render.tapJudgeTextDistance = task.tapJudgeTextDistance;
     frameState_.render.judgeEffectStyle = task.judgeEffectStyle;
     frameState_.render.showDebugInfo = false;
     frameState_.render.showTimestamp = task.showTimestamp;
+    frameState_.render.showHandOrderAnnotations = task.showHandOrderAnnotations;
+    frameState_.render.showHandOrderWatermark = task.showHandOrderWatermark;
     frameState_.render.showObjectStatsHud = task.showObjectStatsHud;
     frameState_.render.showChartInfoHud = task.showChartInfoHud;
     frameState_.render.showBpmHud = task.showBpmHud;
@@ -111,8 +141,15 @@ bool VideoExportQuickRenderBackend::bootstrap(
     return true;
 }
 
-void VideoExportQuickRenderBackend::copyRenderStateFrom(const VideoExportQuickRenderBackend& source)
+bool VideoExportQuickRenderBackend::copyRenderStateFrom(const VideoExportQuickRenderBackend& source, QString* errorMessage)
 {
+    stageMediaPath_ = source.stageMediaPath_;
+    if (!stageMedia_.open(stageMediaPath_, source.session_.frameSize(), errorMessage)) return false;
+    backgroundFade_ = source.backgroundFade_;
+    intro_ = source.intro_;
+    chartIntroStill_ = source.chartIntroStill_;
+    watermark_ = source.watermark_;
+    introOutlineAssets_ = source.introOutlineAssets_;
     assets_.setOutlineSelection(
         source.assets_.outlineVariant(),
         source.assets_.outlineImagePath(),
@@ -127,6 +164,7 @@ void VideoExportQuickRenderBackend::copyRenderStateFrom(const VideoExportQuickRe
     d3d11Session_.setLayerFlags(source.session_.layerFlags());
     refreshAssetState();
     syncSessionStateIfInitialized();
+    return true;
 }
 
 void VideoExportQuickRenderBackend::setRenderSessionBackend(ExportQuickRenderSessionBackend backend)
@@ -166,6 +204,12 @@ void VideoExportQuickRenderBackend::setFireworkBrightness(double brightness)
     syncSessionStateIfInitialized();
 }
 
+void VideoExportQuickRenderBackend::setFireworkStyle(PreviewFireworkStyle style)
+{
+    frameState_.render.fireworkStyle = style;
+    syncSessionStateIfInitialized();
+}
+
 void VideoExportQuickRenderBackend::setSmoothBrightness(bool smooth)
 {
     frameState_.render.smoothBrightness = smooth;
@@ -188,6 +232,12 @@ void VideoExportQuickRenderBackend::setBackgroundScaleMode(PreviewBackgroundScal
 void VideoExportQuickRenderBackend::setTapFlowSpeed(double flowSpeed)
 {
     frameState_.render.tapFlowSpeed = normalizedFlowSpeed(flowSpeed);
+    syncSessionStateIfInitialized();
+}
+
+void VideoExportQuickRenderBackend::setStarFadeTiming(double timing)
+{
+    frameState_.render.starFadeTiming = miacode::preview_gameplay::normalizedStarFadeTiming(timing);
     syncSessionStateIfInitialized();
 }
 
@@ -232,7 +282,7 @@ void VideoExportQuickRenderBackend::setShowObjectStatsHud(bool show)
 void VideoExportQuickRenderBackend::setNoteMarkers(const QVector<TimelineNoteMarker>& notes)
 {
     frameState_.noteMarkers = notes;
-    frameState_.slideTimingLaunchBeats = frameState_.render.slideTimingFromLaunchBeat
+    frameState_.slideTimingLaunchBeats = frameState_.render.showSlideJudgementTiming
         ? std::make_shared<const miacode::slide_judge::LaunchBeatIndex>(notes) : nullptr;
     frameState_.progressStatsCache = buildProgressStatsCache(notes);
     frameState_.sceneContentRevision += 1;
@@ -263,21 +313,24 @@ bool VideoExportQuickRenderBackend::initializeOffscreenRenderer(
     QOpenGLContext* shareContext,
     QString* errorMessage)
 {
+    session_.setPreservePremultipliedReadback(true);
+    d3d11Session_.setPreservePremultipliedReadback(true);
+
     requestedFormat_ = requestedFormat;
     shareContext_ = shareContext;
     if (sessionBackend_ == ExportQuickRenderSessionBackend::D3D11Qrhi) {
         d3d11Session_.setFrameState(frameState_);
-        if (!d3d11Session_.initialize(errorMessage)) {
+        if (!d3d11Session_.initialize(errorMessage, watermark_)) {
             return false;
         }
-        d3d11Session_.setFrameState(frameState_);
+        syncSessionStateIfInitialized();
         return true;
     }
     session_.setFrameState(frameState_);
-    if (!session_.initialize(requestedFormat_, shareContext_, errorMessage)) {
+    if (!session_.initialize(requestedFormat_, shareContext_, errorMessage, watermark_)) {
         return false;
     }
-    session_.setFrameState(frameState_);
+    syncSessionStateIfInitialized();
     return true;
 }
 
@@ -285,11 +338,6 @@ void VideoExportQuickRenderBackend::shutdownOffscreenRenderer()
 {
     session_.invalidate();
     d3d11Session_.invalidate();
-}
-
-void VideoExportQuickRenderBackend::setPreservePremultipliedReadback(bool preserve)
-{
-    d3d11Session_.setPreservePremultipliedReadback(preserve);
 }
 
 bool VideoExportQuickRenderBackend::supportsOffscreenPboReadback(QString* errorMessage) const
@@ -321,7 +369,9 @@ bool VideoExportQuickRenderBackend::setupIntro(const IntroBannerSpec& intro, boo
         return false;
     }
     const QVariantMap track = introBannerTrackMap(intro);
-    const QUrl jacketUrl = miacode::chart_assets::displayBackgroundImageUrl(intro.jacketPath);
+    const auto policy = intro.chartPreview ? BackgroundPolicy::Normal : frameState_.render.backgroundPolicy;
+    const QUrl jacketUrl = usesBackgroundMedia(policy)
+        ? miacode::chart_assets::displayBackgroundImageUrl(intro.jacketPath) : QUrl();
 
     // Load + parse the banner template here (C++), not via the QML's async
     // XMLHttpRequest: the headless export render loop never pumps the event
@@ -346,7 +396,14 @@ bool VideoExportQuickRenderBackend::setupIntro(const IntroBannerSpec& intro, boo
         templateMap, intro.fontDisplayPath, intro.fontBodyPath);
 
     const QUrl logoUrl(QString::fromLatin1(miacode::intro::kLogoFallbackUrl));
-    const QVariantMap styleMap = introBannerStyleMap(intro, pvVideoUnderlay);
+    const QVariantMap styleMap = introBannerStyleMap(intro, pvVideoUnderlay, policy);
+    chartIntroStill_ = {};
+    if (intro.chartPreview && !pvVideoUnderlay) {
+        QUrl still = styleMap.value(QStringLiteral("backdropImage")).toUrl();
+        if (still.isEmpty()) still = jacketUrl;
+        if (still.isLocalFile()) chartIntroStill_.load(still.toLocalFile());
+        if (chartIntroStill_.isNull()) chartIntroStill_.load(QStringLiteral(":/icons/app-original.png"));
+    }
     if (d3d11Active) {
         d3d11Session_.setIntroBannerData(track, templateMap, jacketUrl, logoUrl, styleMap);
     } else {
@@ -364,16 +421,35 @@ void VideoExportQuickRenderBackend::setChartLayersVisible(bool visible)
     session_.setChartLayersVisible(visible);
 }
 
-void VideoExportQuickRenderBackend::setIntroFrame(int authoringFrame, bool active)
+bool VideoExportQuickRenderBackend::introSegmentVisible() const
 {
-    if (sessionBackend_ == ExportQuickRenderSessionBackend::D3D11Qrhi) {
-        d3d11Session_.setIntroFrame(authoringFrame, active);
-        return;
-    }
-    session_.setIntroFrame(authoringFrame, active);
+    return introActive_ && intro_.pvPreview && introAuthoringFrame_ < miacode::intro::kPvPreviewHoldFrames;
 }
 
-bool VideoExportQuickRenderBackend::renderOverlayFrameOffscreenPboStep(
+bool VideoExportQuickRenderBackend::chartIntroPresentationActive() const
+{
+    return introActive_ && intro_.pvPreview && intro_.chartPreview;
+}
+
+void VideoExportQuickRenderBackend::setIntroFrame(int authoringFrame, bool active, double outputSecond)
+{
+    const bool wasChartIntro = chartIntroPresentationActive();
+    const bool wasSplit = wasChartIntro && introSegmentVisible();
+    introAuthoringFrame_ = authoringFrame;
+    introOutputSecond_ = outputSecond;
+    introActive_ = active;
+    const bool chartIntro = chartIntroPresentationActive();
+    const bool split = chartIntro && introSegmentVisible();
+    setChartLayersVisible(!introSegmentVisible() || chartIntro);
+    if (sessionBackend_ == ExportQuickRenderSessionBackend::D3D11Qrhi) {
+        d3d11Session_.setIntroFrame(authoringFrame, active);
+    } else {
+        session_.setIntroFrame(authoringFrame, active);
+    }
+    if (wasChartIntro != chartIntro || wasSplit != split) syncSessionStateIfInitialized();
+}
+
+bool VideoExportQuickRenderBackend::renderFrameOffscreenPboStep(
     const QSize& outputSize,
     double playheadSeconds,
     bool showTimestamp,
@@ -387,6 +463,7 @@ bool VideoExportQuickRenderBackend::renderOverlayFrameOffscreenPboStep(
     if (sessionBackend_ == ExportQuickRenderSessionBackend::D3D11Qrhi) {
         d3d11Session_.setFrameSize(outputSize);
         if (!drainOnly) {
+            if (!updateBackgroundForRender(playheadSeconds, errorMessage)) return false;
             updateFrameStateForRender(
                 playheadSeconds,
                 showTimestamp,
@@ -402,6 +479,7 @@ bool VideoExportQuickRenderBackend::renderOverlayFrameOffscreenPboStep(
         return ok;
     }
     session_.setFrameSize(outputSize);
+    if (!drainOnly && !updateBackgroundForRender(playheadSeconds, errorMessage)) return false;
     updateFrameStateForRender(
         playheadSeconds,
         showTimestamp,
@@ -417,14 +495,14 @@ bool VideoExportQuickRenderBackend::renderOverlayFrameOffscreenPboStep(
     return ok;
 }
 
-QImage VideoExportQuickRenderBackend::renderOverlayFrame(
+QImage VideoExportQuickRenderBackend::renderFrame(
     const QSize& outputSize,
     double playheadSeconds,
     bool showTimestamp,
     bool showObjectStatsHud,
     double hudPlayheadSecondsOverride)
 {
-    return renderOverlayFrameOffscreen(
+    return renderFrameOffscreen(
         outputSize,
         playheadSeconds,
         showTimestamp,
@@ -432,13 +510,20 @@ QImage VideoExportQuickRenderBackend::renderOverlayFrame(
         hudPlayheadSecondsOverride);
 }
 
-QImage VideoExportQuickRenderBackend::renderOverlayFrameOffscreen(
+QImage VideoExportQuickRenderBackend::renderFrameOffscreen(
     const QSize& outputSize,
     double playheadSeconds,
     bool showTimestamp,
     bool showObjectStatsHud,
     double hudPlayheadSecondsOverride)
 {
+    QString mediaError;
+    if (!updateBackgroundForRender(playheadSeconds, &mediaError)) {
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Export,
+            QStringLiteral("fail_stage_media_decode"), mediaError);
+        return {};
+    }
+
     if (sessionBackend_ == ExportQuickRenderSessionBackend::D3D11Qrhi) {
         d3d11Session_.setFrameSize(outputSize);
         updateFrameStateForRender(
@@ -536,12 +621,23 @@ void VideoExportQuickRenderBackend::refreshAssetState()
 
 void VideoExportQuickRenderBackend::syncSessionStateIfInitialized()
 {
-    if (session_.isInitialized()) {
-        session_.setFrameState(frameState_);
+    const auto publish = [this](const auto& state) {
+        if (session_.isInitialized()) session_.setFrameState(state);
+        if (d3d11Session_.isInitialized()) d3d11Session_.setFrameState(state);
+    };
+    if (!chartIntroPresentationActive()) {
+        publish(frameState_);
+        return;
     }
-    if (d3d11Session_.isInitialized()) {
-        d3d11Session_.setFrameState(frameState_);
+    auto presentation = frameState_;
+    miacode::preview::scene::applyChartIntroPresentation(presentation);
+    if (introOutlineAssets_) presentation.assets = *introOutlineAssets_;
+    if (introSegmentVisible()) {
+        presentation.media.stageMediaAvailable = !stageMediaPath_.isEmpty() || !chartIntroStill_.isNull();
+    } else {
+        presentation.render.backgroundPolicy = frameState_.render.backgroundPolicy;
     }
+    publish(presentation);
 }
 
 void VideoExportQuickRenderBackend::updateFrameStateForRender(
@@ -550,6 +646,14 @@ void VideoExportQuickRenderBackend::updateFrameStateForRender(
     bool showObjectStatsHud,
     double hudPlayheadSecondsOverride)
 {
+    if (chartIntroPresentationActive()) {
+        showTimestamp = false;
+        showObjectStatsHud = false;
+    }
+    if (chartIntroPresentationActive() && introSegmentVisible()) {
+        playheadSeconds = introPreviewMediaSecond(intro_, introOutputSecond_);
+        hudPlayheadSecondsOverride = std::numeric_limits<double>::quiet_NaN();
+    }
     if (sessionBackend_ == ExportQuickRenderSessionBackend::D3D11Qrhi) {
         d3d11Session_.applyExportFrameTick(
             playheadSeconds,
@@ -571,4 +675,37 @@ void VideoExportQuickRenderBackend::updateFrameStateForRender(
         0.0,
         hudPlayheadSecondsOverride
     );
+}
+
+
+bool VideoExportQuickRenderBackend::updateBackgroundForRender(double playheadSeconds, QString* errorMessage)
+{
+    const bool inSegment = introSegmentVisible();
+    const bool fullFrame = inSegment;
+    const double mediaSecond = inSegment
+        ? introPreviewMediaSecond(intro_, introOutputSecond_)
+        : playheadSeconds;
+    QString mediaError;
+    const bool showMedia = (inSegment && intro_.chartPreview)
+        || usesBackgroundMedia(frameState_.render.backgroundPolicy);
+    QImage image;
+    if (inSegment && !chartIntroStill_.isNull()) image = chartIntroStill_;
+    else if (showMedia) image = stageMedia_.frameAt(mediaSecond, &mediaError);
+    if (!mediaError.isEmpty()) {
+        if (errorMessage) *errorMessage = mediaError;
+        return false;
+    }
+    const qreal brightness = backgroundFade_ && !inSegment
+        ? qBound(0.0, (playheadSeconds + miacode::intro::kBgFadeDurationSeconds)
+                         / miacode::intro::kBgFadeDurationSeconds, 1.0)
+        : (inSegment && intro_.chartPreview ? intro_.pvPreviewBrightness : 1.0);
+    frameState_.media.resolvedStageImage = image;
+    frameState_.media.resolvedStageImageCacheable = stageMedia_.isStaticImage();
+    frameState_.media.stageMediaSerial = image.cacheKey();
+    if (sessionBackend_ == ExportQuickRenderSessionBackend::D3D11Qrhi) {
+        d3d11Session_.setBackgroundFrame(image, stageMedia_.isStaticImage(), fullFrame, brightness);
+    } else {
+        session_.setBackgroundFrame(image, stageMedia_.isStaticImage(), fullFrame, brightness);
+    }
+    return true;
 }

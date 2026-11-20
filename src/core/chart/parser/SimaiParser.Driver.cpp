@@ -567,7 +567,7 @@ QString detectMisplacedTapStarModifierMessage(const QString& token)
     return QString();
 }
 
-void parseToken(ParseState* state, const QString& token, int lineNumber, int column, QVector<int>* groupIndices)
+void parseBaseToken(ParseState* state, const QString& token, int lineNumber, int column, QVector<int>* groupIndices)
 {
     if (state == nullptr) {
         return;
@@ -623,6 +623,19 @@ void parseToken(ParseState* state, const QString& token, int lineNumber, int col
     }
 
     appendTokenError(state, lineNumber, column, classifyInvalidNoteMessage(token));
+}
+
+void parseToken(ParseState* state, const QString& token, int lineNumber, int column, QVector<int>* groupIndices)
+{
+    if (state == nullptr || token.isEmpty()) {
+        return;
+    }
+    QString baseToken;
+    const HandOrderAnnotation annotation = parseHandOrderAnnotation(
+        state, token, lineNumber, column, &baseToken);
+    const int firstMarker = state->result.noteMarkers.size();
+    parseBaseToken(state, baseToken, lineNumber, column, groupIndices);
+    applyHandOrderAnnotation(state, annotation, firstMarker, lineNumber, column, token.size());
 }
 
 bool isTerminalMarkerText(QString text)
@@ -788,7 +801,11 @@ SimaiParseResult parseInternal(
         const int parsedTokenColumn = tokenColumn;
         const int parsedTokenEndCol = tokenColumn + token.size() - 1;
         const int noteCountBefore = state.result.noteMarkers.size();
+        const int errorsBefore = state.result.errors.size();
         parseToken(&state, token, lineNumber, tokenColumn, &currentGroup);
+        state.result.sourceTokens.append({lineNumber, tokenColumn, int(token.size()),
+            noteCountBefore, int(state.result.noteMarkers.size()) - noteCountBefore,
+            state.result.errors.size() == errorsBefore});
         if (state.result.noteMarkers.size() > noteCountBefore) {
             warnMissingExplicitSubdivision(&state);
             pendingLineEndNoteCol = parsedTokenColumn;
@@ -903,6 +920,8 @@ SimaiParseResult parseInternal(
             miacode::task::CancellationScope::checkpoint();
             const QChar ch = line.at(i);
 
+            // The native line-comment delimiter takes precedence even inside
+            // an unfinished annotation. The suffix is diagnosed at flush.
             if (ch == QChar('|') && i + 1 < line.size() && line.at(i + 1) == QChar('|')) {
                 flushToken(lineNumber);
                 int numerator = 0;
@@ -921,6 +940,21 @@ SimaiParseResult parseInternal(
                     appendDistinctSecond(&state.result.measureLineSeconds, state.currentMeasureStartSecond);
                 }
                 break;
+            }
+
+            // Keep an annotation container together even when it is malformed
+            // with spaces. A comma always ends it so later notes recover.
+            const int annotationOffset = token.indexOf(QChar('~'));
+            const QString suffix = annotationOffset >= 0
+                ? token.mid(annotationOffset + 1) : QString();
+            const bool openAnnotationContainer = suffix.startsWith(QChar('['))
+                && !suffix.contains(QChar(']'));
+            if (annotationOffset >= 0
+                && (!ch.isSpace() || openAnnotationContainer)
+                && ch != QChar(',') && ch != QChar('/') && ch != QChar('`')) {
+                token.append(ch);
+                noteSinceComma = true;
+                continue;
             }
 
             if (ch.isSpace()) {
@@ -1445,6 +1479,53 @@ QString localizeValidationDetail(QString detail, SimaiValidationLocale locale)
     }
     const bool japanese = locale == SimaiValidationLocale::Japanese;
 
+    const QString handOrderPrefix = QStringLiteral("Invalid hand-order annotation: ");
+    if (detail.startsWith(handOrderPrefix)) {
+        const QString reason = detail.mid(handOrderPrefix.size());
+        static const QHash<QString, QString> zhReasons{
+            {QStringLiteral("missing note"), QStringLiteral("缺少音符")},
+            {QStringLiteral("expected ~l, ~r or ~m"), QStringLiteral("应使用 ~l、~r 或 ~m")},
+            {QStringLiteral("digit clusters need one annotation per note"), QStringLiteral("数字簇需要逐个音符标注")},
+            {QStringLiteral("expected a closed ~[...] suffix"), QStringLiteral("复合标注 ~[...] 未正确闭合")},
+            {QStringLiteral("complex form requires a slide"), QStringLiteral("复合写法仅适用于 Slide")},
+            {QStringLiteral("empty container"), QStringLiteral("复合标注为空")},
+            {QStringLiteral("expected key=value clauses"), QStringLiteral("应使用 key=value 子句")},
+            {QStringLiteral("invalid or duplicate head"), QStringLiteral("头部手别无效或重复")},
+            {QStringLiteral("invalid or duplicate track"), QStringLiteral("轨迹手序无效或重复")},
+            {QStringLiteral("invalid or duplicate branch"), QStringLiteral("分支手序无效或重复")},
+            {QStringLiteral("track is required"), QStringLiteral("缺少 track")},
+            {QStringLiteral("all branches require a track"), QStringLiteral("每个分支都需要轨迹手序")},
+            {QStringLiteral("branch does not match parsed slide"), QStringLiteral("分支与解析所得 Slide 不匹配")},
+            {QStringLiteral("track requires a slide"), QStringLiteral("只有 Slide 可以使用轨迹手序")},
+        };
+        static const QHash<QString, QString> jaReasons{
+            {QStringLiteral("missing note"), QStringLiteral("ノーツがありません")},
+            {QStringLiteral("expected ~l, ~r or ~m"), QStringLiteral("~l、~r または ~m を指定してください")},
+            {QStringLiteral("digit clusters need one annotation per note"), QStringLiteral("数字の連結はノーツごとに注釈が必要です")},
+            {QStringLiteral("expected a closed ~[...] suffix"), QStringLiteral("複合注釈 ~[...] が閉じられていません")},
+            {QStringLiteral("complex form requires a slide"), QStringLiteral("複合形式は Slide にのみ使えます")},
+            {QStringLiteral("empty container"), QStringLiteral("複合注釈が空です")},
+            {QStringLiteral("expected key=value clauses"), QStringLiteral("key=value 形式が必要です")},
+            {QStringLiteral("invalid or duplicate head"), QStringLiteral("head が無効か重複しています")},
+            {QStringLiteral("invalid or duplicate track"), QStringLiteral("track が無効か重複しています")},
+            {QStringLiteral("invalid or duplicate branch"), QStringLiteral("branch が無効か重複しています")},
+            {QStringLiteral("track is required"), QStringLiteral("track が必要です")},
+            {QStringLiteral("all branches require a track"), QStringLiteral("すべての分岐に軌道注釈が必要です")},
+            {QStringLiteral("branch does not match parsed slide"), QStringLiteral("分岐が解析された Slide と一致しません")},
+            {QStringLiteral("track requires a slide"), QStringLiteral("軌道注釈は Slide にのみ使えます")},
+        };
+        const auto& reasons = japanese ? jaReasons : zhReasons;
+        QString localizedReason = reasons.value(reason, reason);
+        const QString unknownKeyPrefix = QStringLiteral("unknown key: ");
+        if (reason.startsWith(unknownKeyPrefix)) {
+            localizedReason = (japanese ? QStringLiteral("不明なキー：")
+                                        : QStringLiteral("未知键："))
+                + reason.mid(unknownKeyPrefix.size());
+        }
+        return (japanese ? QStringLiteral("運指の注釈が無効です：")
+                         : QStringLiteral("手序标注无效：")) + localizedReason;
+    }
+
     if (detail == ValidationMessage::kLineEndNoteMissingComma()) {
         return japanese
             ? QStringLiteral("行末のノーツに終わりの ',' がありません")
@@ -1588,9 +1669,10 @@ SimaiValidationReport SimaiParser::buildValidationReport(
     const SimaiParseResult strictResult = validateSyntax(text, timingMetadata);
 
     report.strictNoteCount = strictResult.noteMarkers.size();
-    report.strictErrorCount = strictResult.errors.size();
+    report.strictErrorCount = strictResult.errors.size() + strictResult.annotationErrors.size();
 
-    report.issues.reserve(strictResult.errors.size() + strictResult.warnings.size());
+    report.issues.reserve(strictResult.errors.size() + strictResult.annotationErrors.size()
+        + strictResult.warnings.size());
     for (const SimaiMessage& error : strictResult.errors) {
         miacode::task::CancellationScope::checkpoint();
         ++report.errorCount;
@@ -1600,6 +1682,19 @@ SimaiValidationReport SimaiParser::buildValidationReport(
         issue.col = error.col;
         issue.endCol = error.endCol;
         issue.severity = SimaiValidationSeverity::Error;
+        issue.rawMessage = error.message;
+        report.issues.append(issue);
+    }
+
+    for (const SimaiMessage& error : strictResult.annotationErrors) {
+        miacode::task::CancellationScope::checkpoint();
+        ++report.errorCount;
+        SimaiValidationIssue issue;
+        issue.line = error.line;
+        issue.col = error.col;
+        issue.endCol = error.endCol;
+        issue.severity = SimaiValidationSeverity::Error;
+        issue.isAnnotation = true;
         issue.rawMessage = error.message;
         report.issues.append(issue);
     }

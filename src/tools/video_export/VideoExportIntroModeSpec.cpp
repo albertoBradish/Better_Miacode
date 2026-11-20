@@ -172,8 +172,19 @@ bool verifyPvPreviewTimeline(QTextStream& err)
     IntroBannerSpec to;
     to.pvPreviewStartSeconds = 12.0;
     copyIntroStyling(from, &to);
-    return require(to.pvPreview && qAbs(to.pvPreviewStartSeconds - 12.0) < 1e-9,
-                   QStringLiteral("dialog styling copy keeps the style and the chart's own start"), err);
+    if (!require(to.pvPreview && qAbs(to.pvPreviewStartSeconds - 12.0) < 1e-9,
+                   QStringLiteral("dialog styling copy keeps the style and the chart's own start"), err)) return false;
+    from.previewWindowSource = miacode::chart_preview::IntroWindowSource::Drop;
+    from.pvPreviewEndSeconds = 40.0;
+    to.pvPreviewEndSeconds = 20.0;
+    copyIntroStyling(from, &to);
+    if (!require(to.pvPreviewStartSeconds == 12.0 && to.pvPreviewEndSeconds == 20.0,
+                 QStringLiteral("resolved drop range does not leak across charts"), err)) return false;
+    from.previewWindowSource = miacode::chart_preview::IntroWindowSource::Explicit;
+    copyIntroStyling(from, &to);
+    return require(to.pvPreviewStartSeconds == 33.0 && to.pvPreviewEndSeconds == 40.0
+        && to.previewWindowSource == miacode::chart_preview::IntroWindowSource::Explicit,
+        QStringLiteral("explicit user range survives rebuilding the same export task"), err);
 }
 
 }  // namespace

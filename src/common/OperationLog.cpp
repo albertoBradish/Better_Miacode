@@ -1,6 +1,7 @@
 #include "common/OperationLog.h"
 
 #include "common/DebugLog.h"
+#include "common/RuntimePaths.h"
 #include "common/TaskCancellation.h"
 
 #include <QCoreApplication>
@@ -378,16 +379,24 @@ void installShadow()
     // the SEH path doesn't touch Qt or the C heap.
     //
     // Path resolution order (most-specific first):
-    //   1. MIACODE_OPLOG_SHADOW_PATH — explicit per-process override.
-    //   2. MIACODE_LOG_DIR/miacode_op_chain_<pid>.log — co-locates every
+    //   1. Initialized workspace log directory.
+    //   2. MIACODE_OPLOG_SHADOW_PATH — legacy per-process override.
+    //   3. MIACODE_LOG_DIR/miacode_op_chain_<pid>.log — co-locates every
     //      process's shadow next to the parent's other log files. The
     //      parent supervisor sets MIACODE_LOG_DIR for spawned children
     //      (worker, export worker), so all shadow files for a session
     //      land in the same directory and the parent can auto-collate
     //      crashed children's chains via PID glob.
-    //   3. <%TEMP%>/miacode_op_chain_<pid>.log — last-resort fallback
+    //   4. <%TEMP%>/miacode_op_chain_<pid>.log — last-resort fallback
     //      when no log dir is configured (e.g. very early startup).
-    QString path = qEnvironmentVariable("MIACODE_OPLOG_SHADOW_PATH").trimmed();
+    const QString workspaceLogDir = miacode::runtime_paths::logDirectory();
+    QString path = workspaceLogDir.isEmpty()
+        ? qEnvironmentVariable("MIACODE_OPLOG_SHADOW_PATH").trimmed()
+        : QString();
+    if (!workspaceLogDir.isEmpty()) {
+        path = QDir(workspaceLogDir).filePath(
+            QStringLiteral("miacode_op_chain_%1.log").arg(QCoreApplication::applicationPid()));
+    }
     if (path.isEmpty()) {
         const QString logDir = qEnvironmentVariable("MIACODE_LOG_DIR").trimmed();
         if (!logDir.isEmpty()) {
@@ -508,8 +517,11 @@ void writeStartupBeacon(const char* versionUtf8)
     // beacon lands next to the eventual shadow log. Done independently
     // here because crash_recovery::install (which calls installShadow)
     // hasn't run yet — that's the whole point of the beacon.
-    QString path = qEnvironmentVariable("MIACODE_OPLOG_SHADOW_PATH").trimmed();
-    QString resolvedDir;
+    const QString workspaceLogDir = miacode::runtime_paths::logDirectory();
+    QString path = workspaceLogDir.isEmpty()
+        ? qEnvironmentVariable("MIACODE_OPLOG_SHADOW_PATH").trimmed()
+        : QString();
+    QString resolvedDir = workspaceLogDir;
     if (!path.isEmpty()) {
         // Caller passed an explicit shadow path; put the beacon in the
         // same directory with a fixed-prefix name.
@@ -626,10 +638,14 @@ void appendStartupBeaconLine(const char* lineUtf8) noexcept
 void relocateLogs(const QString& targetDirectory)
 {
 #ifdef Q_OS_WIN
-    if (targetDirectory.trimmed().isEmpty()) {
+    const QString workspaceLogDir = miacode::runtime_paths::logDirectory();
+    const QString requestedDirectory = workspaceLogDir.isEmpty()
+        ? targetDirectory.trimmed()
+        : workspaceLogDir;
+    if (requestedDirectory.isEmpty()) {
         return;
     }
-    const QString dir = QDir::cleanPath(targetDirectory.trimmed());
+    const QString dir = QDir::cleanPath(requestedDirectory);
     QDir().mkpath(dir);
 
     const qint64 pid = QCoreApplication::applicationPid();

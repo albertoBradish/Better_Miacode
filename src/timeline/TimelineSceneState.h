@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <QColor>
 #include <QFont>
 #include <QPointF>
@@ -7,9 +9,100 @@
 #include <QSize>
 #include <QSizeF>
 #include <QString>
+#include <QStringView>
+#include <QTransform>
 #include <QVector>
 
 namespace miacode::timeline {
+
+enum class TimelineAxisMode {
+    Horizontal,
+    Falling,
+    Rising,
+};
+
+inline TimelineAxisMode timelineAxisModeForToken(QStringView token)
+{
+    if (token == u"falling") return TimelineAxisMode::Falling;
+    if (token == u"rising") return TimelineAxisMode::Rising;
+    return TimelineAxisMode::Horizontal;
+}
+
+inline qreal timelinePlayheadAnchor(TimelineAxisMode mode, qreal timeExtent, qreal timelineLeft)
+{
+    // Both vertical modes start time at the judgement edge. Falling mirrors Y.
+    if (mode == TimelineAxisMode::Horizontal) return timeExtent * 0.5;
+    return qMin(timeExtent, qMax(timelineLeft + 8.0, timeExtent * 0.12));
+}
+
+// Scene layers use (time, lane) coordinates. The projection maps them to the
+// item without changing source time or moving the surrounding QML controls.
+struct TimelineAxisProjection {
+    TimelineAxisMode mode = TimelineAxisMode::Horizontal;
+    qreal timeExtent = 0.0;
+
+    bool vertical() const { return mode != TimelineAxisMode::Horizontal; }
+    int direction() const { return mode == TimelineAxisMode::Falling ? -1 : 1; }
+
+    QSize axisSize(QSize screenSize) const
+    {
+        return vertical() ? screenSize.transposed() : screenSize;
+    }
+
+    QPointF toAxis(const QPointF& position) const
+    {
+        if (!vertical()) return position;
+        return QPointF(mode == TimelineAxisMode::Falling ? timeExtent - position.y() : position.y(), position.x());
+    }
+
+    QTransform toScreenTransform() const
+    {
+        if (!vertical()) return {};
+        return QTransform(0, direction(), 1, 0, 0, mode == TimelineAxisMode::Falling ? timeExtent : 0.0);
+    }
+};
+
+struct TimelineDropRegion {
+    double start = -1.0;
+    double end = -1.0;
+    QString label;
+
+    bool valid() const { return qIsFinite(start) && qIsFinite(end) && start >= 0.0 && end > start; }
+    bool operator==(const TimelineDropRegion&) const = default;
+};
+
+enum class TimelineLaneOrder {
+    Natural,
+    Rotated,
+    Reversed,
+    RotatedReversed,
+};
+
+inline TimelineLaneOrder timelineLaneOrderForToken(QStringView token)
+{
+    if (token == u"rotated") return TimelineLaneOrder::Rotated;
+    if (token == u"reversed") return TimelineLaneOrder::Reversed;
+    if (token == u"rotated_reversed") return TimelineLaneOrder::RotatedReversed;
+    return TimelineLaneOrder::Natural;
+}
+
+inline int timelineLaneForSlot(TimelineLaneOrder order, int slot)
+{
+    // The permutations are self-inverse and leave the Touch lane in place.
+    if (slot < 1 || slot > 8) return slot;
+    switch (order) {
+    case TimelineLaneOrder::Natural: return slot;
+    case TimelineLaneOrder::Rotated: return (slot + 3) % 8 + 1;
+    case TimelineLaneOrder::Reversed: return 9 - slot;
+    case TimelineLaneOrder::RotatedReversed: return (12 - slot) % 8 + 1;
+    }
+    return slot;
+}
+
+inline int timelineSlotForLane(TimelineLaneOrder order, int lane)
+{
+    return timelineLaneForSlot(order, lane);
+}
 
 struct TimelineSceneLayoutMetrics {
     QSize viewportSize;
@@ -109,7 +202,10 @@ struct TimelineSceneHoldSpan {
 };
 
 struct TimelineSceneState {
+    TimelineAxisMode axisMode = TimelineAxisMode::Horizontal;
+    TimelineLaneOrder laneOrder = TimelineLaneOrder::Natural;
     QSize viewportSize;
+    TimelineAxisProjection axisProjection() const { return {axisMode, qreal(viewportSize.width())}; }
     int timelineLeft = 0;
     int timelineTop = 0;
     qreal timelineHeight = 0.0;
@@ -145,6 +241,8 @@ struct TimelineSceneState {
     QVector<TimelineSceneRect> laneOverlayRects;
     QVector<TimelineSceneRect> waveformBars;
     QVector<TimelineSceneLine> gridLines;
+    QVector<TimelineSceneRect> dropRegionRects;
+    std::optional<TimelineSceneTextLabel> dropRegionLabel;
     QVector<TimelineSceneRect> frameRects;
     QVector<TimelineSceneLine> frameLines;
     QVector<TimelineSceneTextLabel> laneLabels;

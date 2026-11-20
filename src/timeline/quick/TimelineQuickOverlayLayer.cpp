@@ -203,7 +203,7 @@ QSGNode* TimelineQuickOverlayLayer::updateNode(
             if (label.text.isEmpty()) {
                 continue;
             }
-            staticRoot->appendChildNode(buildTimelineTextNode(window, label));
+            staticRoot->appendChildNode(buildTimelineTextNode(window, label, state.axisProjection()));
         }
         root->staticRevision = state.gridRevision;
     }

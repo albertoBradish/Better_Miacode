@@ -60,6 +60,8 @@ Session::BottomTabsTabId Session::bottomTabsTabIdFromString(const QString& tabId
     if (normalized == QStringLiteral("muri")) {
         return BottomTabsTabId::Muri;
     }
+    if (normalized == QStringLiteral("patterns")) return BottomTabsTabId::Patterns;
+    if (normalized == QStringLiteral("play_checks")) return BottomTabsTabId::PlayChecks;
     return BottomTabsTabId::Unknown;
 }
 
@@ -77,6 +79,9 @@ bool Session::bottomTabsTabVisible(BottomTabsTabId tabId) const
         return validationTabVisible_;
     case BottomTabsTabId::Muri:
         return muriTabVisible_;
+    case BottomTabsTabId::Patterns:
+    case BottomTabsTabId::PlayChecks:
+        return true;
     case BottomTabsTabId::Unknown:
         break;
     }
@@ -105,6 +110,9 @@ void Session::setBottomTabsTabVisible(BottomTabsTabId tabId, bool visible)
         break;
     case BottomTabsTabId::Muri:
         flag = &muriTabVisible_;
+        break;
+    case BottomTabsTabId::Patterns:
+    case BottomTabsTabId::PlayChecks:
         break;
     case BottomTabsTabId::Unknown:
         break;

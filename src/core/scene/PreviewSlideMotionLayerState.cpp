@@ -1,6 +1,7 @@
 #include "core/scene/PreviewSlideMotionLayerState.h"
 
 #include "core/scene/PreviewAnimatedSpriteHelpers.h"
+#include "core/scene/PreviewHandOrderRendering.h"
 #include "core/scene/PreviewMarkerDrawOrder.h"
 #include "core/scene/PreviewOpacityCurves.h"
 #include "core/scene/PreviewSceneConstants.h"
@@ -104,7 +105,8 @@ PreviewSlideMotionLayerState buildPreviewSlideMotionLayerState(
                                   qreal imageScale,
                                   qreal imageOpacity,
                                   PreviewAnimatedSpriteEffect effect,
-                                  bool cacheable
+                                  bool cacheable,
+                                  HandOrderHand handOrderHand
                               ) {
         if (image == nullptr || image->isNull() || imageOpacity <= 0.0 || imageScale <= 0.0) {
             return;
@@ -120,6 +122,7 @@ PreviewSlideMotionLayerState buildPreviewSlideMotionLayerState(
         sprite.rotationDegrees = angleDegrees;
         sprite.opacity = imageOpacity;
         sprite.effect = effect;
+        sprite.handOrderHand = handOrderHand;
         sprite.cacheable = cacheable;
         layerState.sprites.append(sprite);
     };
@@ -162,6 +165,7 @@ PreviewSlideMotionLayerState buildPreviewSlideMotionLayerState(
             QPointF logicalPoint;
             qreal imageScale = kStarAssetScale;
             qreal imageOpacity = 1.0;
+            qreal movementProgress = 0.0;
 
             if (state.playheadSeconds < marker.slideTraceSecond) {
                 const QVector<QPointF>& points = marker.slideSegmentPoints.constFirst();
@@ -201,7 +205,12 @@ PreviewSlideMotionLayerState buildPreviewSlideMotionLayerState(
                 }
                 logicalPoint = interpolatePoint(points, proportion);
                 angle = interpolateAngle(angles, proportion);
+                movementProgress = previewSlideMovementProgress(marker, segmentIndex, proportion);
             }
+
+            const HandOrderHand hand = state.render.showHandOrderAnnotations
+                ? previewHandOrderAtProgress(marker.handOrderTrackStops, movementProgress)
+                : HandOrderHand::Unspecified;
 
             appendSprite(
                 renderImage,
@@ -210,7 +219,8 @@ PreviewSlideMotionLayerState buildPreviewSlideMotionLayerState(
                 imageScale,
                 imageOpacity,
                 effect,
-                cacheable
+                cacheable,
+                hand
             );
             continue;
         }
@@ -257,18 +267,37 @@ PreviewSlideMotionLayerState buildPreviewSlideMotionLayerState(
             const qreal angle = waiting
                 ? (angles.isEmpty() ? 0.0 : angles.constFirst())
                 : interpolateAngle(angles, proportion);
-            appendSprite(
-                renderImage,
-                logicalPoint,
-                mirroredStarAngleDegrees(angle),
-                imageScale,
-                imageOpacity,
-                effect,
-                cacheable
-            );
+            const bool split = state.render.showHandOrderAnnotations && marker.handOrderWifiMode == HandOrderWifiMode::Split;
+            const int firstSector = laneIndex == 2 ? 1 : 0;
+            const int lastSector = split && laneIndex == 1 ? 1 : firstSector;
+            for (int sector = firstSector; sector <= lastSector; ++sector) {
+                const HandOrderHand wifiHand = state.render.showHandOrderAnnotations
+                    ? previewWifiHandAtProgress(marker, sector, proportion) : HandOrderHand::Unspecified;
+                appendSprite(
+                    renderImage,
+                    logicalPoint,
+                    mirroredStarAngleDegrees(angle),
+                    imageScale,
+                    imageOpacity,
+                    effect,
+                    cacheable,
+                    wifiHand
+                );
+                if (split && laneIndex == 1) {
+                    auto& sprite = layerState.sprites.last();
+                    sprite.handOrderClipOrigin = sprite.center;
+                    sprite.handOrderClipNormal = previewWifiSectorNormal(marker, sector);
+                }
+            }
+            if (state.render.showHandOrderAnnotations && marker.handOrderWifiMode == HandOrderWifiMode::Single
+                && laneIndex == 1) {
+                appendSprite(previewWifiSingleBadgeImage(), logicalPoint + QPointF(0, -24), 0.0,
+                    1.0, imageOpacity, PreviewAnimatedSpriteEffect::None, true, HandOrderHand::Unspecified);
+            }
         }
     }
 
+    applyHandOrderSkinArtwork(state.skin, &layerState.sprites);
     return layerState;
 }
 

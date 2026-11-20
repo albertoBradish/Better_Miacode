@@ -2,6 +2,9 @@
 #include "app/services/PreferenceDocument.h"
 #include "common/RuntimePaths.h"
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QTemporaryDir>
 #include <QTextStream>
 
@@ -16,14 +19,18 @@ int main(int argc, char** argv)
     auto write = [](const QString& path, const QByteArray& bytes) {
         QFile file(path); return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size();
     };
-    expect(write(directory.filePath(QStringLiteral(".better-miacode-runtime")), "BetterMiacode.runtime.v1\n"), "marker");
-    qputenv("BETTER_MIACODE_RUNTIME_ROOT", directory.path().toUtf8());
+    const QDir runtime(directory.filePath(QStringLiteral("runtime")));
+    expect(QDir().mkpath(runtime.path())
+        && write(runtime.filePath(QStringLiteral(".better-miacode-runtime")), "BetterMiacode.runtime.v1\n"), "runtime owner marker");
+    qputenv("BETTER_MIACODE_RUNTIME_ROOT", runtime.path().toUtf8());
     QString error;
-    expect(miacode::runtime_paths::initialize(&error), "isolated runtime");
+    expect(miacode::runtime_paths::initializeFromEnvironment(&error)
+        && miacode::runtime_paths::configureProcessEnvironment(&error), "isolated runtime");
     auto preferences = PreferenceDocument::loadPreferencesObject();
     preferences.insert(QStringLiteral("preserve_sentinel"), QStringLiteral("unchanged"));
     expect(PreferenceDocument::savePreferencesObject(preferences), "fixture preferences");
     miacode::CliIntegration integration(nullptr, directory.filePath(QStringLiteral("commands")));
+    expect(miacode::CliIntegration::commandName() == QStringLiteral("better-miacode"), "public command identity");
     expect(!integration.enabled(), "CLI disabled by default");
     expect(integration.setEnabled(true), "install without changing user PATH");
     expect(integration.enabled() && QFileInfo::exists(integration.commandPath()), "enabled and command exists");
@@ -79,7 +86,7 @@ int main(int argc, char** argv)
         "fallback profile unregister preserves user configuration");
     QFile::remove(fallbackProfile);
     expect(write(bashProfile, userBash), "restore regular Bash profile fixture");
-    const QString preferencePath = miacode::runtime_paths::configFile("preferences_v2.json");
+    const QString preferencePath = QDir(miacode::runtime_paths::configDirectory()).filePath(QStringLiteral("preferences_v2.json"));
     const QString heldPath = preferencePath + QStringLiteral(".held");
     const auto beforePreferences = PreferenceDocument::loadPreferencesObject();
     expect(QFile::rename(preferencePath, heldPath) && QDir().mkdir(preferencePath), "block preference writes");

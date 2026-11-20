@@ -35,7 +35,7 @@ QVariantMap option(const QVariant& value, const char* labelKey)
     };
 }
 
-constexpr int kBuiltinOutlineCount = 5;
+constexpr int kBuiltinOutlineCount = 6;
 
 int indexForOutlineVariant(PreviewOutlineVariant variant)
 {
@@ -95,6 +95,8 @@ PreviewSettingsModel::PreviewSettingsModel(miacode::ShellNotifications& notifica
     // writes the same render state, so its writes have to arrive here too.
     connect(&notifications, &miacode::ShellNotifications::previewRenderSettingsChanged,
             this, &PreviewSettingsModel::changed);
+    connect(&notifications, &miacode::ShellNotifications::previewRenderSettingsChanged,
+            this, &PreviewSettingsModel::skinChanged);
 }
 
 QVariantMap PreviewSettingsModel::values() const
@@ -117,6 +119,7 @@ QVariantMap PreviewSettingsModel::labels() const
         {QStringLiteral("brightnessOuter"), text("dialog.render_settings.video.brightness_outer")},
         {QStringLiteral("brightnessInner"), text("dialog.render_settings.video.brightness_inner")},
         {QStringLiteral("fireworkBrightness"), text("dialog.render_settings.video.firework_brightness")},
+        {QStringLiteral("fireworkStyle"), text("dialog.skin_settings.firework")},
         {QStringLiteral("layoutSquareScale"), text("dialog.render_settings.video.layout_square_scale")},
         {QStringLiteral("scaleMode"), text("dialog.render_settings.video.scale_mode")},
         {QStringLiteral("smoothBrightness"), text("dialog.render_settings.video.smooth_brightness")},
@@ -133,6 +136,7 @@ QVariantMap PreviewSettingsModel::labels() const
          text("dialog.render_settings.gameplay.force_labeled_judge_line_when_paused")},
         {QStringLiteral("tapFlowSpeed"), text("dialog.render_settings.video.tap_flow_speed")},
         {QStringLiteral("touchFlowSpeed"), text("dialog.render_settings.video.touch_flow_speed")},
+        {QStringLiteral("starFadeTiming"), text("preview.game.star_fade_timing")},
         {QStringLiteral("judgeEffect"), text("dialog.render_settings.gameplay.judge_effect")},
         {QStringLiteral("slideEarlierOnTop"), text("dialog.render_settings.gameplay.slide_stack_order")},
         {QStringLiteral("centerDisplay"), text("dialog.render_settings.gameplay.center_display")},
@@ -258,6 +262,14 @@ int PreviewSettingsModel::skinIndex() const
     return names.isEmpty() ? -1 : 0;
 }
 
+QVariantList PreviewSettingsModel::fireworkStyleOptions() const
+{
+    return {
+        option(static_cast<int>(PreviewFireworkStyle::Standard), "dialog.skin_settings.firework.standard"),
+        option(static_cast<int>(PreviewFireworkStyle::Modern), "dialog.skin_settings.firework.modern"),
+    };
+}
+
 QVariantList PreviewSettingsModel::skinJudgeEffectOptions() const
 {
     return QVariantList{
@@ -294,6 +306,8 @@ QVariantList PreviewSettingsModel::outlineOptions() const
             {QStringLiteral("id"), QStringLiteral("none")},
             {QStringLiteral("label"), text("dialog.render_settings.gameplay.judge_line.none")},
         },
+        QVariantMap{{QStringLiteral("id"), QStringLiteral("auto")},
+                    {QStringLiteral("label"), text("preview.auto_detect")}},
     };
     if (surface() == nullptr) {
         return list;
@@ -312,6 +326,7 @@ int PreviewSettingsModel::outlineIndex() const
     if (surface() == nullptr) {
         return 1;
     }
+    if (surface()->renderSettings().value(QStringLiteral("outlineAutomatic")).toBool()) return 5;
     if (appearance_->outlineVariant() == PreviewOutlineVariant::None) return 4;
     const QString custom = surface()->currentCustomOutlineFileName();
     if (!custom.isEmpty()) {
@@ -334,7 +349,7 @@ QVariantList PreviewSettingsModel::fontLibraryOptions() const
     bool selectedListed = selectedPath.isEmpty();
     const QVector<miacode::video_export::FontLibraryEntry> entries =
         miacode::video_export::fontLibraryEntries(
-            miacode::app_preferences::fontLibraryDirectory(), true, text("card_font.default"));
+            miacode::app_preferences::fontLibraryDirectory(), true, defaultFamily);
     for (const miacode::video_export::FontLibraryEntry& entry : entries) {
         list.append(QVariantMap{
             {QStringLiteral("label"), entry.label},
@@ -342,6 +357,14 @@ QVariantList PreviewSettingsModel::fontLibraryOptions() const
             {QStringLiteral("family"), entry.path.isEmpty() ? defaultFamily : entry.family},
         });
         selectedListed |= entry.path == selectedPath;
+    }
+    for (const auto& bundled : {QStringLiteral(":/fonts/xiaolai_mono.ttf"),
+                                QStringLiteral(":/fonts/maple_mono_cn.ttf")}) {
+        const QString family = miacode::preview::scene::previewHudFontFamilyForFile(bundled);
+        list.append(QVariantMap{{QStringLiteral("label"), family},
+                                {QStringLiteral("path"), bundled},
+                                {QStringLiteral("family"), family}});
+        selectedListed |= selectedPath == bundled;
     }
     // Stored area paths can be outside the imported font library.
     // Keep their real selection visible rather than mislabelling them Default.
@@ -444,7 +467,7 @@ void PreviewSettingsModel::setOutlineIndex(int index)
         return;
     }
     surface()->applyOutlineVariant(
-        outlineVariantForIndex(index), /*useAutoSelection=*/false, /*persistState=*/true);
+        outlineVariantForIndex(index), /*useAutoSelection=*/index == 5, /*persistState=*/true);
     emit skinChanged();
 }
 

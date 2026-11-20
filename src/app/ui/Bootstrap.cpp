@@ -2,13 +2,7 @@
 
 #include "app/ui/Bootstrap.h"
 
-#include "AppVersion.h"
 #include "app/ui/ApplicationContext.h"
-#include "app/services/update/NetworkUpdateFetcher.h"
-#include "app/services/update/PreferenceUpdateStateStore.h"
-#include "app/services/update/UpdateManifest.h"
-#include "app/services/update/UpdateService.h"
-#include "app/services/PreferenceDocument.h"
 #include "app/ui/preview/NoteImageProvider.h"
 #include "app/ui/export/CoverExportWindow.h"
 #include "app/ui/export/ExportSession.h"
@@ -104,8 +98,7 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         applicationServices_->jobProgress().retranslate();
         applicationServices_->setValidationLocale(miacode::uiValidationLocale());
     });
-    // The fork has no upstream update channel. Keep update() null so the UI
-    // cannot offer or open official MiaCode release packages.
+    // This development build never connects to the official update channel.
     jobRegistry_ = std::make_unique<miacode::JobRegistry>();
     netTransport_ = std::make_unique<miacode::net::NetHttpTransport>();
     netProvider_ = std::make_unique<miacode::net::NetProvider>(*netTransport_);
@@ -134,6 +127,23 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     appendUiRuntimeLog(QStringLiteral("backend_ready"));
 
     applicationContext_ = std::make_unique<ApplicationContext>(*applicationServices_, this);
+    if (auto* exportSession = qobject_cast<ExportSession*>(applicationServices_->exportPageSession())) {
+        const auto& workspace = applicationServices_->workspace();
+        const auto& structure = applicationContext_->chartStructureModel();
+        exportSession->setChartPreviewContextProvider(
+            [context = QPointer<ApplicationContext>(applicationContext_.get()), &workspace](int difficulty) {
+            if (!context) return ExportSession::ChartPreviewContext{};
+            const auto& currentStructure = context->chartStructureModel();
+            const auto state = workspace.snapshot();
+            return ExportSession::ChartPreviewContext{state.filePath, state.documentOpenGeneration,
+                &workspace.document(), currentStructure.inputFingerprintForDifficulty(difficulty),
+                currentStructure.effectiveDropForDifficulty(difficulty), currentStructure.mediaDuration()};
+        });
+        QObject::connect(&workspace, &miacode::ChartWorkspace::changed,
+            exportSession, &ExportSession::chartPreviewContextChanged);
+        QObject::connect(&structure, &ChartStructureModel::changed,
+            exportSession, &ExportSession::chartPreviewContextChanged);
+    }
     QObject::connect(static_cast<PageHost*>(applicationContext_->pages()),
         &PageHost::coverWindowRequested, this, &Bootstrap::openCoverExportWindow);
     auto* const document = static_cast<DocumentModel*>(applicationContext_->document());
@@ -232,7 +242,7 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         rootWindow_ = window;
         const auto activateRootWindow = [window]() {
             window->setWindowStates(window->windowStates() & ~Qt::WindowMinimized);
-            window->show();
+            window->setVisible(true);
             window->raise();
             window->requestActivate();
         };
@@ -344,10 +354,6 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         if (document != nullptr) {
             document->openFile(QUrl::fromLocalFile(startupOpenTarget.trimmed()));
         }
-    }
-
-    if (miacode::update::UpdateService* updates = applicationServices_->updateService()) {
-        updates->scheduleStartupCheck();
     }
 
     appendUiRuntimeLog(QStringLiteral("start_ok"));

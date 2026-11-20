@@ -24,9 +24,9 @@ QString userOverridePath()
 
 QString parseShortcutTextValue(const QJsonValue& value)
 {
-    return value.isString()
-        ? miacode::input_shortcut::normalizeGestureText(value.toString())
-        : QString();
+    const QString text = value.isString() ? miacode::input_shortcut::normalizeGestureText(value.toString()) : QString();
+    if (text == QStringLiteral("`") || text == QStringLiteral("Ctrl+`")) return {};
+    return text;
 }
 
 QStringList parseStringList(const QJsonValue& value)
@@ -48,6 +48,13 @@ QStringList parseStringList(const QJsonValue& value)
         }
     }
     return values;
+}
+
+// An empty stored shortcut is an explicit unbinding, not a missing one.
+bool isUnbound(const QJsonObject& object)
+{
+    const QJsonValue value = object.value(QStringLiteral("shortcut"));
+    return value.isString() && value.toString().trimmed().isEmpty();
 }
 
 QString parseShortcutObject(const QJsonObject& object)
@@ -87,9 +94,10 @@ ShortcutRegistry& ShortcutRegistry::instance()
 }
 
 ShortcutRegistry::ShortcutRegistry()
-    : ShortcutRegistry(userOverridePath())
+    : ShortcutRegistry(userOverridePath(), {})
 {
-    useCurrentCwd_ = false;
+    // A launch directory can belong to another installation. Only explicit
+    // registry hosts may opt into an additional input path.
 }
 
 ShortcutRegistry::ShortcutRegistry(QString overridePath, QString cwdOverridePath)
@@ -210,10 +218,23 @@ bool ShortcutRegistry::setUserShortcut(const QString& id, const QKeySequence& se
 bool ShortcutRegistry::setUserShortcutText(const QString& id, const QString& shortcutText)
 {
     const QString normalized = miacode::input_shortcut::normalizeGestureText(shortcutText);
-    if (!editableShortcutIds_.contains(id) || normalized.isEmpty()) {
+    if (!editableShortcutIds_.contains(id) || normalized.isEmpty()
+        || normalized == QStringLiteral("`") || normalized == QStringLiteral("Ctrl+`")) {
         return false;
     }
     const PendingShortcut change{normalized, false};
+    pendingChanges_.insert(id, change);
+    applyRuntimeShortcut(id, change);
+    saveUserOverrides();
+    return true;
+}
+
+bool ShortcutRegistry::unbindUserShortcut(const QString& id)
+{
+    if (!editableShortcutIds_.contains(id)) {
+        return false;
+    }
+    const PendingShortcut change{QString(), false};
     pendingChanges_.insert(id, change);
     applyRuntimeShortcut(id, change);
     saveUserOverrides();
@@ -296,7 +317,7 @@ void ShortcutRegistry::mergeJsonObject(const QJsonObject& root)
                 defaultShortcutTexts_.value(it.key()),
             });
         }
-        if (!parsed.isEmpty()) {
+        if (!parsed.isEmpty() || isUnbound(actionObject)) {
             shortcutTexts_.insert(it.key(), parsed);
             shortcuts_.insert(it.key(), QKeySequence(parsed, QKeySequence::PortableText));
             if (actionObject.contains(QStringLiteral("shortcut"))) {
@@ -309,7 +330,7 @@ void ShortcutRegistry::mergeJsonObject(const QJsonObject& root)
     for (auto it = contextual.constBegin(); it != contextual.constEnd(); ++it) {
         const QJsonObject shortcutObject = it.value().toObject();
         const QString parsed = parseShortcutObject(shortcutObject);
-        if (parsed.isEmpty()) {
+        if (parsed.isEmpty() && !isUnbound(shortcutObject)) {
             continue;
         }
         if (!defaultShortcuts_.contains(it.key()) && shortcutObject.contains(QStringLiteral("default"))) {

@@ -1,6 +1,7 @@
 #include "media_tools/net/NetProvider.h"
 #include "media_tools/net/NetUploadDiagnostics.h"
 #include "common/DebugLog.h"
+#include "common/RuntimePaths.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -270,9 +271,20 @@ private:
         emitItem("running", "validate");
         const auto material = materials_[index_];
         const auto cancelled = cancelled_;
-        validation_.setFuture(QtConcurrent::run([material, cancelled] {
+        const QString cacheRoot = miacode::runtime_paths::cacheDirectory();
+        const QString uploadTempRoot = cacheRoot.isEmpty()
+            ? QString()
+            : QDir(cacheRoot).filePath(QStringLiteral("net-upload"));
+        if (uploadTempRoot.isEmpty() || !QDir().mkpath(uploadTempRoot)) {
+            emitItem("failed", "validate", failure("file.write_failed"));
+            ++failed_;
+            QTimer::singleShot(0, this, [this] { next(); });
+            return;
+        }
+        validation_.setFuture(QtConcurrent::run([material, cancelled, uploadTempRoot] {
             FrozenUpload result;
-            result.directory = std::make_shared<QTemporaryDir>();
+            result.directory = std::make_shared<QTemporaryDir>(
+                QDir(uploadTempRoot).filePath(QStringLiteral("frozen-XXXXXX")));
             if (!result.directory->isValid()) return result;
             result.files = material.files;
             const auto metadata = material.descriptor.value("files").toArray();

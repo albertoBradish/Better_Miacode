@@ -15,7 +15,10 @@ MenuBar {
     property bool documentAvailable: true
     property bool editorCommandsEnabled: true
     property bool chartCommandsEnabled: true
+    property bool playbackCommandsEnabled: true
     property bool toolCommandsEnabled: true
+    property bool normalizationEnabled: true
+    property bool handOrderKeyboardEnabled: false
 
     property MainMenu menuDefinitions: MainMenu {
         visible: false
@@ -29,8 +32,10 @@ MenuBar {
         documentAvailable: root.documentAvailable
         editorCommandsEnabled: root.editorCommandsEnabled
         chartCommandsEnabled: root.chartCommandsEnabled
+        playbackCommandsEnabled: root.playbackCommandsEnabled
         toolCommandsEnabled: root.toolCommandsEnabled
         nativeMenuMode: true
+        handOrderKeyboardEnabled: root.handOrderKeyboardEnabled
     }
 
     property Action aboutApplicationAction: Action {
@@ -52,11 +57,17 @@ MenuBar {
         onTriggered: root.commands.exitRequested()
     }
 
+    Shortcut {
+        sequence: "Alt+W"
+        enabled: root.commandsEnabled && !root.menuDefinitions.leftHandOwnsAltW
+        onActivated: root.menuDefinitions.toggleWorkspaceMenu()
+    }
+
     Component.onCompleted: {
         const menus = root.menuDefinitions.nativeMenus()
         menus[0].addAction(root.quitApplicationAction)
         menus[1].addAction(root.preferencesApplicationAction)
-        menus[6].addAction(root.aboutApplicationAction)
+        menus[menus.length - 1].addAction(root.aboutApplicationAction)
         for (let i = 0; i < menus.length; ++i) {
             root.addMenu(menus[i])
         }

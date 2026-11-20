@@ -1,3 +1,6 @@
+#include "app/services/VideoEncodingRequest.h"
+#include "app/services/HandOrderFeaturePreferences.h"
+#include "export/video_export/VideoExportSettings.h"
 #include "app/MainEntrypoints.h"
 #include "app/runtime/settings/PreferenceDocumentProvider.h"
 
@@ -79,6 +82,9 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     parser.setApplicationDescription(qtTrId("cli.video_export.description"));
     parser.addHelpOption();
     parser.addVersionOption();
+    parser.addOption({"quality", "Official quality level: high, standard or small.", "level", "standard"});
+    parser.addOption({"rate-mode", "Official export strategy: quality, file_size or bitrate.", "mode"});
+    parser.addOption({"size-limit-mb", "Target file size in decimal MB (5-1000); a target, not a hard guarantee.", "MB"});
     parser.addOption(QCommandLineOption(QStringLiteral("overwrite"), QStringLiteral("Atomically replace an existing output after successful export.")));
     addSharedCliDebugOption(parser);
     parser.addOption(QCommandLineOption(
@@ -129,6 +135,12 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
         qtTrId("cli.video_export.hide_timestamp")
     ));
     parser.addOption(QCommandLineOption(
+        QStringLiteral("hand-order"),
+        qtTrId("cli.video_export.hand_order"),
+        QStringLiteral("mode"),
+        QStringLiteral("annotated")
+    ));
+    parser.addOption(QCommandLineOption(
         QStringLiteral("show-object-stats"),
         qtTrId("cli.video_export.object_stats")
     ));
@@ -143,6 +155,10 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     parser.addOption(QCommandLineOption(
         QStringLiteral("intro-card-shadow"),
         qtTrId("cli.video_export.intro_card_shadow")
+    ));
+    parser.addOption(QCommandLineOption(
+        QStringLiteral("no-intro-card-shadow"),
+        QStringLiteral("Disable the intro difficulty card shadow.")
     ));
     parser.addOption(QCommandLineOption(
         QStringLiteral("intro-pv-start"),
@@ -195,6 +211,15 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
         QStringLiteral("milliseconds"),
         QStringLiteral("2000")
     ));
+
+    parser.addOption(QCommandLineOption(QStringLiteral("video-bitrate"),
+        QStringLiteral("Target video bitrate in Mbps (0.1–100); selects the bitrate strategy."), QStringLiteral("Mbps")));
+    parser.addOption(QCommandLineOption(QStringLiteral("no-pv"),
+        QStringLiteral("Use the static background in place of the PV.")));
+    parser.addOption(QCommandLineOption(QStringLiteral("debug-render"),
+        QStringLiteral("Render the chart on opaque black without background media.")));
+    parser.addOption(QCommandLineOption(QStringLiteral("intro-chart-preview"),
+        QStringLiteral("Show a chart preview alongside the intro card.")));
 
     if (!parser.parse(app.arguments())) {
         if (errorMessage != nullptr) {
@@ -345,6 +370,22 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     }
 
     Session::CliVideoExportRequest request;
+    QJsonObject encodingOptions;
+    for (const QString& key : {QStringLiteral("rate-mode"), QStringLiteral("quality"),
+                              QStringLiteral("size-limit-mb"), QStringLiteral("video-bitrate")})
+        if (parser.isSet(key)) encodingOptions.insert(key, parser.value(key));
+    if (!miacode::video_export::readVideoEncodingRequest(encodingOptions, &request.encoding, errorMessage)) return 2;
+    const QString handOrderMode = parser.value(QStringLiteral("hand-order")).trimmed().toLower();
+    if (handOrderMode != QLatin1String("annotated")
+        && handOrderMode != QLatin1String("original")) {
+        if (errorMessage != nullptr) {
+            *errorMessage = qtTrId("cli.video_export.hand_order_invalid");
+        }
+        return 2;
+    }
+    request.includePv = !parser.isSet(QStringLiteral("no-pv"));
+    request.debugRendering = parser.isSet(QStringLiteral("debug-render"));
+    request.introChartPreview = parser.isSet(QStringLiteral("intro-chart-preview"));
     request.chartPathOrDirectory = chartInput;
     request.difficulty = parser.value(QStringLiteral("difficulty")).trimmed();
     const QString userOutput = parser.value(QStringLiteral("output")).trimmed();
@@ -376,10 +417,11 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     request.exportStartSeconds = startSeconds;
     request.contentDurationSeconds = durationSeconds;
     request.showTimestamp = !parser.isSet(QStringLiteral("hide-timestamp"));
+    request.showHandOrderAnnotations = miacode::hand_order_features::enabled() && handOrderMode == QLatin1String("annotated");
     request.showObjectStatsHud = parser.isSet(QStringLiteral("show-object-stats"));
     request.showChartInfoHud = parser.isSet(QStringLiteral("show-chart-info"));
-    request.addIntro = parser.isSet(QStringLiteral("intro")) || introPvPreview;
-    request.introCardShadow = parser.isSet(QStringLiteral("intro-card-shadow"));
+    request.addIntro = parser.isSet(QStringLiteral("intro")) || introPvPreview || request.introChartPreview;
+    request.introCardShadow = !parser.isSet(QStringLiteral("no-intro-card-shadow"));
     request.introPvPreview = introPvPreview;
     request.introPvStartSeconds = introPvStartSeconds;
     {

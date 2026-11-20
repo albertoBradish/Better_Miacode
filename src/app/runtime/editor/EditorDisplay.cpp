@@ -1,3 +1,5 @@
+#include "app/services/HandOrderFeaturePreferences.h"
+#include "app/services/PausedPreviewPreferences.h"
 #include "app/runtime/editor/EditorHost.h"
 #include "app/services/EditorCompletionPreferences.h"
 #include "app/runtime/settings/SettingsHost.h"
@@ -9,8 +11,8 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/services/PreferenceDocument.h"
+#include "app/services/PreviewModePreferences.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -61,6 +63,7 @@ void miacode::runtime::EditorHost::loadPortableState()
 
     const QJsonObject root = PreferenceDocument::loadPreferencesObject();
     const QJsonObject ui = root.value("ui").toObject();
+    state_.lowPerformanceMode_ = ui.value("low_performance_mode").toBool(false);
     const QJsonObject app = root.value("app").toObject();
     const QJsonObject preview = app.value("preview").toObject();
 
@@ -80,26 +83,13 @@ void miacode::runtime::EditorHost::loadPortableState()
     state_.editorOverwriteModeEnabled_ = ui.value("editor_overwrite_mode").toBool(false);
     // PreferenceDocument owns legacy migration and canonical defaults.
     state_.editorAutoCompletionEnabled_ = ui.value("editor_auto_completion").toBool(true);
-    const auto completionConfig = miacode::readEditorCompletionCandidates(ui);
-    state_.editorCompletionDurationCandidates_ = completionConfig.durations;
-    state_.editorCompletionDivisionCandidates_ = completionConfig.divisions;
-    QSettings legacySettings;
-    const bool hasLegacyBottomPanelHeight =
-        legacySettings.contains(QStringLiteral("ui/bottomPanelHeight"));
+    state_.editorCompletionConfig_ = miacode::readEditorCompletionCandidates(ui);
     if (ui.value("bottom_tabs_content_scale").isDouble()) {
         // Stored as a content-scale ratio (not pixels). The raw value is clamped
         // to its valid [min,max] range by applyBottomTabsContentScale() when the
         // height is re-applied below.
         state_.bottomTabsContentScale_ =
             ui.value("bottom_tabs_content_scale").toDouble(state_.bottomTabsContentScale_);
-    }
-    // The shell's scale is canonical even when it already existed before this
-    // launch, so always retire the obsolete v2 pixel-height key. (The legacy
-    // pixel value itself is discarded rather than migrated — the migration
-    // path used to route it through ShellHost::setBottomTabsHeight(), which
-    // was deleted because it was a no-op: bottomTabs_ is never constructed.)
-    if (hasLegacyBottomPanelHeight) {
-        legacySettings.remove(QStringLiteral("ui/bottomPanelHeight"));
     }
     if (ui.value("preview_pane_width_ratio").isDouble()) {
         state_.previewPaneWidthRatio_ =
@@ -211,25 +201,31 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
     state_.previewBackgroundBrightnessInner_ = miacode::preview_video::kBackgroundBrightnessInnerDefault;
     state_.previewLayoutSquareScale_ = miacode::preview_video::kLayoutSquareScaleDefault;
     state_.previewFireworkBrightness_ = miacode::preview_video::kFireworkBrightnessDefault;
+    state_.completionDisplay_ = CompletionDisplay::Automatic;
+    state_.previewFireworkStyle_ = PreviewFireworkStyle::Standard;
     state_.previewSmoothBrightness_ = miacode::preview_video::kSmoothBrightnessDefault;
     previewAppearanceValues_.outlineVariant = PreviewOutlineVariant::Line;
     state_.previewOutlineVariantUsesAutoSelection_ = true;
     state_.previewBackgroundScaleMode_ = PreviewBackgroundScaleMode::FillCrop;
     state_.previewTapFlowSpeed_ = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
     state_.previewTouchFlowSpeed_ = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
+    state_.previewStarFadeTiming_ = 0.0;
     previewAppearanceValues_.slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     previewAppearanceValues_.tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     previewAppearanceValues_.skinVariant = PreviewSkinVariant::Standard;
     state_.previewCanvasFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
-    state_.previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::Fps30;
+    state_.previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::SourceRate;
     state_.videoDecodePrefersSoftware_ = false;
     state_.timeline_.timelineFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
     state_.previewCanvasAspectRatio_ = 1.0;
     state_.previewAutoRestoreSquareAfterExport_ = false;
     state_.previewForceLabeledJudgeLineWhenPaused_ = true;
+    state_.previewShowStageMediaWhenPaused_ = true;
     state_.previewTouchPadAuthoringShortcutEnabled_ = true;
+    state_.previewModeProfiles_ = QJsonObject{};
     state_.previewShowDebugInfo_ = false;
     state_.previewShowTimestamp_ = true;
+    state_.previewShowHandOrderAnnotations_ = false;
     state_.previewShowMeasureLines_ = false;
     state_.previewShowJudgementSkeleton_ = false;
     state_.previewShowSlideJudgementTiming_ = false;
@@ -255,6 +251,7 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
 
 void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObject& preview)
 {
+    state_.previewModeProfiles_ = preview.value(QStringLiteral("render_mode_profiles")).toObject();
     if (preview.value("preview_playback_rate").isDouble()) {
         // Non-command write: restoring the persisted rate, same as the reset
         // above — see PlaybackStateAuthority.h. The 0.25 floor now lives in
@@ -283,6 +280,10 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     }
     const QString muriRenderMode = preview.value("muri_render_mode").toString().trimmed().toLower();
     state_.muriRenderOptions_.renderMode = muriRenderModeFromToken(muriRenderMode);
+    if (!miacode::hand_order_features::enabled() && renderModeShowsHandOrder(state_.muriRenderOptions_.renderMode))
+        state_.muriRenderOptions_.renderMode = RenderMode::Native;
+    state_.muriRenderOptions_.playProfile = miacode::hand_order::PlayProfile::fromJson(
+        preview.value(QStringLiteral("simulated_play_profile")).toObject());
     if (preview.value("show_chart_review_slide_judge_overlay").isBool()) {
         state_.muriRenderOptions_.showChartReviewSlideJudgeOverlay =
             preview.value("show_chart_review_slide_judge_overlay")
@@ -348,6 +349,8 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     }
     state_.previewFireworkBrightness_ = miacode::preview_video::normalizedFireworkBrightness(
         preview.value("firework_brightness").toDouble(state_.previewFireworkBrightness_));
+    state_.completionDisplay_ = completionDisplayFromId(preview.value("completion_display").toInt());
+    state_.previewFireworkStyle_ = fireworkStyleFromToken(preview.value("firework_style").toString());
     if (preview.value("smooth_brightness").isBool()) {
         state_.previewSmoothBrightness_ = preview.value("smooth_brightness").toBool(state_.previewSmoothBrightness_);
     }
@@ -382,6 +385,7 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     } else if (preview.value("note_flow_speed").isDouble()) {
         state_.previewTapFlowSpeed_ = miacode::preview_gameplay::normalizePreviewTimingFlowSpeed(legacyFlowSpeed);
     }
+    state_.previewStarFadeTiming_ = miacode::preview_gameplay::normalizedStarFadeTiming(preview.value("star_fade_timing").toDouble());
     if (preview.value("touch_flow_speed").isDouble()) {
         state_.previewTouchFlowSpeed_ = miacode::preview_gameplay::normalizePreviewTimingFlowSpeed(
             preview.value("touch_flow_speed").toDouble(state_.previewTouchFlowSpeed_)
@@ -452,6 +456,7 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
             preview.value("hide_stage_media_when_paused")
                 .toBool(state_.previewForceLabeledJudgeLineWhenPaused_);
     }
+    state_.previewShowStageMediaWhenPaused_ = miacode::paused_preview::showStageMedia(preview);
     if (preview.value("touch_pad_authoring_shortcut_enabled").isBool()) {
         state_.previewTouchPadAuthoringShortcutEnabled_ =
             preview.value("touch_pad_authoring_shortcut_enabled")
@@ -472,21 +477,17 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     if (preview.value("show_timestamp").isBool()) {
         state_.previewShowTimestamp_ = preview.value("show_timestamp").toBool(true);
     }
-    if (preview.value("show_object_stats_preview").isBool()) {
-        state_.previewShowObjectStatsHud_ = preview.value("show_object_stats_preview").toBool(false);
-    }
+    // Rendering mode owns annotation visibility; legacy global flags cannot
+    // leak hand colors into normal, debug or Muri presentation.
+    state_.previewShowHandOrderAnnotations_ = renderModeShowsHandOrder(state_.muriRenderOptions_.renderMode);
+    state_.previewShowObjectStatsHud_ = false;
     if (preview.value("show_object_stats_export").isBool()) {
         state_.exportShowObjectStatsHud_ = preview.value("show_object_stats_export").toBool(false);
     }
     previewAppearanceValues_.centerDisplayMode = miacode::preview_gameplay::centerDisplayModeFromToken(
         preview.value(QStringLiteral("center_display_mode")).toString(
             QString::fromLatin1(miacode::preview_gameplay::centerDisplayModeToken(previewAppearanceValues_.centerDisplayMode))));
-    const bool unifiedObjectStatsHud = state_.previewShowObjectStatsHud_ || state_.exportShowObjectStatsHud_;
-    state_.previewShowObjectStatsHud_ = unifiedObjectStatsHud;
-    state_.exportShowObjectStatsHud_ = unifiedObjectStatsHud;
-    if (preview.value("show_chart_info_preview").isBool()) {
-        state_.previewShowChartInfoHud_ = preview.value("show_chart_info_preview").toBool(false);
-    }
+    state_.previewShowChartInfoHud_ = false;
     if (preview.value("show_chart_info_export").isBool()) {
         state_.exportShowChartInfoHud_ = preview.value("show_chart_info_export").toBool(false);
     }
@@ -494,9 +495,6 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     state_.previewShowCpsHud_ = state_.exportShowCpsHud_ = preview.value("show_cps_hud").toBool(false);
     state_.previewShowMeterHud_ = state_.exportShowMeterHud_ = preview.value("show_meter_hud").toBool(false);
     state_.previewShowModsHud_ = state_.exportShowModsHud_ = preview.value("show_mods_hud").toBool(false);
-    const bool unifiedChartInfoHud = state_.previewShowChartInfoHud_ || state_.exportShowChartInfoHud_;
-    state_.previewShowChartInfoHud_ = unifiedChartInfoHud;
-    state_.exportShowChartInfoHud_ = unifiedChartInfoHud;
     if (preview.value("show_validation_summary").isBool()) {
         state_.previewShowValidationSummary_ = preview.value("show_validation_summary").toBool(true);
     }
@@ -549,8 +547,7 @@ void miacode::runtime::EditorHost::savePortableState() const
     ui.insert("editor_half_width_input", state_.editorHalfWidthInputEnabled_);
     ui.insert("editor_overwrite_mode", state_.editorOverwriteModeEnabled_);
     ui.insert("editor_auto_completion", state_.editorAutoCompletionEnabled_);
-    miacode::writeEditorCompletionCandidates(ui, {state_.editorCompletionDurationCandidates_,
-                                                state_.editorCompletionDivisionCandidates_});
+    miacode::writeEditorCompletionCandidates(ui, state_.editorCompletionConfig_);
     // Bottom-tabs (timeline/validation/muri) divider height, persisted as a
     // content-scale ratio rather than pixels (see loadPortableState()).
     ui.insert("bottom_tabs_content_scale", state_.bottomTabsContentScale_);
@@ -583,6 +580,9 @@ void miacode::runtime::EditorHost::savePortableState() const
     preview.insert("show_touch_trail", state_.showTouchTrail_);
     preview.insert("static_tap_on_slide_threshold_ms", state_.staticTapOnSlideThresholdMs_);
     preview.insert("muri_render_mode", muriRenderModeToken(state_.muriRenderOptions_.renderMode));
+    preview.insert(QStringLiteral("simulated_play_profile"), state_.muriRenderOptions_.playProfile.toJson());
+    preview.insert(QStringLiteral("render_mode_profiles"), miacode::preview_mode_preferences::withCurrent(
+        state_.previewModeProfiles_, state_.muriRenderOptions_.renderMode, session_.capturePreviewModeSettings()));
     preview.insert("show_chart_review_slide_judge_overlay", state_.muriRenderOptions_.showChartReviewSlideJudgeOverlay);
     preview.insert("show_chart_review_tap_judge_overlay", state_.muriRenderOptions_.showChartReviewTapJudgeOverlay);
     preview.insert("show_chart_review_break_judge_overlay", state_.muriRenderOptions_.showChartReviewBreakJudgeOverlay);
@@ -594,6 +594,8 @@ void miacode::runtime::EditorHost::savePortableState() const
     preview.insert("background_brightness_inner", state_.previewBackgroundBrightnessInner_);
     preview.insert("layout_square_scale", state_.previewLayoutSquareScale_);
     preview.insert("firework_brightness", state_.previewFireworkBrightness_);
+    preview.insert("completion_display", static_cast<int>(state_.completionDisplay_));
+    preview.insert("firework_style", QString::fromLatin1(fireworkStyleToken(state_.previewFireworkStyle_)));
     preview.insert("smooth_brightness", state_.previewSmoothBrightness_);
     if (state_.previewOutlineVariantUsesAutoSelection_) {
         preview.remove("outline_variant");
@@ -618,6 +620,7 @@ void miacode::runtime::EditorHost::savePortableState() const
     );
     preview.insert("tap_flow_speed", state_.previewTapFlowSpeed_);
     preview.insert("touch_flow_speed", state_.previewTouchFlowSpeed_);
+    preview.insert("star_fade_timing", state_.previewStarFadeTiming_);
     preview.insert("slide_earlier_second_and_text_on_top", previewAppearanceValues_.slideEarlierSecondAndTextOnTop);
     preview.insert(
         "tap_judge_text_distance",
@@ -634,6 +637,7 @@ void miacode::runtime::EditorHost::savePortableState() const
         preview.insert("intro_sound_file", previewAppearanceValues_.introSoundFileName);
     }
     preview.insert("canvas_frame_rate_mode", session_.previewCanvasFrameRateModeStorageValue());
+    preview.insert("show_stage_media_when_paused", state_.previewShowStageMediaWhenPaused_);
     preview.insert("pv_frame_rate_mode", session_.previewStageMediaFrameRateModeStorageValue());
     preview.insert("video_decode_prefers_software", session_.currentVideoDecodePrefersSoftware());
     preview.insert("timeline_frame_rate_mode", session_.timelineFrameRateModeStorageValue());
@@ -647,6 +651,7 @@ void miacode::runtime::EditorHost::savePortableState() const
     );
     preview.insert("show_debug_info", state_.previewShowDebugInfo_);
     preview.insert("show_timestamp", state_.previewShowTimestamp_);
+    preview.insert("show_hand_order_annotations", state_.previewShowHandOrderAnnotations_);
     preview.insert("show_measure_lines", state_.previewShowMeasureLines_);
     preview.insert("show_judgement_skeleton", state_.previewShowJudgementSkeleton_);
     preview.insert("show_slide_judgement_timing", state_.previewShowSlideJudgementTiming_);
@@ -719,8 +724,7 @@ void miacode::runtime::EditorHost::persistEditorTextFontPreference() const
     ui.insert("editor_half_width_input", state_.editorHalfWidthInputEnabled_);
     ui.insert("editor_overwrite_mode", state_.editorOverwriteModeEnabled_);
     ui.insert("editor_auto_completion", state_.editorAutoCompletionEnabled_);
-    miacode::writeEditorCompletionCandidates(ui, {state_.editorCompletionDurationCandidates_,
-                                                state_.editorCompletionDivisionCandidates_});
+    miacode::writeEditorCompletionCandidates(ui, state_.editorCompletionConfig_);
     ui.insert("editor_ime_input_disabled", state_.editorImeInputDisabled_);
     root.insert("ui", ui);
     PreferenceDocument::savePreferencesObject(root);
@@ -762,35 +766,30 @@ void miacode::runtime::EditorHost::applyEditorOverwriteModeEnabled(bool enabled,
 void miacode::runtime::EditorHost::applyEditorAutoCompletionEnabled(bool enabled, bool persistPreference)
 {
     state_.editorAutoCompletionEnabled_ = enabled;
+    // Enabling completion is an explicit input-mode choice; never overwrite
+    // trailing chart text when returning to assisted insertion.
+    if (enabled && persistPreference) state_.editorOverwriteModeEnabled_ = false;
     if (persistPreference) {
         persistEditorTextFontPreference();
     }
 }
 
 void miacode::runtime::EditorHost::applyEditorCompletionCandidates(
-    const QStringList& durations, const QStringList& divisions, bool persistPreference)
+    const editor::SimaiCompletionConfig& config, bool persistPreference)
 {
-    state_.editorCompletionDurationCandidates_ = miacode::editor::normalizeCompletionValues(
-        miacode::editor::CompletionCandidateGroup::Duration, durations);
-    state_.editorCompletionDivisionCandidates_ = miacode::editor::normalizeCompletionValues(
-        miacode::editor::CompletionCandidateGroup::Division, divisions);
+    state_.editorCompletionConfig_ = miacode::editor::normalizeCompletionConfig(config);
     if (persistPreference) persistEditorTextFontPreference();
 }
 
-QStringList miacode::runtime::SettingsHost::editorCompletionDurationCandidates() const
+const miacode::editor::SimaiCompletionConfig& miacode::runtime::SettingsHost::editorCompletionConfig() const
 {
-    return state_.editorCompletionDurationCandidates_;
-}
-
-QStringList miacode::runtime::SettingsHost::editorCompletionDivisionCandidates() const
-{
-    return state_.editorCompletionDivisionCandidates_;
+    return state_.editorCompletionConfig_;
 }
 
 void miacode::runtime::SettingsHost::applyEditorCompletionCandidates(
-    const QStringList& durations, const QStringList& divisions, bool persist)
+    const editor::SimaiCompletionConfig& config, bool persist)
 {
-    session_.editor_->applyEditorCompletionCandidates(durations, divisions, persist);
+    session_.editor_->applyEditorCompletionCandidates(config, persist);
     if (persist) emit session_.editorPreferencesChanged();
 }
 
@@ -981,4 +980,9 @@ void Session::applyEditorOverwriteModeEnabled(bool enabled, bool persistPreferen
 {
     editor_->applyEditorOverwriteModeEnabled(enabled, persistPreference);
     if (persistPreference) emit editorPreferencesChanged();
+}
+
+void miacode::runtime::SettingsHost::setLowPerformanceMode(bool enabled)
+{
+    session_.playback_->setLowPerformanceMode(enabled);
 }

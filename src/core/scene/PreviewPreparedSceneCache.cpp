@@ -121,6 +121,69 @@ void appendPreparedMarkerEntry(
 
 namespace miacode::preview::scene {
 
+namespace {
+
+template <typename Records>
+void prepareIntervalBlocks(const Records& records, double tailSeconds,
+    PreviewPreparedLayerWindow<PreviewPreparedIntervalBlock>* layer)
+{
+    // One index entry per block bounds memory while retaining source draw order.
+    constexpr int blockSize = 256;
+    *layer = {};
+    layer->entries.reserve((records.size() + blockSize - 1) / blockSize);
+    for (int first = 0; first < records.size(); first += blockSize) {
+        const int end = qMin(first + blockSize, static_cast<int>(records.size()));
+        double startSecond = records[first].startSecond;
+        double endSecond = records[first].endSecond;
+        for (int index = first + 1; index < end; ++index) {
+            startSecond = qMin(startSecond, records[index].startSecond);
+            endSecond = qMax(endSecond, records[index].endSecond);
+        }
+        layer->entries.append({first, end, startSecond, endSecond + tailSeconds + 1e-9});
+    }
+    finalizePreparedLayerWindow(layer);
+}
+
+template <typename Records>
+void collectIntervalIndices(const Records& records,
+    const PreviewPreparedLayerWindow<PreviewPreparedIntervalBlock>& layer,
+    const QVector<int>& activeBlocks, double second, double tailSeconds,
+    QVector<int>* indices)
+{
+    indices->clear();
+    for (int blockIndex : activeBlocks) {
+        const auto& block = layer.entries[blockIndex];
+        for (int index = block.firstIndex; index < block.endIndex; ++index) {
+            const auto& record = records[index];
+            if (record.startSecond <= second + 1e-6
+                && record.endSecond + 1e-6 >= second - tailSeconds) {
+                indices->append(index);
+            }
+        }
+    }
+}
+
+double actionTrailTailSeconds(RenderMode mode)
+{
+    return renderModeUsesMaimuri(mode) ? 36.0 / miacode::muri::kJudgeTps : 0.0;
+}
+
+} // namespace
+
+void PreviewPreparedSceneCache::collectMuriPadIndices(const PreviewFrameState& state,
+    const QVector<int>& activeBlocks, QVector<int>* indices) const
+{
+    collectIntervalIndices(state.muriAnalysisReport.padWindows, muriPadLayer_, activeBlocks,
+        state.playheadSeconds, 0.0, indices);
+}
+
+void PreviewPreparedSceneCache::collectMuriActionIndices(const PreviewFrameState& state,
+    const QVector<int>& activeBlocks, QVector<int>* indices) const
+{
+    collectIntervalIndices(state.muriAnalysisReport.actionTrails, muriActionLayer_, activeBlocks,
+        state.playheadSeconds, actionTrailTailSeconds(state.muriRenderOptions.renderMode), indices);
+}
+
 bool PreviewPreparedSceneCache::sync(const PreviewFrameState& state)
 {
     PreviewPreparedSceneCacheKey nextKey;
@@ -129,24 +192,47 @@ bool PreviewPreparedSceneCache::sync(const PreviewFrameState& state)
     if (key_.storageGeneration != nextKey.storageGeneration) reset();
     nextKey.tapFlowSpeed = state.render.tapFlowSpeed;
     nextKey.touchFlowSpeed = state.render.touchFlowSpeed;
+    nextKey.starFadeTiming = state.render.starFadeTiming;
     nextKey.renderMode = state.muriRenderOptions.renderMode;
     nextKey.showSlideTracks = state.muriRenderOptions.showSlideTracks;
     nextKey.showSlideJudgementTiming = state.render.showSlideJudgementTiming;
     nextKey.slideTimingFromLaunchBeat = state.render.slideTimingFromLaunchBeat;
-    nextKey.slideTimingEarlyPerfectFromHead = state.render.slideTimingEarlyPerfectFromHead;
-    nextKey.slideTimingLaunchBeatIdentity = state.render.slideTimingFromLaunchBeat
+    nextKey.slideTimingLaunchBeatIdentity = state.render.showSlideJudgementTiming
         ? reinterpret_cast<quintptr>(state.slideTimingLaunchBeats.get()) : 0;
+    nextKey.showJudgeMarkers = renderModeAllowsDiagnosticContacts(state.muriRenderOptions.renderMode)
+        && state.muriRenderOptions.showJudgeMarkers;
+    nextKey.showTouchTrail = renderModeAllowsDiagnosticContacts(state.muriRenderOptions.renderMode)
+        && state.muriRenderOptions.showTouchTrail;
     nextKey.slideEarlierSecondAndTextOnTop = state.render.slideEarlierSecondAndTextOnTop;
     nextKey.tapJudgeTextDistance = state.render.tapJudgeTextDistance;
     nextKey.showChartReviewSlideJudgeOverlay = state.muriRenderOptions.showChartReviewSlideJudgeOverlay;
     nextKey.showChartReviewTapJudgeOverlay = state.muriRenderOptions.showChartReviewTapJudgeOverlay;
     nextKey.showChartReviewBreakJudgeOverlay = state.muriRenderOptions.showChartReviewBreakJudgeOverlay;
     nextKey.showChartReviewTouchJudgeOverlay = state.muriRenderOptions.showChartReviewTouchJudgeOverlay;
+    nextKey.showSimulatedPlay = nextKey.renderMode == RenderMode::SimulatedPlay && state.render.showHandOrderAnnotations;
+    if (nextKey.showSimulatedPlay) {
+        nextKey.playSimulationHandRadiusPx = state.muriRenderOptions.handRadiusPx;
+        nextKey.playProfile = state.muriRenderOptions.playProfile;
+        nextKey.playWifiNeedsCenterRelease = state.muriRenderOptions.wifiNeedC;
+    }
 
     if (key_ == nextKey) {
         return false;
     }
 
+    if (!nextKey.showSimulatedPlay) {
+        playSimulation_.reset();
+        playSimulationMarkers_.clear();
+    } else if (!playSimulation_ || !playSimulationMarkers_.isSharedWith(state.noteMarkers)
+        || key_.tapFlowSpeed != nextKey.tapFlowSpeed || key_.touchFlowSpeed != nextKey.touchFlowSpeed
+        || key_.playProfile != nextKey.playProfile || key_.playSimulationHandRadiusPx != nextKey.playSimulationHandRadiusPx
+        || key_.playWifiNeedsCenterRelease != nextKey.playWifiNeedsCenterRelease) {
+        auto options = state.muriRenderOptions;
+        options.playTapFlowSpeed = state.render.tapFlowSpeed;
+        options.playTouchFlowSpeed = state.render.touchFlowSpeed;
+        playSimulation_ = std::make_unique<hand_order::HandPlaySimulation>(state.noteMarkers, options, true);
+        playSimulationMarkers_ = state.noteMarkers;
+    }
     key_ = nextKey;
     rebuild(state);
     return true;
@@ -169,6 +255,16 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
     touchHoldLayer_.clear();
     chartReviewLayer_.clear();
     maimuriDxJudgeLayer_.clear();
+
+    muriPadLayer_ = {};
+    muriActionLayer_ = {};
+    if (key_.showJudgeMarkers) {
+        prepareIntervalBlocks(state.muriAnalysisReport.padWindows, 0.0, &muriPadLayer_);
+    }
+    if (key_.showTouchTrail) {
+        prepareIntervalBlocks(state.muriAnalysisReport.actionTrails,
+            actionTrailTailSeconds(state.muriRenderOptions.renderMode), &muriActionLayer_);
+    }
 
     // HS diagnostic: once per cache rebuild, log a histogram of marker
     // hsMultiplier values. Routed through the Runtime channel so it
@@ -214,9 +310,8 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
         return previewTapTimingForEffectiveFlowSpeed(
             static_cast<qreal>(state.render.tapFlowSpeed * hsMultiplier));
     };
-    const auto markerTrackTiming = [&state](double hsMultiplier) {
-        return previewSlideTrackTimingForEffectiveFlowSpeed(
-            static_cast<qreal>(state.render.tapFlowSpeed * hsMultiplier));
+    const auto markerTrackTiming = [&state](const TimelineNoteMarker& marker) {
+        return previewSlideTrackTimingForMarker(marker, state.render.tapFlowSpeed, state.render.starFadeTiming);
     };
     // Per-type sign policy: touch takes the HS magnitude (never reverses).
     const auto markerTouchTiming = [&state](double hsMultiplier) {
@@ -229,7 +324,7 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
         buildSlideHeadRepresentatives(state.noteMarkers);
     std::optional<miacode::slide_judge::LaunchBeatIndex> launchBeats;
     const miacode::slide_judge::LaunchBeatIndex* launchIndex = nullptr;
-    if (state.render.showSlideJudgementTiming && state.render.slideTimingFromLaunchBeat) {
+    if (state.render.showSlideJudgementTiming) {
         launchIndex=state.slideTimingLaunchBeats.get();
         if (launchIndex==nullptr) {
             launchBeats.emplace(state.noteMarkers);
@@ -246,7 +341,7 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
 
         const QString type = marker.type.toLower();
         const PreviewTapTiming tapTiming = markerTapTiming(marker.hsMultiplier);
-        const PreviewSlideTrackTiming trackTiming = markerTrackTiming(marker.hsMultiplier);
+        const PreviewSlideTrackTiming trackTiming = markerTrackTiming(marker);
         const PreviewTouchTiming touchTiming = markerTouchTiming(marker.hsMultiplier);
         int headRepresentativeMarkerIndex = markerIndex;
         if ((type == QLatin1String("slide") || type == QLatin1String("wifi")) && marker.hasHeadStar) {
@@ -319,12 +414,12 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
                 appendPreparedMarkerEntry(
                     &slideLikeLayer_,
                     markerIndex,
-                    marker.second - trackTiming.appearLeadInSeconds,
+                    qMin(marker.second, marker.second - trackTiming.appearLeadInSeconds),
                     qMax(marker.second, qMax(marker.endSecond, marker.slideTraceSecond))
                 );
                 if (state.render.showSlideJudgementTiming) {
                     slideLikeLayer_.entries.last().slideTimingGeometry =
-                        std::make_shared<const PreviewSlideTimingGeometry>(buildPreviewSlideTimingGeometry(marker,launchIndex,state.render.slideTimingEarlyPerfectFromHead));
+                        std::make_shared<const PreviewSlideTimingGeometry>(buildPreviewSlideTimingGeometry(marker,launchIndex,state.render.slideTimingFromLaunchBeat));
                 }
                 appendPreparedMarkerEntry(
                     &judgeEffectLayer_,
@@ -356,7 +451,7 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
                     marker.second + miacode::preview_gameplay::kJudgeEffectFireworkTouchTriggerDelaySeconds,
                     marker.second
                         + miacode::preview_gameplay::kJudgeEffectFireworkTouchTriggerDelaySeconds
-                        + miacode::preview_gameplay::kJudgeEffectFireworkDurationSeconds
+                        + miacode::preview_gameplay::kFireworkMaxDurationSeconds
                 );
             }
             continue;
@@ -380,7 +475,7 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
                     &judgeFireworkLayer_,
                     markerIndex,
                     qMax(marker.second, marker.endSecond),
-                    qMax(marker.second, marker.endSecond) + miacode::preview_gameplay::kJudgeEffectFireworkDurationSeconds
+                    qMax(marker.second, marker.endSecond) + miacode::preview_gameplay::kFireworkMaxDurationSeconds
                 );
             }
             continue;
@@ -404,8 +499,10 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
         });
     }
 
-    maimuriDxJudgeLayer_.entries.reserve(state.muriAnalysisReport.judgeSpriteEvents.size());
-    for (const MuriJudgeSpriteEvent& event : state.muriAnalysisReport.judgeSpriteEvents) {
+    const auto& judgeEvents = playSimulation_ ? playSimulation_->report().judgeSpriteEvents
+                                              : state.muriAnalysisReport.judgeSpriteEvents;
+    maimuriDxJudgeLayer_.entries.reserve(judgeEvents.size());
+    for (const MuriJudgeSpriteEvent& event : judgeEvents) {
         PreviewPreparedMaimuriDxJudgeEntry entry;
         entry.event = event;
         entry.activeStart = qMax(event.second, event.spawnSecond);

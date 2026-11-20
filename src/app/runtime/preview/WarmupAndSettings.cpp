@@ -1,3 +1,4 @@
+#include "app/services/HandOrderFeaturePreferences.h"
 #include <cmath>
 #include <limits>
 #include "app/runtime/preview/StageMediaHost.h"
@@ -6,12 +7,13 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
+#include "core/chart/document/AdvancedMetadata.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "core/scene/PreviewSfxAssets.h"
 #include "app/services/ProjectPreferences.h"
+#include "app/services/PreviewModePreferences.h"
 #include "core/video/AssetPaths.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/stage_media/PreviewStageMediaHost.h"
@@ -45,7 +47,7 @@ bool hasBlockingPreviewWindow()
 }
 
 // Project-preferences key holding the per-chart preview mixer
-// (<chartDir>/.miacode/preferences.json).
+// (<runtime>/data/projects/<chart-folder-hash>/preferences.json).
 constexpr auto kProjectAudioPreferencesKey = "preview_audio";
 
 struct PreviewMediaWarmupResult {
@@ -247,7 +249,8 @@ void miacode::runtime::StageMediaHost::applyPreviewMediaWarmupResult(
     const QString& chartPath,
     qint64 workerElapsedMs)
 {
-    if (generation != state_.previewWarmupGeneration_) {
+    if (generation != state_.previewWarmupGeneration_
+        || generation <= invalidatedMediaWarmupGeneration_) {
         return;
     }
     appendStartupTimingStage("mainwindow/preview_media_data_warmup", workerElapsedMs, workerElapsedMs);
@@ -353,18 +356,19 @@ QString miacode::runtime::StageMediaHost::previewOutlineVariantStorageValue() co
     }
 }
 
-PreviewOutlineVariant miacode::runtime::StageMediaHost::autoPreviewOutlineVariantForChart(const QString& chartPath) const
+miacode::chart_version::Version miacode::runtime::StageMediaHost::currentChartVersion() const
 {
-    // Phase 4c — also count `&video=` overrides as "has background"
-    // so charts that exclusively rely on the explicit-video path
-    // (no sibling bg.* file) get the right outline variant. Without
-    // this, a chart with `&video=bg.mp4` but no sibling files would
-    // fall through to JudgeAreaLabeled even though the video does
-    // render behind the playfield.
-    return miacode::chart_assets::hasChartBackgroundMedia(
-                chartPath, session_.applicationServices_.workspace().document().videoPath)
-        ? PreviewOutlineVariant::Line
-        : PreviewOutlineVariant::JudgeAreaLabeled;
+    const auto& document = session_.applicationServices_.workspace().document();
+    const QString version = miacode::metadata::fieldValue(document, QStringLiteral("version"));
+    const QString metadata = miacode::metadata::fieldValue(document, QStringLiteral("metadata"));
+    const auto& signature = state_.timeline_.latestTimelineNoteMarkerSignature_;
+    if (!cachedVersion_ || storedVersion_ != version || storedMetadata_ != metadata || versionSignature_ != signature) {
+        cachedVersion_ = miacode::chart_version::detect(document, state_.timeline_.latestTimelineNoteMarkers_);
+        storedVersion_ = version;
+        storedMetadata_ = metadata;
+        versionSignature_ = signature;
+    }
+    return *cachedVersion_;
 }
 
 PreviewOutlineVariant miacode::runtime::StageMediaHost::effectivePreviewOutlineVariant() const
@@ -373,34 +377,14 @@ PreviewOutlineVariant miacode::runtime::StageMediaHost::effectivePreviewOutlineV
     // The export-preview dialog ignores the pause-hide option so the on-screen
     // preview matches the exported video (the user's chosen outline variant, PV/BG
     // visible) instead of the paused judge-area view.
-    // Holding Alt while paused (pauseDisplayAltHoldActive_) inverts the option
-    // so the user can peek at the other view without opening 视频设置.
     const bool forceJudgeAreaWhenPaused =
-        state_.previewForceLabeledJudgeLineWhenPaused_ != state_.pauseDisplayAltHoldActive_;
+        state_.previewForceLabeledJudgeLineWhenPaused_;
     if (forceJudgeAreaWhenPaused
         && !state_.playing_
         && !state_.exportPreviewActive_) {
         return PreviewOutlineVariant::JudgeAreaLabeled;
     }
     return previewAppearanceValues_.outlineVariant;
-}
-
-void miacode::runtime::StageMediaHost::setPauseDisplayAltHoldActive(bool active)
-{
-    // Transient Alt-hold inversion of the "暂停时显示判定区" option (see
-    // Session::eventFilter). Engaging is pointless while the preview is
-    // playing or while the export-preview dialog pins PV visible — both paths
-    // ignore the pause-hide option entirely — so only the release/clear is
-    // accepted unconditionally.
-    if (active == state_.pauseDisplayAltHoldActive_) {
-        return;
-    }
-    if (active && (state_.playing_ || state_.exportPreviewActive_)) {
-        return;
-    }
-    state_.pauseDisplayAltHoldActive_ = active;
-    applyEffectivePreviewOutlineVariantToCanvas();
-    applyPreviewStageMediaRouteVisualSettings();
 }
 
 void miacode::runtime::StageMediaHost::setTouchPadAuthoringCtrlHoldActive(bool active)
@@ -485,12 +469,20 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("layoutSquareScaleStep"), percentOf(kLayoutSquareScaleStep)},
         {QStringLiteral("scaleMode"), static_cast<int>(state_.previewBackgroundScaleMode_)},
         {QStringLiteral("fireworkBrightness"), percentOf(state_.previewFireworkBrightness_)},
+        {QStringLiteral("completionDisplay"), static_cast<int>(state_.completionDisplay_)},
+        {QStringLiteral("outlineAutomatic"), state_.previewOutlineVariantUsesAutoSelection_},
+        {QStringLiteral("resolvedOutlinePath"), resolvePreviewCustomOutlinePath()},
+        {QStringLiteral("fireworkStyle"), static_cast<int>(state_.previewFireworkStyle_)},
         {QStringLiteral("smoothBrightness"), state_.previewSmoothBrightness_},
         {QStringLiteral("showTimestamp"), state_.previewShowTimestamp_},
+        {QStringLiteral("showHandOrderAnnotations"), state_.previewShowHandOrderAnnotations_},
+        {QStringLiteral("playProfile"), state_.muriRenderOptions_.playProfile.toJson().toVariantMap()},
         {QStringLiteral("showBpmHud"), state_.previewShowBpmHud_},
         {QStringLiteral("showCpsHud"), state_.previewShowCpsHud_},
         {QStringLiteral("showMeterHud"), state_.previewShowMeterHud_},
         {QStringLiteral("showModsHud"), state_.previewShowModsHud_},
+        {QStringLiteral("showObjectStatsHud"), state_.previewShowObjectStatsHud_},
+        {QStringLiteral("showChartInfoHud"), state_.previewShowChartInfoHud_},
 
         {QStringLiteral("showMeasureLines"), state_.previewShowMeasureLines_},
         {QStringLiteral("showJudgementSkeleton"), state_.previewShowJudgementSkeleton_},
@@ -501,10 +493,16 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("measureLineCustomBeats"), state_.previewMeasureLineCustomBeats_},
         {QStringLiteral("touchPadAuthoringShortcut"), state_.previewTouchPadAuthoringShortcutEnabled_},
         {QStringLiteral("showDebugInfo"), state_.previewShowDebugInfo_},
+        {QStringLiteral("showJudgeMarkers"), state_.showJudgeMarkers_},
+        {QStringLiteral("showTouchTrail"), state_.showTouchTrail_},
+        {QStringLiteral("labeledJudgeArea"),
+            previewAppearanceValues_.outlineVariant == PreviewOutlineVariant::JudgeAreaLabeled},
+        {QStringLiteral("showStageMediaWhenPaused"), state_.previewShowStageMediaWhenPaused_},
         {QStringLiteral("forceLabeledJudgeLineWhenPaused"), state_.previewForceLabeledJudgeLineWhenPaused_},
         // 玩法
         {QStringLiteral("tapFlowSpeed"), snappedFlowSpeed(state_.previewTapFlowSpeed_)},
         {QStringLiteral("touchFlowSpeed"), snappedFlowSpeed(state_.previewTouchFlowSpeed_)},
+        {QStringLiteral("starFadeTiming"), state_.previewStarFadeTiming_},
         {QStringLiteral("flowSpeedMin"), kPreviewTimingFlowSpeedMin},
         {QStringLiteral("flowSpeedMax"), kPreviewTimingFlowSpeedMax},
         {QStringLiteral("flowSpeedStep"), kPreviewTimingFlowSpeedStep},
@@ -516,6 +514,52 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("centerDisplay"), static_cast<int>(previewAppearanceValues_.centerDisplayMode)},
         {QStringLiteral("tapJudgeTextDistance"), static_cast<int>(previewAppearanceValues_.tapJudgeTextDistance)},
     };
+}
+
+QJsonObject Session::capturePreviewModeSettings() const
+{
+    QJsonObject values = QJsonObject::fromVariantMap(previewRenderSettings());
+    values.insert(QStringLiteral("outlineVariant"), static_cast<int>(previewAppearanceValues_.outlineVariant));
+    values.insert(QStringLiteral("outlineAutomatic"), state_.previewOutlineVariantUsesAutoSelection_);
+    values.insert(QStringLiteral("outlineCustomFile"), state_.previewCustomOutlineFileName_);
+    return miacode::preview_mode_preferences::normalized(values);
+}
+
+QJsonObject Session::regularPreviewModeSettings() const
+{
+    const RenderMode mode = state_.muriRenderOptions_.renderMode;
+    return mode == RenderMode::Native || mode == RenderMode::EraseByArea
+        ? capturePreviewModeSettings()
+        : miacode::preview_mode_preferences::restored(state_.previewModeProfiles_, RenderMode::Native);
+}
+
+void Session::restorePreviewModeSettings(RenderMode mode)
+{
+    const QJsonObject values = miacode::preview_mode_preferences::restored(state_.previewModeProfiles_, mode);
+    const auto flag = [&values](const char* key) { return values.value(QString::fromLatin1(key)).toBool(); };
+    state_.previewShowTimestamp_ = flag("showTimestamp");
+    state_.previewShowBpmHud_ = state_.exportShowBpmHud_ = flag("showBpmHud");
+    state_.previewShowCpsHud_ = state_.exportShowCpsHud_ = flag("showCpsHud");
+    state_.previewShowMeterHud_ = state_.exportShowMeterHud_ = flag("showMeterHud");
+    state_.previewShowModsHud_ = state_.exportShowModsHud_ = flag("showModsHud");
+    state_.previewShowDebugInfo_ = flag("showDebugInfo");
+    state_.showJudgeMarkers_ = flag("showJudgeMarkers");
+    state_.showTouchTrail_ = flag("showTouchTrail");
+    previewAppearanceValues_.outlineVariant = static_cast<PreviewOutlineVariant>(values.value(QStringLiteral("outlineVariant")).toInt());
+    state_.previewOutlineVariantUsesAutoSelection_ = flag("outlineAutomatic");
+    state_.previewCustomOutlineFileName_ = values.value(QStringLiteral("outlineCustomFile")).toString();
+    applyEffectivePreviewOutlineVariantToCanvas();
+    if (auto* canvas = state_.scene_; canvas != nullptr) {
+        canvas->setShowTimestamp(state_.previewShowTimestamp_);
+        canvas->setShowBpmHud(state_.previewShowBpmHud_);
+        canvas->setShowCpsHud(state_.previewShowCpsHud_);
+        canvas->setShowMeterHud(state_.previewShowMeterHud_);
+        canvas->setShowModsHud(state_.previewShowModsHud_);
+        canvas->setShowDebugInfo(state_.previewShowDebugInfo_);
+        canvas->setSlideJudgementTiming(state_.previewShowSlideJudgementTiming_);
+        canvas->setVisualAidSettings(state_.previewShowMeasureLines_, state_.previewShowJudgementSkeleton_,
+                                    state_.previewMeasureLineMode_, state_.previewMeasureLineCustomBeats_);
+    }
 }
 
 void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
@@ -551,6 +595,14 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
         if (canvas != nullptr) {
             canvas->setBackgroundScaleMode(mode);
         }
+    } else if (key == QLatin1String("completionDisplay")) {
+        state_.completionDisplay_ = completionDisplayFromId(value.toInt());
+        applyEffectivePreviewOutlineVariantToCanvas();
+    } else if (key == QLatin1String("fireworkStyle")) {
+        state_.previewFireworkStyle_ = value.toInt() == 1 ? PreviewFireworkStyle::Modern : PreviewFireworkStyle::Standard;
+        if (canvas != nullptr) {
+            canvas->setFireworkStyle(state_.previewFireworkStyle_);
+        }
     } else if (key == QLatin1String("fireworkBrightness")) {
         state_.previewFireworkBrightness_ = miacode::preview_video::normalizedFireworkBrightness(value.toDouble() / 100.0);
         if (canvas != nullptr) {
@@ -573,11 +625,31 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
     } else if (key == QLatin1String("showModsHud")) {
         state_.previewShowModsHud_ = state_.exportShowModsHud_ = value.toBool();
         if (canvas != nullptr) canvas->setShowModsHud(value.toBool());
+    } else if (key == QLatin1String("showObjectStatsHud")) {
+        // Editor statistics live below the canvas. The export task owns its HUD.
+        state_.previewShowObjectStatsHud_ = false;
+        if (canvas != nullptr && !state_.exportPreviewActive_) canvas->setSuppressObjectStatsHud(true);
+    } else if (key == QLatin1String("showChartInfoHud")) {
+        state_.previewShowChartInfoHud_ = false;
+        if (canvas != nullptr && !state_.exportPreviewActive_) canvas->setShowChartInfoHud(false);
     } else if (key == QLatin1String("showTimestamp")) {
         state_.previewShowTimestamp_ = value.toBool();
         if (canvas != nullptr) {
             canvas->setShowTimestamp(state_.previewShowTimestamp_);
         }
+    } else if (key == QLatin1String("playProfile")) {
+        const auto profile = miacode::hand_order::PlayProfile::fromJson(QJsonObject::fromVariantMap(value.toMap()));
+        if (profile == state_.muriRenderOptions_.playProfile) return;
+        state_.muriRenderOptions_.playProfile = profile;
+        applyMuriRenderOptions();
+    } else if (key == QLatin1String("handOrderFeaturesEnabled")) {
+        if (!miacode::hand_order_features::enabled() && renderModeShowsHandOrder(state_.muriRenderOptions_.renderMode))
+            setMuriRenderMode(RenderMode::Native, true);
+        applyMuriRenderOptions();
+    } else if (key == QLatin1String("showHandOrderAnnotations")) {
+        // Compatibility entry point for older callers; the mode is authoritative.
+        if (value.toBool() != renderModeShowsHandOrder(state_.muriRenderOptions_.renderMode))
+            setMuriRenderMode(value.toBool() ? RenderMode::HandOrderBreakdown : RenderMode::Native, true);
     } else if (key == QLatin1String("slideTimingFromLaunchBeat")) {
         state_.previewSlideTimingFromLaunchBeat_ = value.toBool();
         if (canvas != nullptr) canvas->setSlideTimingFromLaunchBeat(state_.previewSlideTimingFromLaunchBeat_);
@@ -605,25 +677,42 @@ void Session::setPreviewRenderSetting(const QString& key, const QVariant& value)
     } else if (key == QLatin1String("touchPadAuthoringShortcut")) {
         state_.previewTouchPadAuthoringShortcutEnabled_ = value.toBool();
         applyEffectivePreviewOutlineVariantToCanvas();
+    } else if (key == QLatin1String("showJudgeMarkers")) {
+        state_.showJudgeMarkers_ = value.toBool();
+        applyMuriRenderOptions();
+    } else if (key == QLatin1String("showTouchTrail")) {
+        state_.showTouchTrail_ = value.toBool();
+        applyMuriRenderOptions();
+    } else if (key == QLatin1String("labeledJudgeArea")) {
+        applyPreviewOutlineVariant(value.toBool()
+            ? PreviewOutlineVariant::JudgeAreaLabeled : PreviewOutlineVariant::JudgeArea, false, false);
     } else if (key == QLatin1String("showDebugInfo")) {
         state_.previewShowDebugInfo_ = value.toBool();
         if (canvas != nullptr) {
             canvas->setShowDebugInfo(state_.previewShowDebugInfo_);
         }
+    } else if (key == QLatin1String("showStageMediaWhenPaused")) {
+        state_.previewShowStageMediaWhenPaused_ = value.toBool();
+        applyPreviewStageMediaRouteVisualSettings();
     } else if (key == QLatin1String("forceLabeledJudgeLineWhenPaused")) {
         state_.previewForceLabeledJudgeLineWhenPaused_ = value.toBool();
         applyEffectivePreviewOutlineVariantToCanvas();
         applyPreviewStageMediaRouteVisualSettings();
+    } else if (key == QLatin1String("starFadeTiming")) {
+        state_.previewStarFadeTiming_ = miacode::preview_gameplay::normalizedStarFadeTiming(value.toDouble());
+        if (canvas != nullptr) canvas->setStarFadeTiming(state_.previewStarFadeTiming_);
     } else if (key == QLatin1String("tapFlowSpeed")) {
         state_.previewTapFlowSpeed_ = snappedFlowSpeed(value.toDouble());
         if (canvas != nullptr) {
             canvas->setTapFlowSpeed(state_.previewTapFlowSpeed_);
         }
+        applyMuriRenderOptions();
     } else if (key == QLatin1String("touchFlowSpeed")) {
         state_.previewTouchFlowSpeed_ = snappedFlowSpeed(value.toDouble());
         if (canvas != nullptr) {
             canvas->setTouchFlowSpeed(state_.previewTouchFlowSpeed_);
         }
+        applyMuriRenderOptions();
     } else if (key == QLatin1String("judgeEffectSlide")
                || key == QLatin1String("judgeEffectTap")
                || key == QLatin1String("judgeEffectBreak")
@@ -700,11 +789,13 @@ void miacode::runtime::StageMediaHost::applyEffectivePreviewOutlineVariantToCanv
             state_.touchPadAuthoringCtrlHoldActive_ = false;
         }
         const bool forceJudgeAreaWhenPaused =
-            state_.previewForceLabeledJudgeLineWhenPaused_ != state_.pauseDisplayAltHoldActive_;
+            state_.previewForceLabeledJudgeLineWhenPaused_;
         const bool pausedJudgeAreaView =
             forceJudgeAreaWhenPaused
             && !state_.playing_
             && !state_.exportPreviewActive_;
+        state_.scene_->setCompletionDisplay(resolvedCompletionDisplay(
+            state_.completionDisplay_, currentChartVersion().deluxe()));
         const QString customOutlinePath = effectivePreviewCustomOutlinePath();
         const auto outlineImageMode =
             pausedJudgeAreaView && !customOutlinePath.isEmpty()
@@ -742,7 +833,16 @@ QString miacode::runtime::StageMediaHost::resolvePreviewCustomOutlineDir() const
 
 QString miacode::runtime::StageMediaHost::resolvePreviewCustomOutlinePath() const
 {
-    return miacode::assets::customOutlinePathForFileName(state_.previewCustomOutlineFileName_);
+    return miacode::assets::customOutlinePathForFileName(state_.previewOutlineVariantUsesAutoSelection_
+        ? currentChartVersion().outlineFileName() : state_.previewCustomOutlineFileName_);
+}
+
+void miacode::runtime::StageMediaHost::refreshChartVersion()
+{
+    const auto before = cachedVersion_;
+    const auto after = currentChartVersion();
+    if (!before || before->family != after.family || before->plus != after.plus)
+        applyEffectivePreviewOutlineVariantToCanvas();
 }
 
 QString miacode::runtime::StageMediaHost::effectivePreviewCustomOutlinePath() const
@@ -876,7 +976,7 @@ void miacode::runtime::StageMediaHost::applyPreviewAudioSettingsToRuntime()
 void miacode::runtime::StageMediaHost::loadProjectAudioPreferences()
 {
     // The mixer is PROJECT-scoped: every chart remembers the volumes and mutes
-    // it was last edited with, in <chartDir>/.miacode/preferences.json. A
+    // it was last edited with, in isolated runtime project preferences. A
     // project that has never stored one — a brand-new chart, or one authored
     // before the mixer became project-scoped — starts from the app-level
     // 本地预设 (softwarePreviewAudioSettings_). Seeding is the preset's only
@@ -999,10 +1099,6 @@ QString Session::previewOutlineVariantStorageValue() const
     return stageMedia_->previewOutlineVariantStorageValue();
 }
 
-PreviewOutlineVariant Session::autoPreviewOutlineVariantForChart(const QString& chartPath) const
-{
-    return stageMedia_->autoPreviewOutlineVariantForChart(chartPath);
-}
 
 PreviewOutlineVariant Session::effectivePreviewOutlineVariant() const
 {
@@ -1012,11 +1108,6 @@ PreviewOutlineVariant Session::effectivePreviewOutlineVariant() const
 void Session::applyEffectivePreviewOutlineVariantToCanvas()
 {
     stageMedia_->applyEffectivePreviewOutlineVariantToCanvas();
-}
-
-void Session::setPauseDisplayAltHoldActive(bool active)
-{
-    stageMedia_->setPauseDisplayAltHoldActive(active);
 }
 
 void Session::setTouchPadAuthoringCtrlHoldActive(bool active)
@@ -1034,7 +1125,7 @@ void Session::applyPreviewOutlineVariant(
 
 QString Session::resolvePreviewCustomOutlinePath() const
 {
-    return stageMedia_->resolvePreviewCustomOutlinePath();
+    return stageMedia_ ? stageMedia_->resolvePreviewCustomOutlinePath() : QString();
 }
 
 QStringList Session::availablePreviewCustomOutlineFileNames() const

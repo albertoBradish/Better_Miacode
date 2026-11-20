@@ -1,4 +1,5 @@
 #include "app/ui/export/ExportSession.h"
+#include "app/runtime/document/WorkspacePageOwnership.h"
 #include "app/ui/preview/PreviewSettingsModel.h"
 #include "app/ui/media/MediaToolsModel.h"
 #include "app/ui/dialogs/NativeFolderPicker.h"
@@ -9,6 +10,7 @@
 #include "app/services/UiRequestService.h"
 #include "app/services/VideoExportPreferences.h"
 #include "common/RuntimePaths.h"
+#include "core/chart/document/SimaiDocument.h"
 #include "export/video_export/VideoExportSettings.h"
 #include <QFile>
 #include <QJsonDocument>
@@ -21,9 +23,8 @@
 #include <QQmlEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
-#include <QSignalSpy>
-#include <QHash>
 #include <QSettings>
+#include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
@@ -31,24 +32,44 @@
 #include <QTranslator>
 #include <QtTest/QTest>
 
+#include <functional>
 #include <memory>
 
 namespace {
 class Engine final : public miacode::ExportEngine {
 public:
     VideoExportTask task;
+    VideoExportTask launchedTask;
+    bool launchSucceeds = false;
+    bool batchLaunchSucceeds = false;
+    BatchResult batchResult;
     int seeds = 0;
+    std::function<void()> onStartAudition;
     VideoExportTask buildSeedTask(int) override { ++seeds; return task; }
     QList<int> difficultyIds() const override { return {4, 5}; }
     QString difficultyChartText(int) const override { return {}; }
     int lastOpenedDifficultyId() const override { return 5; }
     void applySharedTaskSettings(const VideoExportTask&) override {}
-    bool startAudition(int, const VideoExportTask&) override { return false; }
+    bool startAudition(int, const VideoExportTask&) override
+    {
+        if (!onStartAudition) return false;
+        onStartAudition();
+        return true;
+    }
     void clearAudition() override {}
     void stopAudition() override {}
-    bool launchVideoExport(const VideoExportTask&, int, QString*) override { return false; }
-    bool launchBatchExport(const VideoExportTask&, const QStringList&, const QList<int>&,
-                          const QString&, BatchResult*, const BatchCallbacks&, QString*) override { return false; }
+    bool launchVideoExport(const VideoExportTask& requested, int, QString*) override
+    {
+        launchedTask = requested;
+        return launchSucceeds;
+    }
+    bool launchBatchExport(const VideoExportTask& requested, const QStringList&, const QList<int>&,
+                          const QString&, BatchResult* result, const BatchCallbacks&, QString*) override
+    {
+        launchedTask = requested;
+        *result = batchResult;
+        return batchLaunchSucceeds;
+    }
     void cancelVideoExport() override {}
     MuriRenderOptions muriRenderOptions() const override { return {}; }
     double currentAudioClockSecond() const override { return 0; }
@@ -58,7 +79,7 @@ public:
 };
 }
 
-// Legacy picker history is confined to the marked Better runtime. Preserve
+// Legacy picker history is confined to the marked Sticking runtime. Preserve
 // that isolated test store; never read or alter the standard app registry.
 class LegacyBatchHistoryGuard
 {
@@ -103,12 +124,37 @@ int main(int argc, char** argv)
     QTranslator translator;
     if (translator.load(QStringLiteral(":/i18n/zh_CN.qm"))) app.installTranslator(&translator);
     QTextStream err(stderr);
-    LegacyBatchHistoryGuard legacy;
     bool ok = true;
     const auto expect = [&](bool condition, const char* message) {
         if (!condition) { err << "FAIL: " << message << Qt::endl; ok = false; }
     };
-    QTemporaryDir scratch(QDir::temp().filePath(QStringLiteral("MiaCode picker #XXXXXX")));
+    // These scenarios reset preferences and seed old picker history. Give
+    // each invocation its own workspace and product marker beside the spec.
+    QTemporaryDir runtimeOwner(QDir(QCoreApplication::applicationDirPath())
+        .filePath(QStringLiteral("sticking-export-picker-XXXXXX")));
+    const QDir ownerDir(runtimeOwner.path());
+    const QString runtime = ownerDir.filePath(QStringLiteral("runtime/sticking_export_picker"));
+    const auto writeFixture = [](const QString& path, const QByteArray& contents) {
+        QFile file(path);
+        return file.open(QIODevice::WriteOnly) && file.write(contents) == contents.size();
+    };
+    if (!runtimeOwner.isValid() || !ownerDir.mkpath(QStringLiteral("source"))
+        || !ownerDir.mkpath(QStringLiteral("fixtures")) || !QDir().mkpath(runtime)
+        || !writeFixture(ownerDir.filePath(QStringLiteral("baseline.json")), "{}")
+        || !writeFixture(ownerDir.filePath(QStringLiteral("source/AGENTS.md")), "Synthetic test workspace.\n")
+        || !writeFixture(QDir(runtime).filePath(QStringLiteral(".better-miacode-runtime")), "BetterMiacode.runtime.v1\n")
+        || !qputenv("BETTER_MIACODE_RUNTIME_ROOT", runtime.toUtf8())) {
+        err << "FAIL: could not create the isolated export picker runtime" << Qt::endl;
+        return 1;
+    }
+    QString runtimeError;
+    if (!miacode::runtime_paths::initializeFromEnvironment(&runtimeError)
+        || !miacode::runtime_paths::configureProcessEnvironment(&runtimeError)) {
+        err << "FAIL: " << runtimeError << Qt::endl;
+        return 1;
+    }
+    QTemporaryDir scratch(QDir(miacode::runtime_paths::tempDirectory())
+                              .filePath(QStringLiteral("MiaCode picker #XXXXXX")));
     expect(scratch.isValid(), "scratch directory exists");
     QDir parent(scratch.path());
     parent.mkdir(QStringLiteral("Song #1"));
@@ -235,8 +281,6 @@ ApplicationWindow {
         finish({}, {});
     }
     // Caller policy: exercise real models without opening a platform window.
-    QSettings::setDefaultFormat(QSettings::IniFormat);
-    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, scratch.path());
     miacode::UiRequestService historyRequests;
     QString historyId;
     QVariantMap historyRequest;
@@ -252,7 +296,8 @@ ApplicationWindow {
     const QString pvRoot = chosen("pv-root");
     const auto folder = [&] { return historyRequest.value("startFolder").toUrl().toLocalFile(); };
     Engine seed;
-    seed.task.chartPath = parent.filePath("Song #1/maidata.txt");
+    const QString seedDirectory = chosen("Song #1");
+    seed.task.chartPath = QDir(seedDirectory).filePath(QStringLiteral("maidata.txt"));
     seed.task.outputPath = QStringLiteral("test_MAS.mp4");
     miacode::ExportEngine* seedSlot = &seed;
     {
@@ -262,12 +307,12 @@ ApplicationWindow {
         session.browseOutputPath();
         expect(folder() == QFileInfo(seed.task.chartPath).absolutePath(), "relative video output starts beside the chart");
         historyRequests.cancelFileRequest(historyId);
-        expect(session.batchOutputDirectory().isEmpty(), "batch output stays empty without an explicit choice");
+        expect(session.batchOutputDirectory() == seedDirectory, "batch output defaults to the chart working directory");
         session.browseBatchOutputDirectory();
-        expect(folder() == QDir::homePath() && session.batchOutputDirectory().isEmpty(),
-               "opening the output picker does not default the output to the chart or working directory");
+        expect(folder() == seedDirectory && session.batchOutputDirectory() == seedDirectory,
+               "the batch output picker opens in the chart working directory");
         historyRequests.cancelFileRequest(historyId);
-        expect(session.batchOutputDirectory().isEmpty(), "cancelling leaves the output unset");
+        expect(session.batchOutputDirectory() == seedDirectory, "cancelling preserves the current output directory");
         session.browseBatchOutputDirectory();
         historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(fontSource));
         expect(session.batchOutputDirectory() == fontSource, "an explicit output directory is retained");
@@ -317,36 +362,40 @@ ApplicationWindow {
         historyRequests.cancelFileRequest(historyId);
         expect(tools.batchDirectory() == pvRoot, "cancelling PV selection preserves the root");
     }
-    const QString legacyRoot = chosen("legacy-root");
-    const QString legacyChart = chosen("legacy-root/song");
-    legacy.setValue(QStringLiteral("batch_video_export_dialog/last_chart_directory"), legacyChart);
+    const QString chartRoot = chosen("chart-root");
+    const QString chartFolder = chosen("chart-root/song");
     auto withoutNewHistory = miacode::app_preferences::loadDialogPreferences();
     withoutNewHistory.remove("last_batch_chart_directory");
     miacode::app_preferences::saveDialogPreferences(withoutNewHistory);
     {
         miacode::ui::ExportSession session(notifications, historyRequests, progress, appearance, seedSlot, preview);
         session.addChartDirectories();
-        expect(folder() == legacyRoot, "v1 chart-directory history opens its parent on upgrade");
+        expect(folder() == QDir(miacode::runtime_paths::workspaceDirectory()).filePath(QStringLiteral("fixtures")),
+               "missing chart history starts in workspace fixtures");
         historyRequests.cancelFileRequest(historyId);
         expect(miacode::app_preferences::loadDialogPreferences().value("last_batch_chart_directory").toString().isEmpty(),
-               "cancelling an upgrade browse does not create a new selection history");
+               "cancelling a browse does not create selection history");
         session.addChartDirectories();
-        historyRequests.submitFileResults(historyId, {QUrl::fromLocalFile(legacyChart)});
-        expect(miacode::app_preferences::loadDialogPreferences().value("last_batch_chart_directory").toString() == legacyRoot,
-               "an accepted upgraded selection persists the new parent policy");
+        historyRequests.submitFileResults(historyId, {QUrl::fromLocalFile(chartFolder)});
+        expect(miacode::app_preferences::loadDialogPreferences().value("last_batch_chart_directory").toString() == chartRoot,
+               "an accepted selection persists its parent directory");
         auto current = miacode::app_preferences::loadDialogPreferences();
         current.insert("last_batch_chart_directory", fontSource);
         miacode::app_preferences::saveDialogPreferences(current);
         session.addChartDirectories();
-        expect(folder() == fontSource, "new batch input history wins over the old preference");
+        expect(folder() == fontSource, "batch input history restores its own location");
         historyRequests.cancelFileRequest(historyId);
         current.insert("last_batch_chart_directory", parent.filePath("deleted-current"));
         miacode::app_preferences::saveDialogPreferences(current);
         session.addChartDirectories();
-        expect(folder() != legacyRoot && QDir(folder()).exists(), "deleted new history falls back without resurrecting old history");
+        expect(folder() == QDir(miacode::runtime_paths::workspaceDirectory()).filePath(QStringLiteral("fixtures")),
+               "deleted chart history falls back to workspace fixtures");
         historyRequests.cancelFileRequest(historyId);
     }
-    legacy.setValue(QStringLiteral("batch_video_export_dialog/last_output_directory"), legacyRoot);
+    const QString legacyRoot = chosen(QStringLiteral("legacy-chart-root"));
+    const QString legacyOutputKey = QStringLiteral("batch_video_export_dialog/last_output_directory");
+    LegacyBatchHistoryGuard legacy;
+    legacy.setValue(legacyOutputKey, legacyRoot);
     auto withoutOutputHistory = miacode::app_preferences::loadDialogPreferences();
     withoutOutputHistory.remove("last_batch_output_directory");
     miacode::app_preferences::saveDialogPreferences(withoutOutputHistory);
@@ -354,17 +403,30 @@ ApplicationWindow {
         miacode::ui::ExportSession session(notifications, historyRequests, progress, appearance, seedSlot, preview);
         session.enter(5);
         wait();
-        expect(session.batchOutputDirectory() == legacyRoot, "v1 batch output history survives the upgrade");
+        expect(session.batchOutputDirectory() == seedDirectory, "current chart directory overrides old output history");
         session.setBatchOutputDirectory(fontSource);
-        expect(miacode::app_preferences::loadDialogPreferences().value("last_batch_output_directory").toString() == fontSource,
-               "a new batch output choice is recorded in the dialog preferences");
-        expect(legacy.value(QStringLiteral("batch_video_export_dialog/last_output_directory")) == legacyRoot,
-               "v1's native settings store is only read, never written");
+        expect(session.batchOutputDirectory() == fontSource, "the current session keeps an explicit directory choice");
+        session.leave();
+        seed.task.chartPath = QDir(legacyRoot).filePath(QStringLiteral("maidata.txt"));
+        session.enter(5);
+        wait();
+        expect(session.batchOutputDirectory() == legacyRoot, "switching charts reinitializes to the new working directory");
+        session.leave();
+        seed.task.chartPath.clear();
+        session.enter(5);
+        wait();
+        expect(session.batchOutputDirectory().isEmpty(), "unsaved charts must choose an output directory");
+        session.leave();
+        seed.task.chartPath = QDir(seedDirectory).filePath(QStringLiteral("maidata.txt"));
+        session.enter(5);
+        wait();
+        expect(legacy.value(legacyOutputKey) == legacyRoot,
+               "the new batch output choice leaves the legacy fixture unchanged");
         session.setBatchOutputDirectory({});
         session.leave();
         session.enter(5);
         wait();
-        expect(session.batchOutputDirectory().isEmpty(), "a cleared output does not revive v1's history");
+        expect(session.batchOutputDirectory().isEmpty(), "a cleared output remains empty after reseeding");
     }
     {
         miacode::ui::ExportSession session(notifications, historyRequests, progress, appearance, seedSlot, preview);
@@ -375,13 +437,29 @@ ApplicationWindow {
         session.setCoverPresetChecked(QStringLiteral("builtin:card"), true, false);
         expect(session.singleCoverPresets().size() == 2, "multiple covers are selected without duplicates");
         session.setCoverPresetChecked(QStringLiteral("builtin:dual_chart_frames"), true, true);
+        const auto coversBefore = session.singleCoverPresets();
+        const auto batchBefore = session.batchCoverPresets();
+        session.setCompanionCoversEnabled(false, false);
+        expect(session.singleCoverPresets().isEmpty() && session.batchCoverPresets() == batchBefore,
+               "disabling companion covers only clears the active export mode");
+        session.setCompanionCoversEnabled(true, false);
+        expect(session.singleCoverPresets() == coversBefore, "re-enabling restores selected cover layouts");
         const int widescreen = 5;
         session.setResolutionIndex(widescreen);
-        session.setSizePresetIndex(4);
-        expect(session.outputWidth() == 854 && session.outputHeight() == 480 && !session.introPvPreview(), "30 MB enforces 480p with the selected aspect and no PV intro");
+        session.setIntroStyleIndex(2);
+        session.setIncludePv(true);
+        session.setRateModeIndex(1);
+        session.setSizeLimitMb(30);
+        expect(session.sizeLimitMb() == 30 && session.resolutionIndex() == widescreen
+            && session.introStyleIndex() == 2 && session.includePv(),
+            "file-size strategy preserves selected resolution, PV and chart preview");
         session.setResolutionIndex(8);
-        expect(session.outputHeight() == 480, "30 MB retains 480p when another height is selected");
-        session.setSizePresetIndex(5);
+        expect(session.outputHeight() == 1440, "30 MB lets the user override the suggested size");
+        session.setRateModeIndex(2);
+        session.setVideoBitrateMbps(6.25);
+        session.setIncludePv(false);
+        expect(session.rateModeIndex() == 2 && session.estimatedSizeBytes() > 48000000.0,
+            "custom size estimation includes the bitrate, audio and intro duration");
         session.setResolutionIndex(20);
         session.setShowCpsHud(true);
         session.saveVideoTemplate(QStringLiteral("Review 4K"));
@@ -402,14 +480,51 @@ ApplicationWindow {
             "applying a template preserves output and range while restoring multiple covers");
         session.renameVideoTemplate(QStringLiteral("Review 4K"), QStringLiteral("Archive 4K"));
         expect(session.videoTemplates().last().toMap().value("name").toString() == QLatin1String("Archive 4K"), "template rename persists");
-        const QString templatePath = parent.filePath(QStringLiteral("portable.miacode.json"));
-        session.exportVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(templatePath));
+        const QString templatePath = parent.filePath(QStringLiteral("portable.miatemplate"));
+        session.exportVideoTemplate();
+        historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(parent.filePath(QStringLiteral("portable"))));
         QFile portable(templatePath); expect(portable.open(QIODevice::ReadOnly), "template file is written");
         const auto wrapper = QJsonDocument::fromJson(portable.readAll()).object(); portable.close();
         expect(wrapper.value("version").toInt() == 1 && wrapper.value("kind").toString() == QLatin1String("better-miacode-video-template"), "template file has an explicit format and version");
+        for (const QString& name : {QStringLiteral("double.miatemplate.json"), QStringLiteral("reverse.json.miatemplate")}) {
+            session.exportVideoTemplate();
+            historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(parent.filePath(name)));
+            const QString canonical = name.startsWith(QLatin1String("double"))
+                ? QStringLiteral("double.miatemplate") : QStringLiteral("reverse.miatemplate");
+            QFile savedTemplate(parent.filePath(canonical));
+            expect(savedTemplate.open(QIODevice::ReadOnly)
+                   && QJsonDocument::fromJson(savedTemplate.readAll()).object() == wrapper
+                   && !QFileInfo::exists(parent.filePath(name)),
+                   "video templates remove legacy JSON suffixes without changing their content");
+        }
         session.setResolutionIndex(0);
         session.importVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(templatePath));
-        expect(session.outputWidth() == 3840 && session.videoTemplates().size() >= 2, "portable template imports, applies and joins the saved list");
+        expect(session.outputWidth() == 3840 && session.videoTemplates().size() >= 2
+            && session.rateModeIndex() == 2 && session.videoBitrateMbps() == 6.25 && !session.includePv()
+            && session.introStyleIndex() == 2,
+            "the portable template restores the custom bitrate, independent PV and intro style");
+        const QString legacyTemplatePath = parent.filePath(QStringLiteral("portable-legacy.json"));
+        expect(QFile::copy(templatePath, legacyTemplatePath), "legacy suffix fixture is created");
+        session.setResolutionIndex(0);
+        session.importVideoTemplate(); historyRequests.submitFileResult(historyId, QUrl::fromLocalFile(legacyTemplatePath));
+        expect(session.outputWidth() == 3840, "legacy JSON suffix remains importable");
+        auto displayTask = seed.task;
+        for (const auto choice : {CompletionDisplay::Automatic, CompletionDisplay::Standard,
+                                  CompletionDisplay::Modern, CompletionDisplay::Both}) {
+            displayTask.completionDisplay = choice;
+            displayTask.outlineAutomatic = choice == CompletionDisplay::Automatic;
+            const auto settings = miacode::video_export::videoExportTemplateSettings(displayTask);
+            auto restored = seed.task;
+            expect(miacode::video_export::applyVideoExportTemplateSettings(settings, &restored)
+                && restored.completionDisplay == choice && restored.outlineAutomatic == displayTask.outlineAutomatic,
+                "completion display and outline detection round-trip in portable templates");
+        }
+        auto oldSettings = saved;
+        oldSettings.remove("completionDisplay");
+        oldSettings.remove("outlineAutomatic");
+        expect(miacode::video_export::applyVideoExportTemplateSettings(oldSettings, &displayTask)
+            && displayTask.completionDisplay == CompletionDisplay::Both && !displayTask.outlineAutomatic,
+            "legacy templates retain both rates and the concrete outline variant");
         auto invalid = saved; invalid.insert("outlineVariant", 99);
         auto task = seed.task;
         expect(!miacode::video_export::applyVideoExportTemplateSettings(invalid, &task), "invalid enum values cannot enter a template task");
@@ -417,6 +532,127 @@ ApplicationWindow {
         expect(!miacode::app_preferences::loadDialogPreferences().value("templates").toObject().contains("Archive 4K"), "template deletion persists");
         for (const auto& row : session.singleCoverPresetOptions())
             expect(row.toMap().value("label").toString() != QLatin1String("dialog.batch_export.cover_none"), "cover-off label is translated");
+    }
+    {
+        seed.task.contentDurationSeconds = 120.0;
+        auto document = SimaiDocument::fromText(QStringLiteral(
+            "&title=Preview ranges\n&demo_seek=4\n&demo_len=6\n&inote_5=(120){4}1,\nE\n"));
+        using namespace miacode::chart_preview;
+        std::optional<DropSelection> drop = DropSelection{{30.0, 33.5}, DropSource::Manual, {}};
+        miacode::ui::ExportSession session(notifications, historyRequests, progress, appearance, seedSlot, preview);
+        session.setChartPreviewContextProvider([&](int) {
+            return miacode::ui::ExportSession::ChartPreviewContext{
+                seed.task.chartPath, 1, &document, {}, drop, 120.0};
+        });
+        bool revisionPublished = false;
+        seed.onStartAudition = [&] {
+            // Enter has opened the export session and queued its first seed.
+            // Auto-normalization publishes a workspace revision before the
+            // backend sets the audition-active flag.
+            if (!miacode::runtime::document_detail::exportPageOwnsWorkspaceRevision(
+                    u"export", &session, /*documentIdentityChanged=*/false)) {
+                session.leave();
+            }
+            revisionPublished = true;
+            emit notifications.documentRevisionChanged(2);
+            session.chartPreviewContextChanged();
+        };
+        session.enter(5); wait();
+        seed.onStartAudition = {};
+        expect(revisionPublished && session.pageSessionActive() && session.rangePreviewAvailable()
+            && session.dropAvailable(),
+            "the first audition can publish a workspace revision without disabling the drop range controls");
+        expect(!miacode::runtime::document_detail::exportPageOwnsWorkspaceRevision(
+            u"export", &session, /*documentIdentityChanged=*/true),
+            "a new document does not inherit the export-entry guard");
+        session.setIntroStyleIndex(2);
+        expect(session.previewIntroSpec().previewWindowSource == IntroWindowSource::Demo
+            && session.introPvStartSeconds() == 4.0 && session.introPvSegmentSeconds() == 6.0,
+            "the existing chart demo supplies the automatic intro window");
+        session.setIntroWindowModeIndex(1);
+        expect(session.previewIntroSpec().previewWindowSource == IntroWindowSource::Drop
+            && session.introPvStartSeconds() == 30.0 && session.introPvSegmentSeconds() == 3.5,
+            "following drop bypasses the existing demo and keeps the short range");
+        session.setIntroPvStartSeconds(12.0);
+        expect(session.previewIntroSpec().previewWindowSource == IntroWindowSource::Explicit,
+            "a custom start overrides the chosen automatic mode");
+        session.clearIntroWindowOverride();
+        expect(session.introPvStartSeconds() == 30.0, "clearing the override follows drop again");
+        expect(session.exportStartSeconds() == 0.0 && session.dropAvailable(),
+            "showing a drop does not replace the selected export range");
+        session.adoptDropRange();
+        expect(session.exportStartSeconds() == 30.0 && session.exportEndSeconds() == 33.5,
+            "the drop shortcut adopts both endpoints even below the usual five-second minimum");
+        session.leave();
+    }
+    {
+        auto preferences = miacode::app_preferences::loadDialogPreferences();
+        preferences.insert("add_intro", false);
+        preferences.insert("intro_style", "pv_preview");
+        preferences.insert("intro_pv_brightness", 0.35);
+        miacode::app_preferences::saveDialogPreferences(preferences);
+        seed.task.contentDurationSeconds = 120.0;
+        miacode::ui::ExportSession session(notifications, historyRequests, progress, appearance, seedSlot, preview);
+        session.enter(5);
+        wait();
+        expect(session.introEnabled() && !session.introPvPreview()
+                   && session.introPvStartSeconds() == 0.0,
+               "new export defaults to enabled classic intro and clears the PV range");
+        const auto selectIntro = [&] {
+            session.setIntroEnabled(true);
+            session.setIntroPvPreview(true);
+            session.setIntroPvStartSeconds(42.5);
+        };
+        selectIntro();
+        session.selectDifficulty(4);
+        expect(session.introEnabled() && session.introPvPreview() && session.introPvStartSeconds() == 42.5,
+               "changing difficulty preserves the pending intro selection");
+        session.startExport();
+        expect(session.introEnabled() && session.introPvPreview() && session.introPvStartSeconds() == 42.5,
+               "launch failure preserves the intro selection for retry");
+        seed.launchSucceeds = true;
+        session.startExport();
+        expect(seed.launchedTask.intro.enabled && seed.launchedTask.intro.pvPreview
+                   && seed.launchedTask.intro.pvPreviewStartSeconds == 42.5,
+               "export receives the selected intro and PV segment");
+        emit notifications.videoExportWorkerRunningChanged(false);
+        expect(session.introEnabled() && session.introPvStartSeconds() == 42.5,
+               "cancelled or failed worker preserves the intro selection");
+        session.startExport();
+        emit notifications.videoExportCompleted();
+        emit notifications.videoExportWorkerRunningChanged(false);
+        expect(session.introEnabled() && !session.introPvPreview() && session.introPvStartSeconds() == 0.0,
+               "successful export enables classic intro and resets PV mode and range");
+        expect(qAbs(session.introPvBrightness() - 0.35) < 1e-6,
+               "successful export retains PV brightness");
+        session.startExport();
+        expect(seed.launchedTask.intro.enabled && !seed.launchedTask.intro.pvPreview
+                   && seed.launchedTask.intro.pvPreviewStartSeconds == 0.0,
+               "next export defaults to classic intro and requires a new PV selection");
+        emit notifications.videoExportWorkerRunningChanged(false);
+        session.setIntroEnabled(false);
+        session.startExport();
+        expect(!seed.launchedTask.intro.enabled, "intro can still be disabled for the current export");
+        emit notifications.videoExportCompleted();
+        emit notifications.videoExportWorkerRunningChanged(false);
+        expect(session.introEnabled(), "successful export re-enables intro even when it was manually disabled");
+        session.setActiveTab("batch");
+        seed.batchLaunchSucceeds = true;
+        seed.batchResult.canceled = true;
+        selectIntro();
+        session.startExport();
+        expect(session.introEnabled() && session.introPvStartSeconds() == 42.5,
+               "batch cancellation before any success preserves intro selection");
+        seed.batchResult.canceled = false;
+        seed.batchResult.successCount = 2;
+        session.startExport();
+        expect(seed.launchedTask.intro.pvPreviewStartSeconds == 42.5
+                   && session.introEnabled() && !session.introPvPreview()
+                   && session.introPvStartSeconds() == 0.0,
+               "batch uses the chosen segment and resets intro selection after completion");
+        const auto saved = miacode::app_preferences::loadDialogPreferences();
+        expect(!saved.contains("add_intro") && !saved.contains("intro_style"),
+               "export does not persist intro enablement or PV mode");
     }
     miacode::FileRequest save;
     save.saveMode = true;

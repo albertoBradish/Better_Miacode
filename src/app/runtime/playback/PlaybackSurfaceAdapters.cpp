@@ -218,6 +218,11 @@ void PlaybackPreviewSurfaceAdapter::prepareForShutdown()
     }
 }
 
+PreviewTimingSettings PlaybackPreviewSurfaceAdapter::audioTiming() const
+{
+    return coordinator_ ? coordinator_->audioTiming() : PreviewTimingSettings{};
+}
+
 PreviewAudioSettings PlaybackPreviewSurfaceAdapter::audioSettings() const
 {
     return coordinator_ != nullptr ? coordinator_->audioSettings() : PreviewAudioSettings();

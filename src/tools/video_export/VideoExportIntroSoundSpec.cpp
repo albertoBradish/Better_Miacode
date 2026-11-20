@@ -22,15 +22,31 @@ bool nearlyEqual(double lhs, double rhs)
 bool verifyPreferencesAndDifficultyReseed(QTextStream& err)
 {
     VideoExportTask edited;
+    bool ok = require(edited.intro.cardShadow && nearlyEqual(edited.intro.pvPreviewBrightness, 0.8),
+                  QStringLiteral("intro defaults to a shadow and 80% brightness"), err);
     edited.introSoundFileName = QStringLiteral("custom-start.flac");
+    edited.handOrderExportMode = HandOrderExportMode::Original;
+    edited.showHandOrderAnnotations = false;
     miacode::video_export::applyVideoExportPreferences(
-        {{QStringLiteral("intro_pv_brightness"), 0.35}}, &edited);
+        {{QStringLiteral("intro_pv_brightness"), 0.35},
+         {QStringLiteral("add_intro"), false},
+         {QStringLiteral("intro_style"), QStringLiteral("pv_preview")}}, &edited);
+    ok &= require(edited.intro.enabled && !edited.intro.pvPreview,
+                      QStringLiteral("intro defaults to enabled classic mode regardless of saved selections"), err);
+    edited.intro.enabled = true;
+    edited.intro.pvPreview = true;
+    edited.intro.previewWindowSource = miacode::chart_preview::IntroWindowSource::Explicit;
+    edited.intro.pvPreviewStartSeconds = 42.5;
 
     // The intro volume belongs to the audio settings now; the export
     // preferences no longer carry a copy of it.
-    QJsonObject preferences;
+    QJsonObject preferences{{QStringLiteral("add_intro"), true},
+                            {QStringLiteral("intro_style"), QStringLiteral("pv_preview")}};
     miacode::video_export::appendVideoExportPreferences(&preferences, edited);
-    bool ok = require(
+    ok &= require(!preferences.contains(QStringLiteral("add_intro"))
+                      && !preferences.contains(QStringLiteral("intro_style")),
+                  QStringLiteral("intro selections are removed from saved preferences"), err);
+    ok &= require(
         !preferences.contains(QStringLiteral("intro_sound_volume")),
         QStringLiteral("shared export preferences do not serialize an intro volume"),
         err);
@@ -38,11 +54,21 @@ bool verifyPreferencesAndDifficultyReseed(QTextStream& err)
         nearlyEqual(preferences.value(QStringLiteral("intro_pv_brightness")).toDouble(-1.0), 0.35),
         QStringLiteral("PV brightness survives saving and restoring export preferences"),
         err);
+    VideoExportTask restoredPreferences;
+    miacode::video_export::applyVideoExportPreferences(preferences, &restoredPreferences);
+    ok &= require(restoredPreferences.handOrderExportMode == HandOrderExportMode::Original,
+                  QStringLiteral("hand-order export choice survives preferences"), err);
 
     VideoExportTask reseeded;
     reseeded.outputPath = QStringLiteral("new-difficulty.mp4");
     reseeded.exportStartSeconds = 3.0;
     miacode::video_export::copyVideoExportUserSettings(edited, &reseeded);
+    ok &= require(reseeded.intro.enabled && reseeded.intro.pvPreview
+                      && nearlyEqual(reseeded.intro.pvPreviewStartSeconds, 42.5),
+                  QStringLiteral("difficulty reseeding retains the pending export's intro selection"), err);
+    ok &= require(reseeded.handOrderExportMode == HandOrderExportMode::Original
+                      && !reseeded.showHandOrderAnnotations,
+                  QStringLiteral("difficulty reseeding preserves resolved hand-order choice"), err);
     ok &= require(
         reseeded.introSoundFileName == QStringLiteral("custom-start.flac"),
         QStringLiteral("difficulty reseeding preserves the selected intro sound"),
@@ -54,6 +80,8 @@ bool verifyPreferencesAndDifficultyReseed(QTextStream& err)
         err);
     IntroBannerSpec rebuilt;
     copyIntroStyling(edited.intro, &rebuilt);
+    ok &= require(nearlyEqual(rebuilt.pvPreviewStartSeconds, 42.5),
+                  QStringLiteral("snapshot rebuilding uses the selected PV segment start"), err);
     ok &= require(
         nearlyEqual(introBannerStyleMap(rebuilt)
                         .value(QStringLiteral("pvPreviewBrightness")).toDouble(), 0.35),
@@ -84,7 +112,10 @@ bool verifySnapshotAndWorkerRoundTrip(QTextStream& err)
     source.introSoundFileName = QStringLiteral("../custom-start.flac");
     source.audioSettings.introVolume = 0.6;
     source.intro.pvPreview = true;
+    source.intro.chartPreview = true;
     source.intro.pvPreviewStartSeconds = 42.5;
+    source.intro.pvPreviewEndSeconds = 46.0;
+    source.intro.previewWindowSource = miacode::chart_preview::IntroWindowSource::Drop;
 
     QJsonObject json = source.toJson();
     QJsonObject pvIntro = json.value(QStringLiteral("intro")).toObject();
@@ -123,8 +154,12 @@ bool verifySnapshotAndWorkerRoundTrip(QTextStream& err)
         QStringLiteral("worker task receives the selected intro sound and the intro volume"),
         err);
     ok &= require(
-        workerTask.intro.pvPreview && nearlyEqual(workerTask.intro.pvPreviewStartSeconds, 42.5),
-        QStringLiteral("worker task receives the PV preview intro segment"),
+        workerTask.intro.pvPreview && workerTask.intro.chartPreview
+            && nearlyEqual(workerTask.intro.pvPreviewStartSeconds, 42.5)
+            && nearlyEqual(introPreviewMediaSecond(workerTask.intro, 9.0), 46.0)
+            && nearlyEqual(introPreviewMusicSeconds(workerTask.intro), 3.5)
+            && workerTask.intro.previewWindowSource == miacode::chart_preview::IntroWindowSource::Drop,
+        QStringLiteral("worker task receives the resolved chart intro and clips the selected window"),
         err);
     ok &= require(
         nearlyEqual(introBannerStyleMap(workerTask.intro)

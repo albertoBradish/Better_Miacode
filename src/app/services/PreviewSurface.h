@@ -2,6 +2,7 @@
 
 #include "app/services/PlaybackControl.h"
 #include "audio/PreviewAudioSettings.h"
+#include "core/video/PreviewTimingSettings.h"
 #include "core/analysis/MuriRenderOptions.h"
 #include "core/video/PreviewRenderSettings.h"
 
@@ -84,6 +85,7 @@ public:
 
     // ---- audio mixer ----
     virtual PreviewAudioSettings audioSettings() const = 0;
+    virtual PreviewTimingSettings audioTiming() const { return {}; }
     virtual void applyAudioSettings(const PreviewAudioSettings& settings) = 0;
     virtual void saveAudioSettingsAsSoftwareDefault() = 0;
     virtual void restoreAudioSettingsFromSoftwareDefault() = 0;

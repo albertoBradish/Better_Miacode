@@ -17,15 +17,28 @@
 // without a widget — see src/tools/editor/SimaiCompletionCatalogSpec.cpp.
 namespace miacode::editor {
 
-enum class CompletionCandidateGroup { Duration, Division };
+enum class CompletionCandidateGroup { Duration, Division, DurationSuffix };
 
 struct SimaiCompletionConfig {
     QStringList durations;
     QStringList divisions;
+    QStringList durationSuffixes;
     bool operator==(const SimaiCompletionConfig&) const = default;
 };
 
+struct HandOrderCompletion {
+    int startPosition = -1;
+    QStringList candidates;
+    bool active() const { return startPosition >= 0 && !candidates.isEmpty(); }
+};
+
+// Candidates at a UTF-16 caret inside a hand-order suffix. The replacement
+// starts after the latest key/value separator, never in the native note.
+HandOrderCompletion handOrderCompletionAt(const QString& chartText, int position);
+
 SimaiCompletionConfig defaultCompletionConfig();
+QStringList defaultCompletionValues(CompletionCandidateGroup group);
+SimaiCompletionConfig normalizeCompletionConfig(const SimaiCompletionConfig& config);
 bool isValidCompletionValue(CompletionCandidateGroup group, const QString& value);
 QString sanitizeCompletionInput(const QString& value);
 QStringList normalizeCompletionValues(CompletionCandidateGroup group, const QStringList& values);
@@ -34,6 +47,17 @@ QStringList holdDurationCandidates(const SimaiCompletionConfig& config);
 QStringList braceDivisionCandidates(const SimaiCompletionConfig& config);
 QStringList candidatesForOpening(QChar opening, const QString& wholeBpm,
                                  const QString& chartText, const SimaiCompletionConfig& config);
+
+struct CompletionCandidateMatch {
+    QStringList candidates;
+    int replacementOffset = 0;
+};
+
+// The numeric denominator stays in the document when a duration suffix is accepted.
+CompletionCandidateMatch matchCompletionCandidates(const QStringList& openingCandidates,
+                                                   const QString& prefix,
+                                                   const SimaiCompletionConfig& config,
+                                                   bool insideSquareBrackets);
 
 // True for the three opening glyphs we offer completion for.
 bool isBracketOpening(QChar ch);

@@ -1,11 +1,11 @@
 #pragma once
 
-// Per-project (per-chart-folder) preferences persisted as a JSON sidecar
-// inside the chart's .miacode/ data directory. Use this for settings that
+// Per-project (per-chart-folder) preferences persisted in the isolated
+// hand-order runtime data directory. Use this for settings that
 // are scoped to a single chart project (one maidata.txt + its assets) —
 // e.g. "all difficulties share the same designer name" toggle.
 //
-// File layout: <chartDir>/.miacode/preferences.json
+// File layout: <runtime>/data/projects/<chart-folder-hash>/preferences.json
 //
 // All functions are no-ops / return empties when chartFilePath is empty
 // or its parent directory doesn't exist; callers don't need to defend.

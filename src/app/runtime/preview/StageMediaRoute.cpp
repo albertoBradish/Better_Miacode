@@ -6,7 +6,6 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
@@ -170,6 +169,8 @@ void miacode::runtime::StageMediaHost::clearPreviewStageMediaRoute()
 
 void miacode::runtime::StageMediaHost::releasePreviewStageMediaDecoderForFileOperation()
 {
+    // A queued warmup result must not reopen the decoder after this release.
+    invalidatedMediaWarmupGeneration_ = state_.previewWarmupGeneration_;
     if (state_.previewStageMediaHost_ != nullptr) {
         state_.previewStageMediaHost_->releaseDecoderForFileReplace();
     }
@@ -265,6 +266,8 @@ void miacode::runtime::StageMediaHost::ensurePreviewStageMediaHostInitialized()
     }
 
     state_.previewStageMediaHost_ = new PreviewStageMediaHost(&session_);
+    state_.previewStageMediaHost_->setBackgroundPolicy(
+        backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode));
     state_.previewStageMediaHost_->setMissingMediaFallbackEnabled(session_.exportPreviewActive_);
     state_.previewStageMediaHost_->setBackgroundScaleMode(state_.previewBackgroundScaleMode_);
     state_.previewStageMediaHost_->setLayoutSquareScale(state_.previewLayoutSquareScale_);

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QString>
+#include <memory>
+#include "audio/PreviewOutputRoute.h"
 #include <QVector>
 
 #include "core/scene/PreviewSfxTimeline.h"
@@ -54,6 +56,7 @@ class PreviewAudioBackend
 {
 public:
     virtual ~PreviewAudioBackend() = default;
+    virtual void bindOutputRoute(std::shared_ptr<PreviewOutputRoute>) {}
 
     virtual QString backendId() const = 0;
     virtual bool canBePrimary(QString* reason = nullptr) const = 0;

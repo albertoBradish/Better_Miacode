@@ -14,10 +14,8 @@ namespace miacode::app::entry {
 // ===== Startup diagnostics bundle (process_identity.cpp) =====
 // Emits startup/process_identity (P0) + startup/gpu_hint (P2) + startup/gpu_policy
 // (P3) in one call, deriving argv/role from QCoreApplication. Gated on --debug.
-// `phase` tags the batch ("boot" early in main(), "log_dir_rebound" after the
-// runtime log directory rebinds to a chart's .miacode/logs/) so these process-
-// invariant facts are visible in whichever log file a user collects. Call after
-// QGuiApplication is constructed.
+// `phase` tags the batch ("boot" in main()) so process-invariant facts can be
+// identified in the shared workspace log. Call after QGuiApplication is constructed.
 void logProcessStartupDiagnostics(const QString& phase);
 
 // ===== Actual GPU adapter / renderer probe (gpu_adapter_probe.cpp) =====

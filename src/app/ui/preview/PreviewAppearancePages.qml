@@ -57,14 +57,6 @@ AppTabPages {
             onMoved: function(v) { root.put("brightnessInner", Math.round(v)) }
         }
         LabeledSlider {
-            objectName: "previewFireworkBrightnessSlider"
-            label: root.labels.fireworkBrightness || ""
-            from: 50
-            to: 120
-            value: root.values.fireworkBrightness ?? 100
-            onMoved: function(v) { root.put("fireworkBrightness", Math.round(v)) }
-        }
-        LabeledSlider {
             objectName: "previewLayoutSquareScaleSlider"
             label: root.labels.layoutSquareScale || ""
             from: root.values.layoutSquareScaleMin || 50
@@ -124,6 +116,12 @@ AppTabPages {
             onToggled: root.put("touchPadAuthoringShortcut", checked)
         }
         AppSwitch {
+            objectName: "previewShowStageMediaWhenPausedSwitch"
+            text: qsTrId("preview.show_stage_media_when_paused")
+            checked: root.values.showStageMediaWhenPaused === true
+            onToggled: root.put("showStageMediaWhenPaused", checked)
+        }
+        AppSwitch {
             objectName: "previewForceLabeledJudgeLineSwitch"
             text: root.labels.forceLabeledJudgeLineWhenPaused || ""
             checked: root.values.forceLabeledJudgeLineWhenPaused === true
@@ -166,6 +164,17 @@ AppTabPages {
             decimals: 2
             readout: root.flowSpeedLabel(root.values.touchFlowSpeed || 0)
             onMoved: function(v) { root.put("touchFlowSpeed", v) }
+        }
+        LabeledSlider {
+            objectName: "previewStarFadeTimingSlider"
+            label: root.labels.starFadeTiming || ""
+            from: -1
+            to: 1
+            stepSize: 0.1
+            value: root.values.starFadeTiming || 0
+            decimals: 1
+            suffix: ""
+            onMoved: function(v) { root.put("starFadeTiming", v) }
         }
         LabeledCombo {
             objectName: "previewSlideStackOrderCombo"
@@ -264,6 +273,22 @@ AppTabPages {
             }
         }
 
+        LabeledCombo {
+            objectName: "previewFireworkStyleCombo"
+            label: root.labels.fireworkStyle || ""
+            options: root.previewSettings ? root.previewSettings.fireworkStyleOptions : []
+            currentValue: root.values.fireworkStyle ?? 0
+            onPicked: function(value) { root.put("fireworkStyle", value) }
+        }
+        LabeledSlider {
+            objectName: "previewFireworkBrightnessSlider"
+            label: root.labels.fireworkBrightness || ""
+            from: 50
+            to: 120
+            value: root.values.fireworkBrightness ?? 100
+            onMoved: function(v) { root.put("fireworkBrightness", Math.round(v)) }
+        }
+
         RowLayout {
             Layout.fillWidth: true
             Text {
@@ -287,6 +312,19 @@ AppTabPages {
                 text: qsTrId("dialog.skin_settings.open_directory")
                 onClicked: if (root.previewSettings) root.previewSettings.openJudgeLineDirectory()
             }
+        }
+
+        LabeledCombo {
+            objectName: "previewCompletionDisplayCombo"
+            label: qsTrId("preview.completion_display")
+            options: [
+                {value: 0, label: qsTrId("preview.auto_detect")},
+                {value: 1, label: qsTrId("dialog.skin_settings.firework.standard")},
+                {value: 2, label: qsTrId("dialog.skin_settings.firework.modern")},
+                {value: 3, label: qsTrId("preview.completion_default")}
+            ]
+            currentValue: root.values.completionDisplay ?? 0
+            onPicked: function(value) { root.put("completionDisplay", value) }
         }
 
         SettingsSection {

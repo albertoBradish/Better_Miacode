@@ -18,13 +18,14 @@ Item {
     // frequent stop/play pair then moves to the editor-adjacent edge, next to
     // the scrub area, while the lower-frequency options move away from it.
     property bool transportMirrored: false
-    readonly property real topEdgeCenterY: 0.5 / root.Screen.devicePixelRatio
+    readonly property real topEdgeCenterY: 0.5 / (root.Screen.devicePixelRatio * Theme.uiScale)
     signal detachRequested()
     signal dockRequested()
 
     function closeMenus() {
         rateMenu.close()
         canvasMenu.close()
+        structureMarkers.closeEditor()
     }
 
 
@@ -41,7 +42,7 @@ Item {
         y: root.topEdgeCenterY - height / 2
         z: 1
         height: root.topEdgeHighlighted ? Theme.splitHandleActiveThickness
-                                       : 1 / root.Screen.devicePixelRatio
+                                       : 1 / (root.Screen.devicePixelRatio * Theme.uiScale)
         color: root.topEdgeHighlighted ? Theme.colors.accent.focus : Theme.separatorColor
     }
 
@@ -186,6 +187,14 @@ Item {
         }
     }
 
+    ChartStructureStrip {
+        id: structureMarkers
+        anchors.fill: progress
+        slider: progress
+        structure: root.dataAvailable ? root.previewSession.structure || null : null
+        positionSeconds: root.displayedSeconds
+    }
+
     RowLayout {
         id: transportRow
         anchors.left: parent.left
@@ -197,10 +206,12 @@ Item {
         spacing: 5
         layoutDirection: root.transportMirrored ? Qt.RightToLeft : Qt.LeftToRight
 
+        // Transport clicks leave keyboard focus where it is, usually the chart editor.
         IconButton {
             id: stopButton
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
+            focusPolicy: Qt.TabFocus
             iconSource: Qt.resolvedUrl("icons/stop.svg")
             tooltip: qsTrId("preview.stop")
             onClicked: root.previewSession.stop()
@@ -209,6 +220,7 @@ Item {
             id: playButton
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
+            focusPolicy: Qt.TabFocus
             iconSource: Qt.resolvedUrl(root.previewSession.playing ? "icons/pause.svg" : "icons/play.svg")
             tooltip: root.previewSession.playing ? qsTrId("preview.pause") : qsTrId("preview.play")
             onClicked: root.previewSession.playing = !root.previewSession.playing
@@ -238,6 +250,7 @@ Item {
                         > root.exportSession.exportStartSeconds
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
+            focusPolicy: Qt.TabFocus
             iconSource: Qt.resolvedUrl("icons/range-play.svg")
             filledIconSource: Qt.resolvedUrl("icons/range-play-active.svg")
             active: root.exportSession.rangePlaybackEnabled

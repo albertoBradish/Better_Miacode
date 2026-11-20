@@ -1,4 +1,5 @@
 #include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/playback/PreviewFramePacingPolicy.h"
 #include "app/runtime/Session.h"
 #include "app/runtime/Shared.h"
 #include "app/runtime/shell/ShellHost.h"
@@ -6,7 +7,6 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "app/runtime/ContentDurationConfig.h"
 #include "common/DebugLog.h"
@@ -60,6 +60,8 @@ int previewFrameSwapWatchdogTimeoutMs(qint64 frameIntervalNs)
 QString miacode::runtime::PlaybackCoordinator::previewFrameRateModeStorageValue(PreviewCanvasFrameRateMode mode) const
 {
     switch (mode) {
+    case PreviewCanvasFrameRateMode::SourceRate:
+        return QStringLiteral("auto");
     case PreviewCanvasFrameRateMode::Fps30:
         return QStringLiteral("30");
     case PreviewCanvasFrameRateMode::Fps120:
@@ -90,7 +92,7 @@ QString miacode::runtime::PlaybackCoordinator::timelineFrameRateModeStorageValue
 
 Session::PreviewCanvasFrameRateMode miacode::runtime::PlaybackCoordinator::currentPreviewStageMediaFrameRateMode() const
 {
-    return state_.previewStageMediaFrameRateMode_;
+    return state_.lowPerformanceMode_ ? PreviewCanvasFrameRateMode::Fps30 : state_.previewStageMediaFrameRateMode_;
 }
 
 bool miacode::runtime::PlaybackCoordinator::currentVideoDecodePrefersSoftware() const
@@ -148,7 +150,7 @@ qint64 miacode::runtime::PlaybackCoordinator::previewCanvasTargetFrameIntervalNs
     // Same clamp guards Fps60 against (rare) sub-60 Hz displays.
     const double displayHz = currentPreviewCanvasRefreshRate();
     double targetHz;
-    switch (state_.previewCanvasFrameRateMode_) {
+    switch (state_.lowPerformanceMode_ ? PreviewCanvasFrameRateMode::Fps60 : state_.previewCanvasFrameRateMode_) {
     case PreviewCanvasFrameRateMode::Fps30:
         targetHz = qMin(30.0, displayHz);
         break;
@@ -219,11 +221,20 @@ void miacode::runtime::PlaybackCoordinator::resetQtPreviewFixedFramePacing()
 
 void miacode::runtime::PlaybackCoordinator::scheduleNextQtPreviewTick()
 {
-    // Doc section 4.3: qtPreviewTimer_ is a watchdog in both modes. Normal visual cadence is
-    // driven by framePresented -> queued tick; this timer only kicks if present never arrives.
     if (ui_.qtPreviewTimer_ == nullptr || !state_.playing_) {
         return;
     }
+    if (state_.lowPerformanceMode_) {
+        if (state_.qtPreviewNextFixedTickDueNs_ < 0) {
+            resetQtPreviewFixedFramePacing();
+        }
+        const qint64 remaining = state_.qtPreviewNextFixedTickDueNs_ - state_.qtPreviewWatchdogElapsed_.nsecsElapsed();
+        ui_.qtPreviewTimer_->setInterval(std::chrono::nanoseconds(qMax<qint64>(1, remaining)));
+        ui_.qtPreviewTimer_->start();
+        return;
+    }
+
+    // Normal playback only kicks the present pipeline if its update stalls.
     qint64 awaitingSinceMs = -1;
     bool awaiting = false;
     if (previewCanvasUsesFrameSwappedPacing()) {
@@ -245,6 +256,23 @@ void miacode::runtime::PlaybackCoordinator::scheduleNextQtPreviewTick()
         qMax(1, timeoutMs - static_cast<int>(qMin<qint64>(elapsedMs, timeoutMs)));
     ui_.qtPreviewTimer_->setInterval(std::chrono::milliseconds(delayMs));
     ui_.qtPreviewTimer_->start();
+}
+
+void miacode::runtime::PlaybackCoordinator::onLowPerformancePreviewFrameDeadline()
+{
+    if (!state_.playing_ || !state_.lowPerformanceMode_) {
+        return;
+    }
+
+    const qint64 now = state_.qtPreviewWatchdogElapsed_.nsecsElapsed();
+    if (now < state_.qtPreviewNextFixedTickDueNs_) {
+        scheduleNextQtPreviewTick();
+        return;
+    }
+
+    state_.qtPreviewNextFixedTickDueNs_ = preview_pacing::nextLowPerformanceFrameDeadline(
+        state_.qtPreviewNextFixedTickDueNs_, now, previewCanvasTargetFrameIntervalNs());
+    onQtPreviewTick();
 }
 
 void miacode::runtime::PlaybackCoordinator::requestNextDisplayRefreshPreviewFrame()
@@ -280,12 +308,20 @@ void miacode::runtime::PlaybackCoordinator::requestNextDisplayRefreshPreviewFram
 
 void miacode::runtime::PlaybackCoordinator::requestNextFixedIntervalPreviewFrame()
 {
-    // Doc section 4.1: fixed 60/120 is now present-driven. This mirrors the DisplayRefresh
-    // request path — set awaiting flag, ask the canvas to update, arm the watchdog.
-    if (!state_.playing_
-        || state_.scene_ == nullptr
-        || previewCanvasUsesFrameSwappedPacing()
-        || state_.qtPreviewFixedAwaitingFrame_) {
+    if (!state_.playing_ || previewCanvasUsesFrameSwappedPacing()) {
+        return;
+    }
+    if (state_.lowPerformanceMode_) {
+        if (state_.scene_ != nullptr) {
+            ++state_.qtPreviewFixedGateFrameRequestSeq_;
+            state_.scene_->update();
+        }
+        scheduleNextQtPreviewTick();
+        return;
+    }
+
+    // Normal playback keeps a present in flight and gates visual sampling.
+    if (state_.scene_ == nullptr || state_.qtPreviewFixedAwaitingFrame_) {
         return;
     }
     state_.qtPreviewFixedAwaitingFrame_ = true;
@@ -311,7 +347,7 @@ void miacode::runtime::PlaybackCoordinator::advanceFixedIntervalGateAfterPresent
     // interval has elapsed since the *scheduled* time of the previous tick (phase-locked),
     // not since the tick's end-of-work wall time. Otherwise tick execution time (2-5ms) would
     // cause every other present at 60Hz to miss the gate, halving effective tick rate.
-    if (!state_.playing_
+    if (!state_.playing_ || state_.lowPerformanceMode_
         || previewCanvasUsesFrameSwappedPacing()
         || state_.qtPreviewFixedAwaitingFrame_) {
         return;
@@ -422,6 +458,29 @@ void miacode::runtime::PlaybackCoordinator::setPreviewCanvasFrameRateMode(Previe
     }
     state_.previewCanvasFrameRateMode_ = mode;
     refreshPreviewFrameRateTimers();
+    restartPreviewFramePacing();
+    if (persistState) {
+        preferences_.savePortableState();
+    }
+}
+
+void miacode::runtime::PlaybackCoordinator::setLowPerformanceMode(bool enabled)
+{
+    if (state_.lowPerformanceMode_ == enabled) {
+        return;
+    }
+    state_.lowPerformanceMode_ = enabled;
+    setPreviewStageMediaFrameRateMode(state_.previewStageMediaFrameRateMode_, false);
+    refreshPreviewFrameRateTimers();
+    restartPreviewFramePacing();
+    updateTimelinePlaybackCadence();
+    if (!enabled || !state_.playing_) {
+        flushQtPreviewTimelinePosition();
+    }
+}
+
+void miacode::runtime::PlaybackCoordinator::restartPreviewFramePacing()
+{
     if (ui_.qtPreviewTimer_ != nullptr) {
         ui_.qtPreviewTimer_->stop();
     }
@@ -436,27 +495,24 @@ void miacode::runtime::PlaybackCoordinator::setPreviewCanvasFrameRateMode(Previe
     state_.qtPreviewFixedFrameTickQueued_ = false;
     state_.qtPreviewLastVisualTickNs_ = -1;
     state_.qtPreviewFramePacingDiagLastFixedGateLogMs_ = -1;
+    state_.qtPreviewFramePacingDiagLastPresentLogMs_ = -1;
     resetQtPreviewFixedFramePacing();
     if (state_.playing_) {
-        // Doc 4.3: high-res timer is no longer the cadence source; keep the call to preserve
-        // existing Windows timer resolution hygiene for the watchdog path.
         setPreviewFixedTimerHighResolutionActive(state_, !previewCanvasUsesFrameSwappedPacing());
-        if (state_.scene_ != nullptr && previewCanvasUsesFrameSwappedPacing()) {
-            requestNextDisplayRefreshPreviewFrame();
-        } else {
-            requestNextFixedIntervalPreviewFrame();
-        }
+        requestNextPreviewCanvasFrame();
     } else {
         setPreviewFixedTimerHighResolutionActive(state_, false);
-    }
-    if (persistState) {
-        preferences_.savePortableState();
     }
 }
 
 void miacode::runtime::PlaybackCoordinator::setPreviewStageMediaFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState)
 {
     state_.previewStageMediaFrameRateMode_ = mode;
+    if (state_.previewStageMediaHost_) {
+        const auto effective = currentPreviewStageMediaFrameRateMode();
+        state_.previewStageMediaHost_->setPreviewFrameRateLimit(
+            effective == PreviewCanvasFrameRateMode::SourceRate ? 0.0 : targetRefreshRateForFrameRateMode(effective));
+    }
     if (persistState) {
         preferences_.savePortableState();
     }

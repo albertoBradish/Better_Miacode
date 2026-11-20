@@ -1,6 +1,7 @@
 #include "common/LocalizedText.h"
 
 #include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/document/WorkspacePageOwnership.h"
 #include "app/services/UiRequestService.h"
 #include "app/services/ChartWorkspaceFileService.h"
 #include "app/runtime/Shared.h"
@@ -8,13 +9,13 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/OperationLog.h"
 #include "app/services/ProjectPreferences.h"
+#include "app/services/StickingChartCopy.h"
 #include "audio/WaveformCache.h"
 #include "app/services/PlaybackStateAuthority.h"
 #include "app/runtime/latency/LatencySandboxController.h"
@@ -57,7 +58,7 @@ struct PreparedDocumentOpenPayload {
 PreparedDocumentOpenPayload prepareDocumentOpenPayload(const QString& path, bool probeTrackDuration)
 {
     PreparedDocumentOpenPayload payload;
-    payload.normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(path);
+    payload.normalizedPath = miacode::sticking::editableChartPath(path);
     if (payload.normalizedPath.isEmpty()
         || !miacode::chart_assets::isChartDocumentPath(payload.normalizedPath)) {
         return payload;
@@ -177,7 +178,7 @@ bool miacode::runtime::DocumentSessionHost::restoreLastSessionFile()
     if (state_.lastSessionFilePath_.isEmpty()) {
         return false;  // not a failure — first run or cleared session
     }
-    const QFileInfo fileInfo(state_.lastSessionFilePath_);
+    const QFileInfo fileInfo(miacode::sticking::editableChartPath(state_.lastSessionFilePath_));
     if (!fileInfo.exists() || !fileInfo.isFile()) {
         _mc_op_.fail(QStringLiteral("session_file_missing"));
         state_.lastSessionFilePath_.clear();
@@ -204,7 +205,7 @@ void miacode::runtime::DocumentSessionHost::scheduleStartupRestoreLastSessionFil
         return;
     }
 
-    const QFileInfo fileInfo(state_.lastSessionFilePath_);
+    const QFileInfo fileInfo(miacode::sticking::editableChartPath(state_.lastSessionFilePath_));
     if (!fileInfo.exists() || !fileInfo.isFile()) {
         state_.lastSessionFilePath_.clear();
         state_.startupRestorePending_ = false;
@@ -447,11 +448,11 @@ void miacode::runtime::DocumentSessionHost::syncRuntimeFromWorkspace()
     if (snapshot.dirty) {
         noteDocumentEditedForAutosave();
     }
-    // Overlay audition pages deliberately keep their source outside the
-    // workspace's active difficulty. A metadata-only workspace write must not
-    // turn that intentional mismatch into a real difficulty switch.
+    // Export owns the page before its audition has installed a scene. An
+    // in-place workspace commit during preparation must keep the page open.
     const bool auditionPageOwnsSource =
-        state_.latencySandboxAuditionActive_ || state_.exportPreviewAuditionActive_;
+        state_.latencySandboxAuditionActive_ || state_.exportPreviewAuditionActive_
+        || exportPageOwnsWorkspaceRevision(state_.activeOutlineKey_, ui_.qmlExportSession_, documentIdentityChanged);
     const bool difficultyChanged =
         !auditionPageOwnsSource
         && SimaiDocument::isDifficultyId(snapshot.activeDifficultyId)

@@ -1,7 +1,10 @@
+#include "app/services/HandOrderFeaturePreferences.h"
 #include "app/runtime/validation/ValidationHost.h"
 #include "app/runtime/Shared.h"
+#include "app/services/PreviewModePreferences.h"
 
 #include "preview/runtime/PreviewRuntime.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "core/analysis/MuriPanelEntries.h"
 
@@ -14,8 +17,8 @@ namespace {
 bool previewConsumesMuriAnalysisReport(const MuriRenderOptions& options)
 {
     return options.renderMode == RenderMode::MaimuriDxStyle
-        || options.showJudgeMarkers
-        || options.showTouchTrail;
+        || (renderModeAllowsDiagnosticContacts(options.renderMode)
+            && (options.showJudgeMarkers || options.showTouchTrail));
 }
 
 MuriAnalysisReport muriPromptReportForTimelineDots(
@@ -100,15 +103,31 @@ void miacode::runtime::ValidationHost::onToggleTouchTrail(bool checked)
 
 void miacode::runtime::ValidationHost::applyMuriRenderOptions()
 {
+    state_.previewShowHandOrderAnnotations_ = miacode::hand_order_features::enabled() && renderModeShowsHandOrder(state_.muriRenderOptions_.renderMode);
+    if (state_.scene_ != nullptr) state_.scene_->setShowHandOrderWatermark(
+        miacode::hand_order_features::enabled() && miacode::hand_order_features::watermark());
+    if (!state_.exportPreviewActive_) {
+        if (state_.scene_ != nullptr)
+            state_.scene_->setShowHandOrderAnnotations(state_.previewShowHandOrderAnnotations_);
+        if (state_.timeline_.timelineQuickStateBridge_ != nullptr)
+            state_.timeline_.timelineQuickStateBridge_->setShowHandOrderAnnotations(state_.previewShowHandOrderAnnotations_);
+    }
     state_.muriRenderOptions_.showSlideTracks = state_.showSlideTracks_;
     state_.muriRenderOptions_.showJudgeMarkers = state_.showJudgeMarkers_;
     state_.muriRenderOptions_.showTouchTrail = state_.showTouchTrail_;
+    state_.muriRenderOptions_.playAnalysisEnabled = state_.previewShowHandOrderAnnotations_;
+    state_.muriRenderOptions_.playTapFlowSpeed = state_.previewTapFlowSpeed_;
+    state_.muriRenderOptions_.playTouchFlowSpeed = state_.previewTouchFlowSpeed_;
 
     if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
         state_.timeline_.timelineQuickStateBridge_->setShowSlideTracks(state_.muriRenderOptions_.showSlideTracks);
     }
     if (state_.scene_ != nullptr) {
         state_.scene_->setMuriRenderOptions(state_.muriRenderOptions_);
+    }
+    if (state_.previewStageMediaHost_ != nullptr) {
+        state_.previewStageMediaHost_->setBackgroundPolicy(
+            backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode));
     }
     applyAlignedMuriAnalysisReportToViews();
     // The Muri tab is fed by the application-level analysis, which would otherwise keep
@@ -152,12 +171,26 @@ void miacode::runtime::ValidationHost::applyMuriParameterChange()
 
 void miacode::runtime::ValidationHost::setMuriRenderMode(RenderMode mode, bool persistState)
 {
+    if (!miacode::hand_order_features::enabled() && renderModeShowsHandOrder(mode)) mode = RenderMode::Native;
     if (state_.muriRenderOptions_.renderMode == mode && !persistState) {
         applyMuriRenderOptions();
         return;
     }
+    const bool modeChanged = state_.muriRenderOptions_.renderMode != mode;
+    if (modeChanged) {
+        state_.previewModeProfiles_ = miacode::preview_mode_preferences::withCurrent(
+            state_.previewModeProfiles_, state_.muriRenderOptions_.renderMode, session_.capturePreviewModeSettings());
+    }
+    const bool backgroundChanged = backgroundPolicyForRenderMode(state_.muriRenderOptions_.renderMode)
+        != backgroundPolicyForRenderMode(mode);
     state_.muriRenderOptions_.renderMode = mode;
+    if (modeChanged) session_.restorePreviewModeSettings(mode);
     applyMuriRenderOptions();
+    if (modeChanged) emit session_.applicationServices_.shellNotifications().previewRenderSettingsChanged();
+    if (backgroundChanged && state_.exportPreviewActive_) {
+        session_.refreshExportIntroState();
+        emit session_.applicationServices_.shellNotifications().previewRenderSettingsChanged();
+    }
     if (persistState) {
         session_.savePortableState();
     }

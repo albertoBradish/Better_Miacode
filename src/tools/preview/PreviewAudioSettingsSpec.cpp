@@ -76,6 +76,11 @@ bool verifyAssetRouting(QTextStream& err)
 
 bool verifyDirectBucketGain(QTextStream& err)
 {
+    const auto defaults = PreviewAudioSettings::fromJson({}).toJson();
+    for (auto it = defaults.begin(); it != defaults.end(); ++it) {
+        if (it.key().endsWith("_volume") && !requireNear(it.value().toDouble(), 1.0, 1e-9,
+                "every new audio channel and unmute restore level defaults to 100%", err)) return false;
+    }
     PreviewAudioSettings settings;
     settings.globalVolume = 0.5;
     settings.trackVolume = 0.7;

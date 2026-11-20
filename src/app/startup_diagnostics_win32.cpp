@@ -33,7 +33,7 @@ void setWindowsAppUserModelId()
         ::GetProcAddress(shell32Module, "SetCurrentProcessExplicitAppUserModelID")
     );
     if (setAppId != nullptr) {
-        setAppId(L"BetterMiacode.Desktop");
+        setAppId(L"fanfaredash.BetterMiacode");
     }
 }
 

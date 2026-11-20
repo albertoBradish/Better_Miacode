@@ -35,7 +35,7 @@ QString persistedGraphicsBackendFilePath()
 {
     // Beside the executable so the file is portable with the install. Hidden (leading dot)
     // to keep the directory uncluttered.
-    const QDir appDir(miacode::runtime_paths::directory("config"));
+    const QDir appDir(miacode::runtime_paths::configDirectory());
     return appDir.filePath(QStringLiteral(".miacode_graphics.json"));
 }
 

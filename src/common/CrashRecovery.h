@@ -21,7 +21,7 @@
 //      `flushSnapshotToDisk` function that uses pure Win32
 //      (CreateFileW + WriteFile + CloseHandle) — no Qt, no C++ heap,
 //      no locks, safe to call from a corrupted process. The recovery
-//      file is `<chart>.crash_recovery` next to the existing `.bak`.
+//      file is stored in the isolated application data directory.
 //
 // Recovery flow on chart open: if a recovery file exists, the document
 // surface records the newest File -> Restore Backup entry, lets the
@@ -33,12 +33,12 @@
 // only cover terminations that actually run them. A task-manager kill,
 // power loss, or a fail-fast abort (__fastfail, heap-corruption
 // termination) writes no recovery file — but the regular 2-second
-// debounced autosave (`.miacode/.autosave/<file>/<file>.bak`) usually
+// debounced autosave (`runtime/data/projects/<hash>/.autosave/<file>/<file>.bak`) usually
 // holds the unsaved edits. To know whether a previous session ended
 // abnormally, each GUI process writes a small **per-instance** marker
 // while a chart is open and deletes it on clean close:
 //
-//     <AppConfigLocation>/sessions/session-<pid>.marker
+//     <runtime config>/sessions/session-<pid>.marker
 //
 // The marker records `pid`, the process `created` time (Windows, for
 // PID-reuse defense), and the current `chart` path. Markers are
@@ -49,7 +49,9 @@
 // scans `sessions/` ONCE and treats a marker as abandoned only if its
 // owning process is no longer alive (OpenProcess + WaitForSingleObject,
 // with a creation-time match to reject recycled PIDs). Live peers' markers
-// are left untouched; each process only ever writes/deletes its own.
+// and markers whose owner cannot be queried are left untouched. Only the
+// process that removes an abandoned marker may claim its recovery; each
+// process otherwise only writes/deletes its own marker.
 // An abandoned marker for chart X ⇒ a prior session died without a clean
 // shutdown while X was open ⇒ the chart-open recovery prompt for X may also
 // offer the autosave-latest snapshot, not just the crash-handler file. The
@@ -116,8 +118,8 @@ void updateSnapshot(const QString& chartFilePath,
 // Called on clean save / clean chart close.
 void clearSnapshot();
 
-// Resolve the recovery file path for a chart:
-//   <chartDir>/.miacode/.autosave/<chartFile>/<chartFile>.crash_recovery
+// Resolve the recovery file path beside the chart's isolated autosave
+// container under runtime/data/projects/<project hash>.
 // Returns empty if chartFilePath is empty / can't be resolved.
 QString crashRecoveryFilePath(const QString& chartFilePath);
 

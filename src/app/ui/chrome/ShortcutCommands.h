@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/ui/document/ChartTransformCommands.h"
+#include "app/ui/document/HandOrderCommands.h"
 
 #include <QString>
 #include <QStringList>
@@ -18,6 +19,7 @@ inline QStringList shortcutCommandIds()
     for (const ChartTransformSpec& spec : chartTransformSpecs()) {
         ids.append(spec.id);
     }
+    for (const auto& spec : handOrderCommandSpecs()) ids.append(spec.id);
     return ids;
 }
 

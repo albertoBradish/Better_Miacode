@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <memory>
+#include "common/TaskExecutionControl.h"
 
 namespace miacode::task {
 
@@ -15,8 +16,9 @@ struct Cancelled {};
 // outside a scope retain the synchronous behavior of the parser and analyzer.
 class CancellationScope final {
 public:
-    explicit CancellationScope(const CancellationFlag& token) noexcept
-        : token_(token), previous_(current_)
+    explicit CancellationScope(const CancellationFlag& token,
+        std::shared_ptr<ExecutionControl> execution = {}) noexcept
+        : token_(token), execution_(std::move(execution)), previous_(current_)
     {
         current_ = this;
     }
@@ -27,6 +29,7 @@ public:
 
     static void check()
     {
+        if (current_ && current_->execution_) current_->execution_->checkpoint(current_->token_);
         if (current_ && current_->token_->load(std::memory_order_relaxed)) {
             current_->unwinding_ = true;
             throw Cancelled{};
@@ -47,6 +50,7 @@ public:
 
 private:
     CancellationFlag token_;
+    std::shared_ptr<ExecutionControl> execution_;
     CancellationScope* previous_;
     unsigned checkpointCount_ = 0;
     bool unwinding_ = false;

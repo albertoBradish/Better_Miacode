@@ -11,13 +11,17 @@
 #include "core/chart/model/TimelineMarkerOffset.h"
 #include "core/scene/PreviewActiveMarkerView.h"
 #include "core/scene/PreviewFireworkWarmupPolicy.h"
+#include "core/scene/PreviewHandOrderRendering.h"
 #include "core/scene/PreviewMarkerDrawOrder.h"
 #include "core/scene/PreviewMuriActionLayerState.h"
+#include "core/scene/PreviewMuriPadLayerState.h"
 #include "core/scene/PreviewNoteLayerAnomaly.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
 #include "core/scene/PreviewSceneConstants.h"
 #include "core/scene/PreviewSceneMath.h"
 #include "core/scene/PreviewSlideMotionLayerState.h"
+#include "core/scene/PreviewTouchHoldLayerState.h"
+#include "core/scene/PreviewTouchLayerState.h"
 #include "core/scene/PreviewTouchJudgeLayerState.h"
 #include "core/scene/PreviewTrackLayerState.h"
 
@@ -657,6 +661,301 @@ bool verifySlideMotionDrawsStarOfSlideWithoutWait(QTextStream& err)
                    QStringLiteral("a slide without wait still draws its moving star"), err);
 }
 
+bool verifySlideHandOrderFollowsMovementAndTrackErasure(QTextStream& err)
+{
+    const QRectF rect(0.0, 0.0, 720.0, 720.0);
+    PreviewFrameState state;
+    state.skin.starImage = solidImage(32, 32);
+    state.skin.slideTrackImage = solidImage(32, 16);
+    state.muriRenderOptions.showSlideTracks = true;
+
+    TimelineNoteMarker marker = makeMarker(0.0, QStringLiteral("slide"));
+    marker.slideTraceSecond = 0.25;
+    marker.endSecond = 1.25;
+    marker.slideSegmentShootSeconds = {0.25};
+    marker.slideSegmentDurations = {1.0};
+    marker.slideSegmentPoints = {{QPointF(0.0, 0.0), QPointF(100.0, 0.0)}};
+    marker.slideSegmentAngles = {{0.0, 0.0}};
+    marker.slideTrackAreaPoints = {{{QPointF(100.0, 0.0), QPointF(75.0, 0.0),
+                                     QPointF(25.0, 0.0), QPointF(0.0, 0.0)}}};
+    marker.slideTrackAreaRotations = {{{0.0, 0.0, 0.0, 0.0}}};
+    marker.slideTrackAreaThresholds = {{0.0}};
+    marker.slideTrackAreaCheckpoints = {{{0.5}}};
+    marker.slideTrackAreaCutIndices = {{{2}}};
+    marker.handOrderTrackStops = {{0.0, HandOrderHand::Left}, {0.5, HandOrderHand::Right}};
+    state.noteMarkers = {marker};
+    const auto active = [&state]() { return PreviewActiveMarkerView(state.noteMarkers); };
+    const auto motionHand = [&]() {
+        const auto sprites = miacode::preview::scene::buildPreviewSlideMotionLayerState(state, active(), rect).sprites;
+        return sprites.isEmpty() ? HandOrderHand::Unspecified : sprites.constFirst().handOrderHand;
+    };
+
+    state.playheadSeconds = 0.25;
+    const auto initialTrack = miacode::preview::scene::buildPreviewTrackLayerState(state, active(), rect).sprites;
+    if (!require(initialTrack.size() == 4
+                     && initialTrack.at(0).handOrderHand == HandOrderHand::Right
+                     && initialTrack.at(1).handOrderHand == HandOrderHand::Right
+                     && initialTrack.at(2).handOrderHand == HandOrderHand::Left
+                     && initialTrack.at(3).handOrderHand == HandOrderHand::Left,
+                 QStringLiteral("slide track is precolored at its 50 percent checkpoint"), err)) {
+        return false;
+    }
+    if (!require(motionHand() == HandOrderHand::Left,
+                 QStringLiteral("moving star starts in the first hand after wait"), err)) {
+        return false;
+    }
+    state.playheadSeconds = 0.749;
+    if (!require(motionHand() == HandOrderHand::Left,
+                 QStringLiteral("moving star remains left before handoff"), err)) {
+        return false;
+    }
+    state.playheadSeconds = 0.75;
+    if (!require(motionHand() == HandOrderHand::Right && motionHand() == HandOrderHand::Right,
+                 QStringLiteral("exact handoff and repeated paused frame use right hand"), err)) {
+        return false;
+    }
+    const auto halfTrack = miacode::preview::scene::buildPreviewTrackLayerState(state, active(), rect).sprites;
+    if (!require(halfTrack.size() == 2
+                     && halfTrack.at(0).handOrderHand == HandOrderHand::Right
+                     && halfTrack.at(1).handOrderHand == HandOrderHand::Right,
+                 QStringLiteral("track erasure retains only the right-hand half"), err)) {
+        return false;
+    }
+    state.playheadSeconds = 0.3;
+    if (!require(motionHand() == HandOrderHand::Left,
+                 QStringLiteral("backward seek restores left hand"), err)) {
+        return false;
+    }
+    state.render.showHandOrderAnnotations = false;
+    if (!require(motionHand() == HandOrderHand::Unspecified
+                     && miacode::preview::scene::buildPreviewTrackLayerState(state, active(), rect)
+                            .sprites.constFirst().handOrderHand == HandOrderHand::Unspecified,
+                 QStringLiteral("hidden hand order leaves original sprites untinted"), err)) {
+        return false;
+    }
+    state.render.showHandOrderAnnotations = true;
+    state.playheadSeconds = marker.endSecond;
+    if (!require(miacode::preview::scene::buildPreviewTrackLayerState(state, active(), rect).sprites.isEmpty(),
+                 QStringLiteral("track still disappears at the slide end"), err)) {
+        return false;
+    }
+    TimelineNoteMarker chained = marker;
+    chained.slideSegmentDurations = {0.25, 0.75};
+    if (!requireNear(miacode::preview::scene::previewSlideMovementProgress(chained, 1, 1.0 / 3.0),
+                     0.5, QStringLiteral("chain handoff uses duration rather than segment count"), err)) {
+        return false;
+    }
+    return true;
+}
+
+bool verifyWifiHandOrderColorsWholeTrackAndAllStars(QTextStream& err)
+{
+    PreviewFrameState state;
+    state.playheadSeconds = 0.25;
+    state.skin.starImage = solidImage(32, 32);
+    state.skin.wifiImages.fill(solidImage(32, 16), 11);
+    TimelineNoteMarker marker = makeMarker(0.0, QStringLiteral("wifi"));
+    marker.slideTraceSecond = 0.25;
+    marker.endSecond = 1.25;
+    marker.slideSegmentDurations = {1.0};
+    marker.wifiLanePoints = {
+        {QPointF(0.0, 0.0), QPointF(100.0, -40.0)},
+        {QPointF(0.0, 0.0), QPointF(100.0, 0.0)},
+        {QPointF(0.0, 0.0), QPointF(100.0, 40.0)},
+    };
+    marker.wifiLaneAngles = {{0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}};
+    marker.wifiTrackAreaPoints = {
+        {QPointF(10.0, 0.0), QPointF(30.0, 0.0)},
+        {QPointF(60.0, 0.0), QPointF(80.0, 0.0)},
+    };
+    marker.wifiTrackAreaRotations = {{0.0, 0.0}, {0.0, 0.0}};
+    marker.wifiTrackAreaImageIndices = {{0, 1}, {2, 3}};
+    marker.handOrderTrackStops = {{0.0, HandOrderHand::Left}, {0.5, HandOrderHand::Right}};
+    state.noteMarkers = {marker};
+    const QRectF rect(0.0, 0.0, 720.0, 720.0);
+    const auto active = [&state]() { return PreviewActiveMarkerView(state.noteMarkers); };
+    const auto track = [&]() {
+        return miacode::preview::scene::buildPreviewTrackLayerState(state, active(), rect).sprites;
+    };
+    const auto motion = [&]() {
+        return miacode::preview::scene::buildPreviewSlideMotionLayerState(state, active(), rect).sprites;
+    };
+
+    const auto initialTrack = track();
+    const auto initialMotion = motion();
+    if (!require(initialTrack.size() == 4
+                     && initialTrack.at(0).handOrderHand == HandOrderHand::Right
+                     && initialTrack.at(1).handOrderHand == HandOrderHand::Right
+                     && initialTrack.at(2).handOrderHand == HandOrderHand::Left
+                     && initialTrack.at(3).handOrderHand == HandOrderHand::Left
+                     && initialMotion.size() == 3,
+                 QStringLiteral("wifi precolors its complete track and emits three stars"), err)) {
+        return false;
+    }
+    for (const auto& sprite : initialMotion) {
+        if (!require(sprite.handOrderHand == HandOrderHand::Left,
+                     QStringLiteral("wifi starts all three stars with the same hand"), err)) {
+            return false;
+        }
+    }
+
+    state.playheadSeconds = 0.75;
+    const auto halfTrack = track();
+    const auto halfMotion = motion();
+    if (!require(halfTrack.size() == 2 && halfMotion.size() == 3,
+                 QStringLiteral("wifi erases the first half at handoff"), err)) {
+        return false;
+    }
+    for (const auto& sprite : halfTrack) {
+        if (!require(sprite.handOrderHand == HandOrderHand::Right,
+                     QStringLiteral("wifi remaining track uses right hand"), err)) {
+            return false;
+        }
+    }
+    for (const auto& sprite : halfMotion) {
+        if (!require(sprite.handOrderHand == HandOrderHand::Right,
+                     QStringLiteral("wifi exact 50 percent handoff changes all stars"), err)) {
+            return false;
+        }
+    }
+    state.render.showHandOrderAnnotations = false;
+    for (const auto& sprite : motion()) {
+        if (!require(sprite.handOrderHand == HandOrderHand::Unspecified,
+                     QStringLiteral("hidden wifi hand order leaves moving stars untinted"), err)) {
+            return false;
+        }
+    }
+    state.render.showHandOrderAnnotations = true;
+    state.playheadSeconds = marker.slideTraceSecond;
+    marker.handOrderWifiMode = HandOrderWifiMode::Split;
+    marker.handOrderTrackStops.clear();
+    marker.handOrderWifiSectorStops = {{{0.0, HandOrderHand::Left}, {0.5, HandOrderHand::Right}},
+        {{0.0, HandOrderHand::Right}, {0.75, HandOrderHand::Left}}};
+    state.noteMarkers = {marker};
+    const auto sectorsTrack = track();
+    const auto sectorsMotion = motion();
+    if (!require(sectorsTrack.size() == 8 && sectorsMotion.size() == 4
+        && sectorsMotion.at(0).handOrderHand == HandOrderHand::Left
+        && sectorsMotion.at(3).handOrderHand == HandOrderHand::Right
+        && !sectorsMotion.at(1).handOrderClipNormal.isNull()
+        && sectorsMotion.at(1).handOrderClipNormal == -sectorsMotion.at(2).handOrderClipNormal,
+        QStringLiteral("Wifi independent sectors color both native sides and split the common centre star"), err)) return false;
+    for (int i = 0; i < sectorsTrack.size(); i += 2) {
+        if (!require(sectorsTrack.at(i).center == sectorsTrack.at(i + 1).center
+            && sectorsTrack.at(i).width == sectorsTrack.at(i + 1).width
+            && !sectorsTrack.at(i).handOrderClipNormal.isNull()
+            && sectorsTrack.at(i).handOrderClipNormal == -sectorsTrack.at(i + 1).handOrderClipNormal,
+            QStringLiteral("Wifi arrow halves preserve original geometry and use complementary native half-planes"), err)) return false;
+    }
+    state.playheadSeconds = 0.75;
+    const auto changedMotion = motion();
+    if (!require(changedMotion.at(0).handOrderHand == HandOrderHand::Right
+        && changedMotion.at(3).handOrderHand == HandOrderHand::Right,
+        QStringLiteral("one Wifi sector handoff changes only its own interval at the exact boundary"), err)) return false;
+    state.render.showHandOrderAnnotations = false;
+    if (!require(track().size() == 2 && motion().size() == 3
+        && motion().at(1).handOrderClipNormal.isNull(),
+        QStringLiteral("hidden sector annotations restore the original complete sprites"), err)) return false;
+    state.render.showHandOrderAnnotations = true;
+    marker.handOrderWifiMode = HandOrderWifiMode::Single;
+    marker.handOrderWifiSectorStops.clear();
+    marker.handOrderTrackStops = {{0.0, HandOrderHand::Left}, {0.5, HandOrderHand::Left}};
+    state.noteMarkers = {marker};
+    const auto singleMotion = motion();
+    int badges = 0;
+    for (const auto& sprite : singleMotion)
+        badges += sprite.image == miacode::preview::scene::previewWifiSingleBadgeImage();
+    if (!require(singleMotion.size() == 4 && badges == 1 && track().size() == 2,
+        QStringLiteral("explicit single-hand Wifi has a circled-one badge independent of its common hand color"), err)) return false;
+    return true;
+}
+
+bool verifyTouchHandOrderKeepsMaterialsAndHoldOutline(QTextStream& err)
+{
+    PreviewFrameState state;
+    state.skin.touchPointImage = solidImage(32, 32);
+    state.skin.touchPointBreakImage = solidImage(33, 33);
+    state.skin.touchPointEachImage = solidImage(34, 34);
+    state.skin.touchPointMineImage = solidImage(35, 35);
+    state.skin.touchCornerImage = solidImage(32, 32);
+    state.skin.touchCornerBreakImage = solidImage(33, 33);
+    state.skin.touchCornerEachImage = solidImage(34, 34);
+    state.skin.touchCornerMineImage = solidImage(35, 35);
+    state.skin.touchHoldBorderImage = solidImage(32, 32);
+    state.skin.touchHoldBreakBorderImage = solidImage(33, 33);
+    state.skin.touchHoldBorderMineImage = solidImage(35, 35);
+    state.skin.touchHold0Image = solidImage(32, 32);
+    state.skin.touchHold1Image = solidImage(32, 32);
+    state.skin.touchHold2Image = solidImage(32, 32);
+    state.skin.touchHold3Image = solidImage(32, 32);
+    state.skin.touchHoldBreak0Image = solidImage(33, 33);
+    state.skin.touchHoldBreak1Image = solidImage(33, 33);
+    state.skin.touchHoldBreak2Image = solidImage(33, 33);
+    state.skin.touchHoldBreak3Image = solidImage(33, 33);
+    state.skin.touchHoldMine0Image = solidImage(35, 35);
+    state.skin.touchHoldMine1Image = solidImage(35, 35);
+    state.skin.touchHoldMine2Image = solidImage(35, 35);
+    state.skin.touchHoldMine3Image = solidImage(35, 35);
+    const QRectF rect(0.0, 0.0, 720.0, 720.0);
+
+    for (int variant = 0; variant < 3; ++variant) {
+        TimelineNoteMarker marker = makeMarker(1.0, QStringLiteral("touch"));
+        marker.touchPoint = QPointF(360.0, 360.0);
+        marker.isBreak = variant == 0 || variant == 2;
+        marker.isEach = variant == 1;
+        marker.isMine = variant == 2;
+        marker.handOrderHead = HandOrderHand::Either;
+        state.noteMarkers = {marker};
+        state.playheadSeconds = 0.9;
+        state.render.showHandOrderAnnotations = false;
+        const auto originalTouch = miacode::preview::scene::buildPreviewTouchLayerState(
+            state, PreviewActiveMarkerView(state.noteMarkers), rect).sprites;
+        state.render.showHandOrderAnnotations = true;
+        const auto coloredTouch = miacode::preview::scene::buildPreviewTouchLayerState(
+            state, PreviewActiveMarkerView(state.noteMarkers), rect).sprites;
+        if (!require(originalTouch.size() == 5 && coloredTouch.size() == originalTouch.size(),
+                     QStringLiteral("touch emits its four corners and centre"), err)) {
+            return false;
+        }
+        for (int index = 0; index < coloredTouch.size(); ++index) {
+            if (!require(coloredTouch.at(index).handOrderHand == HandOrderHand::Either
+                             && coloredTouch.at(index).image == originalTouch.at(index).image
+                             && coloredTouch.at(index).effect == originalTouch.at(index).effect,
+                         QStringLiteral("touch hand tint keeps variant art and Break effect"), err)) {
+                return false;
+            }
+        }
+
+        marker.type = QStringLiteral("touch_hold");
+        marker.endSecond = 2.0;
+        state.noteMarkers = {marker};
+        state.playheadSeconds = 1.2;
+        state.render.showHandOrderAnnotations = false;
+        const auto originalHold = miacode::preview::scene::buildPreviewTouchHoldLayerState(
+            state, PreviewActiveMarkerView(state.noteMarkers), rect);
+        state.render.showHandOrderAnnotations = true;
+        const auto coloredHold = miacode::preview::scene::buildPreviewTouchHoldLayerState(
+            state, PreviewActiveMarkerView(state.noteMarkers), rect);
+        if (!require(originalHold.sprites.size() == 5
+                         && coloredHold.sprites.size() == originalHold.sprites.size()
+                         && originalHold.arcs.size() == 1
+                         && coloredHold.arcs.size() == 1
+                         && coloredHold.arcs.constFirst().image == originalHold.arcs.constFirst().image,
+                     QStringLiteral("touch hold keeps its original progress outline"), err)) {
+            return false;
+        }
+        for (int index = 0; index < coloredHold.sprites.size(); ++index) {
+            if (!require(coloredHold.sprites.at(index).handOrderHand == HandOrderHand::Either
+                             && coloredHold.sprites.at(index).image == originalHold.sprites.at(index).image
+                             && coloredHold.sprites.at(index).effect == originalHold.sprites.at(index).effect,
+                         QStringLiteral("touch hold hand tint keeps fan art and Break effect"), err)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool verifyTrackAndSlideMotionUseTextOrderForSameSecondSlides(QTextStream& err)
 {
     const QRectF playfieldRect(
@@ -892,6 +1191,52 @@ PreviewFrameState buildDxMuriActionState()
     return state;
 }
 
+bool verifyDiagnosticContactModeBoundary(QTextStream& err)
+{
+    using namespace miacode::preview::scene;
+    PreviewFrameState state = buildDxMuriActionState();
+    state.muriRenderOptions.showJudgeMarkers = true;
+    MuriPadWindow pad;
+    pad.pad = QStringLiteral("A1");
+    pad.startSecond = 1.0;
+    pad.endSecond = 2.0;
+    state.muriAnalysisReport.padWindows = {pad};
+    PreviewPreparedSceneCache prepared;
+    PreviewMuriPadLayerCache padCache;
+    const QRectF playfield(0, 0, kLogicalCanvasSize, kLogicalCanvasSize);
+    bool ok = true;
+    // Reuse both caches and keep persisted flags true across mode changes.
+    // Direct layer calls also receive stale visible indices to exercise the
+    // final render boundary independently of prepared-cache filtering.
+    for (const auto mode : {RenderMode::Debug, RenderMode::Native,
+                           RenderMode::MaimuriDxStyle, RenderMode::EraseByArea, RenderMode::Debug}) {
+        state.muriRenderOptions.renderMode = mode;
+        const bool visible = mode == RenderMode::Debug || mode == RenderMode::MaimuriDxStyle;
+        ok &= require(prepared.sync(state), QStringLiteral("mode change invalidates diagnostic caches"), err);
+        ok &= require(prepared.key().showJudgeMarkers == visible && prepared.key().showTouchTrail == visible,
+            QStringLiteral("prepared key records effective diagnostic flags"), err);
+        ok &= require(prepared.muriPadLayer().entries.isEmpty() != visible
+            && prepared.muriActionLayer().entries.isEmpty() != visible,
+            QStringLiteral("mode switch clears or rebuilds diagnostic intervals"), err);
+        const auto pads = buildPreviewMuriPadLayerState(state, playfield, {0}, padCache);
+        const auto actions = buildPreviewMuriActionLayerState(state, playfield, {0, 1, 2});
+        ok &= require(pads.circles.isEmpty() != visible && actions.circles.isEmpty() != visible,
+            QStringLiteral("only Debug and Muri render diagnostic contacts even with stale flags and indices"), err);
+        if (!visible) {
+            ok &= require(padCache.drawOrder.isEmpty() && padCache.insertionOrder.isEmpty(),
+                QStringLiteral("normal mode clears retained pad geometry"), err);
+        }
+    }
+    state.muriRenderOptions.showJudgeMarkers = false;
+    state.muriRenderOptions.showTouchTrail = false;
+    prepared.sync(state);
+    ok &= require(prepared.muriPadLayer().entries.isEmpty() && prepared.muriActionLayer().entries.isEmpty()
+        && buildPreviewMuriPadLayerState(state, playfield, {0}, padCache).circles.isEmpty()
+        && buildPreviewMuriActionLayerState(state, playfield, {0, 1, 2}).circles.isEmpty(),
+        QStringLiteral("Debug still respects disabled diagnostic toggles"), err);
+    return ok;
+}
+
 bool verifyDxMuriActionSweepLineMatchesNaiveReferenceForState(
     const PreviewFrameState& state,
     const QString& label,
@@ -904,8 +1249,15 @@ bool verifyDxMuriActionSweepLineMatchesNaiveReferenceForState(
         miacode::preview::scene::kLogicalCanvasSize
     );
 
+    miacode::preview::scene::PreviewPreparedSceneCache prepared;
+    prepared.sync(state);
+    miacode::preview::scene::PreviewLayerWindowCursor cursor;
+    miacode::preview::scene::syncPreviewLayerWindowCursor(
+        prepared.muriActionLayer(), state.playheadSeconds, &cursor);
+    QVector<int> visibleIndices;
+    prepared.collectMuriActionIndices(state, cursor.activePreparedIndices, &visibleIndices);
     const PreviewMuriActionLayerState actual =
-        miacode::preview::scene::buildPreviewMuriActionLayerState(state, playfieldRect);
+        miacode::preview::scene::buildPreviewMuriActionLayerState(state, playfieldRect, visibleIndices);
     const PreviewMuriActionLayerState expected = buildNaiveDxMuriActionLayerState(state, playfieldRect);
 
     if (!require(actual.circles.size() == expected.circles.size(), label + QStringLiteral(" circle count matches naive reference"), err)) {
@@ -1359,7 +1711,19 @@ int main(int argc, char* argv[])
     if (!verifySlideMotionDrawsStarOfSlideWithoutWait(err)) {
         return 1;
     }
+    if (!verifySlideHandOrderFollowsMovementAndTrackErasure(err)) {
+        return 1;
+    }
+    if (!verifyWifiHandOrderColorsWholeTrackAndAllStars(err)) {
+        return 1;
+    }
+    if (!verifyTouchHandOrderKeepsMaterialsAndHoldOutline(err)) {
+        return 1;
+    }
     if (!verifyTrackAndSlideMotionUseTextOrderForSameSecondSlides(err)) {
+        return 1;
+    }
+    if (!verifyDiagnosticContactModeBoundary(err)) {
         return 1;
     }
     if (!verifyDxMuriActionSweepLineMatchesNaiveReference(err)) {

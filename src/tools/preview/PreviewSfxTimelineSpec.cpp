@@ -2,6 +2,7 @@
 #include <QTextStream>
 
 #include "core/scene/PreviewSfxTimeline.h"
+#include "core/chart/parser/SimaiParser.h"
 
 namespace {
 
@@ -23,6 +24,42 @@ bool require(bool condition, const QString& message, QTextStream& err)
     if (!condition) {
         err << message << Qt::endl;
         return false;
+    }
+    return true;
+}
+
+bool verifyHandOrderDoesNotChangeSfx(QTextStream& err)
+{
+    const auto plain = SimaiParser::parseForTimeline(
+        QStringLiteral("(120){4}1m/2-5[4:2],3w7[4:1],4w8[4:1],"));
+    const auto annotated = SimaiParser::parseForTimeline(
+        QStringLiteral("(120){4}1m~l/2-5[4:2]~[head=r;track=0:r|0.5:l],"
+            "3w7[4:1]~[track=split:0:l|0.5:r&0:r],4w8[4:1]~[track=single:0:m|0.5:m],"));
+    QVector<Event> plainEvents;
+    QVector<Event> annotatedEvents;
+    QVector<TouchholdSpan> plainSpans;
+    QVector<TouchholdSpan> annotatedSpans;
+    miacode::preview_sfx_timeline::buildTimeline(
+        plain.noteMarkers, 1.0, PreviewTimingSettings(), &plainEvents, &plainSpans);
+    miacode::preview_sfx_timeline::buildTimeline(
+        annotated.noteMarkers, 1.0, PreviewTimingSettings(), &annotatedEvents, &annotatedSpans);
+    if (!require(plain.errors.isEmpty() && annotated.errors.isEmpty()
+                     && annotated.annotationErrors.isEmpty()
+                     && plainEvents.size() == annotatedEvents.size()
+                     && plainSpans.size() == annotatedSpans.size(),
+                 QStringLiteral("hand-order annotations keep native SFX event counts"), err)) {
+        return false;
+    }
+    for (int i = 0; i < plainEvents.size(); ++i) {
+        const Event& a = plainEvents.at(i);
+        const Event& b = annotatedEvents.at(i);
+        if (!require(qAbs(a.second - b.second) <= 1e-9 && a.priority == b.priority
+                         && a.kind == b.kind && a.spanIndex == b.spanIndex
+                         && qAbs(a.gain - b.gain) <= 1e-9
+                         && a.breakSlideTailBreak == b.breakSlideTailBreak,
+                     QStringLiteral("hand-order annotations keep native SFX scheduling"), err)) {
+            return false;
+        }
     }
     return true;
 }
@@ -929,6 +966,9 @@ int main(int argc, char* argv[])
         return 1;
     }
     if (!verifySlideMineComponentsControlSfxIndependently(err)) {
+        return 1;
+    }
+    if (!verifyHandOrderDoesNotChangeSfx(err)) {
         return 1;
     }
 

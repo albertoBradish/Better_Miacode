@@ -8,6 +8,7 @@
 
 #include "core/chart/document/SimaiDocument.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
+#include "core/chart/parser/HandOrderAnnotationSyntax.h"
 #include "core/chart/parser/SimaiParser.h"
 
 namespace {
@@ -60,6 +61,14 @@ QJsonArray dumpPadEntryMatrix(const QVector<QVector<MuriPadTimeEntry>>& entries)
     return array;
 }
 
+QJsonArray dumpHandOrderStops(const QVector<HandOrderTrackStop>& stops)
+{
+    QJsonArray result;
+    for (const auto& stop : stops)
+        result.append(QJsonObject{{"progress", stop.progress}, {"hand", int(stop.hand)}});
+    return result;
+}
+
 QJsonObject dumpMarker(const TimelineNoteMarker& marker)
 {
     QJsonObject item;
@@ -72,6 +81,14 @@ QJsonObject dumpMarker(const TimelineNoteMarker& marker)
     item.insert("end_second", marker.endSecond);
     item.insert("slide_trace_second", marker.slideTraceSecond);
     item.insert("parse_order", marker.parseOrder);
+    item.insert("slide_branch_index", marker.slideBranchIndex);
+    item.insert("hand_order_head", int(marker.handOrderHead));
+    item.insert("hand_order_track_stops", dumpHandOrderStops(marker.handOrderTrackStops));
+    item.insert("hand_order_wifi_mode", int(marker.handOrderWifiMode));
+    QJsonArray sectors;
+    for (const auto& sector : marker.handOrderWifiSectorStops)
+        sectors.append(dumpHandOrderStops(sector));
+    item.insert("hand_order_wifi_sector_stops", sectors);
     item.insert("each_group_id", marker.eachGroupId);
     if (marker.type != QLatin1String("slide") && marker.type != QLatin1String("wifi")) {
         item.insert("is_each", marker.isEach);
@@ -125,9 +142,11 @@ QJsonObject dumpMarker(const TimelineNoteMarker& marker)
     return item;
 }
 
-QJsonObject dumpParseResult(const SimaiParseResult& result, bool documentMode)
+QJsonObject dumpParseResult(const SimaiParseResult& result, bool documentMode, const QString& chartText)
 {
     QJsonObject root;
+    root.insert("annotation_schema_version", 1);
+    root.insert("native_text", miacode::hand_order::stripAnnotations(chartText));
     root.insert("ok", result.ok);
     root.insert("error_count", result.errors.size());
     root.insert("warning_count", result.warnings.size());
@@ -138,6 +157,11 @@ QJsonObject dumpParseResult(const SimaiParseResult& result, bool documentMode)
         errors.append(dumpMessage(error, documentMode));
     }
     root.insert("errors", errors);
+
+    QJsonArray annotationErrors;
+    for (const SimaiMessage& error : result.annotationErrors)
+        annotationErrors.append(dumpMessage(error, documentMode));
+    root.insert("annotation_errors", annotationErrors);
 
     QJsonArray notes;
     for (const TimelineNoteMarker& marker : result.noteMarkers) {
@@ -200,7 +224,7 @@ QJsonObject dumpDocumentParse(const QString& sourcePath, const QString& text)
             "chart_parse",
             dumpParseResult(SimaiParser::parseForTimeline(
                 difficulty->chart,
-                timingMetadata), true));
+                timingMetadata), true, difficulty->chart));
         difficulties.append(item);
     }
     root.insert("difficulties", difficulties);
@@ -238,10 +262,11 @@ int main(int argc, char* argv[])
         return 2;
     }
 
-    const QString text = QString::fromUtf8(file.readAll());
+    QString text = QString::fromUtf8(file.readAll());
+    if (text.startsWith(QChar(0xFEFF))) text.remove(0, 1);
     const QJsonObject root = documentMode
         ? dumpDocumentParse(sourcePath, text)
-        : dumpParseResult(SimaiParser::parseForTimeline(text), false);
+        : dumpParseResult(SimaiParser::parseForTimeline(text), false, text);
 
     QTextStream(stdout) << QJsonDocument(root).toJson(QJsonDocument::Compact);
     return 0;

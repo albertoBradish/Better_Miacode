@@ -22,6 +22,7 @@ enum PreviewRenderLayer : quint32 {
     MaimuriDxJudgeLayer = 1u << 14,
     HudLayer = 1u << 15,
     VisualAidLayer = 1u << 16,
+    SimulatedPlayLayer = 1u << 17,
 };
 
 using PreviewRenderLayerFlags = quint32;
@@ -43,10 +44,15 @@ inline constexpr PreviewRenderLayerFlags kPreviewAllRenderLayers =
     | ChartReviewLayer
     | MaimuriDxJudgeLayer
     | HudLayer
-    | VisualAidLayer;
+    | VisualAidLayer
+    | SimulatedPlayLayer;
 
 inline constexpr PreviewRenderLayerFlags kPreviewExportOverlayRenderLayers =
     kPreviewAllRenderLayers & ~StageBackgroundLayer;
+
+inline constexpr PreviewRenderLayerFlags kPreviewCoverRenderLayers =
+    kPreviewExportOverlayRenderLayers
+    & ~(JudgeFireworkLayer | JudgeLayer | JudgeTouchLayer | ChartReviewLayer | MaimuriDxJudgeLayer | SimulatedPlayLayer);
 
 inline constexpr PreviewRenderLayerFlags kPreviewSceneGraphFirstBatchLayers =
     StageBackgroundLayer

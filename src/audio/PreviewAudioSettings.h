@@ -9,26 +9,27 @@
 #include <QtGlobal>
 
 struct PreviewAudioSettings {
-    double globalVolume = 0.30;
-    double globalRestoreVolume = 0.30;
+    bool operator==(const PreviewAudioSettings&) const = default;
+    double globalVolume = 1.0;
+    double globalRestoreVolume = 1.0;
     double trackVolume = 1.0;
     double trackRestoreVolume = 1.0;
-    double answerVolume = 0.80;
-    double answerRestoreVolume = 0.80;
-    double tapVolume = 0.30;
-    double tapRestoreVolume = 0.30;
-    double exVolume = 0.30;
-    double exRestoreVolume = 0.30;
-    double breakVolume = 0.30;
-    double breakRestoreVolume = 0.30;
-    double breakSlideVolume = 0.30;
-    double breakSlideRestoreVolume = 0.30;
-    double slideVolume = 0.30;
-    double slideRestoreVolume = 0.30;
-    double touchVolume = 0.30;
-    double touchRestoreVolume = 0.30;
-    double fireworkVolume = 0.30;
-    double fireworkRestoreVolume = 0.30;
+    double answerVolume = 1.0;
+    double answerRestoreVolume = 1.0;
+    double tapVolume = 1.0;
+    double tapRestoreVolume = 1.0;
+    double exVolume = 1.0;
+    double exRestoreVolume = 1.0;
+    double breakVolume = 1.0;
+    double breakRestoreVolume = 1.0;
+    double breakSlideVolume = 1.0;
+    double breakSlideRestoreVolume = 1.0;
+    double slideVolume = 1.0;
+    double slideRestoreVolume = 1.0;
+    double touchVolume = 1.0;
+    double touchRestoreVolume = 1.0;
+    double fireworkVolume = 1.0;
+    double fireworkRestoreVolume = 1.0;
     // Opening jingle ("track_start"). Not a note SFX, so it stays out of
     // allNonTrackMuted(); like every other channel it sits under globalVolume.
     double introVolume = 1.0;

@@ -4,6 +4,7 @@
 #include <QVector>
 
 #include "core/analysis/MuriTypes.h"
+#include "core/analysis/hand_order/HandPlaySimulation.h"
 #include "core/scene/PreviewChartReviewLayerState.h"
 #include "core/scene/PreviewFrameState.h"
 #include "core/scene/PreviewSlideTiming.h"
@@ -18,18 +19,24 @@ struct PreviewPreparedSceneCacheKey {
     quint64 storageGeneration = 0;
     double tapFlowSpeed = 0.0;
     double touchFlowSpeed = 0.0;
+    double starFadeTiming = 0.0;
     RenderMode renderMode = RenderMode::Native;
     bool showSlideTracks = true;
     bool showSlideJudgementTiming = false;
     bool slideTimingFromLaunchBeat = false;
-    bool slideTimingEarlyPerfectFromHead = false;
     quintptr slideTimingLaunchBeatIdentity = 0;
+    bool showJudgeMarkers = false;
+    bool showTouchTrail = false;
     bool slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     bool showChartReviewSlideJudgeOverlay = false;
     bool showChartReviewTapJudgeOverlay = false;
     bool showChartReviewBreakJudgeOverlay = false;
     bool showChartReviewTouchJudgeOverlay = false;
+    int playSimulationHandRadiusPx = 0;
+    hand_order::PlayProfile playProfile;
+    bool showSimulatedPlay = false;
+    bool playWifiNeedsCenterRelease = false;
 
     bool operator==(const PreviewPreparedSceneCacheKey& other) const
     {
@@ -37,19 +44,32 @@ struct PreviewPreparedSceneCacheKey {
             && storageGeneration == other.storageGeneration
             && qFuzzyCompare(tapFlowSpeed + 1.0, other.tapFlowSpeed + 1.0)
             && qFuzzyCompare(touchFlowSpeed + 1.0, other.touchFlowSpeed + 1.0)
+            && starFadeTiming == other.starFadeTiming
             && renderMode == other.renderMode
+            && showJudgeMarkers == other.showJudgeMarkers
+            && showTouchTrail == other.showTouchTrail
             && showSlideTracks == other.showSlideTracks
             && showSlideJudgementTiming == other.showSlideJudgementTiming
             && slideTimingFromLaunchBeat == other.slideTimingFromLaunchBeat
-            && slideTimingEarlyPerfectFromHead == other.slideTimingEarlyPerfectFromHead
             && slideTimingLaunchBeatIdentity == other.slideTimingLaunchBeatIdentity
             && slideEarlierSecondAndTextOnTop == other.slideEarlierSecondAndTextOnTop
             && tapJudgeTextDistance == other.tapJudgeTextDistance
             && showChartReviewSlideJudgeOverlay == other.showChartReviewSlideJudgeOverlay
             && showChartReviewTapJudgeOverlay == other.showChartReviewTapJudgeOverlay
             && showChartReviewBreakJudgeOverlay == other.showChartReviewBreakJudgeOverlay
-            && showChartReviewTouchJudgeOverlay == other.showChartReviewTouchJudgeOverlay;
+            && showChartReviewTouchJudgeOverlay == other.showChartReviewTouchJudgeOverlay
+            && showSimulatedPlay == other.showSimulatedPlay
+            && playSimulationHandRadiusPx == other.playSimulationHandRadiusPx
+            && playWifiNeedsCenterRelease == other.playWifiNeedsCenterRelease
+            && playProfile == other.playProfile;
     }
+};
+
+struct PreviewPreparedIntervalBlock {
+    int firstIndex = 0;
+    int endIndex = 0;
+    double activeStart = 0.0;
+    double activeEnd = 0.0;
 };
 
 struct PreviewPreparedMarkerEntry {
@@ -132,6 +152,15 @@ public:
     const PreviewPreparedLayerWindow<PreviewPreparedChartReviewEntry>& chartReviewLayer() const { return chartReviewLayer_; }
     const PreviewPreparedLayerWindow<PreviewPreparedMaimuriDxJudgeEntry>& maimuriDxJudgeLayer() const { return maimuriDxJudgeLayer_; }
 
+    const PreviewPreparedLayerWindow<PreviewPreparedIntervalBlock>& muriPadLayer() const { return muriPadLayer_; }
+    const PreviewPreparedLayerWindow<PreviewPreparedIntervalBlock>& muriActionLayer() const { return muriActionLayer_; }
+    const hand_order::HandPlaySimulation* playSimulation() const { return playSimulation_.get(); }
+
+    void collectMuriPadIndices(const PreviewFrameState& state,
+        const QVector<int>& activeBlocks, QVector<int>* indices) const;
+    void collectMuriActionIndices(const PreviewFrameState& state,
+        const QVector<int>& activeBlocks, QVector<int>* indices) const;
+
     void collectMarkers(
         const QVector<TimelineNoteMarker>& sourceMarkers,
         const PreviewPreparedLayerWindow<PreviewPreparedMarkerEntry>& layer,
@@ -155,6 +184,10 @@ private:
     void rebuild(const PreviewFrameState& state);
 
     PreviewPreparedSceneCacheKey key_;
+    std::unique_ptr<hand_order::HandPlaySimulation> playSimulation_;
+    QVector<TimelineNoteMarker> playSimulationMarkers_;
+    PreviewPreparedLayerWindow<PreviewPreparedIntervalBlock> muriPadLayer_;
+    PreviewPreparedLayerWindow<PreviewPreparedIntervalBlock> muriActionLayer_;
     PreviewPreparedLayerWindow<PreviewPreparedMarkerEntry> guideLayer_;
     PreviewPreparedLayerWindow<PreviewPreparedMarkerEntry> headLayer_;
     PreviewPreparedLayerWindow<PreviewPreparedMarkerEntry> slideLikeLayer_;

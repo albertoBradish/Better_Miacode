@@ -11,18 +11,7 @@ Item {
     required property var commands
     required property var pages
     property bool compact: false
-    property bool pendingMediaToolsMenu: false
-    signal settingsRequested()
     signal mediaToolRequested(string toolId)
-
-    function showMediaToolsMenu() {
-        if (sidebarDrawer.opened) {
-            compactSidebar.showMediaToolsMenu()
-            return
-        }
-        root.pendingMediaToolsMenu = true
-        root.viewState.compactPanel = "sidebar"
-    }
 
     z: 40
 
@@ -44,18 +33,8 @@ Item {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         interactive: root.compact
         visible: root.compact && root.viewState.compactPanel === "sidebar"
-        onOpened: {
-            root.viewState.compactPanel = "sidebar"
-            if (root.pendingMediaToolsMenu) {
-                root.pendingMediaToolsMenu = false
-                compactSidebar.showMediaToolsMenu()
-            }
-        }
-        onClosed: {
-            root.pendingMediaToolsMenu = false
-            if (root.viewState.compactPanel === "sidebar")
-                root.viewState.compactPanel = ""
-        }
+        onOpened: root.viewState.compactPanel = "sidebar"
+        onClosed: if (root.viewState.compactPanel === "sidebar") root.viewState.compactPanel = ""
 
         Overlay.modal: Rectangle {
             color: Theme.modalScrimColor
@@ -70,14 +49,12 @@ Item {
         }
 
         contentItem: Sidebar {
-            id: compactSidebar
             viewState: root.viewState
             documentSession: root.documentSession
             preferences: root.preferences
             commands: root.commands
             pages: root.pages
             compact: true
-            onSettingsRequested: root.settingsRequested()
             onMediaToolRequested: toolId => root.mediaToolRequested(toolId)
         }
     }

@@ -5,7 +5,7 @@ set(MIACODE_VERSION_MINOR "0")
 set(MIACODE_VERSION_PATCH "1")
 # Single source of truth for the prerelease tag and package version. The
 # About dialog appends its compile date to this version at runtime.
-set(MIACODE_VERSION_PRERELEASE "better.10")
+set(MIACODE_VERSION_PRERELEASE "better.14")
 set(MIACODE_BUILD_LAYOUT_REVISION "2026-04-21-first-unification")
 set(MIACODE_VERSION "${MIACODE_VERSION_MAJOR}.${MIACODE_VERSION_MINOR}.${MIACODE_VERSION_PATCH}")
 set(MIACODE_VERSION_STRING "${MIACODE_VERSION}")
@@ -401,8 +401,17 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/ChartMediaService.h
     src/app/services/ChartMediaImport.cpp
     src/app/services/ChartMediaImport.h
+    src/app/services/AutomaticChartPreparation.cpp
+    src/app/services/AutomaticChartPreparation.h
+    src/app/services/ChartFileSafety.cpp
+    src/app/services/ChartFileSafety.h
     src/app/services/ChartWorkspaceFileService.cpp
     src/app/services/ChartWorkspaceFileService.h
+    src/app/services/StickingChartCopy.h
+    src/app/services/HandOrderExperimentService.cpp
+    src/app/services/HandOrderExperimentService.h
+    src/app/services/HandOrderAnalysisService.cpp
+    src/app/services/HandOrderAnalysisService.h
     src/app/services/AnalysisService.cpp
     src/app/services/AnalysisService.h
     src/app/services/EditorSyncController.cpp
@@ -439,7 +448,6 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/cli_video_export_worker.cpp
     src/app/quick_shell/QuickShellPreviewCompositeSurface.h
     src/app/quick_shell/QuickShellPreviewCompositeSurface.cpp
-    src/app/quick_shell/QuickShellPreviewSurfacePolicy.h
     src/app/runtime/Session.h
     src/app/runtime/SessionLifecycle.cpp
     src/app/runtime/RuntimeContext.h
@@ -523,6 +531,14 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/CliRequest.h
     src/app/CliRequest.cpp
     src/app/cli_tasks.cpp
+    src/app/services/ChartLibraryFiles.h
+    src/app/services/ChartLibraryFiles.cpp
+    src/app/services/ManagedChartLibrary.cpp
+    src/app/services/LibraryImportIndex.cpp
+    src/app/services/LibraryImportZip.cpp
+    src/app/ui/library/ChartLibraryModel.h
+    src/app/ui/library/ChartLibraryModel.cpp
+    src/app/ui/library/ChartLibrarySongs.cpp
     src/app/ui/tools/ChartToolsModel.h
     src/app/ui/tools/ChartToolsModel.cpp
     src/app/ui/preferences/LocaleService.h
@@ -547,8 +563,6 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/ProjectPreferences.h
     src/app/services/ProjectPreferences.cpp
     src/app/services/ChartBannerData.h
-    src/app/services/ExportIntroPreferences.h
-    src/app/services/ExportIntroPreferences.cpp
     src/app/runtime/latency/LatencyAnalysis.h
     src/app/runtime/latency/LatencyAnalysis.cpp
     src/app/runtime/latency/LatencyTestChartBuilder.h
@@ -586,8 +600,8 @@ qt_add_shaders(MiaCode "ui_shaders"
         src/app/ui/pet/shaders/pet.frag
 )
 set_target_properties(MiaCode PROPERTIES
-    MACOSX_BUNDLE_BUNDLE_NAME "Better Miacode"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.albertobradish.BetterMiacode"
+    MACOSX_BUNDLE_BUNDLE_NAME "BetterMiacode"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "com.fanfaredash.BetterMiacode"
 )
 
 if(UNIX AND NOT APPLE)
@@ -615,16 +629,27 @@ endif()
 
 # Default UI (v2).
 # QTP0001 NEW embeds this module at :/qt/qml/MiaCode/UI/.
+# QML and native windows consume the same checked-in palette data.
+set(MIACODE_THEME_PALETTE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/resources/themes/palettes.json")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MIACODE_THEME_PALETTE_DATA}")
+file(READ "${MIACODE_THEME_PALETTE_DATA}" MIACODE_THEME_PALETTE_JSON)
+set(MIACODE_THEME_PALETTE_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/generated/ThemePalettes.js")
+file(WRITE "${MIACODE_THEME_PALETTE_SCRIPT}" ".pragma library\nvar catalog = ${MIACODE_THEME_PALETTE_JSON};\n")
+set_source_files_properties("${MIACODE_THEME_PALETTE_SCRIPT}" PROPERTIES QT_RESOURCE_ALIAS "ThemePalettes.js")
 set(MIACODE_UI_QML_FILES
+    src/app/ui/library/ChartLibrarySongManager.qml
+    src/app/ui/library/LibrarySongForm.qml
+    src/app/ui/library/ChartLibraryPage.qml
+    src/app/ui/layout/WorkspaceManagerDialog.qml
     src/app/ui/tools/DxScoreLossWindow.qml
     src/app/ui/tools/BpmExportWindow.qml
     src/app/ui/tools/ScoringObjectIcon.qml
     src/app/ui/net/NetDownloadPage.qml
+    src/app/ui/net/NetFormField.qml
+    src/app/ui/net/NetPageButton.qml
     src/app/ui/net/NetUploadPage.qml
     src/app/ui/net/NetResultTable.qml
     src/app/ui/components/AppDateField.qml
-    src/app/ui/components/PreviewPositionCard.qml
-    src/app/ui/components/SidebarModeCard.qml
     src/app/ui/Main.qml
     src/app/ui/ViewState.qml
     src/app/ui/theme/Theme.qml
@@ -666,14 +691,17 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/components/FadeTransition.qml
     src/app/ui/components/AppDialog.qml
     src/app/ui/components/AppStickyPopup.qml
+    src/app/ui/components/AppColorField.qml
     src/app/ui/components/AppDropdownPanel.qml
     src/app/ui/components/AppMenuItem.qml
     src/app/ui/components/AppMenuSeparator.qml
     src/app/ui/components/UiRequestHost.qml
+    src/app/ui/components/AppToast.qml
     src/app/ui/components/DialogFooter.qml
     src/app/ui/components/ChoiceDialog.qml
     src/app/ui/components/EditableValue.qml
     src/app/ui/components/LabeledCombo.qml
+    src/app/ui/components/LabeledFocusSlider.qml
     src/app/ui/components/LabeledSlider.qml
     src/app/ui/components/SettingsSection.qml
     src/app/ui/components/JobProgressOverlay.qml
@@ -685,11 +713,21 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/chrome/MainMenu.qml
     src/app/ui/chrome/NativeMenuBar.qml
     src/app/ui/chrome/ShortcutBindings.qml
+    src/app/ui/chrome/PreviewShortcuts.qml
     src/app/ui/chrome/MainMenuCommands.qml
     src/app/ui/chrome/MainToolBar.qml
     src/app/ui/chrome/StatusBar.qml
     src/app/ui/layout/MainView.qml
     src/app/ui/layout/MainSplitView.qml
+    src/app/ui/layout/NativeWorkspaceFrame.qml
+    src/app/ui/layout/WorkbenchDock.qml
+    src/app/ui/layout/WorkbenchLayouts.js
+    src/app/ui/layout/DockNode.qml
+    src/app/ui/layout/DockPanelTab.qml
+    src/app/ui/layout/DockPanelDragHandler.qml
+    src/app/ui/layout/DockPanelGrip.qml
+    src/app/ui/layout/DockFloatWindow.qml
+    src/app/ui/layout/DockEditorShortcuts.qml
     src/app/ui/layout/WelcomePage.qml
     src/app/ui/layout/BeginnerGuideOverlay.qml
     src/app/ui/layout/SetupWizard.qml
@@ -700,14 +738,20 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/sidebar/ChartFieldSidebar.qml
     src/app/ui/sidebar/DifficultyList.qml
     src/app/ui/sidebar/ExportSidebarPage.qml
+    src/app/ui/sidebar/UtilitySidebarPage.qml
     src/app/ui/export/ExportRangeSelector.qml
     src/app/ui/export/ExportVideoPage.qml
     src/app/ui/export/CoverExportPage.qml
     src/app/ui/export/CoverLayerList.qml
     src/app/ui/export/CoverExportWindow.qml
+    src/app/ui/editor/AdvancedMetadataForm.qml
     src/app/ui/editor/EditorPane.qml
     src/app/ui/editor/MetadataDifficultyCard.qml
     src/app/ui/editor/EditorTabBar.qml
+    src/app/ui/editor/HandOrderExperimentDialog.qml
+    src/app/ui/editor/HandOrderAnalysisDialog.qml
+    src/app/ui/editor/HandOrderIntervalsDialog.qml
+    src/app/ui/editor/NativeSlideSplitDialog.qml
     src/app/ui/editor/SourceEditor.qml
     src/app/ui/editor/CompletionPopup.qml
     src/app/ui/editor/NormalizeOptionsDialog.qml
@@ -716,7 +760,9 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/media/VideoProcessingMenu.qml
     src/app/ui/media/PvBatchCompressionDialog.qml
     src/app/ui/media/PrependBlankDialog.qml
+    src/app/ui/preferences/HandOrderAccessControl.qml
     src/app/ui/preferences/PreferencesDialog.qml
+    src/app/ui/preferences/ThemePicker.qml
     src/app/ui/preferences/CompletionCandidateList.qml
     src/app/ui/preferences/CompletionCandidatesEditor.qml
     src/app/ui/pet/PetOverlay.qml
@@ -725,15 +771,20 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/editor/FindReplaceBar.qml
     src/app/ui/editor/BookmarkList.qml
     src/app/ui/timeline/BottomPanel.qml
+    src/app/ui/timeline/PatternSuggestionsPanel.qml
+    src/app/ui/timeline/TimelinePanel.qml
     src/app/ui/timeline/BottomTabBar.qml
-    src/app/ui/timeline/TimelineZoomControl.qml
-    src/app/ui/timeline/TimelineZoomMenu.qml
     src/app/ui/timeline/TimelineSettingsMenu.qml
+    src/app/ui/preview/PressureShape.qml
+    src/app/ui/preview/ComparisonPreviewPanels.qml
+    src/app/ui/preview/ComparisonPreviewTile.qml
     src/app/ui/preview/PreviewPane.qml
     src/app/ui/preview/PreviewRenderModeMenu.qml
+    src/app/ui/preview/SimulatedPlaySettings.qml
     src/app/ui/preview/PreviewRateMenu.qml
     src/app/ui/preview/PreviewRateToast.qml
     src/app/ui/preview/PreviewCanvasMenu.qml
+    src/app/ui/preview/ChartStructureStrip.qml
     src/app/ui/preview/PreviewTransport.qml
     src/app/ui/preview/NoteStatistics.qml
     src/app/ui/preview/AudioSettingsDialog.qml
@@ -780,6 +831,10 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/folder-open.svg
     src/app/ui/resources/icons/folder-arrow-right.svg
     src/app/ui/resources/icons/globe.svg
+    src/app/ui/resources/icons/download.svg
+    src/app/ui/resources/icons/download-fill.svg
+    src/app/ui/resources/icons/upload.svg
+    src/app/ui/resources/icons/upload-fill.svg
     src/app/ui/resources/icons/wand.svg
     src/app/ui/resources/icons/save.svg
     src/app/ui/resources/icons/save-multiple.svg
@@ -797,10 +852,14 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/pin-filled.svg
     src/app/ui/resources/icons/panel-left.svg
     src/app/ui/resources/icons/panel-bottom.svg
+    src/app/ui/resources/icons/workspace-1.svg
+    src/app/ui/resources/icons/workspace-2.svg
+    src/app/ui/resources/icons/workspace-3.svg
     src/app/ui/resources/icons/panel-right.svg
     src/app/ui/resources/icons/chevron-left.svg
     src/app/ui/resources/icons/chevron-right.svg
     src/app/ui/resources/icons/settings.svg
+    src/app/ui/resources/icons/question-circle.svg
     src/app/ui/resources/icons/chart.svg
     src/app/ui/resources/icons/export.svg
     src/app/ui/resources/icons/tools.svg
@@ -811,12 +870,14 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/volume-2.svg
     src/app/ui/resources/icons/volume-x.svg
     src/app/ui/resources/icons/close.svg
+    src/app/ui/resources/icons/toast-error.svg
     src/app/ui/resources/icons/more.svg
     src/app/ui/resources/icons/metadata.svg
     src/app/ui/resources/icons/metronome.svg
     src/app/ui/resources/icons/app-titlebar.png
     src/app/ui/resources/icons/app-titlebar@2x.png
     src/app/ui/resources/icons/chevron-down.svg
+    src/app/ui/resources/icons/sync.svg
     src/app/ui/resources/icons/add.svg
     src/app/ui/resources/icons/remove.svg
     src/app/ui/resources/icons/arrow-up.svg
@@ -859,9 +920,15 @@ qt_add_qml_module(MiaCode
         src/app/ui/document/CommandService.h
         src/app/ui/chrome/ShortcutCommands.h
         src/app/ui/document/DocumentModel.cpp
+        src/app/ui/document/DocumentModel.AdvancedMetadata.cpp
         src/app/ui/document/DocumentModel.h
         src/app/ui/document/AnalysisModel.cpp
+        src/app/ui/document/AnalysisDecoration.h
         src/app/ui/document/AnalysisModel.h
+        src/app/ui/preview/ChartStructureModel.cpp
+        src/app/ui/preview/ChartStructureModel.h
+        src/app/ui/preview/ComparisonPreviews.h
+        src/app/ui/preview/ComparisonPreviews.cpp
         src/app/ui/preview/PreviewModel.cpp
         src/app/ui/preview/PreviewModel.h
         src/app/ui/timeline/TimelineModel.cpp
@@ -885,6 +952,8 @@ qt_add_qml_module(MiaCode
         src/app/ui/editor/ScintillaDslStyler.h
         src/app/ui/chrome/ShortcutModel.cpp
         src/app/ui/chrome/ShortcutModel.h
+        src/app/ui/chrome/EditorInputContext.cpp
+        src/app/ui/chrome/EditorInputContext.h
         src/app/ui/export/ExportSession.cpp
         src/app/ui/export/ExportSession.h
         src/app/ui/export/CoverExportSession.cpp
@@ -907,6 +976,7 @@ qt_add_qml_module(MiaCode
     RESOURCES
         ${MIACODE_UI_ICON_FILES}
         ${MIACODE_PET_ASSET_FILES}
+        ${MIACODE_THEME_PALETTE_SCRIPT}
 )
 
 set(MIACODE_TRANSLATION_TS_FILES
@@ -914,6 +984,8 @@ set(MIACODE_TRANSLATION_TS_FILES
     translations/zh_CN.ts
     translations/ja_JP.ts
 )
+# Keep ID messages in the empty TS context. Qt 6.11 no longer converts
+# named-context source-text entries with the deprecated -idbased switch.
 qt_add_lrelease(
     LRELEASE_TARGET miacode_lrelease
     TS_FILES ${MIACODE_TRANSLATION_TS_FILES}
@@ -943,7 +1015,9 @@ target_link_libraries(MiaCode PRIVATE
     miacode_stage_media
     miacode_export
     miacode_media_tools
+    miniz
     Qt6::Core
+    Qt6::Concurrent
     Qt6::Gui
     Qt6::Network
     Qt6::Qml
@@ -958,6 +1032,7 @@ target_include_directories(MiaCode PRIVATE
     src
     # qmltyperegistrar includes QML_ELEMENT headers by file name only; project
     # code includes them by their src-rooted path.
+    src/app/ui/chrome
     src/app/ui/editor
     src/app/ui/pet
     src/app/ui/timeline
@@ -969,6 +1044,8 @@ if (WIN32)
         Advapi32     # Windows Credential Manager
         Shell32      # Unicode command-line arguments
         Crypt32      # Current-user DPAPI encryption
+        Advapi32     # Windows Credential Manager
+        Shell32      # Unicode command-line arguments
         winmm        # timeBeginPeriod for preview frame pacing
         d3d11        # Startup D3D11 probe (startup_diagnostics_win32.cpp)
         User32       # RegisterPowerSettingNotification

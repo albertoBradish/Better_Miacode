@@ -6,6 +6,9 @@
 // Run via CTest (registered as simai_document_spec) or standalone.
 
 #include "core/chart/document/SimaiDocument.h"
+#include "core/chart/ChartVersion.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "core/video/PreviewRenderSettings.h"
 
 #include <QCoreApplication>
 #include <QString>
@@ -58,6 +61,44 @@ bool hasKeyLine(const QString& text, const QString& key)
 bool hasLine(const QString& text, const QString& exact)
 {
     return text.split('\n').contains(exact);
+}
+
+void checkChartVersions(QTextStream& out, int* failed)
+{
+    using namespace miacode::chart_version;
+    const auto parsed = [](const QString& chart) {
+        return SimaiParser::parseForTimeline(QStringLiteral("(120){4}") + chart + QStringLiteral(",\nE")).noteMarkers;
+    };
+    const SimaiDocument document = SimaiDocument::createEmpty();
+    struct Example { const char* token; Family family; bool plus; };
+    const Example examples[] = {
+        {"1", Family::Original, false}, {"1p5[4:1]", Family::Green, true},
+        {"1-5[4:1]*-6[4:1]", Family::Pink, false}, {"1w5[4:1]", Family::Pink, false},
+        {"1x", Family::Dx, false}, {"Ch[4:1]", Family::Dx, false},
+        {"C1h[4:1]", Family::Dx, false}, {"C2h[4:1]", Family::Dx, false},
+        {"E1", Family::Dx, false}, {"A1", Family::Festival, false},
+        {"1-5-1[4:1]", Family::Festival, false}, {"1bx", Family::Festival, false},
+        {"E1h[4:1]", Family::Prism, true}, {"D2h[4:1],1", Family::Prism, true}
+    };
+    for (const auto& example : examples) {
+        const auto notes = parsed(QString::fromLatin1(example.token));
+        const auto version = detect(document, notes);
+        expectTrue(!notes.isEmpty() && version.family == example.family && version.plus == example.plus,
+                   QStringLiteral("version for %1").arg(QString::fromLatin1(example.token)), failed, out);
+    }
+    const auto explicitDocument = SimaiDocument::fromText(QStringLiteral("&version=maimai DX BUDDiES PLUS\n"));
+    const auto explicitVersion = detect(explicitDocument, parsed(QStringLiteral("E1h[4:1]")));
+    expectTrue(explicitVersion.family == Family::Buddies && explicitVersion.plus,
+               "explicit version overrides newer chart elements", failed, out);
+    const auto nested = SimaiDocument::fromText(QStringLiteral("&metadata={\"version\":\"PRiSM+\"}\n"));
+    const auto nestedVersion = detect(nested, {});
+    expectTrue(nestedVersion.family == Family::Prism && nestedVersion.plus,
+               "explicit JSON metadata accepts plus suffix", failed, out);
+    expectEqual(nestedVersion.outlineFileName(), "13.PRiSM.png", "PLUS release uses its family artwork", failed, out);
+    expectTrue(resolvedCompletionDisplay(CompletionDisplay::Automatic, true) == CompletionDisplay::Modern
+        && resolvedCompletionDisplay(CompletionDisplay::Automatic, false) == CompletionDisplay::Standard
+        && resolvedCompletionDisplay(CompletionDisplay::Both, true) == CompletionDisplay::Both,
+        "rate policy follows detected generation and manual selection", failed, out);
 }
 
 void runSpecs(QTextStream& out, int* failed)
@@ -403,6 +444,7 @@ int main(int argc, char** argv)
     QTextStream out(stdout);
     int failed = 0;
     runSpecs(out, &failed);
+    checkChartVersions(out, &failed);
     if (failed != 0) {
         out << "\nSimaiDocument spec failed: " << failed << " case(s)\n";
         return 1;

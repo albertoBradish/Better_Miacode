@@ -85,7 +85,6 @@ QSGNode* TimelineQuickGridLinesLayer::updateNode(
     const miacode::timeline::TimelineSceneState& state,
     QQuickWindow* window) const
 {
-    Q_UNUSED(window);
     auto* root = dynamic_cast<TimelineQuickGridLinesRootNode*>(oldNode);
     if (root == nullptr) {
         delete oldNode;
@@ -121,6 +120,9 @@ QSGNode* TimelineQuickGridLinesLayer::updateNode(
         || root->layoutRevision != state.layoutRevision
         || root->gridRevision != state.gridRevision) {
         clearChildren(contentRoot);
+        for (const auto& rect : state.dropRegionRects) {
+            contentRoot->appendChildNode(buildTimelineRectNode(rect));
+        }
         // Same per-color batching as the previous in-headerLayer path.
         // The Blending=true override in TimelineQuickFlatColorBatchBuilder
         // applies here too, ensuring even alpha-255 bar lines stay on
@@ -133,6 +135,9 @@ QSGNode* TimelineQuickGridLinesLayer::updateNode(
             }
         }
         gridBatch.flush();
+        if (state.dropRegionLabel && window != nullptr) {
+            contentRoot->appendChildNode(buildTimelineTextNode(window, *state.dropRegionLabel, state.axisProjection()));
+        }
         root->gridRevision = state.gridRevision;
     }
     root->layoutRevision = state.layoutRevision;

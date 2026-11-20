@@ -23,12 +23,27 @@ enum class PreviewCanvasFrameRateMode {
     Fps60,
     Fps120,
     DisplayRefresh,
+    SourceRate, // PV only: retain decoded frames at their native timestamps.
 };
 
 enum class PreviewSkinVariant {
     Standard,
     Dx,
 };
+
+enum class CompletionDisplay { Automatic, Standard, Modern, Both };
+
+constexpr CompletionDisplay completionDisplayFromId(int value)
+{
+    return value >= 0 && value <= static_cast<int>(CompletionDisplay::Both)
+        ? static_cast<CompletionDisplay>(value) : CompletionDisplay::Automatic;
+}
+
+constexpr CompletionDisplay resolvedCompletionDisplay(CompletionDisplay choice, bool deluxe)
+{
+    if (choice != CompletionDisplay::Automatic) return choice;
+    return deluxe ? CompletionDisplay::Modern : CompletionDisplay::Standard;
+}
 
 enum class PreviewOutlineVariant {
     Point = 0,
@@ -37,6 +52,23 @@ enum class PreviewOutlineVariant {
     JudgeAreaLabeled = 3,
     None = 4,
 };
+
+constexpr PreviewOutlineVariant chartIntroOutlineVariant(PreviewOutlineVariant variant)
+{
+    return variant == PreviewOutlineVariant::JudgeAreaLabeled
+        ? PreviewOutlineVariant::JudgeArea : variant;
+}
+
+enum class BackgroundPolicy {
+    Normal,
+    OpaqueBlack,
+    Transparent,
+};
+
+constexpr bool usesBackgroundMedia(BackgroundPolicy policy)
+{
+    return policy == BackgroundPolicy::Normal;
+}
 
 enum class PreviewBackgroundScaleMode {
     FillCrop = 0,
@@ -50,6 +82,21 @@ enum class PreviewTapJudgeTextDistance {
     Middle = 1,
     Outer = 2,
 };
+
+enum class PreviewFireworkStyle {
+    Standard = 0,
+    Modern = 1,
+};
+
+inline const char* fireworkStyleToken(PreviewFireworkStyle style)
+{
+    return style == PreviewFireworkStyle::Modern ? "modern" : "standard";
+}
+
+inline PreviewFireworkStyle fireworkStyleFromToken(const QString& token)
+{
+    return token == QLatin1String("modern") ? PreviewFireworkStyle::Modern : PreviewFireworkStyle::Standard;
+}
 
 enum class PreviewJudgeEffectStyle {
     Standard = 0,

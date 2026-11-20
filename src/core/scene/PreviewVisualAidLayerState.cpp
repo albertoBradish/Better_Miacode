@@ -50,15 +50,14 @@ PreviewVisualAidLayerState buildPreviewVisualAidLayerState(const PreviewFrameSta
         const auto& marker = markers.markerAt(index);
         const bool wifi = marker.type == QLatin1String("wifi");
         if (!wifi && marker.type != QLatin1String("slide")) continue;
-        const auto timing = previewSlideTrackTimingForEffectiveFlowSpeed(
-            state.render.tapFlowSpeed * marker.hsMultiplier);
+        const auto timing = previewSlideTrackTimingForMarker(marker, state.render.tapFlowSpeed, state.render.starFadeTiming);
         if (now < marker.second - timing.appearLeadInSeconds || now >= marker.endSecond) continue;
         qreal opacity = now < marker.slideTraceSecond
             ? sampleSlideTrackPreTraceOpacity(marker.second, now,
                 timing.appearLeadInSeconds, timing.fullBrightLeadInSeconds) : 1.0;
         if (opacity <= 0.0) continue;
         const MarkerMuriState* analysis = nullptr;
-        if (state.muriRenderOptions.renderMode == RenderMode::MaimuriDxStyle) {
+        if (renderModeUsesMaimuri(state.muriRenderOptions.renderMode)) {
             const auto found = state.muriAnalysisReport.markerStates.constFind(makeMarkerAnalysisKey(marker));
             if (found != state.muriAnalysisReport.markerStates.constEnd()) analysis = &found.value();
         }

@@ -17,7 +17,11 @@ QtPreviewSfxRuntime::QtPreviewSfxRuntime(PreviewAudioBackendFactory factory, QOb
 {
     const std::shared_ptr<CallbackState> callbackState = callbackState_;
     worker_ = std::make_unique<PreviewAudioWorker>(
-        std::move(factory),
+        [factory = std::move(factory), route = outputRoute_]() {
+            auto backend = factory ? factory() : nullptr;
+            if (backend) backend->bindOutputRoute(route);
+            return backend;
+        },
         [this, callbackState](const PreviewAudioCompletion& completion) {
             if (!callbackState->deliveryEnabled.load(std::memory_order_acquire)) {
                 return;

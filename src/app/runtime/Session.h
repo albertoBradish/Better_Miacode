@@ -198,9 +198,11 @@ public:
         int outputWidth = 1024;
         int outputHeight = 1024;
         int fps = 60;
+        miacode::video_export::VideoEncodingSettings encoding;
         double exportStartSeconds = 0.0;
         double contentDurationSeconds = -1.0;
         bool showTimestamp = true;
+        bool showHandOrderAnnotations = true;
         bool showObjectStatsHud = false;
         bool showChartInfoHud = false;
         bool showBpmHud = false;
@@ -209,13 +211,17 @@ public:
         bool showModsHud = false;
         bool addIntro = false;
         // PV-preview intro style (IntroBannerSpec::pvPreview) and its segment.
-        bool introCardShadow = false;
+        bool introCardShadow = true;
         bool introPvPreview = false;
+        bool introChartPreview = false;
+        bool debugRendering = false;
+        bool includePv = true;
         double introPvStartSeconds = 0.0;
         double previewMaxOutputSeconds = 0.0;  // 0 = full; >0 caps output (intro preview)
         miacode::preview_gameplay::CenterDisplayMode centerDisplayMode =
             miacode::preview_gameplay::kDefaultCenterDisplayMode;
         double fireworkBrightness = miacode::preview_video::kFireworkBrightnessDefault;
+        PreviewFireworkStyle fireworkStyle = PreviewFireworkStyle::Standard;
         bool smoothBrightness = miacode::preview_video::kSmoothBrightnessDefault;
         double backgroundBrightnessOuter = miacode::preview_video::kBackgroundBrightnessDefault;
         double backgroundBrightnessInner = miacode::preview_video::kBackgroundBrightnessInnerDefault;
@@ -224,6 +230,7 @@ public:
         PreviewBackgroundScaleMode backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
         double noteFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
         double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
+        double starFadeTiming = 0.0;
         PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
         PreviewJudgeEffectStyle judgeEffectStyle = PreviewJudgeEffectStyle::Standard;
         int skinLoadWaitMs = 2000;
@@ -317,6 +324,9 @@ public:
     // not restate limits the preview owns.
     QVariantMap previewRenderSettings() const override;
     void setPreviewRenderSetting(const QString& key, const QVariant& value) override;
+    QJsonObject capturePreviewModeSettings() const;
+    QJsonObject regularPreviewModeSettings() const;
+    void restorePreviewModeSettings(RenderMode mode);
 
     void setQmlChartTextHandler(std::function<bool(const QString&)> handler);
     DocumentValidationSnapshot documentValidationSnapshot() const;
@@ -442,7 +452,6 @@ public:
 private:
     PreviewOutlineVariant previewOutlineVariantFromStorageValue(const QString& value) const;
     QString previewOutlineVariantStorageValue() const;
-    PreviewOutlineVariant autoPreviewOutlineVariantForChart(const QString& chartPath) const;
     PreviewOutlineVariant effectivePreviewOutlineVariant() const;
     QString resolvePreviewCustomOutlinePath() const;
     QStringList availablePreviewCustomOutlineFileNames() const;
@@ -532,9 +541,6 @@ public:
     void applyEffectivePreviewOutlineVariantToCanvas() override;
 
 private:
-    // Transient Alt-hold override: while the preview is paused, holding Alt
-    // flips the "暂停时显示判定区" pause display (judge area ⇄ PV/BG) until released.
-    void setPauseDisplayAltHoldActive(bool active);
     void setTouchPadAuthoringCtrlHoldActive(bool active);
     void addRecentFilePath(const QString& path);
     void persistEditorTextFontPreference() const;

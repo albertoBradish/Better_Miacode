@@ -3,14 +3,43 @@
 #include <QString>
 
 #include "core/analysis/MuriConfig.h"
+#include "core/analysis/hand_order/HandPlaySettings.h"
+#include "core/video/PreviewRenderSettings.h"
+#include "core/video/PreviewGameplayConfig.h"
 
 enum class RenderMode {
     Native,
     MaimuriDxStyle,
     EraseByArea,
+    Debug,
+    SimulatedPlay,
+    HandOrderBreakdown,
 };
 
+constexpr bool renderModeShowsHandOrder(RenderMode mode)
+{
+    return mode == RenderMode::HandOrderBreakdown || mode == RenderMode::SimulatedPlay;
+}
+
+constexpr bool renderModeUsesMaimuri(RenderMode mode)
+{
+    return mode == RenderMode::MaimuriDxStyle || mode == RenderMode::SimulatedPlay;
+}
+
+// Normal presentation never exposes diagnostic contacts, including when an
+// older preference file or export snapshot still has their flags enabled.
+constexpr bool renderModeAllowsDiagnosticContacts(RenderMode mode)
+{
+    return mode == RenderMode::Debug || mode == RenderMode::MaimuriDxStyle;
+}
+
+constexpr BackgroundPolicy backgroundPolicyForRenderMode(RenderMode mode)
+{
+    return mode == RenderMode::Debug ? BackgroundPolicy::OpaqueBlack : BackgroundPolicy::Normal;
+}
+
 struct MuriRenderOptions {
+    bool operator==(const MuriRenderOptions&) const = default;
     RenderMode renderMode = RenderMode::Native;
     bool showSlideTracks = true;
     bool showJudgeMarkers = false;
@@ -21,8 +50,12 @@ struct MuriRenderOptions {
     bool showChartReviewTouchJudgeOverlay = false;
     bool wifiNeedC = false;
     bool excludeTouchFromMultiTouch = true;
+    bool playAnalysisEnabled = true;
     // 手部半径 in the 1080 px reference playfield; see MuriConfig.h.
     int handRadiusPx = miacode::muri::kHandRadiusDefaultPx;
+    miacode::hand_order::PlayProfile playProfile;
+    double playTapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
+    double playTouchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
 };
 
 namespace miacode::muri {
@@ -46,6 +79,12 @@ inline QString muriRenderModeToken(RenderMode mode)
             return QStringLiteral("maimuri_dx_style");
         case RenderMode::EraseByArea:
             return QStringLiteral("erase_by_area");
+        case RenderMode::Debug:
+            return QStringLiteral("debug");
+        case RenderMode::SimulatedPlay:
+            return QStringLiteral("simulated_play");
+        case RenderMode::HandOrderBreakdown:
+            return QStringLiteral("hand_order_breakdown");
         case RenderMode::Native:
             break;
     }
@@ -55,11 +94,20 @@ inline QString muriRenderModeToken(RenderMode mode)
 inline RenderMode muriRenderModeFromToken(const QString& token)
 {
     const QString normalized = token.trimmed();
+    if (normalized.compare(QStringLiteral("hand_order_breakdown"), Qt::CaseInsensitive) == 0) {
+        return RenderMode::HandOrderBreakdown;
+    }
     if (normalized.compare(QStringLiteral("maimuri_dx_style"), Qt::CaseInsensitive) == 0) {
         return RenderMode::MaimuriDxStyle;
     }
     if (normalized.compare(QStringLiteral("erase_by_area"), Qt::CaseInsensitive) == 0) {
         return RenderMode::EraseByArea;
+    }
+    if (normalized.compare(QStringLiteral("debug"), Qt::CaseInsensitive) == 0) {
+        return RenderMode::Debug;
+    }
+    if (normalized.compare(QStringLiteral("simulated_play"), Qt::CaseInsensitive) == 0) {
+        return RenderMode::SimulatedPlay;
     }
     return RenderMode::Native;
 }

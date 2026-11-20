@@ -6,12 +6,26 @@
 #include <QSize>
 #include <QString>
 
+#include "core/chart/model/TimelineData.h"
+
 namespace miacode::timeline {
 
 struct TimelineNoteAssetSet {
     QHash<QString, QPixmap> noteIcons;
     QHash<QString, int> noteIconBasePixelSizes;
 };
+
+struct TimelineNoteMetrics {
+    QSize sourceSize;
+    int basePixelSize = 14;
+
+    QSize targetSize(qreal scale) const;
+};
+
+QHash<QString, TimelineNoteMetrics> loadTimelineNoteMetrics(const QString& skinDirectory = QString());
+QString handOrderNoteType(const QHash<QString, TimelineNoteMetrics>& metrics, const QString& nativeType, HandOrderHand hand);
+QString handOrderSplitNoteType(const QHash<QString, TimelineNoteMetrics>& metrics, const QString& nativeType,
+    HandOrderHand firstSector, HandOrderHand secondSector);
 
 struct TimelineHoldPixmapParts {
     QPixmap leftCap;
@@ -20,6 +34,9 @@ struct TimelineHoldPixmapParts {
 };
 
 TimelineNoteAssetSet loadTimelineNoteAssets(const QString& skinDirectory = QString());
+QString handOrderNoteType(const TimelineNoteAssetSet& assets, const QString& nativeType, HandOrderHand hand);
+QString handOrderSplitNoteType(const TimelineNoteAssetSet& assets, const QString& nativeType,
+    HandOrderHand firstSector, HandOrderHand secondSector);
 int transformedPixmapScalePermille(qreal scale);
 int transformedPixmapRotationTenths(qreal rotationDegrees);
 QString transformedPixmapCacheKey(const QString& type, qreal scale, qreal rotationDegrees, bool mirrorX);

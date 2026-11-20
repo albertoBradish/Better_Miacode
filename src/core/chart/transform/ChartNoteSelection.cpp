@@ -1,10 +1,18 @@
 #include "core/chart/transform/ChartNoteSelection.h"
 
+#include "core/chart/transform/ChartBatchTransform.Internal.h"
+
 #include "core/chart/parser/SimaiCommentScan.h"
+#include "core/chart/parser/HandOrderAnnotationSyntax.h"
+#include "core/chart/transform/HandOrderEdit.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
 
+#include <QHash>
 #include <QRegularExpression>
+#include <QStringList>
 #include <algorithm>
+#include <optional>
+#include <QSet>
 
 namespace miacode::chart_selection {
 namespace {
@@ -13,8 +21,12 @@ bool intersects(const NoteRange& a, const NoteRange& b)
     return a.start < b.end && b.start < a.end;
 }
 
-NoteTimingState timingAt(const QString& text, int position, NoteTimingState state)
+NoteTimingState timingAt(const QString& input, int position, NoteTimingState state)
 {
+    // An annotation container may contain malformed directive-like text. It is
+    // metadata, so only the native chart prefix contributes timing context.
+    const QString text = miacode::hand_order::stripAnnotations(input.left(position));
+    position = text.size();
     static const QRegularExpression directives(QStringLiteral(R"(\([^()]*\)|\{[^{}]*\}|<HS\*[^>]*>)"));
     for (int lineStart = 0; lineStart < position;) {
         int lineEnd = text.indexOf(QLatin1Char('\n'), lineStart);
@@ -46,7 +58,13 @@ QString timingText(const NoteTimingState& state)
 
 // Repair only note separators whose neighbour was removed. Timing commas,
 // directives, comments and whitespace retain their original source positions.
-QString withoutNotes(const QString& text, const NoteRanges& removed, const NoteRanges& allNotes)
+struct TokenReplacement {
+    NoteRange token;
+    QString text;
+};
+
+QString withoutNotes(const QString& text, const NoteRanges& removed, const NoteRanges& allNotes,
+    const QVector<TokenReplacement>& replacements = {})
 {
     QByteArray erase(text.size(), 0);
     for (const auto& range : removed)
@@ -94,8 +112,173 @@ QString withoutNotes(const QString& text, const NoteRanges& removed, const NoteR
     }
     QString result;
     result.reserve(text.size());
-    for (int i = 0; i < text.size(); ++i) if (!erase[i]) result.append(text[i]);
+    auto replacement = replacements.cbegin();
+    for (int i = 0; i < text.size();) {
+        if (replacement != replacements.cend() && replacement->token.start == i) {
+            result.append(replacement->text);
+            i = replacement->token.end;
+            ++replacement;
+        } else {
+            if (!erase[i]) result.append(text[i]);
+            ++i;
+        }
+    }
     return result;
+}
+
+struct SlideParts {
+    QString prefix;
+    QStringList tracks;
+    QString annotation;
+    bool hasHead = false;
+};
+
+std::optional<SlideParts> splitSlide(QStringView token)
+{
+    using chart_transform::detail::isSlideOperatorChar;
+    const auto tokenParts = hand_order::splitToken(token.toString());
+    const QStringView native(tokenParts.baseToken);
+    if (native.size() < 2 || !chart_transform::detail::isDigitLane(native.front())) return {};
+    qsizetype prefixLength = 1;
+    while (prefixLength < native.size() && QStringView(u"bxm@?!").contains(native.at(prefixLength))) {
+        ++prefixLength;
+    }
+    if (prefixLength >= native.size()) return {};
+    SlideParts result;
+    result.prefix = native.first(prefixLength).toString();
+    result.hasHead = !result.prefix.contains(QLatin1Char('?')) && !result.prefix.contains(QLatin1Char('!'));
+    result.tracks = native.sliced(prefixLength).toString().split(QLatin1Char('*'));
+    result.annotation = tokenParts.suffix;
+    for (const auto& track : result.tracks) {
+        if (track.isEmpty() || !isSlideOperatorChar(track.front())) return {};
+    }
+    return result;
+}
+
+struct ComponentSelection {
+    bool head = false;
+    QSet<int> tracks;
+};
+
+std::optional<ComponentSelection> selectComponents(const SlideParts& slide, const NoteObjects& selected)
+{
+    ComponentSelection parts;
+    for (const auto& object : selected) {
+        if (object.component == NoteComponent::SlideHead && slide.hasHead) {
+            parts.head = true;
+        } else if (object.component == NoteComponent::SlideTrack
+            && object.trackIndex >= 0 && object.trackIndex < slide.tracks.size()) {
+            parts.tracks.insert(object.trackIndex);
+        } else {
+            return {};
+        }
+    }
+    return parts;
+}
+
+QString isolatedSlideHead(const SlideParts& slide)
+{
+    QString head = slide.prefix;
+    if (!head.contains(QLatin1Char('@'))) {
+        head += slide.tracks.size() > 1 ? QStringLiteral("$$") : QStringLiteral("$");
+    }
+    head.remove(QLatin1Char('@'));
+    return head;
+}
+
+QChar handGlyph(HandOrderHand hand)
+{
+    if (hand == HandOrderHand::Left) return QLatin1Char('l');
+    if (hand == HandOrderHand::Right) return QLatin1Char('r');
+    if (hand == HandOrderHand::Either) return QLatin1Char('m');
+    return {};
+}
+
+chart_transform::HandOrderTokenEdit projectHandOrder(const SlideParts& slide,
+    const hand_order::Annotation& annotation, bool keepHead, const QVector<int>& branches)
+{
+    chart_transform::HandOrderTokenEdit result;
+    result.hasHead = keepHead;
+    result.head = annotation.head;
+    for (const int branch : branches) {
+        result.tracks.append(annotation.branchTracks.value(branch));
+        result.wifiModes.append(annotation.wifiModes.value(branch, HandOrderWifiMode::Legacy));
+        result.wifiSectors.append(annotation.wifiSectors.value(branch));
+        result.wifiBranches.append(slide.tracks.at(branch).contains(QLatin1Char('w'), Qt::CaseInsensitive));
+    }
+    return result;
+}
+
+NoteObjectEditResult rewriteSelectedObjects(const QString& text, const NoteObjects& selected,
+    const NoteRanges& allNotes, bool keepSelected)
+{
+    QHash<int, NoteObjects> byToken;
+    for (const auto& object : selected) byToken[object.token.start].append(object);
+    NoteRanges removed;
+    QVector<TokenReplacement> replacements;
+    const auto notes = normalizedNoteRanges(allNotes, text.size());
+    for (const auto& token : notes) {
+        const auto group = byToken.take(token.start);
+        if (group.isEmpty()) {
+            if (keepSelected) removed.append(token);
+            continue;
+        }
+        if (std::any_of(group.cbegin(), group.cend(), [&](const auto& object) { return object.token != token; })) {
+            return {text, false};
+        }
+        if (group.size() == 1 && group.first().component == NoteComponent::Whole) {
+            if (!keepSelected) removed.append(token);
+            continue;
+        }
+        const auto original = QStringView(text).sliced(token.start, token.end - token.start);
+        const auto slide = splitSlide(original);
+        if (!slide) return {text, false};
+        const auto parts = selectComponents(*slide, group);
+        if (!parts) return {text, false};
+        const bool keepHead = slide->hasHead && (parts->head == keepSelected);
+        QVector<int> keptBranches;
+        QStringList keptTracks;
+        for (int branch = 0; branch < slide->tracks.size(); ++branch) {
+            if (parts->tracks.contains(branch) == keepSelected) {
+                keptBranches.append(branch);
+                keptTracks.append(slide->tracks.at(branch));
+            }
+        }
+        if (keptTracks.isEmpty() && !keepHead) {
+            removed.append(token);
+            continue;
+        }
+        if (keptTracks.size() == slide->tracks.size() && keepHead == slide->hasHead) continue;
+        QString rewritten;
+        if (keptTracks.isEmpty()) {
+            rewritten = isolatedSlideHead(*slide);
+        } else {
+            // A selected track can be copied without its head, and deleting
+            // a head leaves the original branch text intact with a gradual headless prefix.
+            const QString prefix = keepHead || !slide->hasHead
+                ? slide->prefix : slide->prefix.first(1) + QLatin1Char('?');
+            rewritten = prefix + keptTracks.join(QLatin1Char('*'));
+        }
+        if (!slide->annotation.isEmpty()) {
+            const auto annotation = hand_order::parseAnnotation(original.toString(), true);
+            if (!annotation.valid) return {text, false};
+            if (keptTracks.isEmpty()) {
+                const QChar hand = handGlyph(annotation.head);
+                if (!hand.isNull()) {
+                    rewritten += QLatin1Char('~');
+                    rewritten += hand;
+                }
+            } else {
+                const QString suffix = chart_transform::handOrderSuffix(
+                    projectHandOrder(*slide, annotation, keepHead, keptBranches));
+                if (suffix.isEmpty()) return {text, false};
+                rewritten += suffix;
+            }
+        }
+        if (rewritten != original) replacements.append({token, rewritten});
+    }
+    if (!byToken.isEmpty()) return {text, false};
+    return {withoutNotes(text, removed, notes, replacements), true};
 }
 }
 
@@ -155,9 +338,132 @@ QString copySelectedNotes(const QString& text, const NoteRanges& selected, const
     return prefix + withoutNotes(text.mid(start, end - start), localRemoved, localNotes) + QStringLiteral(",\n");
 }
 
+NoteObjectEditResult deleteSelectedNoteObjects(const QString& text, const NoteObjects& selected,
+    const NoteRanges& allNotes)
+{
+    return rewriteSelectedObjects(text, selected, allNotes, false);
+}
+
+NoteObjectEditResult copySelectedNoteObjects(const QString& text, const NoteObjects& selected,
+    const NoteRanges& allNotes, const NoteTimingState& initialTiming)
+{
+    if (selected.isEmpty()) return {};
+    const auto [first, last] = std::minmax_element(selected.cbegin(), selected.cend(),
+        [](const auto& left, const auto& right) { return left.token.start < right.token.start; });
+    const int start = first->token.start;
+    const int end = last->token.end;
+    if (start < 0 || end > text.size() || end <= start) return {{}, false};
+    NoteRanges localNotes;
+    for (const auto& note : allNotes) {
+        if (note.start >= start && note.end <= end) localNotes.append({note.start - start, note.end - start});
+    }
+    auto localObjects = selected;
+    for (auto& object : localObjects) {
+        object.token.start -= start;
+        object.token.end -= start;
+    }
+    auto projected = rewriteSelectedObjects(text.mid(start, end - start), localObjects, localNotes, true);
+    if (projected.supported) {
+        projected.text = timingText(timingAt(text, start, initialTiming)) + projected.text + QStringLiteral(",\n");
+    }
+    return projected;
+}
+
+bool selectsWholeNoteObject(QStringView token, const NoteObjects& objects)
+{
+    if (objects.size() == 1 && objects.first().component == NoteComponent::Whole) return true;
+    const auto slide = splitSlide(token);
+    if (!slide) return false;
+    const auto parts = selectComponents(*slide, objects);
+    return parts && parts->head == slide->hasHead && parts->tracks.size() == slide->tracks.size();
+}
+
+NoteObjectEditResult transformSlideComponents(QStringView token, const NoteObjects& objects, QStringView operation)
+{
+    const auto slide = splitSlide(token);
+    if (!slide) return {token.toString(), false};
+    const auto parts = selectComponents(*slide, objects);
+    if (!parts) return {token.toString(), false};
+    HandOrderHand assigned = HandOrderHand::Unspecified;
+    if (operation == u"hand_order.set_left") assigned = HandOrderHand::Left;
+    if (operation == u"hand_order.set_right") assigned = HandOrderHand::Right;
+    if (operation == u"hand_order.set_either") assigned = HandOrderHand::Either;
+    const bool swapHands = operation == u"hand_order.swap_hands";
+    if (assigned != HandOrderHand::Unspecified || swapHands) {
+        const auto annotation = hand_order::parseAnnotation(token.toString(), true);
+        if (!annotation.valid && !slide->annotation.isEmpty()) return {token.toString(), false};
+        if (swapHands && !annotation.valid) return {token.toString(), true};
+        QVector<int> branches;
+        for (int branch = 0; branch < slide->tracks.size(); ++branch) branches.append(branch);
+        auto projected = projectHandOrder(*slide, annotation, slide->hasHead, branches);
+        const auto editHand = [assigned, swapHands](HandOrderHand hand) {
+            if (!swapHands) return assigned;
+            if (hand == HandOrderHand::Left) return HandOrderHand::Right;
+            if (hand == HandOrderHand::Right) return HandOrderHand::Left;
+            return hand;
+        };
+        bool changed = false;
+        const auto updateHand = [&](HandOrderHand& hand) {
+            const HandOrderHand next = editHand(hand);
+            changed |= next != hand;
+            hand = next;
+        };
+        if (parts->head) updateHand(projected.head);
+        const auto editStops = [&](QVector<HandOrderTrackStop>& stops) {
+            if (stops.isEmpty() && !swapHands) {
+                stops.append({0.0, assigned});
+                changed = true;
+            } else {
+                for (auto& stop : stops) updateHand(stop.hand);
+            }
+        };
+        for (const int branch : parts->tracks) {
+            if (projected.wifiModes.at(branch) == HandOrderWifiMode::Split) {
+                for (auto& sector : projected.wifiSectors[branch]) editStops(sector);
+            } else {
+                editStops(projected.tracks[branch]);
+            }
+        }
+        if (!changed) return {token.toString(), true};
+        // A complex suffix requires every track. Do not invent assignments for
+        // unselected branches or add a head colour the user did not select.
+        const QString suffix = chart_transform::handOrderSuffix(projected);
+        if (suffix.isEmpty()) return {token.toString(), false};
+        return {slide->prefix + slide->tracks.join(QLatin1Char('*')) + suffix, true};
+    }
+    auto changed = *slide;
+    if (operation == u"transform.toggle_ex") {
+        if (parts->head) {
+            if (changed.prefix.contains(QLatin1Char('x'))) changed.prefix.remove(QLatin1Char('x'));
+            else changed.prefix.append(QLatin1Char('x'));
+        }
+    } else if (operation == u"transform.toggle_break") {
+        bool everySelectedBreak = !parts->head || changed.prefix.contains(QLatin1Char('b'));
+        for (int branch : parts->tracks) {
+            everySelectedBreak &= changed.tracks.at(branch).contains(QLatin1Char('b'));
+        }
+        if (parts->head) {
+            changed.prefix.remove(QLatin1Char('b'));
+            if (!everySelectedBreak) changed.prefix.append(QLatin1Char('b'));
+        }
+        for (int branch : parts->tracks) {
+            auto& track = changed.tracks[branch];
+            track.remove(QLatin1Char('b'));
+            if (!everySelectedBreak) {
+                const auto duration = track.indexOf(QLatin1Char('['));
+                if (duration < 0) return {token.toString(), false};
+                track.insert(duration, QLatin1Char('b'));
+            }
+        }
+    } else {
+        return {token.toString(), false};
+    }
+    return {changed.prefix + changed.tracks.join(QLatin1Char('*')) + changed.annotation, true};
+}
+
 NotePasteResult pasteNoteFragment(const QString& text, int start, int end,
     const QString& input, const NoteRanges& selectedNotes, const NoteRanges& allNotes,
-    const NoteTimingState& initialTiming)
+    const NoteTimingState& initialTiming, const NoteObjects& selectedObjects)
 {
     NotePasteResult result{text, qBound(0, start, int(text.size())), {}};
     QString fragment = input.trimmed();
@@ -168,7 +474,23 @@ NotePasteResult pasteNoteFragment(const QString& text, int start, int end,
     auto selected = normalizedNoteRanges(selectedNotes, text.size());
     int at = qBound(0, qMin(start, end), int(text.size()));
     int limit = qBound(at, qMax(start, end), int(text.size()));
-    if (selected.isEmpty() && limit > at) {
+    if (!selectedObjects.isEmpty()) {
+        selected.clear();
+        QHash<int, NoteObjects> groups;
+        for (const auto& object : selectedObjects) groups[object.token.start].append(object);
+        for (const auto& group : groups) {
+            const auto token = group.first().token;
+            if (token.start < 0 || token.end > text.size() || token.end <= token.start
+                || !selectsWholeNoteObject(QStringView(text).sliced(token.start, token.end - token.start), group)) {
+                // A contextual fragment inserts beats. Replacing only one
+                // component this way would shift the unselected sibling in time.
+                result.error = QStringLiteral("unsupported_note_component");
+                return result;
+            }
+            selected.append(token);
+        }
+        selected = normalizedNoteRanges(selected, text.size());
+    } else if (selected.isEmpty() && limit > at) {
         for (const auto& note : allNotes)
             if (note.start < limit && at < note.end) selected.append(note);
     }

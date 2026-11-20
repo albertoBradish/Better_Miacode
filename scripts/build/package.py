@@ -337,6 +337,7 @@ def build_windows():
     run([
         "cmake", "-S", ROOT, "-B", BUILD_DIR, "-G", spec["generator"],
         "-UGIT_EXECUTABLE",
+        "-UCMAKE_C_COMPILER_LAUNCHER", "-UCMAKE_CXX_COMPILER_LAUNCHER",
         f"-DCMAKE_PREFIX_PATH={qt}",
         "-DCMAKE_TRY_COMPILE_CONFIGURATION=Release",
         "-DMIACODE_BUILD_DEV_TOOLS=ON",
@@ -371,13 +372,14 @@ def verify_specs(env):
     targets = ["runtime_isolation_spec", "cli_integration_spec", "cli_request_spec", "chart_note_selection_spec",
                "preview_note_hit_test_spec", "preview_note_selection_interaction_spec", "chart_tools_spec", "cover_layout_model_spec",
                "editor_sync_controller_spec", "video_export_visual_aids_spec", "cover_export_session_spec",
-               "qml_export_video_page_spec", "qml_scintilla_editor_spec"]
+               "qml_export_video_page_spec", "qml_scintilla_editor_spec", "hand_order_feature_policy_spec"]
     run(["cmake", "--build", BUILD_DIR, "--config", "Release", "--target", *targets,
          "--parallel", cpu_jobs()], env=env)
     test_env = env.copy()
     test_env["QT_QPA_PLATFORM"] = "offscreen"
-    run(["ctest", "--test-dir", BUILD_DIR, "-C", "Release", "--output-on-failure",
-         "--timeout", "120", "-R", "^(" + "|".join(targets) + ")$"], env=test_env)
+    for name in [*targets, "qml_hand_order_access_spec"]:
+        run(["ctest", "--test-dir", BUILD_DIR, "-C", "Release", "--output-on-failure",
+             "--no-tests=error", "--timeout", "120", "-R", f"^{name}$"], env=test_env)
 
 
 def build():

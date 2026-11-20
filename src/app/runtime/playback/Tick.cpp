@@ -5,7 +5,6 @@
 #include "core/chart/parser/SimaiParser.h"
 #include "audio/PreviewAudioPlaybackFlowPolicy.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -48,7 +47,7 @@ void miacode::runtime::PlaybackCoordinator::applyQtPreviewPosition(double second
     const bool timelineShouldCenter = centerView && (!state_.playing_ || state_.previewProgressFollowEnabled_);
     if (!state_.playing_
         && state_.timeline_.timelineQuickStateBridge_ != nullptr
-        && (state_.qtPreviewLastTimelineSecond_ < 0.0
+        && (state_.qtPreviewTimelineDirty_ || state_.qtPreviewLastTimelineSecond_ < 0.0
             || qAbs(second - state_.qtPreviewLastTimelineSecond_) >= timelineCadenceSeconds)) {
         state_.qtPreviewPendingTimelineSecond_ = second;
         state_.qtPreviewPendingTimelineCenterView_ = state_.qtPreviewPendingTimelineCenterView_ || timelineShouldCenter;
@@ -103,6 +102,7 @@ qint64 miacode::runtime::PlaybackCoordinator::timelineCadenceWatchdogThresholdMs
 
 void miacode::runtime::PlaybackCoordinator::onTimelineRenderCadenceTick()
 {
+    if (state_.lowPerformanceMode_ && state_.playing_) return;
     if (!state_.playing_) {
         return;
     }
@@ -119,6 +119,7 @@ void miacode::runtime::PlaybackCoordinator::onTimelineRenderCadenceTick()
 
 void miacode::runtime::PlaybackCoordinator::onTimelineCadenceWatchdogTick()
 {
+    if (state_.lowPerformanceMode_ && state_.playing_) return;
     miacode::timeline::cadence::ArbitrationState arbitration;
     arbitration.playing = state_.playing_;
     arbitration.lastCadenceMs = state_.qtPreviewLastTimelineCadenceMs_;
@@ -287,7 +288,8 @@ void miacode::runtime::PlaybackCoordinator::onQtPreviewTickAtSecond(double secon
         cancelSelectionPlayback();
         return;
     }
-    const double playbackEndSecond = previewPlaybackEndSeconds();
+    const double playbackEndSecond = selectionPlayback_.active()
+        ? selectionPlayback_.endSecond() : previewPlaybackEndSeconds();
     const bool reachedEnd = selectionPlayback_.active()
         ? selectionPlayback_.finished(second, kTimelineZeroSecondTolerance)
         : playbackEndSecond > 0.0 && second + kTimelineZeroSecondTolerance >= playbackEndSecond;
@@ -303,7 +305,7 @@ void miacode::runtime::PlaybackCoordinator::onQtPreviewTickAtSecond(double secon
             // note timing as well.
             state_.previewSfxRuntime_->drainEvents(second);
         }
-        finishQtPreviewPlaybackAndReturnToEntry();
+        finishQtPreviewPlaybackAndReturnToEntry(playbackEndSecond);
         return;
     }
 
@@ -433,8 +435,8 @@ void miacode::runtime::PlaybackCoordinator::onQtPreviewTickAtSecond(double secon
                     .arg(playheadDeltaSeconds * 1000.0, 0, 'f', 3)
                     .arg(speedRatio, 0, 'f', 4)
                     .arg(second, 0, 'f', 6)
-                    .arg(previewCanvasUsesFrameSwappedPacing()
-                        ? QStringLiteral("display_refresh")
+                    .arg(state_.lowPerformanceMode_ ? QStringLiteral("low_timer")
+                        : previewCanvasUsesFrameSwappedPacing() ? QStringLiteral("display_refresh")
                         : QStringLiteral("fixed_interval"))
                     .arg(fallbackDeltaSeconds * 1000.0, 0, 'f', 3)
                     .arg(hasAudioClock ? QString::number(audioDeltaSeconds * 1000.0, 'f', 3) : QStringLiteral("na"))

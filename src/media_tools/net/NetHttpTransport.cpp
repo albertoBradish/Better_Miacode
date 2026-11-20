@@ -38,11 +38,13 @@ public:
     std::unique_ptr<QSaveFile> file;
     NetHttpResponse response;
     bool timedOut = false;
+    bool followedRedirect = false;
+    bool completing = false;
 
     void fail(const QString& code)
     {
         if (response.error.isEmpty()) response.error = error(code);
-        if (reply) reply->abort();
+        if (reply && !completing) reply->abort();
     }
 
     void consume()
@@ -72,14 +74,29 @@ public:
         }
     }
 
+    void readAvailable()
+    {
+        const qint64 previousBytes = response.bytes;
+        consume();
+        // File downloads time out only when the response stops making progress.
+        if (file && request.method == "GET" && response.bytes > previousBytes && timer.isActive()) {
+            timer.start(request.timeoutMs);
+        }
+    }
+
     void complete()
     {
-        if (!done) return;
+        if (!done || completing) return;
+        completing = true;
         timer.stop();
         if (reply) {
             consume();
             response.status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            response.http2 = reply->attribute(QNetworkRequest::Http2WasUsedAttribute).toBool();
             if (response.status > 0) response.sent = true;
+            if (timedOut && followedRedirect && response.status >= 300 && response.status < 400) {
+                response.status = 0;
+            }
             response.contentType = reply->rawHeader("Content-Type");
             response.retryAfter = reply->rawHeader("Retry-After");
             const QByteArray lengthHeader = reply->rawHeader("Content-Length");
@@ -125,6 +142,8 @@ public:
         if (file) {
             if (!response.error.isEmpty()) file->cancelWriting();
             else if (!file->commit()) response.error = error(QStringLiteral("file.write_failed"));
+            // Release the temporary file before callbacks clean up its directory.
+            file.reset();
         }
         response.elapsedMs = elapsed.elapsed();
         if (!reply && response.cancelled) response.error = error(QStringLiteral("job.cancelled"));
@@ -176,7 +195,8 @@ NetTransportPort::Cancel NetHttpTransport::request(const NetHttpRequest& value, 
     if ((value.url.scheme() != QLatin1String("https") && value.url.scheme() != QLatin1String("http"))
         || value.url.host().isEmpty() || !value.url.userInfo().isEmpty()
         || (value.method != "GET" && value.method != "POST")
-        || value.maximumBytes <= 0 || value.timeoutMs < 1 || value.timeoutMs > 90000) {
+        || value.maximumBytes <= 0 || value.timeoutMs < 1 || value.timeoutMs > 90000
+        || value.firstByteTimeoutMs < 0 || value.firstByteTimeoutMs > 90000) {
         reject(QStringLiteral("request.invalid"));
     } else {
         if (!value.outputPath.isEmpty()) {
@@ -185,7 +205,11 @@ NetTransportPort::Cancel NetHttpTransport::request(const NetHttpRequest& value, 
         }
         if (transfer->response.error.isEmpty()) {
             QNetworkRequest request(value.url);
-            request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
+            // Downloads redirect from the API host to the CDN, so GETs follow safe
+            // redirects; POSTs stay manual so credentials are never forwarded.
+            request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                value.method == QLatin1String("GET") ? QNetworkRequest::NoLessSafeRedirectPolicy
+                                                     : QNetworkRequest::ManualRedirectPolicy);
             request.setRawHeader("User-Agent", "MiaCode/2 Net");
             request.setRawHeader("Accept", "*/*");
             for (const auto& header : value.headers) request.setRawHeader(header.first, header.second);
@@ -211,11 +235,16 @@ NetTransportPort::Cancel NetHttpTransport::request(const NetHttpRequest& value, 
                 }
             }
             if (transfer->response.error.isEmpty()) {
-                auto* network = manager(value.accountRef);
+                // Use a request-owned pool so a retry cannot reuse a stalled connection
+                // or disturb other transfers on the shared manager.
+                auto* network = value.freshConnection ? new QNetworkAccessManager(transfer) : manager(value.accountRef);
+                if (value.freshConnection) network->setProxy(proxy_);
                 transfer->reply = value.method == "GET" ? network->get(request)
                     : multipart ? network->post(request, multipart) : network->post(request, value.body);
                 if (multipart) multipart->setParent(transfer->reply);
-                connect(transfer->reply, &QNetworkReply::readyRead, transfer, [transfer] { transfer->consume(); });
+                connect(transfer->reply, &QNetworkReply::redirected, transfer,
+                    [transfer] { transfer->followedRedirect = true; });
+                connect(transfer->reply, &QNetworkReply::readyRead, transfer, [transfer] { transfer->readAvailable(); });
                 if (value.method == "POST") connect(transfer->reply, &QNetworkReply::uploadProgress, transfer,
                     [transfer](qint64 sent, qint64 total) {
                         if (sent > 0) transfer->response.sent = true;
@@ -226,7 +255,7 @@ NetTransportPort::Cancel NetHttpTransport::request(const NetHttpRequest& value, 
                     transfer->timedOut = true;
                     if (transfer->reply) transfer->reply->abort();
                 });
-                transfer->timer.start(value.timeoutMs);
+                transfer->timer.start(value.firstByteTimeoutMs > 0 ? value.firstByteTimeoutMs : value.timeoutMs);
             } else delete multipart;
         }
     }

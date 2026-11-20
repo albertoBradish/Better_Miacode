@@ -13,6 +13,8 @@ Item {
     property var imageResources: null
 
     readonly property bool jobActive: !!root.progress && root.progress.active
+    readonly property var computationStages: root.progress?.stages ?? []
+    readonly property bool stagedJob: root.computationStages.length > 0
     readonly property bool chartExportActive: !!root.progress
         && root.progress.active
         && root.progress.chartExport
@@ -31,20 +33,48 @@ Item {
 
     AppDialog {
         objectName: "jobProgressCard"
+        // A result-preview dialog may open just after the job begins. The
+        // shared computation surface must remain above it until completion.
+        z: 1000
         visible: root.jobActive
-        preferredWidth: root.chartExportActive && root.hasImageResources ? 520 : 420
+        preferredWidth: root.chartExportActive && root.hasImageResources ? 520 : root.stagedJob ? 480 : 420
         preferredHeight: root.chartExportActive && root.hasImageResources
-            ? 499 : Theme.dialogCompactHeight
+            ? 499 : root.stagedJob ? 370 : Theme.dialogCompactHeight
         closePolicy: Popup.NoAutoClose
         title: root.progress ? root.progress.title : ""
 
         body: ColumnLayout {
             spacing: root.progressBodySpacing
+            Repeater {
+                model: root.computationStages
+                delegate: RowLayout {
+                    required property var modelData
+                    required property int index
+                    objectName: "jobProgressStage_" + index
+                    Layout.fillWidth: true
+
+                    Label {
+                        objectName: "jobProgressStageName_" + index
+                        Layout.fillWidth: true
+                        text: modelData.name
+                        elide: Text.ElideRight
+                        color: Theme.colors.text.primary
+                    }
+                    Label {
+                        objectName: "jobProgressStagePercent_" + index
+                        text: qsTrId("hand_order.progress.percent").arg(modelData.percent)
+                        color: Theme.colors.text.secondary
+                    }
+                }
+            }
+
             Text {
                 objectName: "jobProgressLabel"
                 Layout.fillWidth: true
                 visible: !root.chartExportActive
-                text: root.progress ? root.progress.label : ""
+                text: root.progress && root.progress.paused
+                    ? qsTrId("hand_order.compute.paused") + "\n" + root.progress.label
+                    : root.progress ? root.progress.label : ""
                 color: Theme.colors.text.secondary
                 wrapMode: Text.WordWrap
             }
@@ -71,13 +101,31 @@ Item {
                 maximumLineCount: 1
             }
 
+            Label {
+                objectName: "jobProgressOverall"
+                Layout.fillWidth: true
+                visible: root.stagedJob
+                text: qsTrId("hand_order.workflow.total_progress").arg(root.progress?.percent ?? 0)
+                color: Theme.colors.text.primary
+            }
+
             ProgressBar {
                 objectName: "jobProgressBar"
                 Layout.fillWidth: true
                 from: 0
                 to: 100
-                indeterminate: !!root.progress && root.progress.indeterminate
+                indeterminate: !!root.progress && root.progress.indeterminate && !root.progress.paused
                 value: root.progress ? root.progress.percent : 0
+            }
+
+            Label {
+                objectName: "jobProgressEta"
+                Layout.fillWidth: true
+                visible: root.stagedJob
+                text: root.progress?.remainingSeconds >= 0
+                    ? qsTrId("hand_order.workflow.total_eta").arg(root.progress.remainingSeconds)
+                    : qsTrId("hand_order.progress.estimating")
+                color: Theme.colors.text.secondary
             }
 
             Item {
@@ -139,10 +187,22 @@ Item {
 
         footer: DialogFooter {
             visible: !!root.progress && root.progress.cancellable
-            choices: [{ id: "cancel", label: root.progress && root.progress.cancelRequested
-                         ? qsTrId("qml.cancelling") : qsTrId("action.cancel"),
-                        enabled: !!root.progress && !root.progress.cancelRequested }]
-            onChosen: root.progress.requestCancel()
+            choices: {
+                const actions = []
+                if (root.progress && root.progress.pausable)
+                    actions.push({ id: "pause", label: root.progress.paused
+                        ? qsTrId("hand_order.compute.resume") : qsTrId("hand_order.compute.pause"),
+                        enabled: !root.progress.cancelRequested })
+                actions.push({ id: "cancel", label: root.progress && root.progress.cancelRequested
+                    ? qsTrId("qml.cancelling") : root.progress && root.progress.pausable
+                        ? qsTrId("hand_order.compute.exit") : qsTrId("action.cancel"),
+                    enabled: !!root.progress && !root.progress.cancelRequested })
+                return actions
+            }
+            onChosen: choiceId => {
+                if (choiceId === "pause") root.progress.requestPauseToggle()
+                else root.progress.requestCancel()
+            }
         }
     }
 }

@@ -90,6 +90,7 @@ public:
     ChartWorkspaceResult replaceActiveDifficultyChart(const QString& chartText);
     bool updateDocumentField(ChartWorkspaceDocumentField field, const QString& value);
     ChartWorkspaceResult replaceExtraFields(const QString& value);
+    ChartWorkspaceResult replaceExtraFields(const QVector<SimaiRawField>& fields);
     // Metadata-form replacement: parse unmanaged fields and carry the dedicated
     // clock_count value in the same workspace transaction.
     ChartWorkspaceResult replaceExtraFields(
@@ -138,8 +139,24 @@ public:
     bool metadataDirty() const;
     bool rebindSavePoint(const QString& savedSourceText);
 
+    struct SongState {
+        ChartWorkspaceSnapshot snapshot;
+        SimaiDocument document, savedDocument;
+        QString savedSource;
+        QMap<int, QString> normalizationOriginals;
+        bool unifiedDesigner;
+        quint64 identity;
+    };
+    SongState captureSong() const;
+    void restoreSong(const SongState& state);
+    quint64 songIdentity() const { return songIdentity_; }
     ChartWorkspaceSnapshot snapshot() const;
     const SimaiDocument& document() const;
+    const QString& savedSourceText() const { return savedSourceText_; }
+    void applyNormalizedDocument(const SimaiDocument& document, const QString& savedSource,
+                                 const QMap<int, QString>& originals);
+    QString takeNormalizationOriginalChart(int difficultyId, const QString& normalized);
+
 
 signals:
     // Every accepted state transaction emits exactly once with its resulting
@@ -153,6 +170,7 @@ private:
     void refreshSourceAndDirty();
 
     SimaiDocument document_;
+    QMap<int, QString> normalizationOriginals_;
     QVector<int> computeDirtyDifficultyIds() const;
 
     QString sourceText_;
@@ -166,6 +184,7 @@ private:
     bool hasDocument_ = false;
     bool dirty_ = false;
     bool unifiedDesignerEnabled_ = false;
+    quint64 songIdentity_ = 0;
     quint64 documentOpenGeneration_ = 0;
     ChartDocumentOrigin origin_ = ChartDocumentOrigin::Local;
 };

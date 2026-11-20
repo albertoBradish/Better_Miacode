@@ -717,6 +717,64 @@ bool verifyMineSkinCanFallBackToNormalArt(QTextStream& err)
                err);
 }
 
+bool verifyHandTintKeepsTapAndHoldMaterials(QTextStream& err)
+{
+    PreviewFrameState state;
+    state.playheadSeconds = 0.9;
+    state.skin.tapImage = solidImage(64, 64);
+    state.skin.tapBreakImage = solidImage(65, 65);
+    state.skin.tapEachImage = solidImage(66, 66);
+    state.skin.tapMineImage = solidImage(67, 67);
+    state.skin.tapExImage = solidImage(64, 64);
+    state.skin.holdImage = solidImage(32, 64);
+    state.skin.holdOnImage = solidImage(32, 64);
+    state.skin.holdBreakImage = solidImage(33, 64);
+    state.skin.holdBreakOnImage = solidImage(33, 64);
+    state.skin.holdEachImage = solidImage(34, 64);
+    state.skin.holdEachOnImage = solidImage(34, 64);
+    state.skin.holdMineImage = solidImage(35, 64);
+    state.skin.holdExImage = solidImage(32, 64);
+
+    for (int variant = 0; variant < 3; ++variant) {
+        for (const QString& type : {QStringLiteral("tap"), QStringLiteral("hold")}) {
+            TimelineNoteMarker marker;
+            marker.type = type;
+            marker.second = 1.0;
+            marker.endSecond = type == QLatin1String("hold") ? 1.5 : -1.0;
+            marker.lane = 1;
+            marker.isBreak = variant == 0 || variant == 2;
+            marker.isEx = variant == 0 || variant == 2;
+            marker.isEach = variant == 1;
+            marker.isMine = variant == 2;
+            marker.handOrderHead = HandOrderHand::Left;
+            state.noteMarkers = {marker};
+
+            state.render.showHandOrderAnnotations = false;
+            const PreviewHeadLayerState original = buildFallbackHeadLayerState(state);
+            state.render.showHandOrderAnnotations = true;
+            const PreviewHeadLayerState colored = buildFallbackHeadLayerState(state);
+            if (!require(!original.sprites.isEmpty() && colored.sprites.size() == original.sprites.size(),
+                         QStringLiteral("hand tint retains %1 variant %2 sprites").arg(type).arg(variant), err)) {
+                return false;
+            }
+            for (int index = 0; index < colored.sprites.size(); ++index) {
+                const auto& before = original.sprites.at(index);
+                const auto& after = colored.sprites.at(index);
+                if (!require(before.handOrderHand == HandOrderHand::Unspecified
+                                 && after.handOrderHand == HandOrderHand::Left
+                                 && before.image != nullptr && after.image != nullptr
+                                 && *before.image == *after.image
+                                 && before.sourceRect == after.sourceRect
+                                 && before.effect == after.effect,
+                             QStringLiteral("hand tint keeps %1 variant %2 art, slices and effect").arg(type).arg(variant), err)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool verifySlideMineComponentsSelectIndependentArt(QTextStream& err)
 {
     using namespace miacode::preview::scene;
@@ -928,6 +986,9 @@ int main(int argc, char* argv[])
         return 1;
     }
     if (!verifyMineSkinCanFallBackToNormalArt(err)) {
+        return 1;
+    }
+    if (!verifyHandTintKeepsTapAndHoldMaterials(err)) {
         return 1;
     }
     if (!verifySlideMineComponentsSelectIndependentArt(err)) {

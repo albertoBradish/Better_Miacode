@@ -148,6 +148,11 @@ bool initLinuxOutputDevice(quint32 sampleRate, int* selectedDeviceOut)
 
 namespace {
 
+void CALLBACK routeDsp(HDSP, DWORD, void* buffer, DWORD bytes, void* user)
+{
+    static_cast<PreviewOutputRoute*>(user)->process(static_cast<float*>(buffer), bytes / sizeof(float));
+}
+
 // Output-glitch DSP callback. Runs on BASS's own mixing thread (there is no
 // separate "audio thread" spawned by MiaCode for the master mixer -- BASS pulls
 // masterMixer_ synchronously when the output driver wants data, and every DSP
@@ -459,6 +464,9 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
         return false;
     }
     if (!bassDeviceLease_.acquired()) {
+        // The first mixer's lease may outlive that backend when several preview
+        // windows share the device. Its finalizer owns the device id, not this.
+        auto leasedDevice = std::make_shared<int>(bassOutputDeviceIndex_);
         bassDeviceLease_ = miacode::preview_audio::PreviewBassDeviceLease::acquire({
             [this] {
 #ifdef Q_OS_WIN
@@ -474,7 +482,7 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
                     : miacode::preview_audio::BassDeviceLeaseApi::kNoDevice;
 #endif
             },
-            [this] {
+            [this, leasedDevice] {
 #ifdef Q_OS_WIN
                 return BASS_Init(
                            bassOutputDeviceIndex_,
@@ -490,18 +498,20 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
                 bassOutputDeviceIndex_ = selectedDevice >= 0
                     ? selectedDevice
                     : static_cast<int>(BASS_GetDevice());
+                *leasedDevice = bassOutputDeviceIndex_;
                 return true;
 #else
                 if (!BASS_Init(-1, static_cast<int>(deviceSampleRate_), 0, nullptr, nullptr)) {
                     return false;
                 }
                 bassOutputDeviceIndex_ = static_cast<int>(BASS_GetDevice());
+                *leasedDevice = bassOutputDeviceIndex_;
                 return true;
 #endif
             },
-            [this] {
-                if (bassOutputDeviceIndex_ >= 0) {
-                    BASS_SetDevice(static_cast<DWORD>(bassOutputDeviceIndex_));
+            [leasedDevice] {
+                if (*leasedDevice >= 0) {
+                    BASS_SetDevice(static_cast<DWORD>(*leasedDevice));
                 }
                 BASS_Free();
             },
@@ -564,6 +574,14 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
             QString("reused=0 elapsed_ms=%1 ok=0 reason=master_mixer").arg(timer.elapsed()),
             true);
         return false;
+    }
+    if (outputRoute_) {
+        if (!BASS_ChannelSetDSPEx(masterMixer_, routeDsp, outputRoute_.get(), -1000, BASS_DSP_FLOAT)) {
+            BASS_StreamFree(masterMixer_);
+            masterMixer_ = 0;
+            bassDeviceLease_.release();
+            return false;
+        }
     }
     masterMixerBytesPerSecond_ = static_cast<double>(BASS_ChannelSeconds2Bytes(masterMixer_, 1.0));
     const miacode::preview_audio::bass::MasterMixerPolicy mixerPolicy =

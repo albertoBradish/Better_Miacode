@@ -210,6 +210,48 @@ void appendClockCountPlaybacks(
 
 namespace miacode::video_export {
 
+double videoExportAlignedDurationSeconds(const VideoExportTask& task)
+{
+    return videoExportTiming(task).alignedTotalSeconds;
+}
+
+VideoExportTiming videoExportTiming(const VideoExportTask& task)
+{
+    const int fps = qMax(1, task.fps);
+    VideoExportTiming timing;
+    // Full-range exports front-pad a 2 s count-down lead-in before chart 0 (the
+    // playfield previews chart-time -leadIn → 0 with the HUD ramping -2s → 0s). The
+    // maimai intro is an ADDITIONAL front-pad ON TOP of that lead-in: the wipe
+    // retract hands off to the live lead-in preview, which then runs out to chart 0
+    // (music + clock_count). So the intro does NOT replace the lead-in.
+    timing.leadInSeconds = task.fullRangeExport
+        ? miacode::video_export::kLeadInSeconds
+        : miacode::video_export::kPartialRangePreloadSeconds;
+    // Pre-roll maimai track-start intro: extra padding in FRONT of the lead-in
+    // (full-range exports only). The chart timeline origin, total duration and
+    // frame count all absorb it, so the existing linear frame->chart-second
+    // mapping still reaches -leadIn at frame introFrameCount and chart 0 at the
+    // same wall-time as the rendered intro hand-off. The classic window is
+    // silence here (the opening SFX is mixed later); the PV preview carries its
+    // music segment as introPreviewTrack.
+    timing.introLeadSeconds = (task.fullRangeExport && task.intro.enabled)
+        ? introDurationSeconds(task.intro)
+        : 0.0;
+    timing.introFrameCount = timing.introLeadSeconds > 0.0
+        ? qMax(0, qRound(timing.introLeadSeconds * fps))
+        : 0;
+    timing.totalSeconds =
+        timing.introLeadSeconds + timing.leadInSeconds + qMax(0.0, task.contentDurationSeconds);
+    timing.frameCount = qMax(1, qRound(timing.totalSeconds * fps));
+    timing.alignedTotalSeconds = static_cast<double>(timing.frameCount) / fps;
+    // Dev preview cap: encode only the leading frames, keeping the full timeline.
+    timing.outputFrameCount = task.previewMaxOutputSeconds > 0.0
+        ? qBound(1, qRound(task.previewMaxOutputSeconds * fps), timing.frameCount)
+        : timing.frameCount;
+    timing.outputSeconds = static_cast<double>(timing.outputFrameCount) / fps;
+    return timing;
+}
+
 bool buildVideoExportAudioRenderPlan(
     const VideoExportTask& task,
     VideoExportAudioRenderPlan* plan,
@@ -228,36 +270,18 @@ bool buildVideoExportAudioRenderPlan(
     PreviewTimingSettings normalizedTimingSettings = task.timingSettings;
     normalizedTimingSettings.normalize();
 
+    const VideoExportTiming timing = videoExportTiming(task);
     VideoExportAudioRenderPlan built;
     built.segmentStartSecond = qMax(0.0, task.exportStartSeconds);
-    const double segmentDurationSeconds = qMax(0.0, task.contentDurationSeconds);
-    built.segmentEndSecond = built.segmentStartSecond + segmentDurationSeconds;
-    // Full-range exports front-pad a 2 s count-down lead-in before chart 0 (the
-    // playfield previews chart-time -leadIn → 0 with the HUD ramping -2s → 0s). The
-    // maimai intro is an ADDITIONAL front-pad ON TOP of that lead-in: the wipe
-    // retract hands off to the live lead-in preview, which then runs out to chart 0
-    // (music + clock_count). So the intro does NOT replace the lead-in.
-    built.leadInSeconds = task.fullRangeExport
-        ? miacode::video_export::kLeadInSeconds
-        : miacode::video_export::kPartialRangePreloadSeconds;
-    // Pre-roll maimai track-start intro: extra padding in FRONT of the lead-in
-    // (full-range exports only). The chart timeline origin, total duration and
-    // frame count all absorb it, so the existing linear frame->chart-second
-    // mapping still reaches -leadIn at frame introFrameCount and chart 0 at the
-    // same wall-time as the rendered intro hand-off. The classic window is
-    // silence here (the opening SFX is mixed later); the PV preview carries its
-    // music segment as introPreviewTrack.
-    built.introLeadSeconds = (task.fullRangeExport && task.intro.enabled)
-        ? introDurationSeconds(task.intro)
-        : 0.0;
-    built.introFrameCount = built.introLeadSeconds > 0.0
-        ? qMax(0, qRound(built.introLeadSeconds * qMax(1, task.fps)))
-        : 0;
+    built.segmentEndSecond = built.segmentStartSecond + qMax(0.0, task.contentDurationSeconds);
+    built.leadInSeconds = timing.leadInSeconds;
+    built.introLeadSeconds = timing.introLeadSeconds;
+    built.introFrameCount = timing.introFrameCount;
     built.timelineOriginSecond =
         built.segmentStartSecond - built.leadInSeconds - built.introLeadSeconds;
-    built.totalSeconds = built.introLeadSeconds + built.leadInSeconds + segmentDurationSeconds;
-    built.frameCount = qMax(1, qRound(built.totalSeconds * qMax(1, task.fps)));
-    built.alignedTotalSeconds = static_cast<double>(built.frameCount) / qMax(1, task.fps);
+    built.totalSeconds = timing.totalSeconds;
+    built.frameCount = timing.frameCount;
+    built.alignedTotalSeconds = timing.alignedTotalSeconds;
     built.sfxDirectory = resolveSfxDirectory();
     built.exportMarkers = filteredMarkersForRange(
         task.noteMarkers,
@@ -312,8 +336,7 @@ bool buildVideoExportAudioRenderPlan(
             introPlan.gain = built.backgroundTrack.gain;
             introPlan.sourceStartSecond = qMax(0.0, task.intro.pvPreviewStartSeconds);
             introPlan.mixStartSecond = 0.0;
-            introPlan.durationSeconds =
-                miacode::intro::kPvPreviewHoldSeconds + miacode::intro::kPvPreviewAudioTailSeconds;
+            introPlan.durationSeconds = introPreviewMusicSeconds(task.intro);
             introPlan.fadeInSeconds = miacode::intro::kPvPreviewAudioFadeInSeconds;
             introPlan.fadeOutSeconds = miacode::intro::kPvPreviewAudioFadeOutSeconds;
             built.introPreviewTrack = introPlan;

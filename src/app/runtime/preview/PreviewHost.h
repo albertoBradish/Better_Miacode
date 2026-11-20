@@ -58,6 +58,7 @@ public:
     void applySfxLevels() override;
     void prepareForShutdown() override;
     PreviewAudioSettings audioSettings() const override;
+    PreviewTimingSettings audioTiming() const override;
     void applyAudioSettings(const PreviewAudioSettings& settings) override;
     void saveAudioSettingsAsSoftwareDefault() override;
     void restoreAudioSettingsFromSoftwareDefault() override;

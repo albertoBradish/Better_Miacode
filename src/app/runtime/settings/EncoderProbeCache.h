@@ -4,6 +4,8 @@
 
 #include "export/video_export/EncoderProbeCache.h"
 #include "common/DebugLog.h"
+#include "common/RuntimePaths.h"
+#include <QDir>
 #include <QSettings>
 
 namespace miacode::runtime {
@@ -13,8 +15,9 @@ class SettingsEncoderProbeCache final : public miacode::video_export::EncoderPro
 public:
     QString preferredHardwareEncoder() const override
     {
-        QSettings settings(QDir(miacode::runtime_paths::directory("cache")).filePath(
-            QStringLiteral("encoder-probe.ini")), QSettings::IniFormat);
+        const QString path = cachePath();
+        if (path.isEmpty()) return {};
+        QSettings settings(path, QSettings::IniFormat);
         const QString codec = settings.value(key()).toString().trimmed();
         if (settings.status() != QSettings::NoError) {
             miacode::debug_log::appendLine(miacode::debug_log::Channel::Export,
@@ -28,8 +31,9 @@ public:
     }
     void rememberPreferredHardwareEncoder(const QString& codec) override
     {
-        QSettings settings(QDir(miacode::runtime_paths::directory("cache")).filePath(
-            QStringLiteral("encoder-probe.ini")), QSettings::IniFormat);
+        const QString path = cachePath();
+        if (path.isEmpty()) return;
+        QSettings settings(path, QSettings::IniFormat);
         settings.setValue(key(), codec);
         settings.sync();
         if (settings.status() != QSettings::NoError) {
@@ -40,6 +44,11 @@ public:
         }
     }
 private:
+    static QString cachePath()
+    {
+        const QString root = miacode::runtime_paths::cacheDirectory();
+        return root.isEmpty() ? QString() : QDir(root).filePath(QStringLiteral("video_export_runtime.ini"));
+    }
     static QString key()
     {
         return QStringLiteral("video_export/runtime_probe/preferred_hardware_encoder");

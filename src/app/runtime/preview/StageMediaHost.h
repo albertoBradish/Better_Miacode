@@ -1,5 +1,8 @@
 #pragma once
 
+#include "core/chart/ChartVersion.h"
+#include <optional>
+
 #include "app/runtime/Session.h"
 
 namespace miacode::runtime {
@@ -67,15 +70,14 @@ public:
     QString resolveDefaultTrackPath() const;
     PreviewOutlineVariant previewOutlineVariantFromStorageValue(const QString& value) const;
     QString previewOutlineVariantStorageValue() const;
-    PreviewOutlineVariant autoPreviewOutlineVariantForChart(const QString& chartPath) const;
     PreviewOutlineVariant effectivePreviewOutlineVariant() const;
     void applyEffectivePreviewOutlineVariantToCanvas();
-    void setPauseDisplayAltHoldActive(bool active);
     void setTouchPadAuthoringCtrlHoldActive(bool active);
     void applyPreviewOutlineVariant(PreviewOutlineVariant variant, bool useAutoSelection, bool persistState);
     QString resolvePreviewCustomOutlineDir() const;
     QString resolvePreviewCustomOutlinePath() const;
     QString effectivePreviewCustomOutlinePath() const;
+    void refreshChartVersion();
     QString currentPreviewCustomOutlineFileName() const;
     QStringList availablePreviewCustomOutlineFileNames() const;
     void applyPreviewCustomOutlineFileName(const QString& fileName, bool persistState);
@@ -86,13 +88,19 @@ public:
     QString resolvePreviewSkinDir() const;
     QString resolvePreviewSkinRootDir() const;
     void applyPreviewAudioSettingsToRuntime();
-    // Per-project mixer persistence (<chartDir>/.miacode/preferences.json,
+    // Per-project mixer persistence (isolated runtime project preferences,
     // key "preview_audio"). The app-level local preset only seeds a project
     // that has never stored a mixer of its own.
     void loadProjectAudioPreferences();
     void saveProjectAudioPreferences() const;
 
 private:
+    miacode::chart_version::Version currentChartVersion() const;
+    mutable QByteArray versionSignature_;
+    mutable QString storedVersion_;
+    mutable QString storedMetadata_;
+    mutable std::optional<miacode::chart_version::Version> cachedVersion_;
+    quint64 invalidatedMediaWarmupGeneration_ = 0;
     Session& session_;
     RuntimeContext::Ui& ui_;
     RuntimeContext::State& state_;

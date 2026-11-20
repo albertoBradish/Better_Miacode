@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Window
 import QtQuick.Dialogs
 import MiaCode.UI
@@ -29,6 +30,11 @@ Item {
     visible: false
     width: 0
     height: 0
+
+    AppToast {
+        id: toast
+        parent: root.Overlay.overlay
+    }
 
     // Every request carries startFolder (UiRequestService supplies a default),
     // so the shared dialogs never reopen in the previous pick's folder.
@@ -62,6 +68,7 @@ Item {
 
     Connections {
         target: root.requests
+        function onToastRequested(severity, text) { toast.present(severity, text) }
         function onFileRequested(requestId, request) { root.openRequest(requestId, request) }
         function onFileUpdated(requestId, request) {
             if (requestId === root.activeFileRequestId) root.fileRequest = request
@@ -91,6 +98,7 @@ Item {
         parentWindow: root.Window.window
         modality: Qt.WindowModal
         title: root.fileRequest.title || ""
+        defaultSuffix: root.fileRequest.defaultSuffix || ""
         nameFilters: root.fileRequest.nameFilters && root.fileRequest.nameFilters.length > 0
                      ? root.fileRequest.nameFilters : [qsTrId("qml.all_files")]
         onAccepted: {

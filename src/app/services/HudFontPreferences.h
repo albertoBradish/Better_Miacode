@@ -10,7 +10,7 @@ namespace miacode::hud_preferences {
 
 inline QString areaKey(preview::scene::PreviewHudFontArea area)
 {
-    static const char* keys[] = {"chart_info", "timestamp", "center_display", "object_stats", "debug_info"};
+    static const char* keys[] = {"chart_info", "timestamp", "center_display", "object_stats", "debug_info", "extra_info"};
     return QString::fromLatin1(keys[static_cast<int>(area)]);
 }
 

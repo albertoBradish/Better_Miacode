@@ -5,6 +5,7 @@
 #include <QVector>
 
 #include "core/scene/PreviewAnimatedSpriteHelpers.h"
+#include "core/chart/model/TimelineData.h"
 
 class QImage;
 
@@ -25,6 +26,11 @@ struct PreviewSpriteDescriptor {
     QPointF revealDirection;
     QRectF sourceRect;
     PreviewAnimatedSpriteEffect effect = PreviewAnimatedSpriteEffect::None;
+    HandOrderHand handOrderHand = HandOrderHand::Unspecified;
+    // Optional screen-space half-plane, shared by preview and export QSG.
+    // A zero normal leaves the complete original sprite visible.
+    QPointF handOrderClipOrigin;
+    QPointF handOrderClipNormal;
     bool cacheable = true;
 };
 

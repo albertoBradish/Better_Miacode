@@ -16,6 +16,9 @@ Item {
     // edits through applyRange and maps window offsets to preview seconds.
     property string objectNamePrefix: "exportRange"
     property bool fixedLength: false
+    property bool highlightRange: false
+    property real highlightStartSeconds: 0
+    property real highlightEndSeconds: 0
     property var applyRange: function(start, end) { exportSession.setExportRangeSeconds(start, end) }
     property var previewSecondFor: function(second) { return previewSecondForRangeSecond(second) }
     // fixedLength: where the playhead sits in the window (seconds from its
@@ -382,6 +385,15 @@ Item {
             height: lane.trackHeight
             radius: height * 0.5
             color: Theme.colors.accent.muted
+        }
+
+        Rectangle {
+            visible: root.highlightRange
+            x: lane.xForSecond(root.highlightStartSeconds)
+            width: Math.max(1, lane.xForSecond(root.highlightEndSeconds) - x)
+            y: lane.trackY - 2
+            height: 2
+            color: Theme.colors.syntax.warning
         }
 
         Rectangle {

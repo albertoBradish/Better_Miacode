@@ -19,6 +19,7 @@ signals:
     // it fires per frame during playback and nothing else should re-read that
     // often.
     void previewPlayheadChanged();
+    void previewOutputRouteChanged(double gain, double pan);
     void previewSkinDirectoryChanged();
     // A preview render setting (brightness, scale, flow speed, HUD toggles) was
     // written. Preview Settings and the export page both write that one live

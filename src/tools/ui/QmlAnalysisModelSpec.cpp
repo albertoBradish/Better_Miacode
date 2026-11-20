@@ -86,7 +86,7 @@ bool verifyWorkspaceSnapshotProjection(QTextStream& err)
     snapshot.validation.ok = false;
     snapshot.validation.errorCount = 1;
     snapshot.validation.strictNoteCount = 7;
-    snapshot.validation.issues = {{3, 4, 6, SimaiValidationSeverity::Error,
+    snapshot.validation.issues = {{3, 4, 6, SimaiValidationSeverity::Error, false,
                                    QStringLiteral("bad note"), QStringLiteral("Bad note")}};
     TimelineNoteMarker marker;
     marker.second = 12.5;

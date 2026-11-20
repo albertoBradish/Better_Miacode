@@ -12,12 +12,32 @@ Rectangle {
     required property var syncController
     required property var analysisSession
     property var preferences: null
+    property var preferencesModel: null
+    property var shortcuts: null
+    property var handOrderService: null
+    function applyPatternChoices(keys, choice) { return sourceArea.applyPatternChoices(keys, choice) }
+    function applyPatternChoice(group, variant) { return sourceArea.applyPatternChoice(group, variant) }
+    property var chartStructure: null
     readonly property bool overviewRulerEnabled: preferences ? preferences.editorOverviewRulerEnabled : false
+    readonly property var sceneWindow: root.Window.window
+    onSceneWindowChanged: {
+        editorContextMenu?.close()
+        bookmarkMenu?.close()
+        completionPopup?.close()
+        handOrderDetails?.close()
+        handOrderIntervals?.close()
+        nativeSlideSplitDialog?.close()
+        handOrderAnalysisDialog?.close()
+        ++editorRailSceneRevision
+    }
     property bool navigationVisible: false
     onNavigationVisibleChanged: {
         if (!navigationVisible) {
             editorContextMenu.close()
             bookmarkMenu.close()
+            handOrderIntervals.close()
+            handOrderAnalysisDialog.close()
+            nativeSlideSplitDialog.close()
         }
     }
     property int pendingBookmarkLine: -1
@@ -41,9 +61,22 @@ Rectangle {
     }
     readonly property real editorRailRightMargin:
         width - alignRailCoordinate(width, editorRailSceneX)
+    component EditorScrollThumb: Rectangle {
+        required property bool scrollActive
+        required property bool highlighted
+        implicitWidth: 6
+        implicitHeight: 6
+        radius: Math.min(width, height) / 2
+        opacity: scrollActive ? 0.5 : 0
+        color: highlighted ? Theme.colors.scroll.handleHover : Theme.colors.scroll.handle
+        Behavior on opacity { NumberAnimation { duration: 150 } }
+    }
+
+    signal playbackToggleRequested()
     signal normalizeChartRequested()
     signal completionSettingsRequested(string group)
     function focusEditor() { sourceArea.forceActiveFocus() }
+    readonly property Item inputItem: sourceArea
     readonly property var bookmarks: sourceArea.bookmarks
     readonly property bool canUndo: sourceArea.canUndo
     readonly property bool canRedo: sourceArea.canRedo
@@ -129,7 +162,24 @@ Rectangle {
     function openFindReplace() { findReplaceBar.show() }
     function exportSelectionRange() { sourceArea.exportSelectionRange() }
     function playSelection() { syncController.playSelection() }
-    function applyChartTransform(operation) { return sourceArea.applyChartTransform(operation) }
+    function applyChartTransform(operation) {
+        if (operation.startsWith("hand_order.") && !root.editorController.handOrderFeaturesEnabled) return false
+        sourceArea.forceActiveFocus()
+        if (operation === "hand_order.split_native_slide") {
+            const prepared = sourceArea.prepareNativeSlideSplit()
+            if (prepared) nativeSlideSplitDialog.open()
+            return prepared
+        }
+        if (operation === "hand_order.analyze" || operation === "hand_order.optimize" || operation === "hand_order.play_review") {
+            const started = sourceArea.prepareHandOrderAnalysis(false, operation === "hand_order.play_review")
+            if (root.handOrderService) handOrderAnalysisDialog.open()
+            return started
+        }
+        const applied = sourceArea.applyChartTransform(operation)
+        if (operation === "hand_order.split_annotation" && editorController.handOrderSplitAvailable)
+            handOrderIntervals.open()
+        return applied
+    }
     function applyBpmImport(original, replacement, difficulty, revision) { return sourceArea.applyBpmImport(original, replacement, difficulty, revision) }
     function applyNormalization(options) { return sourceArea.applyNormalization(options) }
     function selectionDescription() {
@@ -193,6 +243,9 @@ Rectangle {
         property int contextDifficulty: -1
         property double contextRevision: 0
         property double contextGeneration: 0
+        property int contextSelectionStart: 0
+        property int contextSelectionEnd: 0
+        property bool canSetDrop: false
         onClosed: {
             const operation = pendingOperation
             pendingOperation = ""
@@ -204,7 +257,7 @@ Rectangle {
                 executeOperation(operation)
             }
         }
-        parent: Overlay.overlay
+        parent: root.Overlay.overlay
 
         property rect placement: Qt.rect(0, 0, 0, 0)
         property int anchorPosition: 0
@@ -266,6 +319,11 @@ Rectangle {
             contextRevision = root.documentSession.documentRevision
             contextGeneration = root.documentSession.documentOpenGeneration
             const selected = root.canCopy
+            contextSelectionStart = sourceArea.selectionStart
+            contextSelectionEnd = sourceArea.selectionEnd
+            canSetDrop = selected && !sourceArea.readonly && root.chartStructure !== null
+                && root.chartStructure.canSetDropFromEditorSelection(contextDifficulty,
+                    contextRevision, contextGeneration, sourceArea.text, contextSelectionStart, contextSelectionEnd)
             const transform = root.canTransform
             const normalize = root.canNormalize
             if (menuEntries.count > 0 && selected === hasSelection
@@ -291,8 +349,11 @@ Rectangle {
             action("qml.find_and_replace", "find")
             if (selected || normalize)
                 separator()
-            if (selected)
+            if (selected) {
                 action("qml.export_selection", "export")
+                action("editor.set_selection_as_drop", "set_drop")
+                action("editor.clear_drop", "clear_drop")
+            }
             if (transform) {
                 separator()
                 for (const section of [0, 2]) {
@@ -304,6 +365,16 @@ Rectangle {
             }
             if (normalize)
                 action("qml.normalize_whole_chart", "normalize")
+            if (normalize && root.editorController.handOrderFeaturesEnabled)
+                action("hand_order.basic_layout", "hand_order.basic_layout")
+            if (normalize && !transform && root.editorController.handOrderFeaturesEnabled)
+                action("hand_order.bisect_annotation", "hand_order.bisect_annotation")
+            if (normalize && root.editorController.handOrderFeaturesEnabled)
+                action("hand_order.analyze", "hand_order.analyze")
+            if (normalize && root.editorController.handOrderFeaturesEnabled)
+                action("hand_order.play_review", "hand_order.play_review")
+            if (transform && root.editorController.handOrderFeaturesEnabled)
+                rows.push({ kind: "handOrder", labelKey: "hand_order.title", operation: "" })
             if (transform)
                 rows.push({ kind: "submenu", labelKey: "action.transform.more", operation: "" })
             menuEntries.clear()
@@ -323,6 +394,17 @@ Rectangle {
             case "find": root.openFindReplace(); break
             case "export": root.exportSelectionRange(); break
             case "play_selection": root.playSelection(); break
+            case "set_drop":
+                if (!sourceArea.readonly && sourceArea.selectionStart === contextSelectionStart
+                        && sourceArea.selectionEnd === contextSelectionEnd) {
+                    root.chartStructure?.setDropFromEditorSelection(contextDifficulty,
+                        contextRevision, contextGeneration, sourceArea.text, contextSelectionStart, contextSelectionEnd)
+                }
+                break
+            case "clear_drop":
+                if (!sourceArea.readonly && root.chartStructure?.dropAvailable)
+                    root.chartStructure.clearDrop()
+                break
             case "normalize": root.normalizeChartRequested(); break
             default: root.applyChartTransform(operation); break
             }
@@ -343,13 +425,36 @@ Rectangle {
                         enabled: operation === "play_selection" ? root.syncController.canPlaySelection
                             : operation === "cut" ? root.canCut
                             : operation === "copy" ? root.canCopy
-                            : operation === "paste" ? root.canPaste : true
+                            : operation === "paste" ? root.canPaste
+                            : operation === "set_drop" ? editorContextMenu.canSetDrop
+                            : operation === "clear_drop" ? (!sourceArea.readonly && root.chartStructure?.dropAvailable === true)
+                            : true
                         onTriggered: editorContextMenu.triggerOperation(operation)
                     }
                 }
                 DelegateChoice {
                     roleValue: "separator"
                     delegate: AppMenuSeparator {}
+                }
+                DelegateChoice {
+                    roleValue: "handOrder"
+                    delegate: AppMenu {
+                        id: contextHandOrderMenu
+                        title: qsTrId("hand_order.title")
+                        Instantiator {
+                            model: root.documentSession.handOrderFeaturesEnabled
+                                ? root.documentSession.handOrderMenu().filter(row => row.requiresSelection !== false || row.id === "hand_order.bisect_annotation") : []
+                            delegate: AppMenuItem {
+                                required property var modelData
+                                text: qsTrId(modelData.labelKey)
+                                shortcutText: root.shortcuts && root.shortcuts.revision >= 0
+                                    ? root.shortcuts.displayText(modelData.id) : ""
+                                onTriggered: editorContextMenu.triggerOperation(modelData.id)
+                            }
+                            onObjectAdded: (index, item) => contextHandOrderMenu.insertItem(index, item)
+                            onObjectRemoved: (index, item) => contextHandOrderMenu.removeItem(item)
+                        }
+                    }
                 }
                 DelegateChoice {
                     roleValue: "submenu"
@@ -405,16 +510,39 @@ Rectangle {
         anchors.top: parent.top
         editor: sourceArea
     }
+    Label {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 8
+        z: 20
+        visible: sourceArea.spaceInputUnlocked && sourceArea.activeFocus
+        text: qsTrId("editor.space_unlocked")
+        color: Theme.colors.text.secondary
+        padding: 6
+        background: Rectangle { color: Theme.colors.background.elevated; radius: 4 }
+    }
     ScintillaEditor {
         id: sourceArea
+        onTransformReviewStale: ToolTip.show(qsTrId("editor.transform_review_stale"), 5000)
+        onNoteComponentEditRejected: ToolTip.show(qsTrId("editor.slide_component_edit_rejected"), 3500)
         objectName: "sourceArea"
+        property bool chartEditorInput: true
         property bool reservesPlainSpace: true
+        readonly property bool workspaceSourceEditor: true
+        workspaceMaximizeKeyEnabled: activeFocus && root.sceneWindow?.workspace?.keyboardAllowed(root.sceneWindow, true) === true
+        onWorkspaceMaximizeRequested: {
+            const window = root.sceneWindow
+            Qt.callLater(() => window?.workspace?.togglePanelMaximization("editor", window))
+        }
+        spaceGuardEnabled: root.preferences ? root.preferences.spaceGuardEnabled : true
+        onPlaybackToggleRequested: root.playbackToggleRequested()
         anchors.left: parent.left
         anchors.right: verticalBar.left
         anchors.top: findReplaceBar.bottom
         anchors.bottom: horizontalBar.top
         documentSession: root.documentSession
         controller: root.editorController
+        handOrderService: root.handOrderService
         syncController: root.syncController
         analysisSession: root.analysisSession
         navigationVisible: root.navigationVisible
@@ -428,8 +556,12 @@ Rectangle {
         editorColors: ({ text: Theme.colors.text.editor,
                     background: Theme.surfaceColor(Theme.colors.background.surface),
                     lineNumber: Theme.colors.text.lineNumber, accent: Theme.colors.accent.primary,
+                    bookmark: Theme.colors.accent.bookmark || Theme.colors.accent.primary,
                     followOpacity: Theme.followHighlightOpacity,
                     keyword: Theme.colors.syntax.keyword, duration: Theme.colors.syntax.duration,
+                    beat: Theme.colors.syntax.beat || Theme.colors.syntax.keyword,
+                    note: Theme.colors.syntax.note || Theme.colors.text.editor,
+                    directive: Theme.colors.syntax.note || Theme.colors.syntax.keyword,
                     comment: Theme.colors.syntax.comment, error: Theme.colors.syntax.error,
                     warning: Theme.colors.syntax.warning, follow: Theme.colors.state.followHighlight,
                     currentLine: Theme.overlayColor(Theme.colors.state.focusLine),
@@ -495,6 +627,23 @@ Rectangle {
         }
     }
 
+    readonly property bool scrollbarsHeld: sourceArea.activeFocus || editorHover.hovered
+        || (root.syncController && root.syncController.followPlaybackActive)
+    onScrollbarsHeldChanged: {
+        if (scrollbarsHeld) {
+            verticalScrollActivity.stop()
+            horizontalScrollActivity.stop()
+        } else {
+            if (verticalBar.interactive) verticalScrollActivity.restart()
+            if (horizontalBar.interactive) horizontalScrollActivity.restart()
+        }
+    }
+
+    HoverHandler {
+        id: editorHover
+        blocking: false
+    }
+
     AppScrollBar {
         id: verticalBar
         objectName: "sourceVerticalScrollBar"
@@ -507,32 +656,31 @@ Rectangle {
         rightPadding: 0
         orientation: Qt.Vertical
         hoverEnabled: true
+        interactive: sourceArea.vertical_scroll_max > 0
+        enabled: interactive
+        active: interactive && (root.scrollbarsHeld || hovered || pressed || verticalScrollActivity.running)
         readonly property int scrollValue: sourceArea.vertical_scroll_value
-        onScrollValueChanged: scrollActivityTimer.restart()
-        active: hovered || pressed || scrollActivityTimer.running
+        onScrollValueChanged: if (interactive && !root.scrollbarsHeld) verticalScrollActivity.restart()
+        onHoveredChanged: if (interactive && !hovered) verticalScrollActivity.restart()
         Timer {
-            id: scrollActivityTimer
+            id: verticalScrollActivity
             interval: 1200
         }
-        onPressedChanged: if (pressed) sourceArea.beginViewportInteraction()
+        onInteractiveChanged: if (!interactive) verticalScrollActivity.stop()
+        onPressedChanged: {
+            if (interactive && pressed)
+                sourceArea.beginViewportInteraction()
+            else if (interactive)
+                verticalScrollActivity.restart()
+        }
         size: sourceArea.vertical_scroll_page / root.editorRailDisplayLineCount
         position: sourceArea.vertical_scroll_value / root.editorRailDisplayLineCount
         onPositionChanged: if (pressed) sourceArea.scrollVertical(Math.round(position * root.editorRailDisplayLineCount))
-        contentItem: Item {
+        contentItem: EditorScrollThumb {
             implicitWidth: root.editorRailWidth
-            Rectangle {
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: root.editorRailWidth
-                radius: width / 2
-                opacity: verticalBar.active ? 0.5 : 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
-                color: verticalBar.hovered || verticalBar.pressed
-                       ? Theme.colors.scroll.handleHover
-                       : Theme.colors.scroll.handle
-                visible: verticalBar.size < 1
-            }
+            scrollActive: verticalBar.active
+            highlighted: verticalBar.hovered || verticalBar.pressed
+            visible: verticalBar.interactive
         }
         background: Item {
             id: verticalRailBackground
@@ -579,19 +727,91 @@ Rectangle {
         id: horizontalBar
         anchors.left: sourceArea.left
         anchors.right: verticalBar.left
-        anchors.bottom: parent.bottom
+        anchors.bottom: handOrderFeedback.top
         orientation: Qt.Horizontal
         visible: !sourceArea.autoWrap && sourceArea.horizontal_scroll_max > 0
         height: visible ? implicitHeight : 0
         hoverEnabled: true
-        active: hovered || pressed || sourceArea.activeFocus
-        onPressedChanged: if (pressed) sourceArea.beginViewportInteraction()
+        interactive: visible && sourceArea.horizontal_scroll_max > 0
+        enabled: interactive
+        active: interactive && (root.scrollbarsHeld || hovered || pressed || horizontalScrollActivity.running)
+        readonly property int scrollValue: sourceArea.horizontal_scroll_value
+        onScrollValueChanged: if (interactive && !root.scrollbarsHeld) horizontalScrollActivity.restart()
+        onHoveredChanged: if (interactive && !hovered) horizontalScrollActivity.restart()
+        Timer {
+            id: horizontalScrollActivity
+            interval: 1200
+        }
+        onInteractiveChanged: if (!interactive) horizontalScrollActivity.stop()
+        onPressedChanged: {
+            if (interactive && pressed)
+                sourceArea.beginViewportInteraction()
+            else if (interactive)
+                horizontalScrollActivity.restart()
+        }
+        contentItem: EditorScrollThumb {
+            scrollActive: horizontalBar.active
+            highlighted: horizontalBar.hovered || horizontalBar.pressed
+            visible: horizontalBar.interactive
+        }
         size: sourceArea.horizontal_scroll_page / Math.max(1, sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)
         position: sourceArea.horizontal_scroll_value / Math.max(1, sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)
         onPositionChanged: if (pressed) sourceArea.scrollHorizontal(Math.round(position * (sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)))
     }
+    AppButton {
+        id: handOrderFeedback
+        objectName: "handOrderFeedback"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: visible ? implicitHeight : 0
+        visible: root.editorController.handOrderFeedback.length > 0
+        text: root.editorController.handOrderFeedback.split("\n")[0]
+        focusPolicy: Qt.NoFocus
+        onClicked: handOrderDetails.open()
+    }
+    AppDialog {
+        id: handOrderDetails
+        parent: root.Overlay.overlay
+        title: qsTrId("hand_order.title")
+        body: Label {
+            text: root.editorController.handOrderFeedback
+            wrapMode: Text.Wrap
+            color: Theme.colors.text.primary
+        }
+        footer: DialogFooter {
+            cancelText: qsTrId("action.close")
+            onRejected: handOrderDetails.close()
+        }
+    }
+    HandOrderAnalysisDialog {
+        id: handOrderAnalysisDialog
+        parent: root.Overlay.overlay
+        service: root.handOrderService
+        preferencesModel: root.preferencesModel
+        applyEdit: () => sourceArea.applyHandOrderAnalysis()
+        analyzeSelection: () => sourceArea.requestHandOrderAnalysis(false, root.handOrderService.optimizingPatterns, root.handOrderService.reviewingPlay)
+        analyzeDifficulty: () => sourceArea.requestHandOrderAnalysis(true, root.handOrderService.optimizingPatterns, root.handOrderService.reviewingPlay)
+        navigateResult: row => sourceArea.navigateHandOrderResult(row)
+        onEditingFinished: sourceArea.forceActiveFocus()
+    }
+    HandOrderIntervalsDialog {
+        id: handOrderIntervals
+        parent: root.Overlay.overlay
+        controller: root.editorController
+        applyEdit: () => sourceArea.applyHandOrderIntervals()
+        onEditingFinished: sourceArea.forceActiveFocus()
+    }
+    NativeSlideSplitDialog {
+        id: nativeSlideSplitDialog
+        parent: root.Overlay.overlay
+        controller: root.editorController
+        applyEdit: () => sourceArea.applyNativeSlideSplit()
+        onEditingFinished: sourceArea.forceActiveFocus()
+    }
     CompletionPopup {
         id: completionPopup
+        parent: root.Overlay.overlay
         editor: sourceArea
         controller: root.editorController
         onSettingsRequested: function(group) { root.completionSettingsRequested(group) }
@@ -608,7 +828,7 @@ Rectangle {
     }
     AppMenu {
         id: bookmarkMenu
-        parent: Overlay.overlay
+        parent: root.Overlay.overlay
         modal: true
         dim: false
         property string pendingOperation: ""

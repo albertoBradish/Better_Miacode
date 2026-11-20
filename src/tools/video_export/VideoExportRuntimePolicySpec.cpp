@@ -4,6 +4,9 @@
 #include <optional>
 
 #include "export/video_export/VideoExportRuntimePolicy.h"
+#include "export/video_export/VideoExportSettings.h"
+#include "export/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportAudioRenderPlan.h"
 
 namespace {
 
@@ -18,48 +21,62 @@ bool require(bool condition, const QString& message, QTextStream& err)
 
 bool verifyPolicy(QTextStream& err)
 {
-    using miacode::video_export::effectiveVideoExportAudioBitrateKbps;
-    using miacode::video_export::effectiveVideoExportX264Crf;
-    using miacode::video_export::VideoExportSizePreset;
     using miacode::video_export::shouldRequestOffscreenPboReadback;
     using miacode::video_export::shouldRetryVideoExportWorkerAfterCrash;
-    using miacode::video_export::shouldUsePremultipliedExportPipe;
-    using miacode::video_export::videoExportSizePolicy;
-    using miacode::video_export::videoExportSizePresetToken;
 
     using namespace miacode::video_export;
-    if (!require(videoExportTargetBytes(VideoExportSizePreset::Target30Mb) == 30000000
-        && videoExportTargetBytes(VideoExportSizePreset::Target100Mb) == 100000000
-        && videoExportTargetBytes(VideoExportSizePreset::Target200Mb) == 200000000
-        && videoExportTargetBitrateKbps(VideoExportSizePreset::Target30Mb, 180, 128) == 1156
-        && videoExportTargetBitrateKbps(VideoExportSizePreset::Target30Mb, 0, 128) == 0
-        && videoExportSizePolicy(VideoExportSizePreset::Target30Mb).disableVideoBackground
-        && !videoExportSizePolicy(VideoExportSizePreset::Target100Mb).disableVideoBackground,
-        QStringLiteral("target sizes reserve audio/container bytes and constrain PV only at 30 MB"), err)) return false;
-    const auto standard = videoExportSizePolicy(VideoExportSizePreset::Standard);
-    const auto compact = videoExportSizePolicy(VideoExportSizePreset::Compact);
-    const auto ultraWithPv = videoExportSizePolicy(VideoExportSizePreset::UltraCompactWithPv);
-    const auto ultra = videoExportSizePolicy(VideoExportSizePreset::UltraCompact);
-    if (!require(standard.gopSeconds > 0 && compact.gopSeconds > 0
-                     && ultra.gopSeconds > 0 && ultra.minBitrateKbps > 0
-                     && compact.minBitrateKbps <= compact.maxBitrateKbps
-                     && ultra.minBitrateKbps <= ultra.maxBitrateKbps
-                     && ultraWithPv.minBitrateKbps <= ultraWithPv.maxBitrateKbps
-                     && ultra.disableVideoBackground && !ultraWithPv.disableVideoBackground
-                     && videoExportSizePresetToken(VideoExportSizePreset::UltraCompactWithPv)
-                         != videoExportSizePresetToken(VideoExportSizePreset::UltraCompact),
-                 QStringLiteral("size presets expose valid budgets and distinct PV behavior"), err)) {
-        return false;
+    for (const auto preset : {VideoRateMode::Quality, VideoRateMode::FileSize, VideoRateMode::Bitrate}) {
+        for (bool includePv : {true, false}) {
+            VideoExportTask task;
+            task.encoding.mode = preset;
+            task.encoding.videoBitrateKbps = 7125;
+            task.includePv = includePv;
+            task.intro.pvPreview = true;
+            task.intro.chartPreview = true;
+            VideoExportTask restored;
+            if (!require(applyVideoExportTemplateSettings(videoExportTemplateSettings(task), &restored)
+                    && restored.encoding.mode == preset && restored.includePv == includePv
+                    && restored.encoding.videoBitrateKbps == 7125 && restored.intro.chartPreview,
+                QStringLiteral("the template preserves the PV toggle at every current preset"), err)) return false;
+            VideoExportSnapshot snapshot;
+            snapshot.chartTextUtf8 = QStringLiteral("&title=Codec spec\n&lv_5=13\n&inote_5=(120){4}1,\nE\n");
+            snapshot.difficultyId = 5;
+            snapshot.originalChartPath = QStringLiteral("C:/fixture/maidata.txt");
+            snapshot.outputPath = QStringLiteral("C:/fixture/video.mp4");
+            snapshot.contentDurationSeconds = 1.0;
+            snapshot.encoding.mode = preset;
+            snapshot.includePv = includePv;
+            snapshot.encoding.videoBitrateKbps = 7125;
+            VideoExportSnapshot wire;
+            QString error;
+            if (!require(VideoExportSnapshot::fromJson(snapshot.toJson(), &wire, &error)
+                    && buildVideoExportTaskFromSnapshot(wire, &restored, &error)
+                    && restored.encoding.mode == preset && restored.includePv == includePv
+                    && restored.encoding.videoBitrateKbps == 7125,
+                QStringLiteral("the worker receives size mode, target bitrate and independent PV: %1").arg(error), err))
+                return false;
+        }
     }
-
-    for (const auto preset : {VideoExportSizePreset::Standard, VideoExportSizePreset::Compact,
-                              VideoExportSizePreset::UltraCompactWithPv, VideoExportSizePreset::UltraCompact}) {
-        const auto policy = videoExportSizePolicy(preset);
-        if (!require(effectiveVideoExportX264Crf(preset, 22) == 22 + policy.x264CrfAdjustment
-                         && effectiveVideoExportAudioBitrateKbps(preset, 320)
-                             == qMin(320, policy.maxAudioBitrateKbps),
-                     QStringLiteral("encoder settings apply the selected size policy"), err)) return false;
-    }
+    VideoExportTask migrated;
+    applyVideoExportPreferences({{"size_preset", "ultra_compact"}}, &migrated);
+    if (!require(migrated.encoding.mode == VideoRateMode::Quality
+            && migrated.encoding.quality == VideoQualityLevel::Small && migrated.includePv,
+        QStringLiteral("old preferences follow the official quality migration without old PV or size behavior"), err)) return false;
+    VideoExportSnapshot legacySnapshot;
+    QJsonObject legacyWire{{"schema", "miacode_export_snapshot_v1"},
+        {"chart", QJsonObject{{"difficulty_id", 5}, {"text_utf8", "&title=Legacy\n&lv_5=12\n&inote_5=(120){4}1,E\n"}}},
+        {"export", QJsonObject{{"output_path", "C:/fixture/legacy.mp4"}, {"size_preset", "custom"}, {"target_video_bitrate_mbps", 6.25}}}};
+    QString legacyError;
+    if (!require(!VideoExportSnapshot::fromJson(legacyWire, &legacySnapshot, &legacyError),
+        QStringLiteral("retired worker encoding fields fail explicitly rather than silently changing size semantics"), err)) return false;
+    legacyWire.insert("export", QJsonObject{{"output_path", "C:/fixture/legacy.mp4"},
+        {"rate_mode", "bitrate"}, {"video_bitrate_kbps", 6250}});
+    if (!require(VideoExportSnapshot::fromJson(legacyWire, &legacySnapshot, &legacyError)
+            && legacySnapshot.encoding.mode == VideoRateMode::Bitrate && legacySnapshot.encoding.videoBitrateKbps == 6250,
+        QStringLiteral("container compatibility retains only the official current encoding fields"), err)) return false;
+    legacyWire.insert("schema", "miacode_export_snapshot_v999");
+    if (!require(!VideoExportSnapshot::fromJson(legacyWire, &legacySnapshot, &legacyError),
+        QStringLiteral("unknown protocols remain rejected"), err)) return false;
 
     if (!require(
             shouldRequestOffscreenPboReadback(std::nullopt, std::nullopt),
@@ -112,30 +129,6 @@ bool verifyPolicy(QTextStream& err)
     if (!require(
             !shouldRetryVideoExportWorkerAfterCrash(true, true, false, 2),
             QStringLiteral("Crash retry should happen at most once"),
-            err)) {
-        return false;
-    }
-    if (!require(
-            shouldUsePremultipliedExportPipe(true, true, std::nullopt),
-            QStringLiteral("fast D3D11 export should default to premultiplied transport"),
-            err)) {
-        return false;
-    }
-    if (!require(
-            !shouldUsePremultipliedExportPipe(true, false, std::nullopt),
-            QStringLiteral("high-quality export should keep straight RGBA transport"),
-            err)) {
-        return false;
-    }
-    if (!require(
-            !shouldUsePremultipliedExportPipe(false, true, std::nullopt),
-            QStringLiteral("OpenGL export should keep straight RGBA transport"),
-            err)) {
-        return false;
-    }
-    if (!require(
-            !shouldUsePremultipliedExportPipe(true, true, false),
-            QStringLiteral("explicit premultiplied transport opt-out should win"),
             err)) {
         return false;
     }

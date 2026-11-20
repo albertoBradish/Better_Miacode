@@ -1,14 +1,25 @@
 #include "app/ui/preferences/PreferencesModel.h"
+#include "app/services/HandOrderFeaturePreferences.h"
+#include "app/services/VideoWatermarkPreferences.h"
+#include "app/ui/preferences/AppearanceLabels.h"
+#include "app/ui/preferences/HandOrderPlayerPreferences.h"
+#include "app/ui/preferences/HandOrderSweepPreferences.h"
+#include "app/ui/preferences/HandOrderSearchPreferences.h"
 
 #include "app/ui/layout/WorkbenchSettings.h"
 #include "app/services/PreferencesStore.h"
 #include "app/runtime/Shared.h"
 #include "app/ui/preferences/LocaleService.h"
 #include "app/services/PreferenceDocument.h"
+#include "app/services/EditorTypography.h"
+#include "core/chart/model/HandOrderRestPosition.h"
+#include "core/chart/model/HandOrderSweepThreshold.h"
 
 #include <QVariantMap>
 #include <QCoreApplication>
+#include <QFontDatabase>
 #include <algorithm>
+#include <cmath>
 
 namespace miacode::ui {
 
@@ -30,11 +41,19 @@ PreferencesModel::PreferencesModel(miacode::PreferencesStore*& storeSlot,
     , storeSlot_(&storeSlot)
     , settings_(&settings)
 {
+    connect(&settings, &WorkbenchSettings::workflowSettingsChanged, this, [this] {
+        if (store()) store()->setLowPerformanceMode(settings_->lowPerformanceMode());
+        emit performanceChanged();
+    });
     completionDurations_.setHalfWidthInputEnabled(editorHalfWidthInput());
     completionDivisions_.setHalfWidthInputEnabled(editorHalfWidthInput());
     reloadCompletionCandidates();
     connect(&settings, &WorkbenchSettings::editorSettingsChanged,
             this, &PreferencesModel::reloadCompletionCandidates);
+    connect(&settings, &WorkbenchSettings::editorSettingsChanged,
+            this, &PreferencesModel::editorChanged);
+    connect(&settings, &WorkbenchSettings::themeChanged,
+            this, &PreferencesModel::interfaceChanged);
     connect(&completionDurations_, &CompletionCandidateModel::savedValuesChanged,
             this, &PreferencesModel::persistCompletionCandidates);
     connect(&completionDivisions_, &CompletionCandidateModel::savedValuesChanged,
@@ -48,6 +67,7 @@ PreferencesModel::PreferencesModel(miacode::PreferencesStore*& storeSlot,
                 completionDurations_.retranslateErrors();
                 completionDivisions_.retranslateErrors();
                 emit interfaceChanged();
+                emit editorChanged();
                 emit performanceChanged();
             });
 }
@@ -113,18 +133,12 @@ void PreferencesModel::setThemeModeToken(const QString& token)
         return;
     }
     settings_->setThemeModeToken(token);
-    restartRequired_ = true;
     emit interfaceChanged();
 }
 
 QVariantList PreferencesModel::themePaletteOptions() const
 {
-    return QVariantList{
-        option(QStringLiteral("dark"), qtTrId("dialog.preferences.theme.dark")),
-        option(QStringLiteral("light"), qtTrId("dialog.preferences.theme.light")),
-        option(QStringLiteral("legacy"), qtTrId("dialog.preferences.theme.legacy")),
-        option(QStringLiteral("legacy_light"), qtTrId("dialog.preferences.theme.legacy_light")),
-    };
+    return appearance_labels::themeOptions();
 }
 
 QVariantList PreferencesModel::sidebarModeOptions() const
@@ -155,7 +169,6 @@ void PreferencesModel::setLightThemeToken(const QString& token)
         return;
     }
     settings_->setLightThemeToken(token);
-    restartRequired_ = true;
     emit interfaceChanged();
 }
 
@@ -170,7 +183,6 @@ void PreferencesModel::setDarkThemeToken(const QString& token)
         return;
     }
     settings_->setDarkThemeToken(token);
-    restartRequired_ = true;
     emit interfaceChanged();
 }
 
@@ -225,6 +237,41 @@ void PreferencesModel::setUiScalePercent(int percent)
     if (settings_ != nullptr) {
         settings_->setUiScalePercent(percent);
     }
+}
+
+QString PreferencesModel::editorFontFamily() const
+{
+    return settings_ != nullptr ? settings_->editorFontFamily() : QString();
+}
+
+void PreferencesModel::setEditorFontFamily(const QString& family)
+{
+    if (settings_ != nullptr) settings_->setEditorFontFamily(family);
+}
+
+QVariantList PreferencesModel::editorFontOptions(const QString& filter) const
+{
+    const QString defaultFamily = miacode::editor_typography::resolveFont(QString()).family();
+    QVariantMap defaultRow = option(QString(), defaultFamily + QStringLiteral(" · ")
+                                    + qtTrId("dialog.preferences.font.default_suffix"));
+    defaultRow.insert(QStringLiteral("family"), defaultFamily);
+    QVariantList rows{defaultRow};
+    QStringList families = QFontDatabase::families();
+    std::sort(families.begin(), families.end(), [](const QString& left, const QString& right) {
+        return QString::localeAwareCompare(left, right) < 0;
+    });
+    std::stable_partition(families.begin(), families.end(), [](const QString& family) {
+        return QFontDatabase::isFixedPitch(family);
+    });
+    const QString selected = editorFontFamily();
+    for (const QString& family : families) {
+        if (!family.contains(filter.trimmed(), Qt::CaseInsensitive) && family != selected) continue;
+        const bool fixed = QFontDatabase::isFixedPitch(family);
+        QVariantMap row = option(family, appearance_labels::fontLabel(family, fixed));
+        row.insert(QStringLiteral("family"), family);
+        rows.append(row);
+    }
+    return rows;
 }
 
 int PreferencesModel::editorFontSize() const
@@ -284,8 +331,9 @@ void PreferencesModel::reloadCompletionCandidates()
 void PreferencesModel::persistCompletionCandidates()
 {
     if (store() == nullptr) return;
-    store()->applyEditorCompletionCandidates(completionDurations_.savedValues(),
-                                            completionDivisions_.savedValues(), true);
+    store()->applyEditorCompletionCandidates(
+        {completionDurations_.savedValues(), completionDivisions_.savedValues(),
+         editor::defaultCompletionConfig().durationSuffixes}, true);
 }
 
 void PreferencesModel::finishCompletionEditing()
@@ -426,6 +474,231 @@ void PreferencesModel::setEditorOverviewRulerEnabled(bool enabled)
     emit editorChanged();
 }
 
+double PreferencesModel::handOrderReturnSpeed() const
+{
+    const auto app = PreferenceDocument::loadPreferencesObject().value(QStringLiteral("app")).toObject();
+    const double value = app.value(QStringLiteral("hand_order_return_speed"))
+        .toDouble(chart::handOrderDefaultReturnSpeed);
+    return std::isfinite(value) ? qBound(chart::handOrderMinReturnSpeed, value,
+        chart::handOrderMaxReturnSpeed) : chart::handOrderDefaultReturnSpeed;
+}
+
+void PreferencesModel::setHandOrderReturnSpeed(double speed)
+{
+    if (!std::isfinite(speed)) return;
+    speed = qBound(chart::handOrderMinReturnSpeed, speed, chart::handOrderMaxReturnSpeed);
+    if (qFuzzyCompare(speed, handOrderReturnSpeed())) return;
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    QJsonObject app = root.value(QStringLiteral("app")).toObject();
+    app.insert(QStringLiteral("hand_order_return_speed"), speed);
+    root.insert(QStringLiteral("app"), app);
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
+int PreferencesModel::handOrderSweepThreshold() const
+{
+    return hand_order_sweep_preferences::threshold(PreferenceDocument::loadPreferencesObject());
+}
+
+void PreferencesModel::setHandOrderSweepThreshold(int threshold)
+{
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    if (!hand_order_sweep_preferences::setThreshold(&root, threshold)) return;
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
+bool PreferencesModel::handOrderFeaturesEnabled() const { return miacode::hand_order_features::enabled(); }
+bool PreferencesModel::handOrderWatermarkEnabled() const { return miacode::hand_order_features::watermark(); }
+
+QString PreferencesModel::unlockHandOrderFeatures(const QString& password)
+{
+    using namespace miacode::hand_order_features;
+    switch (unlock(password)) {
+    case UnlockResult::IncorrectPassword: return qtTrId("hand_order.features.wrong_password");
+    case UnlockResult::StorageError: return qtTrId("hand_order.features.storage_error");
+    case UnlockResult::Enabled: emit handOrderFeaturesChanged(); break;
+    }
+    return {};
+}
+
+bool PreferencesModel::disableHandOrderFeatures()
+{
+    if (!miacode::hand_order_features::disable()) return false;
+    emit handOrderFeaturesChanged();
+    return true;
+}
+
+void PreferencesModel::setHandOrderWatermarkEnabled(bool enabled)
+{
+    if (handOrderWatermarkEnabled() == enabled) return;
+    auto root = PreferenceDocument::loadPreferencesObject();
+    auto app = root.value("app").toObject();
+    app.insert("hand_order_watermark_enabled", enabled);
+    root.insert("app", app);
+    PreferenceDocument::savePreferencesObject(root);
+    emit handOrderFeaturesChanged();
+}
+
+bool PreferencesModel::videoWatermarkEnabled() const
+{
+    return video_watermark_preferences::load().enabled;
+}
+
+void PreferencesModel::setVideoWatermarkEnabled(bool enabled)
+{
+    auto settings = video_watermark_preferences::load();
+    if (settings.enabled == enabled) return;
+    settings.enabled = enabled;
+    video_watermark_preferences::save(settings);
+    emit videoWatermarkEnabledChanged();
+}
+
+QString PreferencesModel::videoWatermarkText() const
+{
+    return video_watermark_preferences::load().text;
+}
+
+void PreferencesModel::setVideoWatermarkText(const QString& text)
+{
+    auto settings = video_watermark_preferences::load();
+    if (settings.text == text) return;
+    settings.text = text;
+    video_watermark_preferences::save(settings);
+    emit videoWatermarkTextChanged();
+}
+
+int PreferencesModel::videoWatermarkFontSize() const
+{
+    return video_watermark_preferences::load().fontSize;
+}
+
+void PreferencesModel::setVideoWatermarkFontSize(int size)
+{
+    auto settings = video_watermark_preferences::load();
+    const int bounded = qBound(videoWatermarkMinFontSize(), size, videoWatermarkMaxFontSize());
+    if (settings.fontSize == bounded) return;
+    settings.fontSize = bounded;
+    video_watermark_preferences::save(settings);
+    emit videoWatermarkFontSizeChanged();
+}
+
+int PreferencesModel::videoWatermarkMinFontSize() const
+{
+    return video_export::VideoWatermarkSettings::kMinimumFontSize;
+}
+
+int PreferencesModel::videoWatermarkMaxFontSize() const
+{
+    return video_export::VideoWatermarkSettings::kMaximumFontSize;
+}
+
+bool PreferencesModel::handOrderColorUnresolved() const
+{
+    return hand_order_sweep_preferences::colorUnresolved(PreferenceDocument::loadPreferencesObject());
+}
+
+void PreferencesModel::setHandOrderColorUnresolved(bool enabled)
+{
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    if (!hand_order_sweep_preferences::setColorUnresolved(&root, enabled)) return;
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
+QVariantMap PreferencesModel::handOrderPlayerProfile() const
+{
+    return hand_order_player_preferences::read(PreferenceDocument::loadPreferencesObject());
+}
+QVariantMap PreferencesModel::handOrderPlayerDisplayProfile() const
+{
+    return hand_order_player_preferences::readDisplay(PreferenceDocument::loadPreferencesObject());
+}
+void PreferencesModel::setHandOrderPlayerDisplayParameter(const QString& name, double value)
+{
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    if (!hand_order_player_preferences::setDisplay(&root, name, value)) return;
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
+QVariantList PreferencesModel::handOrderStyleOptions() const
+{
+    return {
+        option(QStringLiteral("comprehensive"), qtTrId("preferences.hand_order_style.comprehensive")),
+        option(QStringLiteral("hard"), qtTrId("preferences.hand_order_style.hard")),
+        option(QStringLiteral("pagination"), qtTrId("preferences.hand_order_style.pagination")),
+        option(QStringLiteral("decomposition"), qtTrId("preferences.hand_order_style.decomposition")),
+        option(QStringLiteral("custom"), qtTrId("preferences.hand_order_style.custom")),
+    };
+}
+
+QString PreferencesModel::handOrderStyleToken() const
+{
+    return hand_order_player_preferences::styleToken(PreferenceDocument::loadPreferencesObject());
+}
+
+void PreferencesModel::setHandOrderStyleToken(const QString& token)
+{
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    if (!hand_order_player_preferences::setStyle(&root, token)) return;
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
+QVariantList PreferencesModel::handOrderSearchModeOptions() const
+{
+    return {
+        option(QStringLiteral("low"), qtTrId("preferences.hand_order_budget.low")),
+        option(QStringLiteral("standard"), qtTrId("preferences.hand_order_budget.standard")),
+        option(QStringLiteral("high"), qtTrId("preferences.hand_order_budget.high")),
+        option(QStringLiteral("custom"), qtTrId("preferences.hand_order_budget.custom")),
+    };
+}
+
+QString PreferencesModel::handOrderSearchMode() const
+{
+    return hand_order_search_preferences::mode(PreferenceDocument::loadPreferencesObject());
+}
+
+void PreferencesModel::setHandOrderSearchMode(const QString& mode)
+{
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    if (!hand_order_search_preferences::setMode(&root, mode)) return;
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
+int PreferencesModel::handOrderSearchBudgetMillions() const
+{
+    return hand_order_search_preferences::millions(PreferenceDocument::loadPreferencesObject());
+}
+
+void PreferencesModel::setHandOrderSearchBudgetMillions(int millions)
+{
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    if (!hand_order_search_preferences::setCustomMillions(&root, millions)) return;
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
+void PreferencesModel::setHandOrderPlayerParameter(const QString& name, double value)
+{
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    if (!hand_order_player_preferences::set(&root, name, value)) return;
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
+void PreferencesModel::resetHandOrderPlayerProfile()
+{
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    if (!hand_order_player_preferences::reset(&root)) return;
+    PreferenceDocument::savePreferencesObject(root);
+    emit editorChanged();
+}
+
 bool PreferencesModel::videoDecodePrefersSoftware() const
 {
     return store() != nullptr && store()->videoDecodePrefersSoftware();
@@ -483,6 +756,14 @@ QVariantList PreferencesModel::frameRateOptions(bool includeDisplayRefresh) cons
 QVariantList PreferencesModel::canvasFrameRateOptions() const
 {
     return frameRateOptions(/*includeDisplayRefresh=*/true);
+}
+
+QVariantList PreferencesModel::stageMediaFrameRateOptions() const
+{
+    auto rows = frameRateOptions(true);
+    rows.prepend(option(static_cast<int>(PreviewCanvasFrameRateMode::SourceRate),
+                        qtTrId("preferences.pv_frame_rate_auto")));
+    return rows;
 }
 
 QVariantList PreferencesModel::appFrameRateOptions() const

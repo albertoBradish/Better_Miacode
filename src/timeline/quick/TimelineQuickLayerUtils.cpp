@@ -62,7 +62,8 @@ QImage makeTimelineGlyphImage(const miacode::timeline::TimelineSceneGlyph& glyph
 
 QSGNode* buildTimelineTextNode(
     QQuickWindow* window,
-    const miacode::timeline::TimelineSceneTextLabel& label)
+    const miacode::timeline::TimelineSceneTextLabel& label,
+    const miacode::timeline::TimelineAxisProjection& axis)
 {
     QTextLayout layout(label.text, label.font);
     layout.beginLayout();
@@ -73,7 +74,22 @@ QSGNode* buildTimelineTextNode(
     node->setRenderType(static_cast<QSGTextNode::RenderType>(QQuickWindow::textRenderType()));
     node->setColor(label.color);
     node->addTextLayout(label.topLeft + QPointF(2.0, 1.0), &layout);
-    return node;
+    if (!axis.vertical()) {
+        return node;
+    }
+
+    // Cancel the orientation of the projected scene around the label anchor.
+    // The parent still maps its position and scrolls it along the time axis.
+    const QPointF center = QRectF(label.topLeft, label.logicalSize).center();
+    const auto localProjection = miacode::timeline::TimelineAxisProjection{axis.mode};
+    QMatrix4x4 transform;
+    transform.translate(center.x(), center.y());
+    transform *= QMatrix4x4(localProjection.toScreenTransform().inverted());
+    transform.translate(-center.x(), -center.y());
+    auto* upright = new QSGTransformNode();
+    upright->setMatrix(transform);
+    upright->appendChildNode(node);
+    return upright;
 }
 
 QSGNode* buildTimelineLineNode(const miacode::timeline::TimelineSceneLine& line)

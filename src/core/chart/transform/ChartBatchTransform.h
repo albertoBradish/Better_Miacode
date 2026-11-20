@@ -14,8 +14,15 @@ enum class ChartTransformOp {
     Rotate45Clockwise,
 };
 
-QString transformChartText(const QString& input, ChartTransformOp op, int* changedCount = nullptr);
-QString transformChartSelectionText(const QString& input, ChartTransformOp op, int* changedCount = nullptr);
+enum class HandOrderMirrorPolicy {
+    Preserve,
+    SwapLeftRight,
+};
+
+QString transformChartText(const QString& input, ChartTransformOp op, int* changedCount = nullptr,
+                           HandOrderMirrorPolicy handPolicy = HandOrderMirrorPolicy::Preserve);
+QString transformChartSelectionText(const QString& input, ChartTransformOp op, int* changedCount = nullptr,
+                                    HandOrderMirrorPolicy handPolicy = HandOrderMirrorPolicy::Preserve);
 QString toggleBreakForSelection(const QString& input, int* changedCount = nullptr);
 QString toggleExForSelection(const QString& input, int* changedCount = nullptr);
 QString toggleFireworkForSelection(const QString& input, int* changedCount = nullptr);
@@ -36,6 +43,30 @@ struct SelectionContext {
     QString before;
     QString after;
 };
+
+enum class SubdivisionStep {
+    Raise,
+    Lower,
+    RaiseHalfStep,
+    LowerHalfStep,
+};
+
+enum class SubdivisionFailure {
+    None,
+    IncompatibleGrid,
+    SubdivisionLimit,
+};
+
+struct SubdivisionTransformResult {
+    QString text;
+    int changedCount = 0;
+    // Rejected rewrite units; accepted text with the same result stays quiet.
+    int skippedCount = 0;
+    SubdivisionFailure failure = SubdivisionFailure::None;
+};
+
+SubdivisionTransformResult transformSubdivisionSelection(
+    const QString& input, const SelectionContext& context, SubdivisionStep step);
 
 QString raiseSubdivisionForSelection(const QString& input, const SelectionContext& context, int* changedCount = nullptr);
 QString lowerSubdivisionForSelection(const QString& input, const SelectionContext& context, int* changedCount = nullptr);

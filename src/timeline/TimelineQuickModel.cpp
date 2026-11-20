@@ -16,6 +16,20 @@ namespace {
 constexpr int kDefaultMeterNumerator = 4;
 constexpr int kDefaultMeterDenominator = 4;
 
+int sourceNoteEnd(const QString& text, int start, int length)
+{
+    const int limit = qMin(int(text.size()), start + length);
+    // Invalid annotated digit clusters can produce several native notes sharing
+    // one suffix. Never let their shifted columns consume the next separator.
+    for (int position = start; position < limit; ++position) {
+        const QChar ch = text[position];
+        if (ch == QLatin1Char(',') || ch == QLatin1Char('/') || ch == QLatin1Char('`')
+            || ch == QLatin1Char('\n') || ch == QLatin1Char('\r')) return position;
+    }
+    return limit;
+}
+
+
 void applyInitialTimingMetadata(
     int* meterNumerator,
     int* meterDenominator,
@@ -87,9 +101,9 @@ bool TimelineQuickModel::updateFromText(const QString& text, double firstSeconds
     if (sourceText_ == text) return false;
     int begin = 0;
     const int commonLength = qMin(sourceText_.size(), text.size());
-    while (begin < commonLength && sourceText_[begin] == text[begin]) ++begin;
+    while (begin < commonLength && sourceText_.at(begin) == text.at(begin)) ++begin;
     int oldEnd = sourceText_.size(), newEnd = text.size();
-    while (oldEnd > begin && newEnd > begin && sourceText_[oldEnd - 1] == text[newEnd - 1]) {
+    while (oldEnd > begin && newEnd > begin && sourceText_.at(oldEnd - 1) == text.at(newEnd - 1)) {
         --oldEnd;
         --newEnd;
     }
@@ -119,37 +133,29 @@ bool TimelineQuickModel::applyTextChange(
         return rebuildFromText(text, firstSeconds, timingMetadata);
     }
 
-    QVector<QString> currentLines = text.split(QLatin1Char('\n')).toVector();
-    if (currentLines.isEmpty()) {
-        currentLines.append(QString());
-    }
-
     const int startLineIndex = lineIndexForStoredPosition(position);
     const int oldEndLineIndex = charsRemoved > 0
         ? lineIndexForStoredPosition(position + charsRemoved)
         : startLineIndex;
     const int boundedNewEndPosition = qBound(0, position + charsAdded, text.size());
-    const int newEndLineIndex = charsAdded > 0
-        ? text.left(boundedNewEndPosition).count(QLatin1Char('\n'))
-        : startLineIndex;
-    const int replacementStart = qBound(0, startLineIndex, currentLines.size() - 1);
-    const int replacementEnd = qBound(replacementStart, newEndLineIndex, currentLines.size() - 1);
-    const QVector<QString> replacementLines = currentLines.mid(
-        replacementStart, replacementEnd - replacementStart + 1);
-
-    QVector<LineState> inserted;
-    inserted.reserve(replacementLines.size());
-    for (const QString& text : replacementLines) {
-        LineState line;
-        line.lineId = allocateLineId();
-        line.text = text;
-        inserted.append(line);
-    }
+    const int replacementStart = lines_.at(startLineIndex).startPosition;
+    const int nextNewline = text.indexOf(QLatin1Char('\n'), boundedNewEndPosition);
+    const int replacementEnd = nextNewline >= 0 ? nextNewline : text.size();
+    const QStringList replacementLines = text.mid(
+        replacementStart, replacementEnd - replacementStart).split(QLatin1Char('\n'));
 
     const int replaceCount = qMax(0, oldEndLineIndex - startLineIndex + 1);
-    lines_.erase(lines_.begin() + startLineIndex, lines_.begin() + startLineIndex + replaceCount);
-    for (int insertIndex = 0; insertIndex < inserted.size(); ++insertIndex) {
-        lines_.insert(startLineIndex + insertIndex, inserted.at(insertIndex));
+    if (replacementLines.size() > replaceCount) {
+        lines_.insert(startLineIndex + replaceCount, replacementLines.size() - replaceCount, LineState());
+    } else if (replacementLines.size() < replaceCount) {
+        lines_.erase(lines_.begin() + startLineIndex + replacementLines.size(),
+            lines_.begin() + startLineIndex + replaceCount);
+    }
+    for (int insertIndex = 0; insertIndex < replacementLines.size(); ++insertIndex) {
+        LineState& line = lines_[startLineIndex + insertIndex];
+        line = LineState();
+        line.lineId = allocateLineId();
+        line.text = replacementLines.at(insertIndex);
     }
     resequenceLineMetadata(startLineIndex);
 
@@ -168,7 +174,7 @@ bool TimelineQuickModel::applyTextChange(
         currentState.currentMeasureStartSecond = firstSeconds;
     }
 
-    const int guaranteedReparseEnd = qMin(lines_.size() - 1, startLineIndex + inserted.size() - 1);
+    const int guaranteedReparseEnd = qMin(lines_.size() - 1, startLineIndex + replacementLines.size() - 1);
     for (int index = startLineIndex; index < lines_.size(); ++index) {
         LineState& line = lines_[index];
         const ParseState oldStartState = line.startState;
@@ -413,6 +419,54 @@ TimelineExportRange TimelineQuickModel::resolveExportRangeForSelection(
     return result;
 }
 
+std::optional<miacode::chart_preview::MediaRange> TimelineQuickModel::resolveMediaRangeForSelection(
+    int anchor, int position, double mediaDuration) const
+{
+    const int textLength = static_cast<int>(sourceText_.size());
+    const int start = qBound(0, qMin(anchor, position), textLength);
+    const int end = qBound(start, qMax(anchor, position), textLength);
+    if (start == end) return std::nullopt;
+
+    double beginSecond = std::numeric_limits<double>::infinity();
+    double endSecond = -std::numeric_limits<double>::infinity();
+    const auto include = [&](double from, double to) {
+        if (!qIsFinite(from) || !qIsFinite(to)) return;
+        beginSecond = qMin(beginSecond, from);
+        endSecond = qMax(endSecond, to);
+    };
+    for (const auto& line : lines_) {
+        if (line.startPosition >= end) break;
+        if (line.startPosition + line.text.size() <= start) continue;
+        for (const auto& note : line.render.notes) {
+            const int noteStart = line.startPosition + note.sourceCol - 1;
+            const int noteEnd = sourceNoteEnd(sourceText_, noteStart, note.sourceLength);
+            if (noteStart < end && noteEnd > start) {
+                include(timelineRenderAbsoluteSecond(line.render, note.secondOffset),
+                    timelineRenderNoteBodyEndSecond(line.render, note));
+            }
+        }
+        for (const auto& beat : line.render.beats) {
+            const int comma = line.startPosition + beat.sourceCol - 1;
+            if (comma < start || comma >= end) continue;
+            // The cursor immediately after the comma gives the next beat's
+            // actual start, even when a long hold extends beyond this line.
+            const auto& anchors = line.cursorCache.segmentStarts;
+            const auto next = std::lower_bound(anchors.cbegin(), anchors.cend(), beat.sourceCol + 1,
+                [](const auto& anchor, int col) { return anchor.sourceCol < col; });
+            if (next != anchors.cend() && next->sourceCol == beat.sourceCol + 1) {
+                include(timelineRenderAbsoluteSecond(line.render, beat.secondOffset),
+                    timelineRenderAbsoluteSecond(line.render, next->secondOffset));
+            }
+        }
+    }
+
+    if (!qIsFinite(beginSecond) || !qIsFinite(endSecond)) return std::nullopt;
+    beginSecond = qMax(0.0, beginSecond);
+    if (qIsFinite(mediaDuration) && mediaDuration > 0.0) endSecond = qMin(endSecond, mediaDuration);
+    const miacode::chart_preview::MediaRange range{beginSecond, endSecond};
+    return range.isValid() ? std::optional(range) : std::nullopt;
+}
+
 TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteSelection(
     int start, int end, double tapFlowSpeed, double touchFlowSpeed) const
 {
@@ -422,50 +476,101 @@ TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteSelection(
 miacode::chart_selection::NoteRanges TimelineQuickModel::noteSourceRanges(const QSet<quint64>* locations) const
 {
     miacode::chart_selection::NoteRanges ranges;
+    if (locations != nullptr) {
+        for (const auto& object : noteObjects(locations)) ranges.append(object.token);
+        return miacode::chart_selection::normalizedNoteRanges(ranges, sourceText_.size());
+    }
     for (const auto& line : lines_) for (const auto& note : line.render.notes) {
-        if (locations && !locations->contains(timelineRenderLocationId(line.lineNumber, note.sourceCol))) continue;
         const int start = line.startPosition + note.sourceCol - 1;
-        ranges.append({start, start + note.sourceLength});
+        ranges.append({start, sourceNoteEnd(sourceText_, start, note.sourceLength)});
     }
     return miacode::chart_selection::normalizedNoteRanges(ranges, sourceText_.size());
+}
+
+miacode::chart_selection::NoteObjects TimelineQuickModel::noteObjects(const QSet<quint64>* locations) const
+{
+    using namespace miacode::chart_selection;
+    NoteObjects result;
+    QSet<quint64> seen;
+    for (const auto& line : lines_) {
+        for (const auto& note : line.render.notes) {
+            const int start = line.startPosition + note.sourceCol - 1;
+            const int end = sourceNoteEnd(sourceText_, start, note.sourceLength);
+            const NoteRange token{start, end};
+            const auto append = [&](NoteRange highlight, NoteComponent part, int branch, quint64 location) {
+                if (highlight.end <= highlight.start || seen.contains(location)
+                    || (locations != nullptr && !locations->contains(location))) return;
+                seen.insert(location);
+                result.append({token, highlight, part, branch, location});
+            };
+            const auto headLocation = timelineRenderLocationId(line.render, note);
+            const bool slide = note.kind == TimelineRenderNoteKind::Slide || note.kind == TimelineRenderNoteKind::Wifi;
+            if (!slide) {
+                append(token, NoteComponent::Whole, -1, headLocation);
+                continue;
+            }
+            if (timelineRenderFlagSet(note, TimelineRenderFlagHasHeadStar)) {
+                append({start, qMin(end, start + note.slideHeadSourceLength)}, NoteComponent::SlideHead, -1, headLocation);
+            }
+            const int trackStart = line.startPosition + note.slideTrackSourceCol - 1;
+            if (trackStart > start && trackStart < end) {
+                const int trackEnd = qMin(end, trackStart + note.slideTrackSourceLength);
+                append({trackStart, trackEnd}, NoteComponent::SlideTrack, note.slideBranchIndex,
+                    timelineRenderTrackLocationId(line.render, note));
+            }
+        }
+    }
+    return result;
 }
 
 TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteSelection(
     const miacode::chart_selection::NoteRanges& inputRanges, double tapFlowSpeed, double touchFlowSpeed) const
 {
-    NoteSelection result;
     const auto ranges = miacode::chart_selection::normalizedNoteRanges(inputRanges, sourceText_.size());
-    if (ranges.isEmpty()) return result;
+    if (ranges.isEmpty()) return {};
+    auto objects = noteObjects();
+    objects.removeIf([&](const auto& object) {
+        const auto range = std::lower_bound(ranges.cbegin(), ranges.cend(), object.token.start,
+            [](const auto& candidate, int position) { return candidate.end <= position; });
+        return range == ranges.cend() || range->start >= object.token.end;
+    });
+    return resolveNoteObjects(objects, tapFlowSpeed, touchFlowSpeed);
+}
+
+TimelineQuickModel::NoteSelection TimelineQuickModel::resolveNoteObjects(
+    const miacode::chart_selection::NoteObjects& objects, double tapFlowSpeed, double touchFlowSpeed) const
+{
+    NoteSelection result;
+    for (const auto& object : objects) result.locations.insert(object.location);
+    if (result.locations.isEmpty()) return result;
     double visibleStart = std::numeric_limits<double>::infinity();
     double visualEnd = -std::numeric_limits<double>::infinity();
     for (const auto& line : lines_) {
         for (const auto& note : line.render.notes) {
-            const int noteStart = line.startPosition + note.sourceCol - 1;
-            const int noteEnd = noteStart + note.sourceLength;
-            const auto range = std::lower_bound(ranges.cbegin(), ranges.cend(), noteStart,
-                [](const miacode::chart_selection::NoteRange& range, int position) { return range.end <= position; });
-            if (range == ranges.cend() || range->start >= noteEnd) continue;
-            result.locations.insert(timelineRenderLocationId(line.lineNumber, note.sourceCol));
+            const bool slide = note.kind == TimelineRenderNoteKind::Slide || note.kind == TimelineRenderNoteKind::Wifi;
+            const bool head = result.locations.contains(timelineRenderLocationId(line.render, note));
+            const bool track = slide && result.locations.contains(timelineRenderTrackLocationId(line.render, note));
+            if (!head && !track) continue;
             const bool touch = note.kind == TimelineRenderNoteKind::Touch
                 || note.kind == TimelineRenderNoteKind::TouchHold;
             const double speed = qMax(0.0001, qAbs((touch ? touchFlowSpeed : tapFlowSpeed) * note.hsMultiplier));
             const double frames = miacode::preview_gameplay::kPreviewTimingBaseFrames
                 + miacode::preview_gameplay::kPreviewTimingFlowFramesNumerator / speed;
-            // Full original scene context stays active. Do not clip this lead-in
-            // at earlier unselected notes, or clip selected tails at following notes.
             const double lead = miacode::preview_gameplay::previewTimingSecondsFromFramesAt120Fps(
                 qMax(frames * 2.0, frames + 2.0));
-            visibleStart = qMin(visibleStart,
-                timelineRenderAbsoluteSecond(line.render, note.secondOffset) - lead);
-            visualEnd = qMax(visualEnd, timelineRenderNoteExportVisualEndSecond(line.render, note, true));
-            visualEnd = qMax(visualEnd, timelineRenderNoteBodyEndSecond(line.render, note, true)
-                + miacode::preview::scene::kMaimuriDxJudgeMaxLifetimeSeconds);
+            const double start = timelineRenderAbsoluteSecond(line.render, note.secondOffset);
+            visibleStart = qMin(visibleStart, start - lead);
+            if (slide && !track) {
+                visualEnd = qMax(visualEnd, start + miacode::preview::scene::kMaimuriDxJudgeMaxLifetimeSeconds);
+            } else {
+                visualEnd = qMax(visualEnd, timelineRenderNoteExportVisualEndSecond(line.render, note, true));
+                visualEnd = qMax(visualEnd, timelineRenderNoteBodyEndSecond(line.render, note, true)
+                    + miacode::preview::scene::kMaimuriDxJudgeMaxLifetimeSeconds);
+            }
         }
     }
-    if (!result.locations.isEmpty()) {
-        result.startSecond = qMax(0.0, visibleStart);
-        result.endSecond = qMax(result.startSecond, visualEnd + 1.0 / 60.0);
-    }
+    result.startSecond = qMax(0.0, visibleStart);
+    result.endSecond = qMax(result.startSecond, visualEnd + 1.0 / 60.0);
     return result;
 }
 

@@ -2,6 +2,8 @@
 
 #include <QPointF>
 
+struct TimelineNoteMarker;
+
 namespace miacode::preview::scene {
 
 struct TapApproachSample {
@@ -45,6 +47,7 @@ PreviewTouchTiming previewTouchTimingForFlowSpeed(qreal flowSpeed);
 // rejects upstream, but defensively floor here too).
 PreviewTapTiming previewTapTimingForEffectiveFlowSpeed(qreal effectiveFlowSpeed);
 PreviewSlideTrackTiming previewSlideTrackTimingForEffectiveFlowSpeed(qreal effectiveFlowSpeed);
+PreviewSlideTrackTiming previewSlideTrackTimingForMarker(const TimelineNoteMarker& marker, double tapFlowSpeed, double starFadeTiming);
 PreviewTouchTiming previewTouchTimingForEffectiveFlowSpeed(qreal effectiveFlowSpeed);
 qreal touchPreHitAlpha(qreal deltaSeconds, qreal touchDurationSeconds, qreal touchShowDurationSeconds);
 qreal touchCloseProgress(qreal deltaSeconds, qreal touchDurationSeconds, qreal touchShowDurationSeconds, qreal touchCloseDurationSeconds);

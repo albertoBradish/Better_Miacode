@@ -2,6 +2,7 @@
 
 #include "core/scene/PreviewAnimatedSpriteHelpers.h"
 #include "core/scene/PreviewOpacityCurves.h"
+#include "core/scene/PreviewSkinSelectors.h"
 #include "core/scene/PreviewSceneConstants.h"
 #include "core/scene/PreviewSceneMath.h"
 
@@ -56,7 +57,8 @@ PreviewTouchLayerState buildPreviewTouchLayerState(
                                   qreal rotation,
                                   qreal opacity,
                                   PreviewAnimatedSpriteEffect effect = PreviewAnimatedSpriteEffect::None,
-                                  bool cacheable = true
+                                  bool cacheable = true,
+                                  HandOrderHand handOrderHand = HandOrderHand::Unspecified
                               ) {
         if (image == nullptr || image->isNull() || opacity <= 0.0 || width <= 0.0 || height <= 0.0) {
             return;
@@ -69,6 +71,7 @@ PreviewTouchLayerState buildPreviewTouchLayerState(
         sprite.rotationDegrees = rotation;
         sprite.opacity = opacity;
         sprite.effect = effect;
+        sprite.handOrderHand = handOrderHand;
         sprite.cacheable = cacheable;
         layerState.sprites.append(sprite);
     };
@@ -107,6 +110,8 @@ PreviewTouchLayerState buildPreviewTouchLayerState(
             ? PreviewAnimatedSpriteEffect::BreakAnimate
             : PreviewAnimatedSpriteEffect::None;
         const bool cornerImageCacheable = true;
+        const HandOrderHand hand = state.render.showHandOrderAnnotations
+            ? marker.handOrderHead : HandOrderHand::Unspecified;
 
         const QPointF point = mapLogicalPointToRect(marker.touchPoint, playfieldRect);
         const qreal alpha =
@@ -147,7 +152,8 @@ PreviewTouchLayerState buildPreviewTouchLayerState(
                 pieceLayout.angle,
                 alpha,
                 cornerEffect,
-                cornerImageCacheable
+                cornerImageCacheable,
+                hand
             );
         }
         // Per-sensor borders: emitted only on the front (earliest-hit) marker's iteration so each
@@ -194,9 +200,11 @@ PreviewTouchLayerState buildPreviewTouchLayerState(
                 }
             }
         }
-        appendSprite(&basePointImage, point, pointWidth, pointHeight, 0.0, alpha);
+        appendSprite(&basePointImage, point, pointWidth, pointHeight, 0.0, alpha,
+                     PreviewAnimatedSpriteEffect::None, true, hand);
     }
 
+    applyHandOrderSkinArtwork(state.skin, &layerState.sprites);
     return layerState;
 }
 

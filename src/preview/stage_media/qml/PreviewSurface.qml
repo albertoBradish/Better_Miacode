@@ -7,6 +7,10 @@ Item {
     id: root
 
     property var runtime: null
+    readonly property var introStyle: runtime ? runtime.introBannerStyle : null
+    readonly property bool chartPreviewStyle: !!introStyle && !!introStyle.chartPreviewMode
+    readonly property bool chartPreviewSplit: chartPreviewStyle && runtime.introOverlayActive
+        && runtime.introOverlayFrame < introStyle.pvPreviewHoldFrames
     property var mediaHost: null
     property var logger: null
     property string surfaceRole: "unknown"
@@ -156,16 +160,19 @@ Item {
         }
     }
 
+    Rectangle {
+        anchors.fill: parent
+        color: "black"
+        visible: root.chartPreviewSplit
+    }
+
     PreviewRuntimeQml.PreviewStageMediaItem {
         id: previewStageMedia
         anchors.fill: parent
-        z: 0
         mediaHost: root.mediaHost
-        // NOTE — keep visible:true. See the comment above
-        // PreviewQuickSceneRoot for why hiding QML items in this
-        // surface breaks Qt's lazy present cadence. The internal
-        // Image/VideoOutput children render against
-        // mediaHost.mediaVisible already.
+        scaleMode: root.chartPreviewSplit ? 0 : (mediaHost ? mediaHost.backgroundScaleMode : 0)
+        visible: !root.chartPreviewSplit || root.introStyle.pvPreviewVideoUnderlay
+        opacity: root.chartPreviewSplit ? root.introStyle.pvPreviewBrightness : 1
     }
 
     // NOTE — keep these QQuickItems visible:true. Hiding them sounds
@@ -180,16 +187,32 @@ Item {
     // The PV-preview intro hold shows the stage PV around the card, so the
     // chart and HUD drop out by opacity for that phase; the animating intro
     // overlay keeps the frame dirty, so presents keep their cadence.
-    PreviewQuickSceneRoot {
+    Image {
         anchors.fill: parent
+        visible: root.chartPreviewSplit && !root.introStyle.pvPreviewVideoUnderlay
+        source: visible ? (root.introStyle.backdropImage.toString() || root.runtime.introBackgroundImage.toString()
+                           || "qrc:/icons/app-original.png") : ""
+        fillMode: Image.PreserveAspectCrop
+        opacity: visible ? root.introStyle.pvPreviewBrightness : 0
+    }
+
+    PreviewQuickSceneRoot {
+        stageBackgroundEnabled: !root.chartPreviewSplit
+        x: root.chartPreviewSplit ? parent.width * 0.5 : 0
+        width: parent.width - x
+        height: parent.height
+        clip: root.chartPreviewSplit
         z: 1
         opacity: root.runtime && root.runtime.introHidesChart ? 0 : 1
         runtime: root.runtime
-        backgroundColor: root.backgroundColor
+        backgroundColor: root.chartPreviewSplit ? "#1F2833" : root.backgroundColor
     }
 
     PreviewQuickHudLayer {
-        anchors.fill: parent
+        x: root.chartPreviewSplit ? parent.width * 0.5 : 0
+        width: parent.width - x
+        height: parent.height
+        clip: root.chartPreviewSplit
         z: 2
         opacity: root.runtime && root.runtime.introHidesChart ? 0 : 1
         runtime: root.runtime
@@ -232,10 +255,12 @@ Item {
             id: introOverlayLoader
             active: introOverlayLayer.visible
             source: "qrc:/intro/qml/IntroOverlay.qml"
-            width: 1920
+            width: root.chartPreviewStyle ? Math.max(1, introOverlayLayer.width * height
+                / Math.max(1, introOverlayLayer.height)) : 1920
             height: 1080
             transformOrigin: Item.Center
-            scale: Math.max(introOverlayLayer.width / width, introOverlayLayer.height / height)
+            scale: root.chartPreviewStyle ? introOverlayLayer.height / height
+                : Math.max(introOverlayLayer.width / width, introOverlayLayer.height / height)
             x: introOverlayLayer.width / 2 - width / 2
             y: introOverlayLayer.height / 2 - height / 2
             onLoaded: {

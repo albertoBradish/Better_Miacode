@@ -108,15 +108,15 @@ void flushShadowToDisk();
 // Phase 6 — startup beacon for "the process exited before any log line
 // was written". Writes a tiny `miacode_startup_beacon_<pid>.txt` next
 // to the eventual op-chain shadow log. Heap-free pure-Win32; safe to
-// call as the very first line of main(), before crash_recovery::install
+// call after runtime-path initialization and before crash_recovery::install
 // or QApplication construction.
 //
-// Resolves the same path priority as installShadow (env override →
-// MIACODE_LOG_DIR → %TEMP%) but is independent of the SEH machinery —
-// the file is always written when reached. Its absence after a silent
-// startup crash means the process died before main() ran (DLL import
-// failure, static-init crash); its presence proves we made it to line
-// 1 of main(), narrowing the search to subsequent code.
+// Uses the initialized workspace log directory. Without runtime-path
+// initialization, it retains the legacy env-override / TEMP fallback.
+// It is independent of the SEH machinery and writes when reached. Its
+// absence after a silent startup failure means the process stopped before
+// this diagnostic, including runtime-path initialization failures. Its
+// presence narrows the search to subsequent startup code.
 //
 // Two-line content:
 //   pid=<n> utc=<ISO8601-ish> version=<MIACODE_DISPLAY_VERSION_STRING>
@@ -137,10 +137,8 @@ void writeStartupBeacon(const char* versionUtf8);
 // trail in the same beacon file that's already proven to land on disk.
 void appendStartupBeaconLine(const char* lineUtf8) noexcept;
 
-// Relocate the startup beacon and op-chain shadow log paths to a
-// specific directory. Called when a chart opens so that all crash
-// diagnostics co-locate with the runtime/export logs under
-// <chart>/.miacode/logs/. Copies the existing beacon content forward;
+// Relocate the startup beacon and op-chain shadow log paths to the
+// active runtime log directory. Copies the existing beacon content forward;
 // the shadow file is re-created at the new path on the next flush.
 // Safe to call from the GUI thread; must NOT be called from a crash
 // handler (uses Qt heap for directory creation and file copy).

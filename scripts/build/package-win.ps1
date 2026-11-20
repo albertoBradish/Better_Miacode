@@ -664,12 +664,7 @@ New-Item -ItemType Directory -Path $slideTimingDocs -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/specs/preview/SLIDE_JUDGEMENT_TIMING_ZH.md') -Destination $slideTimingDocs
 $betterReleaseDocs = Join-Path $betterDocs 'releases'
 New-Item -ItemType Directory -Path $betterReleaseDocs -Force | Out-Null
-Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_5.md') -Destination $betterReleaseDocs
-Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_6.md') -Destination $betterReleaseDocs
-Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_7.md') -Destination $betterReleaseDocs
-Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_8.md') -Destination $betterReleaseDocs
-Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_9.md') -Destination $betterReleaseDocs
-Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/releases/better_10.md') -Destination $betterReleaseDocs
+Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs/releases') -Filter 'better_*.md' -File | Copy-Item -Destination $betterReleaseDocs
 Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination $DistDir
 $betterDemoParent = Join-Path $DistDir 'resources/demos'
 New-Item -ItemType Directory -Path $betterDemoParent -Force | Out-Null

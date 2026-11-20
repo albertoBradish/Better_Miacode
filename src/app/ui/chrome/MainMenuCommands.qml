@@ -7,6 +7,7 @@ import QtQuick
 QtObject {
     id: root
 
+    property var workspace
     property bool canUndo: false
     property bool canRedo: false
     property bool canCut: false
@@ -15,6 +16,7 @@ QtObject {
     property bool canTransform: false
     property bool canNormalize: false
     property bool canPlaySelection: false
+    property bool canFind: false
     property bool netUploadEnabled: false
     property bool renderModeMenuAvailable: false
     property bool commandsEnabled: true
@@ -23,6 +25,7 @@ QtObject {
     signal saveRequested()
     signal saveWholeDocumentRequested()
     signal saveAsRequested()
+    signal exportPlainSimaiRequested()
     signal exitRequested()
     signal undoRequested()
     signal redoRequested()

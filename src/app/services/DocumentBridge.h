@@ -73,6 +73,12 @@ public:
         std::function<void(std::function<void(bool)>)> handler) = 0;
     // Asks whatever handler is installed; the continuation runs once.
     virtual void requestLeaveDocument(std::function<void(bool)> onDecided) = 0;
+    using LeaveHandler = std::function<void(std::function<void(bool)>)>;
+    void setLeaveAllSongsHandler(LeaveHandler handler) { leaveAllSongs_ = std::move(handler); }
+    void requestLeaveAllSongs(std::function<void(bool)> decided) {
+        if (leaveAllSongs_) leaveAllSongs_(std::move(decided));
+        else requestLeaveDocument(std::move(decided));
+    }
 
     // ---- designer names ----
     //
@@ -101,6 +107,9 @@ public:
     // Call it only between transactions: a half-applied designer edit looks
     // exactly like a document that diverged.
     virtual void reconcileUnifiedDocumentDesigner(UnifiedDesignerReconcileReason reason) = 0;
+
+private:
+    LeaveHandler leaveAllSongs_;
 
 protected:
     DocumentBridge() = default;

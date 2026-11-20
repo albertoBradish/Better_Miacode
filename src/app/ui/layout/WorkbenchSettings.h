@@ -2,6 +2,7 @@
 
 #include <QFont>
 #include <QObject>
+#include <QRect>
 #include <QString>
 #include <QVariantMap>
 #include "editor/SimaiCompletionCatalog.h"
@@ -9,8 +10,7 @@
 // 桌面工作台的持久化边界。QML 在拖动期间维护临时几何，只在用户完成
 // 操作后写入这里，从而避免分隔线移动时连续刷新配置文件。
 // 布局项写入 PreferenceDocument 的 preferences_v2.json（与主题、编辑器同一文件）。
-// 默认 QSettings NativeFormat 在未设置 organizationName 时，Windows 注册表
-// 不会留下这些键，第二次启动仍是默认布局。
+// This build only reads layout values from its isolated preference document.
 // QML preference models own interaction; MainWindow only persists and applies
 // their backend-neutral values for preview/runtime consumers.
 namespace miacode::ui {
@@ -47,6 +47,7 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(bool darkTheme READ darkTheme NOTIFY themeChanged)
     Q_PROPERTY(bool blurMaterialsEnabled READ blurMaterialsEnabled WRITE setBlurMaterialsEnabled NOTIFY blurMaterialsEnabledChanged)
     Q_PROPERTY(QFont codeFont READ codeFont NOTIFY editorSettingsChanged)
+    Q_PROPERTY(QString editorFontFamily READ editorFontFamily WRITE setEditorFontFamily NOTIFY editorSettingsChanged)
     Q_PROPERTY(int editorBlockSpacing READ editorBlockSpacing NOTIFY editorSettingsChanged)
     Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY fontSizeChanged)
     Q_PROPERTY(bool editorHalfWidthInputEnabled READ editorHalfWidthInputEnabled NOTIFY editorSettingsChanged)
@@ -57,6 +58,25 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(bool editorScrollPastEnd READ editorScrollPastEnd WRITE setEditorScrollPastEnd NOTIFY editorSettingsChanged)
     Q_PROPERTY(bool editorSelectionBeatDisplay READ editorSelectionBeatDisplay WRITE setEditorSelectionBeatDisplay NOTIFY editorSettingsChanged)
     Q_PROPERTY(bool editorOverviewRulerEnabled READ editorOverviewRulerEnabled WRITE setEditorOverviewRulerEnabled NOTIFY editorSettingsChanged)
+
+    Q_PROPERTY(bool advancedMetadataEnabled READ advancedMetadataEnabled WRITE setAdvancedMetadataEnabled NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool lowPerformanceMode READ lowPerformanceMode WRITE setLowPerformanceMode NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool disableAltMenuActivation READ disableAltMenuActivation WRITE setDisableAltMenuActivation NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool spaceGuardEnabled READ spaceGuardEnabled WRITE setSpaceGuardEnabled NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool autoNormalizeEnabled READ autoNormalizeEnabled WRITE setAutoNormalizeEnabled NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(bool warnEmptyDifficulty READ warnEmptyDifficulty WRITE setWarnEmptyDifficulty NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(QString timelineLayoutMode READ timelineLayoutMode WRITE setTimelineLayoutMode NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(QString timelineVerticalDirection READ timelineVerticalDirection WRITE setTimelineVerticalDirection NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(double timelineVerticalWidthRatio READ timelineVerticalWidthRatio WRITE setTimelineVerticalWidthRatio NOTIFY workflowSettingsChanged)
+    Q_PROPERTY(QVariantMap workspaceLayout READ workspaceLayout WRITE setWorkspaceLayout NOTIFY workspaceLayoutChanged)
+    Q_PROPERTY(QVariantMap savedWorkspaceLayouts READ savedWorkspaceLayouts NOTIFY savedWorkspaceLayoutsChanged)
+    Q_PROPERTY(QStringList workspaceListOrder READ workspaceListOrder NOTIFY savedWorkspaceLayoutsChanged)
+    Q_PROPERTY(QStringList workspaceSlots READ workspaceSlots NOTIFY savedWorkspaceLayoutsChanged)
+    Q_PROPERTY(QStringList savedWorkspaceLayoutOrder READ savedWorkspaceLayoutOrder NOTIFY savedWorkspaceLayoutsChanged)
+    Q_PROPERTY(QVariantMap workspaceHiddenPanels READ workspaceHiddenPanels WRITE setWorkspaceHiddenPanels NOTIFY workspaceHiddenPanelsChanged)
+    Q_PROPERTY(bool timelinePanelVisible READ timelinePanelVisible WRITE setTimelinePanelVisible NOTIFY timelinePanelVisibleChanged)
+    Q_PROPERTY(double timelineNoteScale READ timelineNoteScale WRITE setTimelineNoteScale NOTIFY timelineNoteScaleChanged)
+    Q_PROPERTY(QString timelineLaneOrder READ timelineLaneOrder WRITE setTimelineLaneOrder NOTIFY workflowSettingsChanged)
 
 public:
     // What 关于 MiaCode shows: version, platform triple and build type. Read
@@ -93,9 +113,11 @@ public:
     QString darkThemeToken() const;
     QString activeThemeToken() const;
     bool darkTheme() const;
-    bool blurMaterialsEnabled() const { return blurMaterialsEnabled_; }
+    bool blurMaterialsEnabled() const { return blurMaterialsEnabled_ && !lowPerformanceMode_; }
     void setBlurMaterialsEnabled(bool enabled);
     QFont codeFont() const;
+    QString editorFontFamily() const;
+    void setEditorFontFamily(const QString& family);
     int editorBlockSpacing() const;
     int fontSize() const;
     bool editorHalfWidthInputEnabled() const;
@@ -129,7 +151,53 @@ public:
     void setEditorSelectionBeatDisplay(bool enabled);
     void setEditorOverviewRulerEnabled(bool enabled);
 
+    bool advancedMetadataEnabled() const { return advancedMetadataEnabled_; }
+    void setAdvancedMetadataEnabled(bool value);
+    bool lowPerformanceMode() const { return lowPerformanceMode_; }
+    void setLowPerformanceMode(bool value);
+    bool disableAltMenuActivation() const { return disableAltMenuActivation_; }
+    void setDisableAltMenuActivation(bool value);
+    bool spaceGuardEnabled() const { return spaceGuardEnabled_; }
+    void setSpaceGuardEnabled(bool value);
+    bool autoNormalizeEnabled() const { return autoNormalizeEnabled_; }
+    void setAutoNormalizeEnabled(bool value);
+    bool warnEmptyDifficulty() const { return warnEmptyDifficulty_; }
+    void setWarnEmptyDifficulty(bool value);
+    QString timelineLayoutMode() const { return timelineLayoutMode_; }
+    void setTimelineLayoutMode(const QString& value);
+    QString timelineVerticalDirection() const { return timelineVerticalDirection_; }
+    void setTimelineVerticalDirection(const QString& value);
+    double timelineVerticalWidthRatio() const { return timelineVerticalWidthRatio_; }
+    void setTimelineVerticalWidthRatio(double value);
+    QVariantMap workspaceLayout() const { return workspaceLayout_; }
+    void setWorkspaceLayout(const QVariantMap& layout);
+    QVariantMap savedWorkspaceLayouts() const { return savedWorkspaceLayouts_; }
+    QStringList workspaceListOrder() const { return workspaceListOrder_; }
+    QStringList workspaceSlots() const { return workspaceSlots_; }
+    QStringList savedWorkspaceLayoutOrder() const;
+    Q_INVOKABLE void moveWorkspaceEntry(const QString& key, int destination);
+    Q_INVOKABLE bool renameWorkspaceLayout(const QString& oldName, const QString& newName);
+    Q_INVOKABLE bool copyWorkspaceLayout(const QString& name, const QString& newName);
+
+    QVariantMap workspaceHiddenPanels() const { return workspaceHiddenPanels_; }
+    void setWorkspaceHiddenPanels(const QVariantMap& panels);
+    Q_INVOKABLE void saveWorkspaceLayout(const QString& name, const QVariantMap& layout, int shortcut = -2);
+    Q_INVOKABLE QRect boundedWorkspaceWindowGeometry(const QRect& rect) const;
+    Q_INVOKABLE void removeWorkspaceLayout(const QString& name);
+    bool timelinePanelVisible() const { return timelinePanelVisible_; }
+    void setTimelinePanelVisible(bool value);
+    double timelineNoteScale() const { return timelineNoteScale_; }
+    void setTimelineNoteScale(double value);
+    QString timelineLaneOrder() const { return timelineLaneOrder_; }
+    void setTimelineLaneOrder(const QString& value);
+
 signals:
+    void workflowSettingsChanged();
+    void timelineNoteScaleChanged();
+    void workspaceLayoutChanged();
+    void savedWorkspaceLayoutsChanged();
+    void workspaceHiddenPanelsChanged();
+    void timelinePanelVisibleChanged();
     void setupCompletedChanged();
     void efficientSidebarEnabledChanged();
     void sidebarVisibleChanged();
@@ -147,6 +215,24 @@ signals:
     void uiScalePercentChanged();
 
 private:
+    bool advancedMetadataEnabled_ = false;
+    bool lowPerformanceMode_ = false;
+    bool spaceGuardEnabled_ = true;
+    bool disableAltMenuActivation_ = true;
+    bool autoNormalizeEnabled_ = false;
+    bool warnEmptyDifficulty_ = true;
+    QString timelineLayoutMode_ = QStringLiteral("horizontal");
+    QString timelineVerticalDirection_ = QStringLiteral("falling");
+    double timelineVerticalWidthRatio_ = 0.34;
+    QVariantMap workspaceLayout_;
+    QVariantMap savedWorkspaceLayouts_;
+    QStringList workspaceListOrder_;
+    QStringList workspaceSlots_;
+    void persistSavedWorkspaceLayouts();
+    QVariantMap workspaceHiddenPanels_;
+    bool timelinePanelVisible_ = true;
+    double timelineNoteScale_ = 1.5;
+    QString timelineLaneOrder_ = QStringLiteral("natural");
     static constexpr int kSidebarDefaultWidth = 190;
     static constexpr int kUiScaleDefaultPercent = 100;
     static constexpr int kUiScaleMinimumPercent = 75;

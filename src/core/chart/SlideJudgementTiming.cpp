@@ -44,7 +44,7 @@ double LaunchBeatIndex::startSecondFor(const TimelineNoteMarker& marker) const
         ? *it : marker.second;
 }
 
-Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats, bool earlyPerfectFromHead)
+Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* launchBeats, bool startAtLaunchBeat)
 {
     Timing result;
     if (marker.type != QLatin1String("slide") && marker.type != QLatin1String("wifi")) return result;
@@ -76,8 +76,10 @@ Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* 
     result.valid = true;
     result.wifiReference = wifi;
     result.headSecond = head;
-    result.brightnessStartSecond = launchBeats ? launchBeats->startSecondFor(marker) : head;
-    result.usesLaunchBeat = result.brightnessStartSecond>head+kCoincidenceEpsilon;
+    const double launch = launchBeats ? launchBeats->startSecondFor(marker) : head;
+    const bool hasLaunch = launch > head + kCoincidenceEpsilon;
+    result.usesLaunchBeat = startAtLaunchBeat && hasLaunch;
+    result.brightnessStartSecond = result.usesLaunchBeat ? launch : head;
     result.traceSecond = trace;
     result.endSecond = end;
     result.judgementSecond = judgement;
@@ -86,8 +88,8 @@ Timing timingForMarker(const TimelineNoteMarker& marker, const LaunchBeatIndex* 
     // establishes whether the normal slide's extra fast interval applies.
     result.perfectStartSecond = judgement - (wifi ? halfWidth : std::max(17.0 * frame, halfWidth));
     result.perfectEndSecond = judgement + halfWidth;
-    result.fullBrightFromHead = earlyPerfectFromHead && result.usesLaunchBeat
-        && result.perfectStartSecond < result.brightnessStartSecond - 1e-9;
+    // A launch beat that already lands in Perfect needs the full native reading window.
+    result.fullBrightFromHead = hasLaunch && result.perfectStartSecond <= launch + 1e-9;
     if (result.fullBrightFromHead) {
         result.brightnessStartSecond = head;
         result.brightnessCompleteSecond = head;
@@ -101,6 +103,7 @@ double brightnessProgress(const Timing& timing, double chartSecond)
 {
     if (!timing.valid || !std::isfinite(chartSecond)
         || !std::isfinite(timing.brightnessStartSecond) || !std::isfinite(timing.brightnessCompleteSecond)) return 0.0;
+    if (timing.fullBrightFromHead) return 1.0;
     if (chartSecond < timing.brightnessStartSecond) return 0.0;
     if (timing.brightnessCompleteSecond <= timing.brightnessStartSecond) return 1.0;
     return std::clamp((chartSecond - timing.brightnessStartSecond) / (timing.brightnessCompleteSecond - timing.brightnessStartSecond), 0.0, 1.0);

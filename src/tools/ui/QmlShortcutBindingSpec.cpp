@@ -1,6 +1,7 @@
 #include "app/ui/document/ChartTransformCommands.h"
 #include "app/ui/chrome/ShortcutCommands.h"
 #include "app/ui/chrome/ShortcutModel.h"
+#include "app/ui/chrome/EditorInputContext.h"
 #include "app/services/ShortcutRegistry.h"
 #include "app/runtime/playback/PreviewStopOrPlayPolicy.h"
 
@@ -19,6 +20,8 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QTextStream>
+#include <QTemporaryDir>
+#include <QJSValue>
 
 #ifndef MIACODE_SOURCE_ROOT
 #error "MIACODE_SOURCE_ROOT must be defined"
@@ -32,6 +35,188 @@ bool expect(bool condition, const QString& message, QTextStream& out, int* faile
     out.flush();
     if (!condition) ++*failed;
     return condition;
+}
+
+void checkPendingInputCommit(QTextStream& out, int* failed)
+{
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    component.setData(R"(
+import QtQuick
+Item {
+    width: 320; height: 200
+    TextInput {
+        objectName: "field"
+        text: "pending"
+        property string committedText: ""
+        function commitPendingEdit() { committedText = text }
+    }
+}
+)", QUrl());
+    QScopedPointer<QObject> object(component.create());
+    auto* pane = qobject_cast<QQuickItem*>(object.data());
+    if (!expect(pane != nullptr, component.errorString(), out, failed)) return;
+    QQuickWindow window;
+    pane->setParentItem(window.contentItem());
+    window.show();
+    auto* field = pane->findChild<QQuickItem*>("field");
+    field->forceActiveFocus();
+    miacode::ui::EditorInputContext input;
+    input.setWindow(&window);
+    input.commitPendingEdits(pane);
+    expect(field->property("committedText").toString() == "pending"
+               && window.activeFocusItem() == field,
+           QStringLiteral("committing pending input preserves its keyboard focus"), out, failed);
+    pane->setParentItem(nullptr);
+}
+
+void checkInputOwnership(QTextStream& out, int* failed)
+{
+    QTemporaryDir storage;
+    miacode::ui::ShortcutRegistry registry(storage.filePath("shortcuts.json"));
+    miacode::ui::ShortcutModel shortcuts(registry);
+    miacode::ui::EditorInputContext input;
+    QQmlEngine engine;
+    engine.rootContext()->setContextProperty("testShortcuts", &shortcuts);
+    engine.rootContext()->setContextProperty("testInput", &input);
+    QQmlComponent component(&engine);
+    component.setData(QByteArray(R"(
+import QtQuick
+import "file:CHROME_DIR" as Chrome
+Window {
+    width: 320; height: 200; visible: true
+    property bool panelMaximizeKeyActive: true
+    property int maximizations: 0
+    Shortcut { sequence: "`"; onActivated: maximizations++ }
+    property int executions: 0
+    QtObject {
+        id: preview
+        function stopOrPlay() { executions++ }
+        function togglePlayback() { executions++ }
+        function adjustRate(direction) { executions++ }
+    }
+    QtObject { id: commands; function shortcutCommandIds() { return ["transform.mirror_lr"] } }
+    TextInput { objectName: "field"; text: "field" }
+    Item { objectName: "neutral" }
+    Chrome.ShortcutBindings {
+        shortcuts: testShortcuts; commands: commands; previewSession: preview
+        commandsEnabled: testInput.workbenchCommandsAllowed
+        onChartTransformRequested: executions++
+    }
+}
+)").replace("CHROME_DIR", MIACODE_SOURCE_ROOT "/src/app/ui/chrome"), QUrl());
+    QScopedPointer<QObject> object(component.create());
+    auto* window = qobject_cast<QQuickWindow*>(object.data());
+    if (!expect(window != nullptr, component.errorString(), out, failed)) return;
+    input.setWindow(window);
+    window->requestActivate();
+    QTest::qWait(100);
+    auto* field = window->findChild<QQuickItem*>("field");
+    field->forceActiveFocus();
+    QTest::keyClick(window, Qt::Key_QuoteLeft);
+    expect(window->property("maximizations").toInt() == 1 && field->property("text") == "field",
+           QStringLiteral("plain backtick maximizes instead of typing into a workbench field"), out, failed);
+    QTest::keyClick(window, Qt::Key_J, Qt::ControlModifier);
+    QTest::keyClick(window, Qt::Key_X, Qt::ControlModifier | Qt::ShiftModifier);
+    expect(window->property("executions").toInt() == 0 && !input.workbenchCommandsAllowed(),
+           QStringLiteral("text input owns keys instead of background chart commands"), out, failed);
+    expect(input.textInput() == field && input.performEdit("selectAll")
+               && field->property("selectedText").toString() == "field"
+               && window->activeFocusItem() == field,
+           QStringLiteral("editing targets the focused input without moving its focus"), out, failed);
+    window->findChild<QQuickItem*>("neutral")->forceActiveFocus();
+    QTest::keyClick(window, Qt::Key_J, Qt::ControlModifier);
+    expect(window->property("executions").toInt() > 0,
+           QStringLiteral("neutral workbench controls retain chart shortcuts"), out, failed);
+    window->setProperty("executions", 0);
+    shortcuts.setCaptureActive(true);
+    QTest::keyClick(window, Qt::Key_J, Qt::ControlModifier);
+    QTest::keyClick(window, Qt::Key_C, Qt::ControlModifier | Qt::ShiftModifier);
+    expect(window->property("executions").toInt() == 0,
+           QStringLiteral("shortcut capture excludes business commands"), out, failed);
+}
+
+void checkPreviewWindowOwnership(QTextStream& out, int* failed)
+{
+    QTemporaryDir storage;
+    miacode::ui::ShortcutRegistry registry(storage.filePath("shortcuts.json"));
+    miacode::ui::ShortcutModel shortcuts(registry);
+    miacode::ui::EditorInputContext input;
+    QQmlEngine engine;
+    engine.rootContext()->setContextProperty("testShortcuts", &shortcuts);
+    engine.rootContext()->setContextProperty("testInput", &input);
+    QQmlComponent component(&engine);
+    component.setData(QByteArray(R"(
+import QtQuick
+import "file:CHROME_DIR" as Chrome
+Window {
+    id: main; width: 320; height: 200; visible: true
+    property int executions: 0
+    property bool allowed: true
+    QtObject {
+        id: preview
+        function stopOrPlay() { executions++ }
+        function togglePlayback() { executions++ }
+        function adjustRate(direction) { executions++ }
+    }
+    Chrome.PreviewShortcuts {
+        shortcuts: testShortcuts; previewSession: preview
+        commandsEnabled: main.allowed && testInput && testInput.workbenchCommandsAllowed
+    }
+    TextInput { objectName: "field"; text: "input" }
+    Item { objectName: "neutral" }
+    Window {
+        objectName: "detachedPreviewWindow"; width: 200; height: 200; visible: true; transientParent: null
+        Chrome.PreviewShortcuts {
+            shortcuts: testShortcuts; previewSession: preview
+            commandsEnabled: main.allowed && testInput && testInput.workbenchCommandsAllowed
+        }
+        TextInput { objectName: "field"; text: "input" }
+        Item { objectName: "neutral" }
+    }
+}
+)").replace("CHROME_DIR", MIACODE_SOURCE_ROOT "/src/app/ui/chrome"), QUrl());
+    QScopedPointer<QObject> object(component.create());
+    auto* window = qobject_cast<QQuickWindow*>(object.data());
+    if (!expect(window != nullptr, component.errorString(), out, failed)) return;
+    input.setWindow(window);
+    auto* detached = window->findChild<QQuickWindow*>("detachedPreviewWindow");
+    for (auto* active : {window, detached}) {
+        active->requestActivate();
+        auto* neutral = active->findChild<QQuickItem*>("neutral");
+        neutral->forceActiveFocus();
+        QTest::qWait(100);
+        const int before = window->property("executions").toInt();
+        QTest::keyClick(active, Qt::Key_C, Qt::ControlModifier | Qt::ShiftModifier);
+        QTest::keyClick(active, Qt::Key_X, Qt::ControlModifier | Qt::ShiftModifier);
+        QTest::keyClick(active, Qt::Key_O, Qt::ControlModifier);
+        QTest::keyClick(active, Qt::Key_P, Qt::ControlModifier);
+        if (window->property("executions").toInt() != before + 4)
+            out << "  preview executions=" << window->property("executions").toInt()
+                << " before=" << before << " active=" << (QGuiApplication::focusWindow() == active) << '\n';
+        expect(window->property("executions").toInt() == before + 4 && active->activeFocusItem() == neutral,
+               QStringLiteral("each preview key executes once in the active window"), out, failed);
+        auto* field = active->findChild<QQuickItem*>("field");
+        field->forceActiveFocus();
+        const int beforeInput = window->property("executions").toInt();
+        QTest::keyClick(active, Qt::Key_P, Qt::ControlModifier);
+        expect(window->property("executions").toInt() == beforeInput && active->activeFocusItem() == field,
+               QStringLiteral("each preview window protects its text input and focus"), out, failed);
+        neutral->forceActiveFocus();
+    }
+    shortcuts.setShortcutText("preview.speed_up", "Ctrl+Alt+9");
+    window->setProperty("executions", 0);
+    QTest::keyClick(detached, Qt::Key_P, Qt::ControlModifier);
+    QTest::keyClick(detached, Qt::Key_9, Qt::ControlModifier | Qt::AltModifier);
+    expect(window->property("executions").toInt() == 1,
+           QStringLiteral("detached preview uses live custom bindings"), out, failed);
+    window->setProperty("allowed", false);
+    QTest::keyClick(detached, Qt::Key_9, Qt::ControlModifier | Qt::AltModifier);
+    shortcuts.setCaptureActive(true);
+    window->setProperty("allowed", true);
+    QTest::keyClick(detached, Qt::Key_C, Qt::ControlModifier | Qt::ShiftModifier);
+    expect(window->property("executions").toInt() == 1,
+           QStringLiteral("preview windows honor command and capture guards"), out, failed);
 }
 
 struct MenuStandardKey {
@@ -75,7 +260,144 @@ QList<MenuStandardKey> menuStandardKeys()
     }
     return keys;
 }
+
+void checkTimelineShortcuts(QTextStream& out, int* failed)
+{
+    QTemporaryDir storage;
+    miacode::ui::ShortcutRegistry registry(storage.filePath(QStringLiteral("shortcuts.json")));
+    miacode::ui::ShortcutModel shortcuts(registry);
+    shortcuts.setShortcutText(QStringLiteral("transform.rotate_ccw_45"), QStringLiteral("Ctrl+Alt+9"));
+    shortcuts.setShortcutText(QStringLiteral("transform.rotate_cw_45"), QStringLiteral("Ctrl+Alt+0"));
+    shortcuts.setShortcutText(QStringLiteral("timeline.zoom_in"), QStringLiteral("Ctrl+'"));
+    shortcuts.setShortcutText(QStringLiteral("timeline.zoom_out"), QStringLiteral("Ctrl+;"));
+
+    QQmlEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("testShortcuts"), &shortcuts);
+    QQmlComponent component(&engine);
+    component.setData(QByteArray(R"QML(
+import QtQuick
+import "file:MIACODE_CHROME_DIR" as Chrome
+Window {
+    width: 320; height: 200; visible: true
+    property alias timeline: timelinePort
+    property alias shortcutBindings: bindings
+    QtObject {
+        id: timelinePort
+        property int steps: 0
+        property var zoomInGestures: []
+        property var zoomOutGestures: []
+        function stepZoomIn() { steps++ }
+        function stepZoomOut() { steps-- }
+        function setZoomWheelShortcuts(zoomIn, zoomOut) {
+            zoomInGestures = zoomIn
+            zoomOutGestures = zoomOut
+        }
+    }
+    QtObject { id: commands; function shortcutCommandIds() { return [] } }
+    QtObject {
+        id: preview
+        function stopOrPlay() {}
+        function togglePlayback() {}
+        function adjustRate(direction) {}
+    }
+    TextInput { id: editor; objectName: "editor"; width: 200; height: 30; focus: true }
+    Item { id: other; objectName: "other"; width: 20; height: 20 }
+    Chrome.ShortcutBindings {
+        id: bindings
+        shortcuts: testShortcuts; commands: commands; previewSession: preview
+    }
+}
+)QML").replace("MIACODE_CHROME_DIR", MIACODE_SOURCE_ROOT "/src/app/ui/chrome"), QUrl());
+    QScopedPointer<QObject> object(component.create());
+    auto* window = qobject_cast<QQuickWindow*>(object.data());
+    if (!expect(window != nullptr, window ? QStringLiteral("timeline shortcut fixture loads")
+                                          : component.errorString(), out, failed)) return;
+    QObject* timeline = window->property("timeline").value<QObject*>();
+    QObject* bindings = window->property("shortcutBindings").value<QObject*>();
+    // The old component has no target property: key presses still exercise its
+    // production bindings and expose the missing command route.
+    bindings->setProperty("timelineStateBridge", QVariant::fromValue(timeline));
+    window->requestActivate();
+    QTest::qWait(100);
+    const auto press = [&](Qt::Key key) {
+        QTest::keyClick(window, key, Qt::ControlModifier);
+        QCoreApplication::processEvents();
+    };
+    press(Qt::Key_Apostrophe);
+    expect(timeline->property("steps").toInt() == 1,
+           QStringLiteral("custom timeline zoom in fires with editor focus"), out, failed);
+    window->findChild<QQuickItem*>(QStringLiteral("other"))->forceActiveFocus();
+    timeline->setProperty("steps", 5);
+    press(Qt::Key_Semicolon);
+    expect(timeline->property("steps").toInt() == 4,
+           QStringLiteral("custom timeline zoom out fires outside editor focus"), out, failed);
+
+    bindings->setProperty("chartCommandsEnabled", false);
+    press(Qt::Key_Apostrophe);
+    expect(timeline->property("steps").toInt() == 4,
+           QStringLiteral("timeline zoom stays inactive outside chart editing"), out, failed);
+    bindings->setProperty("chartCommandsEnabled", true);
+    shortcuts.setCaptureActive(true);
+    press(Qt::Key_Apostrophe);
+    expect(timeline->property("steps").toInt() == 4,
+           QStringLiteral("recording a shortcut does not zoom the timeline"), out, failed);
+    shortcuts.setCaptureActive(false);
+
+    shortcuts.setShortcutText(QStringLiteral("timeline.zoom_in"), QStringLiteral("Ctrl+K"));
+    QCoreApplication::processEvents();
+    timeline->setProperty("steps", 0);
+    press(Qt::Key_Apostrophe);
+    press(Qt::Key_K);
+    expect(timeline->property("steps").toInt() == 1,
+           QStringLiteral("timeline keyboard rebinding takes effect without restart"), out, failed);
+    shortcuts.setShortcutText(QStringLiteral("timeline.zoom_in"), QStringLiteral("Alt+WheelUp"));
+    shortcuts.setShortcutText(QStringLiteral("timeline.zoom_out"), QStringLiteral("Alt+WheelDown"));
+    QCoreApplication::processEvents();
+    const auto gestures = [&](const char* name) {
+        return timeline->property(name).value<QJSValue>().toVariant().toStringList();
+    };
+    expect(gestures("zoomInGestures") == QStringList{QStringLiteral("Alt+WheelUp")}
+               && gestures("zoomOutGestures") == QStringList{QStringLiteral("Alt+WheelDown")},
+           QStringLiteral("wheel gestures synchronize immediately after shortcut edits"), out, failed);
+    timeline->setProperty("steps", 0);
+    press(Qt::Key_K);
+    expect(timeline->property("steps").toInt() == 0,
+           QStringLiteral("switching to a wheel gesture releases the old keyboard binding"), out, failed);
+    shortcuts.resetShortcut(QStringLiteral("timeline.zoom_in"));
+    shortcuts.resetShortcut(QStringLiteral("timeline.zoom_out"));
+    QCoreApplication::processEvents();
+    expect(gestures("zoomInGestures") == QStringList{QStringLiteral("Ctrl+WheelUp")}
+               && gestures("zoomOutGestures") == QStringList{QStringLiteral("Ctrl+WheelDown")},
+           QStringLiteral("resetting shortcuts immediately restores default wheel gestures"), out, failed);
+}
 } // namespace
+
+// File/edit menu keys are fixed: no editable command may take them, by default or by recording.
+void checkReservedShortcuts(QTextStream& out, int* failed)
+{
+    QTemporaryDir storage;
+    miacode::ui::ShortcutRegistry registry(storage.filePath(QStringLiteral("shortcuts.json")));
+    miacode::ui::ShortcutModel shortcuts(registry);
+    const QString stop = QStringLiteral("preview.stop_or_play");
+    const QString before = registry.shortcutText(stop);
+    expect(shortcuts.reservedShortcutOwner(QStringLiteral("Ctrl+C")) == "action.copy"
+               && shortcuts.reservedShortcutOwner(QStringLiteral("Ctrl+S")) == "action.save"
+               && shortcuts.reservedShortcutOwner(QStringLiteral("Ctrl+Shift+N")) == "action.new"
+               && shortcuts.reservedShortcutOwner(QStringLiteral("Ctrl+K")).isEmpty(),
+           QStringLiteral("file and edit keys report the menu command that owns them"), out, failed);
+    expect(shortcuts.nativeText(QStringLiteral("Ctrl+C"))
+               == QKeySequence(QStringLiteral("Ctrl+C")).toString(QKeySequence::NativeText),
+           QStringLiteral("notices spell a recorded key the way the platform shows it"), out, failed);
+    expect(!shortcuts.setShortcutText(stop, QStringLiteral("Ctrl+C")) && registry.shortcutText(stop) == before,
+           QStringLiteral("recording a reserved key leaves the command unchanged"), out, failed);
+    QStringList clashing;
+    for (const auto& definition : registry.editableShortcuts()) {
+        if (!shortcuts.reservedShortcutOwner(registry.shortcutText(definition.id)).isEmpty())
+            clashing.append(definition.id);
+    }
+    expect(clashing.isEmpty(), QStringLiteral("no default binding takes a reserved key: %1")
+               .arg(clashing.join(QStringLiteral(", "))), out, failed);
+}
 
 int main(int argc, char** argv)
 {
@@ -85,6 +407,12 @@ int main(int argc, char** argv)
     QTextStream out(stdout);
     int failed = 0;
 
+    checkPendingInputCommit(out, &failed);
+    checkInputOwnership(out, &failed);
+    checkPreviewWindowOwnership(out, &failed);
+    checkTimelineShortcuts(out, &failed);
+    checkReservedShortcuts(out, &failed);
+
     miacode::ui::ShortcutModel model;
     for (int flags = 0; flags < 8; ++flags) {
         expect(miacode::runtime::previewStopOrPlayShouldStop(flags & 1, flags & 2, flags & 4)
@@ -92,6 +420,30 @@ int main(int argc, char** argv)
                QStringLiteral("Stop or Play stops active or pending startup states (%1)").arg(flags), out, &failed);
     }
     const QStringList boundIds = miacode::ui::shortcutCommandIds();
+    const QString nativeSplitId = QStringLiteral("hand_order.split_native_slide");
+    const QString basicLayoutId = QStringLiteral("hand_order.basic_layout");
+    bool bisectionSupportsCaret = false;
+    for (const auto& spec : miacode::ui::handOrderCommandSpecs())
+        if (spec.id == QStringLiteral("hand_order.bisect_annotation")) bisectionSupportsCaret = !spec.requiresSelection;
+    expect(bisectionSupportsCaret, QStringLiteral("bisection command is available at the current Slide without a selection"), out, &failed);
+    expect(boundIds.contains(QStringLiteral("hand_order.bisect_annotation"))
+        && miacode::ui::ShortcutRegistry::instance().defaultShortcutText(QStringLiteral("hand_order.bisect_annotation")) == QStringLiteral("Alt+C")
+        && boundIds.contains(QStringLiteral("hand_order.swap_hands"))
+        && miacode::ui::ShortcutRegistry::instance().defaultShortcutText(QStringLiteral("hand_order.swap_hands")) == QStringLiteral("Alt+Q"),
+        QStringLiteral("direct bisection and hand swap have dedicated configurable shortcuts"), out, &failed);
+    expect(boundIds.contains(basicLayoutId)
+        && miacode::ui::ShortcutRegistry::instance().defaultShortcutText(basicLayoutId) == QStringLiteral("Ctrl+Alt+B"),
+        QStringLiteral("basic layout has a dedicated configurable command and default shortcut"), out, &failed);
+    const QString alternateId = QStringLiteral("hand_order.alternate");
+    const QString screenSplitId = QStringLiteral("hand_order.screen_split");
+    expect(boundIds.contains(alternateId) && boundIds.contains(screenSplitId)
+        && miacode::ui::ShortcutRegistry::instance().defaultShortcutText(alternateId) == QStringLiteral("Alt+G")
+        && miacode::ui::ShortcutRegistry::instance().defaultShortcutText(screenSplitId) == QStringLiteral("Alt+B"),
+        QStringLiteral("interaction alternation and symmetric splitting have separate configurable shortcuts"), out, &failed);
+    expect(boundIds.contains(nativeSplitId)
+        && miacode::ui::ShortcutRegistry::instance().defaultShortcutText(nativeSplitId) == QStringLiteral("Ctrl+Alt+5")
+        && miacode::ui::ShortcutRegistry::instance().defaultShortcutText(QStringLiteral("hand_order.split_annotation")) == QStringLiteral("Alt+T"),
+        QStringLiteral("native split and hand-order interval split have separate configurable default commands"), out, &failed);
 
     // A declared command can intentionally have no default binding. Identity,
     // rather than a nonempty sequence, determines whether it is configurable.
@@ -148,7 +500,8 @@ int main(int argc, char** argv)
     // is a command with no configurable binding.
     QSet<QString> registryTransformIds;
     for (const auto& definition : miacode::ui::ShortcutRegistry::instance().editableShortcuts()) {
-        if (definition.id.startsWith(QStringLiteral("transform."))) {
+        if (definition.id.startsWith(QStringLiteral("transform."))
+            || definition.id.startsWith(QStringLiteral("hand_order."))) {
             registryTransformIds.insert(definition.id);
         }
     }
@@ -250,6 +603,13 @@ import QtQuick.Controls
 import "file:MIACODE_CHROME_DIR" as Chrome
 Window {
     width: 320; height: 200; visible: true
+    id: shortcutWindow
+    property int autoStarts: 0
+    property int layouts: 0
+    property bool autoAllowed: true
+    property int hands: 0
+    property int nativeSplits: 0
+    property bool handAllowed: true
     property int starts: 0
     property int toggles: 0
     property bool playbackAllowed: false
@@ -272,23 +632,40 @@ Window {
     }
     QtObject {
         id: bindings
+        objectName: "shortcutFixture"
         property int revision: 1
+        property bool captureActive: false
+        property string autoKey: "Ctrl+Alt+H"
+        property string layoutKey: "Ctrl+Alt+B"
+        property string handKey: "Alt+W"
+        property string nativeKey: "Ctrl+Alt+5"
+        property string bisectKey: "Alt+C"
+        property string swapKey: "Alt+Q"
         property string cKey: "Ctrl+Shift+C"
         property string xKey: "Ctrl+Shift+X"
         function sequence(id, fallback) {
+            if (id === "hand_order.analyze") return autoKey
+            if (id === "hand_order.basic_layout") return layoutKey
+            if (id === "hand_order.set_left") return handKey
+            if (id === "hand_order.split_native_slide") return nativeKey
+            if (id === "hand_order.bisect_annotation") return bisectKey
+            if (id === "hand_order.swap_hands") return swapKey
             if (id === "preview.stop_or_play") return cKey
             if (id === "preview.play_pause_global") return xKey
             return ""
         }
     }
-    QtObject { id: commandSource; function shortcutCommandIds() { return [] } }
+    QtObject { id: commandSource; function shortcutCommandIds() { return ["hand_order.set_left", "hand_order.analyze", "hand_order.basic_layout", "hand_order.split_native_slide", "hand_order.bisect_annotation", "hand_order.swap_hands"] } }
     TextInput { anchors.fill: parent; focus: true }
     Chrome.ShortcutBindings {
         shortcuts: bindings; commands: commandSource; previewSession: preview
-        chartCommandsEnabled: false
+        chartCommandsEnabled: true
+        handOrderCommandsEnabled: shortcutWindow.handAllowed
+        handOrderAnalyzeEnabled: shortcutWindow.autoAllowed
+        onChartTransformRequested: id => { if (id === "hand_order.analyze") shortcutWindow.autoStarts++; else if (id === "hand_order.basic_layout") shortcutWindow.layouts++; else if (id === "hand_order.split_native_slide") shortcutWindow.nativeSplits++; else shortcutWindow.hands++ }
         playbackCommandsEnabled: playbackAllowed
     }
-    function rebind() { bindings.cKey = "Ctrl+Alt+J"; bindings.xKey = "Ctrl+Alt+K"; bindings.revision++ }
+    function rebind() { bindings.autoKey = "Ctrl+Alt+Y"; bindings.layoutKey = "Ctrl+Alt+G"; bindings.handKey = "Ctrl+Alt+4"; bindings.nativeKey = "Ctrl+Alt+6"; bindings.cKey = "Ctrl+Alt+J"; bindings.xKey = "Ctrl+Alt+K"; bindings.revision++ }
 }
 )QML").replace("MIACODE_CHROME_DIR", MIACODE_SOURCE_ROOT "/src/app/ui/chrome"), QUrl());
         QScopedPointer<QObject> object(component.create());
@@ -344,14 +721,74 @@ Window {
             press(Qt::Key_X, Qt::ControlModifier | Qt::ShiftModifier);
             expect(window->property("starts").toInt() == 1 && window->property("toggles").toInt() == 1,
                    QStringLiteral("both preview commands fire with editor focus and no chart commands"), out, &failed);
+            press(Qt::Key_W, Qt::AltModifier);
+            expect(window->property("hands").toInt() == 1,
+                   QStringLiteral("hand-order command fires once with source editor focus"), out, &failed);
+            press(Qt::Key_C, Qt::AltModifier);
+            press(Qt::Key_Q, Qt::AltModifier);
+            expect(window->property("hands").toInt() == 3,
+                   QStringLiteral("Alt+C bisection and Alt+Q swap each dispatch exactly once"), out, &failed);
+            window->setProperty("hands", 1);
+            press(Qt::Key_5, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("nativeSplits").toInt() == 1,
+                   QStringLiteral("native slide split dispatches once with editor focus"), out, &failed);
+            window->setProperty("handAllowed", false);
+            press(Qt::Key_C, Qt::AltModifier);
+            press(Qt::Key_Q, Qt::AltModifier);
+            expect(window->property("hands").toInt() == 2,
+                   QStringLiteral("caret bisection stays enabled without selection while hand swap stays disabled"), out, &failed);
+            window->setProperty("hands", 1);
+            press(Qt::Key_B, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("layouts").toInt() == 1,
+                QStringLiteral("basic layout is eligible without a selection while selection-only commands are disabled"), out, &failed);
+            window->setProperty("handAllowed", true);
             QMetaObject::invokeMethod(window, "rebind");
             QCoreApplication::processEvents();
+            press(Qt::Key_B, Qt::ControlModifier | Qt::AltModifier);
+            press(Qt::Key_G, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("layouts").toInt() == 2,
+                QStringLiteral("basic-layout rebinding releases the old key and dispatches the new one once"), out, &failed);
             press(Qt::Key_C, Qt::ControlModifier | Qt::ShiftModifier);
             press(Qt::Key_X, Qt::ControlModifier | Qt::ShiftModifier);
             press(Qt::Key_J, Qt::ControlModifier | Qt::AltModifier);
             press(Qt::Key_K, Qt::ControlModifier | Qt::AltModifier);
             expect(window->property("starts").toInt() == 2 && window->property("toggles").toInt() == 2,
                    QStringLiteral("preview bindings follow revised sequences and release their previous keys"), out, &failed);
+            press(Qt::Key_W, Qt::AltModifier);
+            press(Qt::Key_4, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("hands").toInt() == 2,
+                   QStringLiteral("hand-order rebinding releases the previous key and fires once"), out, &failed);
+            press(Qt::Key_5, Qt::ControlModifier | Qt::AltModifier);
+            press(Qt::Key_6, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("nativeSplits").toInt() == 2,
+                   QStringLiteral("native split rebinding releases the old key and retains a single dispatch"), out, &failed);
+            window->setProperty("handAllowed", false);
+            press(Qt::Key_4, Qt::ControlModifier | Qt::AltModifier);
+            press(Qt::Key_6, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("hands").toInt() == 2 && window->property("nativeSplits").toInt() == 2,
+                   QStringLiteral("empty selection or non-editor focus disables both annotation and native slide editing"), out, &failed);
+            window->setProperty("handAllowed", true);
+            window->findChild<QObject*>("shortcutFixture")->setProperty("captureActive", true);
+            press(Qt::Key_C, Qt::AltModifier);
+            press(Qt::Key_Q, Qt::AltModifier);
+            press(Qt::Key_4, Qt::ControlModifier | Qt::AltModifier);
+            press(Qt::Key_6, Qt::ControlModifier | Qt::AltModifier);
+            press(Qt::Key_G, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("hands").toInt() == 2 && window->property("nativeSplits").toInt() == 2
+                && window->property("layouts").toInt() == 2,
+                   QStringLiteral("shortcut preference capture cannot trigger either chart-editing command"), out, &failed);
+            window->findChild<QObject*>("shortcutFixture")->setProperty("captureActive", false);
+            window->setProperty("handAllowed", false);
+            press(Qt::Key_H, Qt::ControlModifier | Qt::AltModifier);
+            press(Qt::Key_Y, Qt::ControlModifier | Qt::AltModifier);
+            press(Qt::Key_4, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("autoStarts").toInt() == 1 && window->property("hands").toInt() == 2,
+                   QStringLiteral("rebound automatic analysis works without selection while manual editing stays disabled"), out, &failed);
+            window->setProperty("autoAllowed", false);
+            press(Qt::Key_Y, Qt::ControlModifier | Qt::AltModifier);
+            press(Qt::Key_G, Qt::ControlModifier | Qt::AltModifier);
+            expect(window->property("autoStarts").toInt() == 1 && window->property("layouts").toInt() == 2,
+                   QStringLiteral("automatic shortcut respects non-editor focus eligibility"), out, &failed);
         }
     }
 

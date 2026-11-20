@@ -6,5 +6,6 @@
              ~17 MB dataset and does not belong in fonts.qrc. AUTORCC misses the
              json dep, so touch this qrc after regenerating slide_data.json. -->
         <file alias="data/slide_data.json">../assets/reference/slide_data.json</file>
+        <file alias="data/hand_order_solver_priority.csv">../tools/hand_order_patterns/solver_priority.csv</file>
     </qresource>
 </RCC>

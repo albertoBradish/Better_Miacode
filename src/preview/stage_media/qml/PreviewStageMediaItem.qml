@@ -10,13 +10,13 @@ Item {
 
     objectName: "previewStageMediaItem"
     anchors.fill: parent
-    readonly property int scaleMode: root.mediaHost ? root.mediaHost.backgroundScaleMode : 0
+    property int scaleMode: root.mediaHost ? root.mediaHost.backgroundScaleMode : 0
     readonly property bool innerCircleFitOuterFill: scaleMode === 3
     readonly property bool squareFit: scaleMode === 2
     readonly property bool fitContain: scaleMode === 1 || scaleMode === 2
     readonly property real innerCircleSide: Math.max(
         1,
-        root.height * (root.mediaHost ? root.mediaHost.layoutSquareScale : 0.95)
+        Math.min(root.width, root.height) * (root.mediaHost ? root.mediaHost.layoutSquareScale : 0.95)
     )
 
     Rectangle {

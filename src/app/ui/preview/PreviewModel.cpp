@@ -1,4 +1,5 @@
 #include "app/ui/preview/PreviewModel.h"
+#include "app/services/PreviewModePreferences.h"
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -72,6 +73,33 @@ QVariantMap PreviewModel::canvasSettings() const
 void PreviewModel::setCanvasSetting(const QString& key, const QVariant& value)
 {
     if (surface() != nullptr) surface()->setRenderSetting(key, value);
+}
+
+bool PreviewModel::handOrderOverlayEnabled() const
+{
+    return canvasSettings().value(QStringLiteral("showHandOrderAnnotations"), true).toBool();
+}
+
+QVariantMap PreviewModel::playProfile() const
+{
+    using namespace miacode::hand_order;
+    const auto settings = canvasSettings().value(QStringLiteral("playProfile")).toMap();
+    return PlayProfile::fromJson(QJsonObject::fromVariantMap(settings)).toJson().toVariantMap();
+}
+
+QVariantMap PreviewModel::playStartingHeights(const QVariantMap& settings) const
+{
+    using namespace miacode::hand_order;
+    const auto profile = PlayProfile::fromJson(QJsonObject::fromVariantMap(settings));
+    return {{QStringLiteral("shoulder"), profile.shoulderHeightCm()},
+        {QStringLiteral("hand"), profile.readyHandHeightCm()},
+        {QStringLiteral("center"), playCabinetCenterCm}};
+}
+
+void PreviewModel::setHandOrderOverlayEnabled(bool enabled)
+{
+    // This is a presentation layer over existing annotations, never a solver command.
+    setCanvasSetting(QStringLiteral("showHandOrderAnnotations"), enabled);
 }
 
 void PreviewModel::resetV2UiProbe()
@@ -184,9 +212,14 @@ void PreviewModel::refreshFromBackend(bool force)
     }
     const bool nextMuriCheckEnabled = nextRenderModeValue == RenderMode::MaimuriDxStyle;
     const bool nextSmoothStarErase = lastRegularMode_ != RenderMode::EraseByArea;
-    const QString nextRenderModeLabel = nextMuriCheckEnabled
-        ? qtTrId("qml.muri_analysis")
-        : qtTrId("qml.normal_rendering");
+    QString nextRenderModeLabel;
+    switch (nextRenderModeValue) {
+    case RenderMode::MaimuriDxStyle: nextRenderModeLabel = qtTrId("qml.muri_analysis"); break;
+    case RenderMode::Debug: nextRenderModeLabel = qtTrId("qml.debug_rendering"); break;
+    case RenderMode::SimulatedPlay: nextRenderModeLabel = qtTrId("preview.simulated_play"); break;
+    case RenderMode::HandOrderBreakdown: nextRenderModeLabel = qtTrId("preview.hand_order_breakdown"); break;
+    default: nextRenderModeLabel = qtTrId("qml.normal_rendering"); break;
+    }
     const QStringList nextStatisticsTexts = surface()->statsTexts();
     const bool nextStatisticsAvailable = !nextStatisticsTexts.isEmpty();
     const int nextMuriHandRadiusPx = surface()->muriHandRadiusPx();
@@ -360,12 +393,69 @@ void PreviewModel::setMuriCheckEnabled(bool enabled)
         }
         surface()->setMuriRenderMode(RenderMode::MaimuriDxStyle);
     } else {
-        if (current != RenderMode::MaimuriDxStyle) {
+        if (current == RenderMode::Native || current == RenderMode::EraseByArea) {
             return;
         }
         surface()->setMuriRenderMode(lastRegularMode_);
     }
     refreshFromBackend();
+}
+
+void PreviewModel::setDebugRendering()
+{
+    if (surface() != nullptr && surface()->muriRenderMode() != RenderMode::Debug) {
+        surface()->setMuriRenderMode(RenderMode::Debug);
+        refreshFromBackend();
+    }
+}
+
+void PreviewModel::setSimulatedPlay()
+{
+    if (!handOrderFeaturesEnabled_) return;
+    if (surface() != nullptr && surface()->muriRenderMode() != RenderMode::SimulatedPlay) {
+        surface()->setMuriRenderMode(RenderMode::SimulatedPlay);
+        refreshFromBackend();
+    }
+}
+
+void PreviewModel::setHandOrderFeaturesEnabled(bool enabled)
+{
+    handOrderFeaturesEnabled_ = enabled;
+    setCanvasSetting(QStringLiteral("handOrderFeaturesEnabled"), enabled);
+    refreshFromBackend();
+    emit renderModeChanged();
+}
+
+void PreviewModel::setHandOrderBreakdown()
+{
+    if (!handOrderFeaturesEnabled_) return;
+    if (surface() != nullptr && surface()->muriRenderMode() != RenderMode::HandOrderBreakdown) {
+        surface()->setMuriRenderMode(RenderMode::HandOrderBreakdown);
+        refreshFromBackend();
+    }
+}
+
+int PreviewModel::debugDisplayPreset() const
+{
+    const auto values = canvasSettings();
+    for (int preset : {0, 1}) {
+        const auto expected = miacode::preview_mode_preferences::debugDisplayPreset(preset);
+        bool matches = true;
+        for (auto it = expected.begin(); it != expected.end(); ++it)
+            matches = matches && values.value(it.key()).toBool() == it.value().toBool();
+        if (matches) return preset;
+    }
+    return -1;
+}
+
+void PreviewModel::applyDebugDisplayPreset(int preset)
+{
+    if (!surface()) return;
+    const auto values = miacode::preview_mode_preferences::debugDisplayPreset(preset);
+    if (values.isEmpty()) return;
+    setDebugRendering();
+    for (auto it = values.begin(); it != values.end(); ++it) setCanvasSetting(it.key(), it.value().toVariant());
+    emit canvasSettingsChanged();
 }
 
 void PreviewModel::setMuriHandRadiusPx(int radiusPx)
@@ -393,7 +483,8 @@ void PreviewModel::setSmoothStarErase(bool enabled)
         return;
     }
     lastRegularMode_ = enabled ? RenderMode::Native : RenderMode::EraseByArea;
-    if (surface()->muriRenderMode() != RenderMode::MaimuriDxStyle) {
+    if (surface()->muriRenderMode() == RenderMode::Native
+        || surface()->muriRenderMode() == RenderMode::EraseByArea) {
         surface()->setMuriRenderMode(lastRegularMode_);
     }
     refreshFromBackend();

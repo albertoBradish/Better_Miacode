@@ -162,9 +162,9 @@ bool verifyAnalysisSnapshotIdentityGate(QTextStream& err)
     snapshot.validation.warningCount = 1;
     snapshot.validation.strictNoteCount = 7;
     snapshot.validation.issues = {
-        {2, 3, 5, SimaiValidationSeverity::Error,
+        {2, 3, 5, SimaiValidationSeverity::Error, false,
          QStringLiteral("bad token"), QStringLiteral("Bad token")},
-        {4, 1, 2, SimaiValidationSeverity::Warning,
+        {4, 1, 2, SimaiValidationSeverity::Warning, false,
          QStringLiteral("compatibility warning"), QStringLiteral("Compatibility warning")},
     };
 

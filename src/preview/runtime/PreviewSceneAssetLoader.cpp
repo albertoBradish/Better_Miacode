@@ -1,4 +1,5 @@
 #include "preview/runtime/PreviewSceneAssetLoader.h"
+#include "core/scene/PreviewStandardFirework.h"
 
 #include "core/video/AssetPaths.h"
 #include "core/video/LayoutRingConfig.h"
@@ -7,6 +8,7 @@
 #include "core/video/PreviewSkinConfig.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QPainter>
 #include <QPainterPath>
@@ -294,7 +296,7 @@ QImage buildJudgeEffectTapBreakFallbackImage()
     return image;
 }
 
-QImage buildJudgeEffectFireworkColorBallFallbackImage()
+QImage buildModernFireworkColorBallImage()
 {
     constexpr int kSize = 512;
     QImage image(kSize, kSize, QImage::Format_ARGB32_Premultiplied);
@@ -450,6 +452,86 @@ void populateSkinAssets(const QString& skinDirectory, miacode::preview::scene::P
             skin->wifiMineImages.append(wifiMineImage);
         }
     }
+
+    const QDir handOrderDir(dir.filePath(QStringLiteral("hand_order")));
+    if (!handOrderDir.exists()) {
+        return;
+    }
+    const auto registerArtwork = [&](const QImage& original, const QString& fileName) {
+        if (original.isNull()) {
+            return;
+        }
+        std::array<QImage, 3> variants;
+        constexpr const char* kHands[] = {"l", "r", "m"};
+        for (size_t index = 0; index < variants.size(); ++index) {
+            variants[index] = loadImageIfExists(
+                handOrderDir.filePath(QString::fromLatin1(kHands[index]) + QLatin1Char('/') + fileName));
+            if (variants[index].isNull() || variants[index].size() != original.size()) {
+                return; // Incomplete custom artwork uses the shader fallback.
+            }
+        }
+        skin->handOrderVariants.insert(static_cast<quint64>(original.cacheKey()), std::move(variants));
+    };
+    const auto registerNamed = [&](const QImage& original, const char* fileName) {
+        registerArtwork(original, QString::fromLatin1(fileName));
+    };
+
+    registerNamed(skin->tapImage, "tap.png");
+    registerNamed(skin->tapEachImage, "tap_each.png");
+    registerNamed(skin->tapBreakImage, "tap_break.png");
+    registerNamed(skin->tapMineImage, "tap_mine.png");
+    registerNamed(skin->holdImage, "hold.png");
+    registerNamed(skin->holdOnImage, "hold_on.png");
+    registerNamed(skin->holdOffImage, "hold_off.png");
+    registerNamed(skin->holdEachImage, "hold_each.png");
+    registerNamed(skin->holdEachOnImage, "hold_each_on.png");
+    registerNamed(skin->holdBreakImage, "hold_break.png");
+    registerNamed(skin->holdBreakOnImage, "hold_break_on.png");
+    registerNamed(skin->holdMineImage, "hold_mine.png");
+    registerNamed(skin->starImage, "star.png");
+    registerNamed(skin->starDoubleImage, "star_double.png");
+    registerNamed(skin->starEachImage, "star_each.png");
+    registerNamed(skin->starEachDoubleImage, "star_each_double.png");
+    registerNamed(skin->starBreakImage, "star_break.png");
+    registerNamed(skin->starBreakDoubleImage, "star_break_double.png");
+    registerNamed(skin->starMineImage, "star_mine.png");
+    registerNamed(skin->starMineDoubleImage, "star_mine_double.png");
+    registerNamed(skin->slideTrackImage, "slide.png");
+    registerNamed(skin->slideTrackEachImage, "slide_each.png");
+    registerNamed(skin->slideTrackBreakImage, "slide_break.png");
+    registerNamed(skin->slideTrackMineImage, "slide_mine.png");
+    registerNamed(skin->touchCornerImage, "touch.png");
+    registerNamed(skin->touchCornerEachImage, "touch_each.png");
+    registerNamed(skin->touchCornerBreakImage, "touch_break.png");
+    registerNamed(skin->touchCornerMineImage, "touch_mine.png");
+    registerNamed(skin->touchPointImage, "touch_point.png");
+    registerNamed(skin->touchPointEachImage, "touch_point_each.png");
+    registerNamed(skin->touchPointBreakImage, "touch_break_point.png");
+    registerNamed(skin->touchPointMineImage, "touch_point_mine.png");
+    for (int index = 0; index <= 10; ++index) {
+        if (index < skin->wifiImages.size()) {
+            registerArtwork(skin->wifiImages.at(index), QStringLiteral("wifi_%1.png").arg(index));
+        }
+        if (index < skin->wifiEachImages.size()) {
+            registerArtwork(skin->wifiEachImages.at(index), QStringLiteral("wifi_each_%1.png").arg(index));
+        }
+        if (index < skin->wifiBreakImages.size()) {
+            registerArtwork(skin->wifiBreakImages.at(index), QStringLiteral("wifi_break_%1.png").arg(index));
+        }
+        if (index < skin->wifiMineImages.size()) {
+            registerArtwork(skin->wifiMineImages.at(index), QStringLiteral("wifi_mine_%1.png").arg(index));
+        }
+    }
+    const QImage* touchHoldSets[][4] = {
+        {&skin->touchHold0Image, &skin->touchHold1Image, &skin->touchHold2Image, &skin->touchHold3Image},
+        {&skin->touchHoldBreak0Image, &skin->touchHoldBreak1Image, &skin->touchHoldBreak2Image, &skin->touchHoldBreak3Image},
+        {&skin->touchHoldMine0Image, &skin->touchHoldMine1Image, &skin->touchHoldMine2Image, &skin->touchHoldMine3Image},
+    };
+    for (int index = 0; index < 4; ++index) {
+        registerArtwork(*touchHoldSets[0][index], QStringLiteral("touchhold_%1.png").arg(index));
+        registerArtwork(*touchHoldSets[1][index], QStringLiteral("touchhold_break_%1.png").arg(index));
+        registerArtwork(*touchHoldSets[2][index], QStringLiteral("touchhold_%1_mine.png").arg(index));
+    }
 }
 
 void populateJudgeOverlayAssets(const QString& skinDirectory, miacode::preview::scene::PreviewJudgeOverlayAssets* overlay)
@@ -568,11 +650,21 @@ void populateJudgeEffectAssets(miacode::preview::scene::PreviewJudgeEffectAssets
     effect->touchPart02DxImage = touchPart02Dx.isNull()
         ? effect->touchPart02Image
         : touchPart02Dx.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-    effect->fireworkColorBallImage = loadImageIfExists(judgeEffectResourcePath("judge_effect_firework_color_ball.png"));
-    if (effect->fireworkColorBallImage.isNull()) {
-        effect->fireworkColorBallImage = buildJudgeEffectFireworkColorBallFallbackImage();
+    effect->modernFireworkColorBallImage = loadImageIfExists(QStringLiteral(":/preview/fireworks/modern/color_ball.png"));
+    if (effect->modernFireworkColorBallImage.isNull()) {
+        effect->modernFireworkColorBallImage = buildModernFireworkColorBallImage();
     }
-    effect->fireworkColorBallSourceRect = nonTransparentBounds(effect->fireworkColorBallImage);
+    effect->modernFireworkColorBallSourceRect = nonTransparentBounds(effect->modernFireworkColorBallImage);
+    const QString standardRoot = QStringLiteral(":/preview/fireworks/standard/");
+    auto& standard = effect->standardFirework;
+    standard.starImage = loadImageIfExists(standardRoot + QStringLiteral("star.png"));
+    standard.raysImage = loadImageIfExists(standardRoot + QStringLiteral("rays.png"));
+    standard.ringMaskImage = loadImageIfExists(standardRoot + QStringLiteral("ring_mask.png"));
+    standard.ringColorImage = loadImageIfExists(standardRoot + QStringLiteral("ring_color.png"));
+    QFile parameters(QStringLiteral(":/preview/fireworks/standard/emitters.json"));
+    if (parameters.open(QIODevice::ReadOnly)) {
+        standard.effect = miacode::preview::scene::PreviewStandardFireworkEffect::fromJson(parameters.readAll());
+    }
 }
 
 }  // namespace

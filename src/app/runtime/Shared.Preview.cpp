@@ -152,11 +152,8 @@ void applyPreviewStageMediaRouteVisualSettings(RuntimeContext::State& state)
 {
     // While the export-preview dialog is up, PV/BG stays visible regardless of the
     // pause-hide option so the user previews exactly what the exported video shows.
-    // Holding Alt while paused inverts the pause-hide option (same effective flag as
-    // effectivePreviewOutlineVariant) so judge area <-> PV/BG flip together.
-    const bool forceJudgeAreaWhenPaused =
-        state.previewForceLabeledJudgeLineWhenPaused_ != state.pauseDisplayAltHoldActive_;
-    const bool mediaVisible = !forceJudgeAreaWhenPaused
+    // Media visibility is independent of the paused judge-area overlay.
+    const bool mediaVisible = state.previewShowStageMediaWhenPaused_
         || state.playing_
         || state.exportPreviewActive_;
     if (state.previewStageMediaHost_ != nullptr) {
@@ -270,29 +267,23 @@ void refreshPreviewStageMediaRouteDebugState(RuntimeContext::State& state, bool 
     const QString videoDecodeDesc = state.previewStageMediaHost_ != nullptr
         ? state.previewStageMediaHost_->videoDecodeDescription()
         : QString();
-    state.scene_->setExternalStageMediaProfileSummary(
-        // StageMediaHost::quickShellPreviewUsesSeparateSurface() is a hardcoded
-        // `return false;` — folded in here.
-        false,
-        hasResolvedMedia,
-        hasVideoMedia,
-        mediaTypeName,
-        videoFrameCountTotal,
-        videoFrameRate,
-        videoFrameIntervalAvgMs,
-        videoFrameIntervalMaxMs,
-        videoFrameStallCount,
-        videoDecodeDesc
-    );
-    state.scene_->setExternalStageMediaDebugState(
-        mediaType,
-        videoPlaybackActive,
-        playbackSecond,
-        clockDeltaSeconds,
-        videoFrameAgeMs,
-        videoFrameStalled,
-        requestUpdate
-    );
+    PreviewRuntime::ExternalStageMediaState mediaState;
+    mediaState.mediaType = mediaType;
+    mediaState.hasResolvedMedia = hasResolvedMedia;
+    mediaState.hasVideoMedia = hasVideoMedia;
+    mediaState.mediaTypeName = mediaTypeName;
+    mediaState.videoPlaybackActive = videoPlaybackActive;
+    mediaState.playbackSecond = playbackSecond;
+    mediaState.clockDeltaSeconds = clockDeltaSeconds;
+    mediaState.videoFrameAgeMs = videoFrameAgeMs;
+    mediaState.videoFrameStalled = videoFrameStalled;
+    mediaState.videoFrameCountTotal = videoFrameCountTotal;
+    mediaState.videoFrameRate = videoFrameRate;
+    mediaState.videoFrameIntervalAvgMs = videoFrameIntervalAvgMs;
+    mediaState.videoFrameIntervalMaxMs = videoFrameIntervalMaxMs;
+    mediaState.videoFrameStallCount = videoFrameStallCount;
+    mediaState.videoDecodeDesc = videoDecodeDesc;
+    state.scene_->setExternalStageMediaState(mediaState, requestUpdate);
 }
 
 void setPreviewFixedTimerHighResolutionActive(RuntimeContext::State& state, bool active)

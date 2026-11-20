@@ -1,4 +1,5 @@
 #include "core/scene/PreviewOpacityCurves.h"
+#include "core/chart/model/TimelineData.h"
 #include "core/scene/PreviewSceneConstants.h"
 
 #include <QtMath>
@@ -115,6 +116,17 @@ PreviewSlideTrackTiming previewSlideTrackTimingForEffectiveFlowSpeed(qreal effec
             miacode::preview_gameplay::kSlideTrackFullBrightLeadInFramesAt120Fps
         )
     );
+    return timing;
+}
+
+PreviewSlideTrackTiming previewSlideTrackTimingForMarker(
+    const TimelineNoteMarker& marker, double tapFlowSpeed, double starFadeTiming)
+{
+    auto timing = previewSlideTrackTimingForEffectiveFlowSpeed(tapFlowSpeed * marker.hsMultiplier);
+    const double wait = qMax(0.0, marker.slideTraceSecond - marker.second);
+    const double offset = starFadeTiming * wait;
+    timing.appearLeadInSeconds -= offset;
+    timing.fullBrightLeadInSeconds -= offset;
     return timing;
 }
 

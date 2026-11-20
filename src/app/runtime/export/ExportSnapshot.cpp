@@ -1,13 +1,17 @@
+#include "app/services/HandOrderFeaturePreferences.h"
 #include "app/runtime/export/VideoExportHost.h"
 #include "app/runtime/Shared.h"
+#include "app/services/StickingPublicationMetadata.h"
 
 #include "app/services/PlaybackStateAuthority.h"
-#include "app/services/ExportIntroPreferences.h"
 #include "app/services/ChartBannerData.h"
+#include "app/services/AutomaticChartPreparation.h"
 #include "app/services/HudFontPreferences.h"
 
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
+#include "core/chart/ChartVersion.h"
+#include "core/video/AssetPaths.h"
 #include "timeline/TimelineQuickModel.h"
 #include "core/analysis/TimelineSlowRefresh.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
@@ -30,6 +34,30 @@ namespace {
 
 using miacode::timeline::offset::NonFiniteHandling;
 using miacode::timeline::offset::shiftedNoteMarkers;
+
+void resolveFileIntroWindow(IntroBannerSpec& intro, const SimaiDocument& document, int difficultyId,
+                            const QString& trackPath, double duration, bool keepExplicit)
+{
+    if (!intro.enabled || !intro.pvPreview) return;
+    using namespace miacode::chart_preview;
+    std::optional<MediaRange> explicitRange;
+    if (keepExplicit && intro.previewWindowSource == IntroWindowSource::Explicit) {
+        explicitRange = MediaRange{intro.pvPreviewStartSeconds,
+            intro.pvPreviewEndSeconds > intro.pvPreviewStartSeconds
+                ? intro.pvPreviewEndSeconds : intro.pvPreviewStartSeconds + miacode::intro::kPvPreviewHoldSeconds};
+    }
+    QString fingerprint;
+    const auto stored = storedDropSelection(document, difficultyId);
+    if (!explicitRange && stored && stored->source == DropSource::Auto && !trackPath.isEmpty()) {
+        QFile track(trackPath);
+        QCryptographicHash hash(QCryptographicHash::Sha256);
+        if (track.open(QIODevice::ReadOnly) && hash.addData(&track)) {
+            fingerprint = dropInputFingerprint(document, difficultyId, QString::fromLatin1(hash.result().toHex()));
+        }
+    }
+    freezeIntroPreviewWindow(intro, resolveIntroWindow(
+        document, difficultyId, explicitRange, intro.previewWindowMode, duration, fingerprint));
+}
 
 // Deliberately NOT named parsedFirstSeconds: the sections in this file are nested types of
 // Session, so an unqualified `parsedFirstSeconds` resolves to the Session member —
@@ -57,32 +85,7 @@ IntroBannerSpec buildIntroBannerSpec(
     intro.jacketPath = chartPath.isEmpty()
         ? QString()
         : miacode::chart_assets::resolveDisplayBackgroundImagePath(chartPath);
-    // The PV-preview segment is chosen per song, so every export of this chart
-    // (single, batch item, any difficulty) uses the start its project stored.
-    intro.pvPreviewStartSeconds = miacode::export_intro_preferences::pvPreviewStartSeconds(chartPath);
     return intro;
-}
-
-QString sanitizeExportFileStem(QString text, const QString& fallback = QStringLiteral("out"))
-{
-    text = text.trimmed();
-    QString sanitized;
-    sanitized.reserve(text.size());
-    for (const QChar ch : text) {
-        if (ch.isNull() || ch.isLowSurrogate() || ch.isHighSurrogate()) {
-            continue;
-        }
-        if (ch.unicode() < 0x20 || QStringLiteral("<>:\"/\\|?*").contains(ch)) {
-            sanitized.append(QLatin1Char('_'));
-            continue;
-        }
-        sanitized.append(ch);
-    }
-    sanitized = sanitized.trimmed();
-    while (!sanitized.isEmpty() && (sanitized.endsWith(QLatin1Char('.')) || sanitized.endsWith(QLatin1Char(' ')))) {
-        sanitized.chop(1);
-    }
-    return sanitized.isEmpty() ? fallback : sanitized;
 }
 
 int difficultyIdFromCliToken(const QString& rawToken)
@@ -124,6 +127,7 @@ QString resolveChartPathFromCliInput(const QString& inputPath)
 
     const QDir dir(info.absoluteFilePath());
     const QStringList preferredNames{
+        QStringLiteral("maidata_sticking.txt"),
         QStringLiteral("majdata.txt"),
         QStringLiteral("maidata.txt"),
         QStringLiteral("majdata.simai"),
@@ -327,6 +331,7 @@ void miacode::runtime::VideoExportHost::installExportPreviewAuditionScene(int di
     session_.state_.timeline_.latestTimelinePreviewRevision_ = session_.state_.timeline_.timelineRevision_;
     session_.state_.timeline_.latestTimelinePreviewSnapshotReady_ = true;
     session_.scene_->setNoteMarkers(previewState.shiftedNoteMarkers);
+    session_.applyEffectivePreviewOutlineVariantToCanvas();
     session_.scene_->setVisualAidChartTiming(session_.state_.timeline_.lastTimelineParseResult_,
         miacode::chart_clock::clockCountFromDocument(session_.applicationServices_.workspace().document()), effectiveFirst);
     session_.lastPreviewNoteMarkerSignature_ = previewState.noteMarkerSignature;
@@ -481,10 +486,12 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     // explicit `&video=` would diverge: live preview uses QtAVPlayer
     // on the override path, export's ffmpeg input uses
     // the sibling file (or nothing if no sibling exists).
-    built.backgroundMediaPath = miacode::chart_assets::resolveChartVideoPath(
-        session_.currentFilePath_, session_.applicationServices_.workspace().document().videoPath);
-    if (built.backgroundMediaPath.isEmpty()) {
-        built.backgroundMediaPath = miacode::chart_assets::resolveBackgroundMediaPath(session_.currentFilePath_);
+    if (usesBackgroundMedia(backgroundPolicyForRenderMode(requestedTask.muriRenderOptions.renderMode))
+        || hasChartPreviewIntro(requestedTask.intro, requestedTask.fullRangeExport)) {
+        if (requestedTask.includePv) built.backgroundMediaPath = miacode::chart_assets::resolveChartVideoPath(
+            session_.currentFilePath_, session_.applicationServices_.workspace().document().videoPath);
+        if (built.backgroundMediaPath.isEmpty()) built.backgroundMediaPath =
+            miacode::chart_assets::resolveBackgroundMediaPath(session_.currentFilePath_, requestedTask.includePv);
     }
     built.skinDirectory = session_.resolvePreviewSkinDir();
     built.audioSettings = session_.previewAudioSettings_;
@@ -495,12 +502,17 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     built.backgroundBrightnessInner = requestedTask.backgroundBrightnessInner;
     built.layoutSquareScale = requestedTask.layoutSquareScale;
     built.fireworkBrightness = requestedTask.fireworkBrightness;
+    built.fireworkStyle = requestedTask.fireworkStyle;
     built.smoothBrightness = requestedTask.smoothBrightness;
     built.outlineVariant = requestedTask.outlineVariant;
-    built.outlineImagePath = session_.resolvePreviewCustomOutlinePath();
+    const auto version = miacode::chart_version::detect(session_.applicationServices_.workspace().document(), session_.state_.timeline_.latestTimelineNoteMarkers_);
+    built.completionDisplay = resolvedCompletionDisplay(requestedTask.completionDisplay, version.deluxe());
+    built.outlineImagePath = requestedTask.outlineAutomatic
+        ? miacode::assets::customOutlinePathForFileName(version.outlineFileName()) : requestedTask.outlineImagePath;
     built.backgroundScaleMode = requestedTask.backgroundScaleMode;
     built.tapFlowSpeed = requestedTask.tapFlowSpeed;
     built.touchFlowSpeed = requestedTask.touchFlowSpeed;
+    built.starFadeTiming = requestedTask.starFadeTiming;
     built.slideEarlierSecondAndTextOnTop = requestedTask.slideEarlierSecondAndTextOnTop;
     built.tapJudgeTextDistance = requestedTask.tapJudgeTextDistance;
     built.judgeEffectStyle = requestedTask.judgeEffectStyle;
@@ -513,18 +525,21 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     built.fps = requestedTask.fps;
     built.audioBitrateKbps = requestedTask.audioBitrateKbps;
     built.outputMode = requestedTask.outputMode;
-    built.preset = requestedTask.preset;
-    built.sizePreset = requestedTask.sizePreset;
+    built.encoding = requestedTask.encoding;
+    built.includePv = requestedTask.includePv;
     built.fullRangeExport = requestedTask.fullRangeExport;
-    const QString exportStem = sanitizeExportFileStem(session_.applicationServices_.workspace().document().title, QStringLiteral("out"));
-    const QString difficultyName = SimaiDocument::difficultyShortName(resolvedDifficultyId).replace(':', '_');
-    const QString defaultOutputName = QStringLiteral("%1_%2.mp4").arg(exportStem, difficultyName);
+    const QString defaultOutputName = miacode::hand_order_features::enabled()
+        ? miacode::sticking::publicationVideoName(session_.applicationServices_.workspace().document(), resolvedDifficultyId)
+        : QStringLiteral("%1_%2.mp4").arg(miacode::sticking::publicationFileComponent((session_.applicationServices_.workspace().document()).title, QStringLiteral("out")),
+            SimaiDocument::difficultyShortName(resolvedDifficultyId).replace(':', '_'));
     built.outputPath = resolveVideoExportOutputPath(
         requestedTask.outputPath,
         built.projectDir,
         defaultOutputName, built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
+    built.showHandOrderAnnotations = requestedTask.showHandOrderAnnotations;
+    built.videoWatermark = requestedTask.videoWatermark;
     built.showMeasureLines = requestedTask.showMeasureLines;
     built.showJudgementSkeleton = requestedTask.showJudgementSkeleton;
     built.showSlideJudgementTiming = requestedTask.showSlideJudgementTiming;
@@ -554,6 +569,13 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     // styling (DX/SD, backdrop, blur, shadow, lv text) only exists on the
     // dialog task — carry it over or the export silently reverts to defaults.
     copyIntroStyling(requestedTask.intro, &built.intro);
+    if (hasChartPreviewIntro(built.intro, built.fullRangeExport)) {
+        built.intro.chartOutline = chartIntroOutline();
+    }
+    if (built.intro.enabled && built.intro.pvPreview) {
+        resolveFileIntroWindow(built.intro, session_.applicationServices_.workspace().document(),
+            resolvedDifficultyId, built.trackPath, session_.previewTrackDurationSeconds_, true);
+    }
 
     if (built.skinDirectory.trimmed().isEmpty()) {
         if (errorMessage != nullptr) {
@@ -562,6 +584,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
         return false;
     }
 
+    miacode::hand_order_features::applyExportPolicy(built);
     *snapshot = built;
     return true;
 }
@@ -607,16 +630,28 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         return false;
     }
 
-    bool usedSystemEncoding = false;
-    const QString chartText = readTextFileWithFallbackEncoding(chartPath, &usedSystemEncoding);
-    if (chartText.isNull()) {
-        if (errorMessage != nullptr) {
-            *errorMessage = qtTrId("dialog.batch_export.error.read_chart_failed").arg(QFileInfo(chartPath).fileName());
+    ChartWorkspace temporaryWorkspace;
+    ChartWorkspaceFileService temporaryFiles(temporaryWorkspace);
+    auto& services = session_.applicationServices_;
+    const QString currentPath = QFileInfo(services.workspace().snapshot().filePath).canonicalFilePath();
+    const bool isCurrentChart = !currentPath.isEmpty() && currentPath == QFileInfo(chartPath).canonicalFilePath();
+    if (!isCurrentChart) {
+        const auto opened = temporaryFiles.open(chartPath);
+        if (!opened.accepted) {
+            if (errorMessage) *errorMessage = qtTrId("dialog.batch_export.error.read_chart_failed")
+                .arg(QFileInfo(chartPath).fileName()) + QStringLiteral(": ") + opened.error;
+            return false;
         }
-        return false;
     }
-
-    const SimaiDocument document = SimaiDocument::fromText(chartText);
+    ChartWorkspace& workspace = isCurrentChart ? services.workspace() : temporaryWorkspace;
+    ChartWorkspaceFileService& files = isCurrentChart ? services.files() : temporaryFiles;
+    using miacode::automatic_chart::Trigger;
+    const auto prepared = miacode::automatic_chart::prepare(workspace, files,
+        requestedTask.showHandOrderAnnotations ? Trigger::Render : Trigger::RenderOriginal);
+    if (!prepared.accepted)
+        services.uiRequests().postNotice(NoticeSeverity::Warning, localizedText("library.normalize_warning"), prepared.error);
+    const QString chartText = workspace.document().toText();
+    const SimaiDocument document = workspace.document();
     const SimaiDifficultyData* difficulty = document.difficulty(difficultyId);
     if (difficulty == nullptr) {
         if (errorMessage != nullptr) {
@@ -629,14 +664,22 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     const miacode::simai::SimaiTimingMetadata timingMetadata = miacode::simai::buildTimingMetadata(document);
     const SimaiValidationReport report =
         SimaiParser::buildValidationReport(difficulty->chart, validationLocale, timingMetadata);
-    if (report.errorCount > 0) {
-        QString issueSummary;
-        if (!report.issues.isEmpty()) {
-            issueSummary = report.issues.constFirst().displayMessage.trimmed();
+    int blockingErrorCount = 0;
+    QString issueSummary;
+    for (const SimaiValidationIssue& issue : report.issues) {
+        if (issue.severity != SimaiValidationSeverity::Error
+            || (!requestedTask.showHandOrderAnnotations && issue.isAnnotation)) {
+            continue;
         }
+        ++blockingErrorCount;
+        if (issueSummary.isEmpty()) {
+            issueSummary = issue.displayMessage.trimmed();
+        }
+    }
+    if (blockingErrorCount > 0) {
         if (errorMessage != nullptr) {
             *errorMessage = issueSummary.isEmpty()
-                ? qtTrId("dialog.batch_export.error.validation_failed_count").arg(report.errorCount)
+                ? qtTrId("dialog.batch_export.error.validation_failed_count").arg(blockingErrorCount)
                 : qtTrId("dialog.batch_export.error.validation_failed_detail").arg(issueSummary);
         }
         return false;
@@ -686,9 +729,10 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         return false;
     }
 
-    const QString exportStem = sanitizeExportFileStem(document.title, directoryInfo.completeBaseName());
-    const QString difficultyName = SimaiDocument::difficultyShortName(difficultyId).replace(':', '_');
-    const QString defaultOutputName = QStringLiteral("%1_%2.mp4").arg(exportStem, difficultyName);
+    const QString defaultOutputName = miacode::hand_order_features::enabled()
+        ? miacode::sticking::publicationVideoName(document, difficultyId)
+        : QStringLiteral("%1_%2.mp4").arg(miacode::sticking::publicationFileComponent((document).title, QStringLiteral("out")),
+            SimaiDocument::difficultyShortName(difficultyId).replace(':', '_'));
 
     VideoExportSnapshot built;
     built.hudFontSettings = miacode::hud_preferences::load();
@@ -702,10 +746,12 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.trackPath = trackPath;
     // Phase 4c — batch export honours `&video=` like the single-chart
     // export path so per-chart explicit overrides flow through.
-    built.backgroundMediaPath = miacode::chart_assets::resolveChartVideoPath(
-        chartPath, document.videoPath);
-    if (built.backgroundMediaPath.isEmpty()) {
-        built.backgroundMediaPath = miacode::chart_assets::resolveBackgroundMediaPath(chartPath);
+    if (usesBackgroundMedia(backgroundPolicyForRenderMode(requestedTask.muriRenderOptions.renderMode))
+        || hasChartPreviewIntro(requestedTask.intro, true)) {
+        if (requestedTask.includePv) built.backgroundMediaPath =
+            miacode::chart_assets::resolveChartVideoPath(chartPath, document.videoPath);
+        if (built.backgroundMediaPath.isEmpty()) built.backgroundMediaPath =
+            miacode::chart_assets::resolveBackgroundMediaPath(chartPath, requestedTask.includePv);
     }
     built.skinDirectory = session_.resolvePreviewSkinDir();
     built.audioSettings = requestedTask.audioSettings;
@@ -716,12 +762,17 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.backgroundBrightnessInner = requestedTask.backgroundBrightnessInner;
     built.layoutSquareScale = requestedTask.layoutSquareScale;
     built.fireworkBrightness = requestedTask.fireworkBrightness;
+    built.fireworkStyle = requestedTask.fireworkStyle;
     built.smoothBrightness = requestedTask.smoothBrightness;
     built.outlineVariant = requestedTask.outlineVariant;
-    built.outlineImagePath = session_.resolvePreviewCustomOutlinePath();
+    const auto version = miacode::chart_version::detect(document, shiftedMarkers);
+    built.completionDisplay = resolvedCompletionDisplay(requestedTask.completionDisplay, version.deluxe());
+    built.outlineImagePath = requestedTask.outlineAutomatic
+        ? miacode::assets::customOutlinePathForFileName(version.outlineFileName()) : requestedTask.outlineImagePath;
     built.backgroundScaleMode = requestedTask.backgroundScaleMode;
     built.tapFlowSpeed = requestedTask.tapFlowSpeed;
     built.touchFlowSpeed = requestedTask.touchFlowSpeed;
+    built.starFadeTiming = requestedTask.starFadeTiming;
     built.slideEarlierSecondAndTextOnTop = requestedTask.slideEarlierSecondAndTextOnTop;
     built.tapJudgeTextDistance = requestedTask.tapJudgeTextDistance;
     built.judgeEffectStyle = requestedTask.judgeEffectStyle;
@@ -734,8 +785,8 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.fps = requestedTask.fps;
     built.audioBitrateKbps = requestedTask.audioBitrateKbps;
     built.outputMode = requestedTask.outputMode;
-    built.preset = requestedTask.preset;
-    built.sizePreset = requestedTask.sizePreset;
+    built.encoding = requestedTask.encoding;
+    built.includePv = requestedTask.includePv;
     built.fullRangeExport = true;
     built.outputPath = resolveVideoExportOutputPath(
         QString(),
@@ -743,6 +794,8 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         defaultOutputName, built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
+    built.showHandOrderAnnotations = requestedTask.showHandOrderAnnotations;
+    built.videoWatermark = requestedTask.videoWatermark;
     built.showMeasureLines = requestedTask.showMeasureLines;
     built.showJudgementSkeleton = requestedTask.showJudgementSkeleton;
     built.showSlideJudgementTiming = requestedTask.showSlideJudgementTiming;
@@ -771,6 +824,10 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     // The chart contributes title/artist/designer metadata, while the shared
     // 片头 tab owns its visual style. Preserve that style per queue item.
     copyIntroStyling(requestedTask.intro, &built.intro);
+    if (hasChartPreviewIntro(built.intro, built.fullRangeExport)) {
+        built.intro.chartOutline = chartIntroOutlineForChart(document, shiftedMarkers);
+    }
+    resolveFileIntroWindow(built.intro, document, difficultyId, trackPath, trackDurationSeconds, false);
 
     if (built.skinDirectory.trimmed().isEmpty()) {
         if (errorMessage != nullptr) {
@@ -779,6 +836,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         return false;
     }
 
+    miacode::hand_order_features::applyExportPolicy(built);
     *snapshot = built;
     return true;
 }
@@ -833,7 +891,12 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     }
 
     session_.setCurrentFilePath(chartPath);
-    session_.applicationServices_.workspace().openSource(chartText, chartPath);
+    auto& services = session_.applicationServices_;
+    services.workspace().openSource(chartText, chartPath);
+    using miacode::automatic_chart::Trigger;
+    const auto prepared = miacode::automatic_chart::prepare(services.workspace(), services.files(),
+        request.showHandOrderAnnotations ? Trigger::Render : Trigger::RenderOriginal);
+    if (!prepared.accepted) qWarning().noquote() << prepared.error;
     session_.loadDocument();
     session_.refreshWaveformCache();
 
@@ -868,6 +931,21 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     if (!liveTimelineCoversDifficulty(difficultyId)) {
         parseAndPublishTimelineForDifficulty(difficultyId);
     }
+    if (request.showHandOrderAnnotations
+        && !session_.state_.timeline_.lastTimelineParseResult_.annotationErrors.isEmpty()) {
+        const SimaiMessage& issue =
+            session_.state_.timeline_.lastTimelineParseResult_.annotationErrors.constFirst();
+        SimaiValidationReport localized;
+        SimaiValidationIssue localizedIssue;
+        localizedIssue.severity = SimaiValidationSeverity::Error;
+        localizedIssue.isAnnotation = true;
+        localizedIssue.rawMessage = issue.message;
+        localized.issues.append(localizedIssue);
+        SimaiParser::localizeValidationReport(localized, uiValidationLocale());
+        return fail(qtTrId("cli.export.hand_order_annotation_invalid"),
+            QStringLiteral("%1:%2 %3").arg(issue.line).arg(issue.col)
+                .arg(localized.issues.constFirst().displayMessage));
+    }
 
     const QString previewSkinDir = session_.resolvePreviewSkinDir();
     if (previewSkinDir.trimmed().isEmpty()) {
@@ -875,11 +953,10 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     }
 
     const QFileInfo chartInfo(session_.currentFilePath_);
-    const QString exportStem = sanitizeExportFileStem(session_.applicationServices_.workspace().document().title, QStringLiteral("out"));
-    const QString difficultyName = SimaiDocument::difficultyShortName(difficultyId).replace(':', '_');
-    const QString defaultOutputName = QString("%1_%2.mp4")
-        .arg(exportStem)
-        .arg(difficultyName);
+    const QString defaultOutputName = miacode::hand_order_features::enabled()
+        ? miacode::sticking::publicationVideoName(session_.applicationServices_.workspace().document(), difficultyId)
+        : QStringLiteral("%1_%2.mp4").arg(miacode::sticking::publicationFileComponent((session_.applicationServices_.workspace().document()).title, QStringLiteral("out")),
+            SimaiDocument::difficultyShortName(difficultyId).replace(':', '_'));
 
     QString outputPath = resolveVideoExportOutputPath(
         request.outputPath,
@@ -944,12 +1021,18 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     task.backgroundBrightnessInner = request.backgroundBrightnessInner;
     task.layoutSquareScale = request.layoutSquareScale;
     task.fireworkBrightness = request.fireworkBrightness;
+    task.fireworkStyle = request.fireworkStyle;
     task.smoothBrightness = request.smoothBrightness;
     task.outlineVariant = request.outlineVariant;
-    task.outlineImagePath = session_.resolvePreviewCustomOutlinePath();
+    const auto cliVersion = miacode::chart_version::detect(services.workspace().document(), task.noteMarkers);
+    task.completionDisplay = resolvedCompletionDisplay(session_.state_.completionDisplay_, cliVersion.deluxe());
+    task.outlineAutomatic = session_.previewOutlineVariantUsesAutoSelection_ && request.outlineVariant == PreviewOutlineVariant::Line;
+    task.outlineImagePath = task.outlineAutomatic || request.outlineVariant == session_.previewOutlineVariant_
+        ? session_.resolvePreviewCustomOutlinePath() : QString();
     task.backgroundScaleMode = request.backgroundScaleMode;
     task.tapFlowSpeed = request.noteFlowSpeed;
     task.touchFlowSpeed = request.touchFlowSpeed;
+    task.starFadeTiming = request.starFadeTiming;
     task.slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     task.tapJudgeTextDistance = request.tapJudgeTextDistance;
     task.judgeEffectStyle = request.judgeEffectStyle;
@@ -959,7 +1042,19 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     task.outputWidth = request.outputWidth;
     task.outputHeight = request.outputHeight;
     task.fps = request.fps;
+    task.encoding = request.encoding;
+    task.includePv = request.includePv;
+    if (request.debugRendering) task.muriRenderOptions.renderMode = RenderMode::Debug;
+    if (task.includePv && (usesBackgroundMedia(backgroundPolicyForRenderMode(task.muriRenderOptions.renderMode))
+        || request.introChartPreview)) {
+        task.backgroundMediaPath = miacode::chart_assets::resolveChartVideoPath(
+            chartPath, services.workspace().document().videoPath);
+    }
     task.showTimestamp = request.showTimestamp;
+    task.showHandOrderAnnotations = request.showHandOrderAnnotations;
+    task.showHandOrderWatermark = miacode::hand_order_features::enabled() && miacode::hand_order_features::watermark();
+    task.handOrderExportMode = request.showHandOrderAnnotations
+        ? HandOrderExportMode::Annotated : HandOrderExportMode::Original;
     task.showObjectStatsHud = request.showObjectStatsHud;
     task.showChartInfoHud = request.showChartInfoHud;
     task.showBpmHud = request.showBpmHud;
@@ -989,15 +1084,22 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
         request.addIntro,
         fullRangeExport);
     task.intro.cardShadow = request.introCardShadow;
-    if (request.introPvPreview) {
+    if (request.introPvPreview || request.introChartPreview) {
         task.intro.pvPreview = true;
-        task.intro.pvPreviewStartSeconds = request.introPvStartSeconds;
+        task.intro.chartPreview = request.introChartPreview;
+        if (request.introPvPreview) {
+            task.intro.previewWindowSource = miacode::chart_preview::IntroWindowSource::Explicit;
+            task.intro.pvPreviewStartSeconds = request.introPvStartSeconds;
+        }
+        resolveFileIntroWindow(task.intro, services.workspace().document(), difficultyId,
+            task.trackPath, session_.previewTrackDurationSeconds_, true);
     }
     task.clockCount = miacode::chart_clock::clockCountFromDocument(session_.applicationServices_.workspace().document());
     if (const SimaiDifficultyData* difficulty = session_.applicationServices_.workspace().document().difficulty(difficultyId)) {
         task.clockBpm = miacode::chart_clock::clockBpmForChart(session_.applicationServices_.workspace().document(), difficulty->chart);
     }
 
+    miacode::hand_order_features::applyExportPolicy(task);
     const VideoExportResult exportResult = VideoExportController::exportFullPreview(task);
     if (!exportResult.success) {
         return fail(exportResult.message, exportResult.details);

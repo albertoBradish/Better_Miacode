@@ -8,6 +8,7 @@ AppDialog {
     id: root
 
     required property var preferencesModel
+    required property var previewSettings
     required property var shortcuts
     required property var preferences
     required property var appBackground
@@ -75,6 +76,8 @@ AppDialog {
         }
     }
     onAboutToHide: {
+        if (videoWatermarkTextField.activeFocus)
+            videoWatermarkTextField.commitPendingEdit()
         root.releaseCompletionInputFocus()
         root.preferencesModel.finishCompletionEditing()
     }
@@ -97,6 +100,7 @@ AppDialog {
     footer: null
 
     property int currentPageIndex: 0
+    property int versionTapCount: 0
     property string capturingId: ""
 
     Binding {
@@ -105,6 +109,7 @@ AppDialog {
         value: root.visible && root.capturingId.length > 0
     }
     property var shortcutRows: []
+    property string shortcutNotice: ""
     // The map is built in C++ with qtTrId, so QML retranslation cannot see its
     // dependencies. Read languageToken first to rebuild it after a switch.
     readonly property var aboutInfo: {
@@ -115,12 +120,12 @@ AppDialog {
     readonly property int settingsRowHeight: Theme.controlMinHeight + 10
     readonly property int settingsLabelWidth: root.width < 650 ? 120 : 140
     readonly property int sectionSpacing: 2 * Theme.settingsRowSpacing
-    readonly property var pageIds: ["interface", "editor", "background", "performance", "shortcuts", "about"]
+    readonly property var pageIds: ["interface", "editor", "background", "performance", "shortcuts", "advanced", "about"]
     readonly property var pageTitles: [
         qsTrId("qml.interface"), qsTrId("dialog.preferences.editor_group"),
         qsTrId("dialog.preferences.background_group"), qsTrId("dialog.preferences.performance_group"),
         qsTrId("dialog.preferences.shortcuts_group"),
-        qsTrId("action.about")
+        qsTrId("preferences.advanced"), qsTrId("action.about")
     ]
 
     onCurrentPageIndexChanged: {
@@ -130,6 +135,7 @@ AppDialog {
             completionCustomizer.expanded = false
     }
     onAboutToShow: {
+        root.versionTapCount = 0
         root.capturingId = ""
         completionCustomizer.expanded = false
         root.refreshShortcuts()
@@ -160,10 +166,36 @@ AppDialog {
 
     function refreshShortcuts() {
         const keepY = shortcutList.contentY
-        root.shortcutRows = root.shortcuts.editableShortcuts().map(row =>
+        root.shortcutRows = root.shortcuts.editableShortcuts().filter(row => root.preferencesModel.handOrderFeaturesEnabled
+            || (!row.id.startsWith("hand_order.") && !row.id.endsWith("_swap_hands"))).map(row =>
             Object.assign({group: root.shortcutGroup(row.id)}, row))
         shortcutList.contentY = Math.max(
             0, Math.min(keepY, Math.max(0, shortcutList.contentHeight - shortcutList.height)))
+    }
+
+    Connections {
+        target: root.preferencesModel
+        function onHandOrderFeaturesChanged() {
+            root.capturingId = ""
+            root.refreshShortcuts()
+        }
+    }
+
+    function shortcutLabel(row) {
+        return qsTrId(row.labelKey) || row.labelFallback
+    }
+
+    // Assigning a binding takes it from other commands; name where it moved from and to.
+    function applyShortcutChange(id, change) {
+        const before = root.shortcutRows
+        change()
+        root.refreshShortcuts()
+        const released = root.shortcutRows.filter(row => row.shortcutText.length === 0
+            && before.some(old => old.id === row.id && old.shortcutText.length > 0))
+        const target = root.shortcutRows.find(row => row.id === id)
+        root.shortcutNotice = released.length === 0 || !target ? ""
+            : qsTrId("qml.shortcut_moved").arg(target.shortcutText)
+                .arg(released.map(root.shortcutLabel).join(" / ")).arg(root.shortcutLabel(target))
     }
 
     component PreferenceGroup: SettingsSection {
@@ -406,7 +438,16 @@ AppDialog {
                         }
 
                         PreferenceCombo {
+                            objectName: "preferencesUiScaleCombo"
+                            label: qsTrId("dialog.preferences.ui_scale")
+                            options: root.preferencesModel.uiScaleOptions
+                            currentValue: root.preferencesModel.uiScalePercent
+                            onPicked: value => root.preferencesModel.uiScalePercent = value
+                        }
+
+                        ThemePicker {
                             objectName: "preferencesLightThemeCombo"
+                            darkPalette: false
                             visible: root.preferencesModel.themeModeToken !== "dark"
                             label: qsTrId("dialog.preferences.theme.light_palette")
                             options: root.preferencesModel.themePaletteOptions
@@ -414,19 +455,15 @@ AppDialog {
                             onPicked: function(value) { root.preferencesModel.lightThemeToken = value }
                         }
 
-                        PreferenceCombo {
+                        ThemePicker {
                             objectName: "preferencesDarkThemeCombo"
+                            darkPalette: true
                             visible: root.preferencesModel.themeModeToken !== "light"
                             label: qsTrId("dialog.preferences.theme.dark_palette")
                             options: root.preferencesModel.themePaletteOptions
                             currentValue: root.preferencesModel.darkThemeToken
                             onPicked: function(value) { root.preferencesModel.darkThemeToken = value }
                         }
-
-                    }
-
-                    PreferenceGroup {
-                        title: qsTrId("dialog.preferences.group.workspace")
 
                         PreferenceCombo {
                             objectName: "preferencesLanguageCombo"
@@ -439,65 +476,62 @@ AppDialog {
                             }
                         }
 
-                        PreferenceCombo {
-                            objectName: "preferencesSidebarModeCombo"
-                            label: qsTrId("dialog.preferences.sidebar_mode")
-                            options: root.preferencesModel.sidebarModeOptions
-                            currentValue: root.preferences.efficientSidebarEnabled
-                            onPicked: value => root.preferences.efficientSidebarEnabled = value
-                        }
-
-                        PreferenceCombo {
-                            objectName: "preferencesUiScaleCombo"
-                            label: qsTrId("dialog.preferences.ui_scale")
-                            options: root.preferencesModel.uiScaleOptions
-                            currentValue: root.preferencesModel.uiScalePercent
-                            onPicked: value => root.preferencesModel.uiScalePercent = value
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 5
-
-                            Text {
-                                Layout.preferredWidth: root.settingsLabelWidth
-                                Layout.alignment: Qt.AlignTop
-                                Layout.topMargin: Math.round((Theme.controlMinHeight - implicitHeight) / 2)
-                                text: qsTrId("dialog.preferences.interface_layout")
-                                color: Theme.colors.text.secondary
-                                font.family: Theme.uiFont
-                                font.pixelSize: Theme.uiFontSize
-                                wrapMode: Text.WordWrap
-                            }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.topMargin: Theme.chromeInsetY
-                                spacing: 12
-
-                                PreviewPositionCard {
-                                    objectName: "preferencesPreviewRightCard"
-                                    Layout.fillWidth: true
-                                    Layout.maximumWidth: 200
-                                    previewOnLeft: false
-                                    selected: !root.preferencesModel.previewOnLeft
-                                    onClicked: root.preferencesModel.previewOnLeft = false
-                                }
-                                PreviewPositionCard {
-                                    objectName: "preferencesPreviewLeftCard"
-                                    Layout.fillWidth: true
-                                    Layout.maximumWidth: 200
-                                    previewOnLeft: true
-                                    selected: root.preferencesModel.previewOnLeft
-                                    onClicked: root.preferencesModel.previewOnLeft = true
-                                }
-                                Item { Layout.fillWidth: true }
-                            }
-                        }
                     }
                     PreferenceGroup {
                         title: qsTrId("dialog.render_settings.preview_group")
                         enabled: !!root.previewSession
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                Layout.preferredWidth: root.settingsLabelWidth
+                                text: qsTrId("preview.heatmap")
+                                color: Theme.colors.text.secondary
+                            }
+                            Flow {
+                                Layout.fillWidth: true
+                                spacing: 6
+                                enabled: !!root.previewSession?.structure
+                                Repeater {
+                                    model: [
+                                        { style: "overlay", label: qsTrId("preview.heatmap_overlay") },
+                                        { style: "youtube", label: qsTrId("preview.heatmap_youtube") },
+                                        { style: "off", label: qsTrId("preview.heatmap_off") }
+                                    ]
+                                    delegate: AppButton {
+                                        id: styleButton
+                                        required property var modelData
+                                        text: modelData.label
+                                        Accessible.name: qsTrId("preview.heatmap") + " " + text
+                                        Accessible.selected: selected
+                                        selected: root.previewSession?.structure?.heatmapStyle === modelData.style
+                                        onClicked: root.previewSession.structure.heatmapStyle = modelData.style
+                                        contentItem: RowLayout {
+                                            spacing: 5
+                                            PressureShape {
+                                                visible: styleButton.modelData.style !== "off"
+                                                Layout.preferredWidth: 42
+                                                Layout.preferredHeight: 15
+                                                smooth: styleButton.modelData.style === "youtube"
+                                                endSecond: 8
+                                                fillColor: Theme.colors.text.secondary
+                                                spansForPaint: () => [0,1,0.2,1,2,0.7,2,3,1,3,4,0.4,4,5,0.2,5,6,0.8,6,7,0.5,7,8,0.1]
+                                            }
+                                            Label {
+                                                text: styleButton.text
+                                                color: Theme.colors.text.primary
+                                                horizontalAlignment: Text.AlignHCenter
+                                                Layout.fillWidth: true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        PreferenceSwitch {
+                            text: qsTrId("preview.canvas.slide_timing_from_launch_beat")
+                            checked: root.canvasSettings.slideTimingFromLaunchBeat === true
+                            onToggled: root.previewSession.setCanvasSetting("slideTimingFromLaunchBeat", checked)
+                        }
                         PreferenceCombo {
                             objectName: "preferencesMeasureLineModeCombo"
                             label: qsTrId("preview.canvas.measure_mode")
@@ -592,6 +626,74 @@ AppDialog {
                             title: qsTrId("dialog.preferences.group.typography")
                             first: true
 
+                            AppTextField {
+                                id: fontSearch
+                                objectName: "preferencesFontSearch"
+                                Layout.fillWidth: true
+                                placeholderText: qsTrId("dialog.preferences.font.search")
+                                Accessible.name: placeholderText
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                PreferenceCombo {
+                                    objectName: "preferencesFontFamilyCombo"
+                                    label: qsTrId("dialog.preferences.font.family")
+                                    options: {
+                                        const selected = root.preferencesModel.editorFontFamily
+                                        return root.preferencesModel.editorFontOptions(fontSearch.text)
+                                    }
+                                    currentValue: root.preferencesModel.editorFontFamily
+                                    fontFamilyRole: "family"
+                                    defaultFontFamily: Theme.codeFont.family
+                                    onPicked: function(value) { root.preferencesModel.editorFontFamily = value }
+                                }
+                                AppButton {
+                                    objectName: "preferencesResetFontButton"
+                                    text: qsTrId("dialog.preferences.font.reset")
+                                    enabled: root.preferencesModel.editorFontFamily.length > 0
+                                    onClicked: root.preferencesModel.editorFontFamily = ""
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: fontPreview.implicitHeight + 24
+                                radius: Theme.controlRadius
+                                color: Theme.colors.background.surface
+                                border.color: Theme.colors.border.normal
+                                FontMetrics {
+                                    id: fontPreviewMetrics
+                                    font: Theme.codeFont
+                                }
+                                Text {
+                                    id: fontPreview
+                                    objectName: "preferencesFontPreview"
+                                    x: 12
+                                    y: 12
+                                    width: parent.width - 24
+                                    text: {
+                                        const keyword = Theme.colors.syntax.keyword
+                                        const beat = Theme.colors.syntax.beat || keyword
+                                        const note = Theme.colors.syntax.note || Theme.colors.text.editor
+                                        const duration = Theme.colors.syntax.duration
+                                        const comment = Theme.colors.syntax.comment
+                                        const sample = qsTrId("dialog.preferences.font.sample")
+                                            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                                        return "<font color='" + keyword + "'>(180)</font><font color='" + beat + "'>{4}</font><font color='" + note + "'>1</font>,<font color='" + note + "'>2</font>,<font color='" + note + "'>3</font>,<font color='" + note + "'>4</font>,<br>"
+                                            + "<font color='" + note + "'>1-5</font><font color='" + duration + "'>[4:1]</font>,<font color='" + note + "'>2h</font>"
+                                            + "<font color='" + duration + "'>[8:1]</font>,<font color='" + note + "'>B1</font>,<br>"
+                                            + "<font color='" + comment + "'>|| " + sample + "</font>"
+                                    }
+                                    textFormat: Text.StyledText
+                                    font: Theme.codeFont
+                                    lineHeightMode: Text.FixedHeight
+                                    lineHeight: fontPreviewMetrics.height + Theme.codeBlockSpacing
+                                    color: Theme.colors.text.editor
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
                             PreferenceSlider {
                                 objectName: "preferencesFontSizeSlider"
                                 label: qsTrId("dialog.preferences.editor_font_size")
@@ -611,6 +713,13 @@ AppDialog {
                             }
 
                             PreferenceSwitch {
+                                objectName: "preferencesAutoNormalizeSwitch"
+                                text: qsTrId("preferences.auto_normalize")
+                                checked: root.preferences.autoNormalizeEnabled
+                                onToggled: root.preferences.autoNormalizeEnabled = checked
+                            }
+
+                            PreferenceSwitch {
                                 objectName: "preferencesAutoWrapSwitch"
                                 text: qsTrId("preferences.editor_auto_wrap")
                                 checked: root.preferencesModel.editorAutoWrap
@@ -627,6 +736,26 @@ AppDialog {
                                 options: root.preferencesModel.inputHandlingOptions
                                 currentValue: root.preferencesModel.editorInputHandlingMode
                                 onPicked: function(value) { root.preferencesModel.editorInputHandlingMode = value }
+                            }
+
+                            PreferenceSwitch {
+                                objectName: "preferencesTouchPadAuthoringSwitch"
+                                text: root.previewSettings.labels.touchPadAuthoringShortcut || ""
+                                checked: root.previewSettings.values.touchPadAuthoringShortcut === true
+                                onToggled: root.previewSettings.setValue("touchPadAuthoringShortcut", checked)
+                            }
+
+                            PreferenceSwitch {
+                            objectName: "disableAltMenuActivationSwitch"
+                            text: qsTrId("preferences.disable_alt_menu")
+                            checked: root.preferences.disableAltMenuActivation
+                            onToggled: root.preferences.disableAltMenuActivation = checked
+                        }
+                        PreferenceSwitch {
+                                objectName: "preferencesSpaceGuardSwitch"
+                                text: qsTrId("preferences.space_guard")
+                                checked: root.preferences.spaceGuardEnabled
+                                onToggled: root.preferences.spaceGuardEnabled = checked
                             }
 
                             PreferenceSwitch {
@@ -657,6 +786,13 @@ AppDialog {
                             title: qsTrId("dialog.preferences.group.editing_aids")
 
                             PreferenceSwitch {
+                                objectName: "preferencesWarnEmptyDifficultySwitch"
+                                text: qsTrId("preferences.warn_empty_difficulty")
+                                checked: root.preferences.warnEmptyDifficulty
+                                onToggled: root.preferences.warnEmptyDifficulty = checked
+                            }
+
+                            PreferenceSwitch {
                                 objectName: "preferencesScrollPastEndSwitch"
                                 text: qsTrId("preferences.editor_scroll_past_end")
                                 checked: root.preferencesModel.editorScrollPastEnd
@@ -675,6 +811,255 @@ AppDialog {
                                 text: qsTrId("preferences.editor_overview_ruler")
                                 checked: root.preferencesModel.editorOverviewRulerEnabled
                                 onToggled: root.preferencesModel.editorOverviewRulerEnabled = checked
+                            }
+                        }
+
+                        PreferenceGroup {
+                            title: qsTrId("dialog.preferences.group.hand_order")
+                            visible: root.preferencesModel.handOrderFeaturesEnabled
+
+                            PreferenceSlider {
+                                objectName: "preferencesHandOrderReturnSpeedSlider"
+                                label: qsTrId("preferences.hand_order_return_speed")
+                                from: 1
+                                to: 8
+                                stepSize: 0.25
+                                value: root.preferencesModel.handOrderReturnSpeed
+                                readout: root.preferencesModel.handOrderReturnSpeed.toFixed(2)
+                                         + " " + qsTrId("preferences.hand_order_return_speed_unit")
+                                onMoved: function(v) { root.preferencesModel.handOrderReturnSpeed = Math.round(v * 4) / 4 }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_return_speed_help")
+                                    .arg((1000 / root.preferencesModel.handOrderReturnSpeed).toFixed(0))
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: root.settingsRowHeight
+                                spacing: root.sectionSpacing
+                                Label {
+                                    Layout.preferredWidth: root.settingsLabelWidth
+                                    text: qsTrId("preferences.hand_order_sweep_threshold")
+                                    wrapMode: Text.WordWrap
+                                }
+                                SpinBox {
+                                    objectName: "preferencesHandOrderSweepThresholdSpinBox"
+                                    Layout.fillWidth: true
+                                    from: 60
+                                    to: 600
+                                    stepSize: 1
+                                    editable: true
+                                    value: root.preferencesModel.handOrderSweepThreshold
+                                    onValueModified: root.preferencesModel.handOrderSweepThreshold = value
+                                }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_sweep_threshold_help")
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+                            PreferenceSwitch {
+                                objectName: "preferencesHandOrderColorUnresolvedSwitch"
+                                text: qsTrId("hand_order.auto.color_unresolved")
+                                checked: root.preferencesModel.handOrderColorUnresolved
+                                onToggled: root.preferencesModel.handOrderColorUnresolved = checked
+                            }
+                            PreferenceCombo {
+                                objectName: "preferencesHandOrderSearchModeCombo"
+                                label: qsTrId("preferences.hand_order_budget.title")
+                                options: root.preferencesModel.handOrderSearchModeOptions
+                                currentValue: root.preferencesModel.handOrderSearchMode
+                                onPicked: function(value) { root.preferencesModel.handOrderSearchMode = value }
+                            }
+                            RowLayout {
+                                visible: root.preferencesModel.handOrderSearchMode === "custom"
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: root.settingsRowHeight
+                                spacing: root.sectionSpacing
+                                Label {
+                                    Layout.preferredWidth: root.settingsLabelWidth
+                                    text: qsTrId("preferences.hand_order_budget.custom_millions")
+                                    wrapMode: Text.WordWrap
+                                }
+                                SpinBox {
+                                    objectName: "preferencesHandOrderSearchBudgetSpinBox"
+                                    Layout.fillWidth: true
+                                    from: 10
+                                    to: 10000
+                                    stepSize: 10
+                                    editable: true
+                                    value: root.preferencesModel.handOrderSearchBudgetMillions
+                                    onValueModified: root.preferencesModel.handOrderSearchBudgetMillions = value
+                                }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_budget.help")
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        PreferenceGroup {
+                            title: qsTrId("preferences.hand_order_player.title")
+                            visible: root.preferencesModel.handOrderFeaturesEnabled
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_player.description")
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+
+                            PreferenceCombo {
+                                objectName: "preferencesHandOrderStyleCombo"
+                                label: qsTrId("preferences.hand_order_style.title")
+                                options: root.preferencesModel.handOrderStyleOptions
+                                currentValue: root.preferencesModel.handOrderStyleToken
+                                onPicked: function(value) { root.preferencesModel.handOrderStyleToken = value }
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_style.help")
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+
+                            PreferenceSlider {
+                                objectName: "preferencesHandOrderTapRateSlider"
+                                label: qsTrId("preferences.hand_order_player.tap_rate")
+                                from: 30
+                                to: 180
+                                stepSize: 3.75
+                                decimals: 2
+                                suffix: ""
+                                value: root.preferencesModel.handOrderPlayerDisplayProfile.maxComfortableTapRate
+                                onMoved: function(v) { root.preferencesModel.setHandOrderPlayerDisplayParameter("maxComfortableTapRate", v) }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_player.tap_rate_help")
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+
+                            PreferenceSlider {
+                                objectName: "preferencesHandOrderMoveSpeedSlider"
+                                label: qsTrId("preferences.hand_order_player.move_speed")
+                                from: 1
+                                to: 10
+                                stepSize: 0.125
+                                decimals: 3
+                                suffix: ""
+                                value: root.preferencesModel.handOrderPlayerDisplayProfile.comfortableMoveSpeed
+                                onMoved: function(v) { root.preferencesModel.setHandOrderPlayerDisplayParameter("comfortableMoveSpeed", v) }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_player.move_speed_help")
+                                    .arg((2000 / root.preferencesModel.handOrderPlayerProfile.comfortableMoveSpeed).toFixed(0))
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+
+                            PreferenceSlider {
+                                objectName: "preferencesHandOrderStaminaSlider"
+                                label: qsTrId("preferences.hand_order_player.stamina")
+                                from: 0.5
+                                to: 2
+                                stepSize: 0.05
+                                decimals: 2
+                                suffix: ""
+                                value: root.preferencesModel.handOrderPlayerProfile.staminaCapacity
+                                onMoved: function(v) { root.preferencesModel.setHandOrderPlayerParameter("staminaCapacity", v) }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_player.stamina_help")
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+
+                            PreferenceSlider {
+                                objectName: "preferencesHandOrderRecoverySlider"
+                                label: qsTrId("preferences.hand_order_player.recovery")
+                                from: 0.5
+                                to: 10
+                                stepSize: 0.25
+                                decimals: 2
+                                suffix: ""
+                                value: root.preferencesModel.handOrderPlayerProfile.recoveryHalfLife
+                                onMoved: function(v) { root.preferencesModel.setHandOrderPlayerParameter("recoveryHalfLife", v) }
+                            }
+
+                            PreferenceSlider {
+                                objectName: "preferencesHandOrderTechniqueSlider"
+                                label: qsTrId("preferences.hand_order_player.technique")
+                                from: -1
+                                to: 1
+                                stepSize: 0.1
+                                decimals: 1
+                                suffix: ""
+                                value: root.preferencesModel.handOrderPlayerProfile.techniquePreference
+                                onMoved: function(v) { root.preferencesModel.setHandOrderPlayerParameter("techniquePreference", v) }
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_player.technique_help")
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+
+                            PreferenceSlider {
+                                objectName: "preferencesHandOrderPostureWeightSlider"
+                                label: qsTrId("preferences.hand_order_player.posture_weight")
+                                from: 0
+                                to: 8
+                                stepSize: 0.25
+                                decimals: 2
+                                suffix: ""
+                                value: root.preferencesModel.handOrderPlayerProfile.postureWeight
+                                onMoved: function(v) { root.preferencesModel.setHandOrderPlayerParameter("postureWeight", v) }
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTrId("preferences.hand_order_player.posture_help")
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                color: Theme.colors.text.secondary
+                                wrapMode: Text.WordWrap
+                            }
+
+                            AppButton {
+                                objectName: "preferencesHandOrderPlayerResetButton"
+                                Layout.alignment: Qt.AlignLeft
+                                text: qsTrId("preferences.hand_order_player.reset")
+                                onClicked: root.preferencesModel.resetHandOrderPlayerProfile()
                             }
                         }
                     }
@@ -790,6 +1175,17 @@ AppDialog {
 
                 PreferencePage {
                     PreferenceGroup {
+                        title: qsTrId("dialog.preferences.performance_group")
+                        first: true
+                            PreferenceSwitch {
+                                objectName: "preferencesLowPerformanceSwitch"
+                                text: qsTrId("preferences.low_performance")
+                                checked: root.preferences.lowPerformanceMode
+                                onToggled: root.preferences.lowPerformanceMode = checked
+                            }
+
+                    }
+                    PreferenceGroup {
                         title: qsTrId("dialog.preferences.group.video")
                         first: true
 
@@ -803,10 +1199,17 @@ AppDialog {
 
                         PreferenceCombo {
                             objectName: "preferencesPvFrameRateCombo"
+                            enabled: !root.preferences.lowPerformanceMode
                             label: qsTrId("qml.pv_frame_rate")
-                            options: root.preferencesModel.appFrameRateOptions
+                            options: root.preferencesModel.stageMediaFrameRateOptions
                             currentValue: root.preferencesModel.stageMediaFrameRateMode
                             onPicked: function(value) { root.preferencesModel.stageMediaFrameRateMode = value }
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: qsTrId("preferences.pv_frame_rate_help")
+                            color: Theme.colors.text.secondary
                         }
                     }
 
@@ -815,6 +1218,7 @@ AppDialog {
 
                         PreferenceSwitch {
                             objectName: "preferencesBlurMaterialsSwitch"
+                            enabled: !root.preferences.lowPerformanceMode
                             text: qsTrId("dialog.preferences.blur_materials")
                             checked: root.preferencesModel.blurMaterialsEnabled
                             onToggled: root.preferencesModel.blurMaterialsEnabled = checked
@@ -822,6 +1226,7 @@ AppDialog {
 
                         PreferenceCombo {
                             objectName: "preferencesCanvasFrameRateCombo"
+                            enabled: !root.preferences.lowPerformanceMode
                             label: qsTrId("qml.canvas_frame_rate")
                             options: root.preferencesModel.canvasFrameRateOptions
                             currentValue: root.preferencesModel.canvasFrameRateMode
@@ -830,6 +1235,7 @@ AppDialog {
 
                         PreferenceCombo {
                             objectName: "preferencesTimelineFrameRateCombo"
+                            enabled: !root.preferences.lowPerformanceMode
                             label: qsTrId("qml.timeline_frame_rate")
                             options: root.preferencesModel.appFrameRateOptions
                             currentValue: root.preferencesModel.timelineFrameRateMode
@@ -872,12 +1278,17 @@ AppDialog {
                         }
                         ScrollBar.vertical: AppScrollBar {}
 
+                        Keys.onShortcutOverride: function(event) {
+                            if (root.capturingId.length > 0)
+                                event.accepted = true
+                        }
                         Keys.onPressed: function(event) {
                             if (root.capturingId.length === 0)
                                 return
                             event.accepted = true
                             if (event.key === Qt.Key_Escape) {
                                 root.capturingId = ""
+                                root.shortcutNotice = ""
                                 return
                             }
                             if (event.key === Qt.Key_Control || event.key === Qt.Key_Shift
@@ -886,9 +1297,18 @@ AppDialog {
                             const text = root.shortcuts.shortcutTextForKeyEvent(event.key, event.modifiers)
                             if (text.length === 0)
                                 return
-                            root.shortcuts.setShortcutText(root.capturingId, text)
+                            // File/edit keys stay with their menu commands; keep recording.
+                            const owner = root.shortcuts.reservedShortcutOwner(text)
+                            if (owner.length > 0) {
+                                const target = root.shortcutRows.find(row => row.id === root.capturingId)
+                                root.shortcutNotice = qsTrId("qml.shortcut_reserved")
+                                    .arg(root.shortcuts.nativeText(text)).arg(qsTrId(owner))
+                                    .arg(target ? root.shortcutLabel(target) : "")
+                                return
+                            }
+                            const id = root.capturingId
                             root.capturingId = ""
-                            root.refreshShortcuts()
+                            root.applyShortcutChange(id, () => root.shortcuts.setShortcutText(id, text))
                         }
 
                         // The row is NOT one big button: the reset button sits beside
@@ -907,6 +1327,7 @@ AppDialog {
                                 selected: root.capturingId === shortcutRow.modelData.id
                                 onClicked: {
                                     root.capturingId = shortcutRow.modelData.id
+                                    root.shortcutNotice = ""
                                     shortcutList.forceActiveFocus()
                                 }
                                 contentItem: RowLayout {
@@ -927,6 +1348,7 @@ AppDialog {
                                         text: root.capturingId === shortcutRow.modelData.id
                                               ? qsTrId("qml.recording")
                                               : shortcutRow.modelData.shortcutText
+                                                || qsTrId("qml.shortcut_unassigned")
                                         color: shortcutRow.modelData.isDefault
                                                ? Theme.colors.text.secondary
                                                : Theme.colors.accent.primary
@@ -939,23 +1361,149 @@ AppDialog {
                             AppButton {
                                 text: qsTrId("qml.restore_defaults")
                                 enabled: !shortcutRow.modelData.isDefault
-                                onClicked: {
-                                    root.shortcuts.resetShortcut(shortcutRow.modelData.id)
-                                    root.refreshShortcuts()
-                                }
+                                onClicked: root.applyShortcutChange(shortcutRow.modelData.id,
+                                    () => root.shortcuts.resetShortcut(shortcutRow.modelData.id))
                             }
                         }
                     }
 
-                    AppButton {
-                        objectName: "preferencesResetShortcutsButton"
-                        Layout.alignment: Qt.AlignRight
-                        text: qsTrId("qml.restore_all_defaults")
-                        onClicked: {
-                            root.shortcuts.resetAllShortcuts()
-                            root.refreshShortcuts()
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        Text {
+                            objectName: "preferencesShortcutNotice"
+                            Layout.fillWidth: true
+                            text: root.shortcutNotice
+                            wrapMode: Text.Wrap
+                            color: Theme.colors.text.secondary
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.secondaryFontSize
+                        }
+
+                        AppButton {
+                            objectName: "preferencesResetShortcutsButton"
+                            text: qsTrId("qml.restore_all_defaults")
+                            onClicked: {
+                                root.shortcutNotice = ""
+                                root.shortcuts.resetAllShortcuts()
+                                root.refreshShortcuts()
+                            }
                         }
                     }
+                }
+
+                PreferencePage {
+                    PreferenceGroup {
+                        title: qsTrId("dialog.render_settings.preview_group")
+                        first: true
+                        PreferenceSwitch {
+                            objectName: "preferencesMixPreviewAudio"
+                            text: qsTrId("preview.comparison.mix_audio")
+                            enabled: !!root.previewSession?.comparisons
+                            checked: root.previewSession?.comparisons?.mixAudio ?? false
+                            onToggled: root.previewSession.comparisons.mixAudio = checked
+                        }
+                    }
+                    PreferenceGroup {
+                        title: qsTrId("metadata.advanced.title")
+                        PreferenceSwitch {
+                            objectName: "preferencesAdvancedMetadataSwitch"
+                            text: qsTrId("preferences.advanced_metadata")
+                            checked: root.preferences.advancedMetadataEnabled
+                            onToggled: root.preferences.advancedMetadataEnabled = checked
+                        }
+                    }
+                    PreferenceGroup {
+                        title: qsTrId("hand_order.features.title")
+                        HandOrderAccessControl {
+                            Layout.fillWidth: true
+                            minimumRowHeight: root.settingsRowHeight
+                            preferencesModel: root.preferencesModel
+                        }
+                        PreferenceSwitch {
+                            objectName: "preferencesHandOrderWatermarkEnabled"
+                            text: qsTrId("hand_order.features.watermark")
+                            visible: root.preferencesModel.handOrderFeaturesEnabled
+                            checked: root.preferencesModel.handOrderWatermarkEnabled
+                            onToggled: root.preferencesModel.handOrderWatermarkEnabled = checked
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            visible: root.preferencesModel.handOrderFeaturesEnabled
+                            text: qsTrId("hand_order.features.help")
+                            color: Theme.colors.text.secondary
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.secondaryFontSize
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
+                    PreferenceGroup {
+                        title: qsTrId("video_watermark.settings.title")
+
+                        PreferenceSwitch {
+                            objectName: "preferencesVideoWatermarkEnabled"
+                            text: qsTrId("video_watermark.settings.enable")
+                            checked: root.preferencesModel.videoWatermarkEnabled
+                            onToggled: root.preferencesModel.videoWatermarkEnabled = checked
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: root.settingsRowHeight
+                            visible: root.preferencesModel.videoWatermarkEnabled
+
+                            Text {
+                                Layout.preferredWidth: root.settingsLabelWidth
+                                text: qsTrId("video_watermark.settings.text")
+                                color: Theme.colors.text.secondary
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                wrapMode: Text.WordWrap
+                            }
+                            AppTextField {
+                                id: videoWatermarkTextField
+                                objectName: "preferencesVideoWatermarkText"
+                                Layout.fillWidth: true
+                                Accessible.name: qsTrId("video_watermark.settings.text")
+                                text: root.preferencesModel.videoWatermarkText
+                                onEditingFinished: root.preferencesModel.videoWatermarkText = text
+                            }
+                        }
+                        PreferenceSlider {
+                            objectName: "preferencesVideoWatermarkFontSize"
+                            visible: root.preferencesModel.videoWatermarkEnabled
+                            label: qsTrId("video_watermark.settings.font_size")
+                            from: root.preferencesModel.videoWatermarkMinFontSize
+                            to: root.preferencesModel.videoWatermarkMaxFontSize
+                            value: root.preferencesModel.videoWatermarkFontSize
+                            suffix: " px"
+                            onMoved: function(size) { root.preferencesModel.videoWatermarkFontSize = Math.round(size) }
+                        }
+                    }
+
+                    PreferenceGroup {
+                        title: qsTrId("cli.settings.title")
+                        PreferenceSwitch {
+                            objectName: "preferencesCliEnabled"
+                            text: qsTrId("cli.settings.enable")
+                            enabled: root.cliIntegration !== null
+                            checked: root.cliIntegration ? root.cliIntegration.enabled : false
+                            onToggled: {
+                                if (root.cliIntegration) root.cliIntegration.setEnabled(checked)
+                                checked = Qt.binding(() => root.cliIntegration ? root.cliIntegration.enabled : false)
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.cliIntegration ? (root.cliIntegration.status || root.cliIntegration.commandPath) : ""
+                            color: Theme.colors.text.secondary
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.secondaryFontSize
+                            wrapMode: Text.WrapAnywhere
+                        }
+                    }
+
                 }
 
                 PreferencePage {
@@ -974,16 +1522,28 @@ AppDialog {
                         ColumnLayout {
                             spacing: 2
                             Text {
-                                text: "MiaCode"
+                                text: Theme.brandDisplayText
+                                textFormat: Text.StyledText
+                                Accessible.name: Theme.brandName
                                 color: Theme.colors.text.active
                                 font.family: Theme.uiFont
                                 font.pixelSize: Theme.uiFontSize + 6
                                 font.bold: true
                             }
-                            Text {
+                            ChromeRow {
                                 objectName: "aboutVersion"
                                 text: "v" + root.aboutInfo.version
-                                color: Theme.colors.text.secondary
+                                leftPadding: Theme.chromePadding
+                                rightPadding: Theme.chromePadding
+                                implicitHeight: Theme.controlMinHeight
+                                Accessible.name: text
+                                onClicked: {
+                                    root.versionTapCount += 1
+                                    if (root.versionTapCount >= 10) {
+                                        root.versionTapCount = 0
+                                        Theme.miaMiaCode = true
+                                    }
+                                }
                             }
                             Text {
                                 objectName: "aboutUpdateHint"
@@ -1018,29 +1578,8 @@ AppDialog {
                     }
 
                     PreferenceGroup {
-                        title: qsTrId("cli.settings.title")
-                        PreferenceSwitch {
-                            objectName: "preferencesCliEnabled"
-                            text: qsTrId("cli.settings.enable")
-                            enabled: root.cliIntegration !== null
-                            checked: root.cliIntegration ? root.cliIntegration.enabled : false
-                            onToggled: {
-                                if (root.cliIntegration) root.cliIntegration.setEnabled(checked)
-                                checked = Qt.binding(() => root.cliIntegration ? root.cliIntegration.enabled : false)
-                            }
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: root.cliIntegration ? (root.cliIntegration.status || root.cliIntegration.commandPath) : ""
-                            color: Theme.colors.text.secondary
-                            font.family: Theme.uiFont
-                            font.pixelSize: Theme.secondaryFontSize
-                            wrapMode: Text.WrapAnywhere
-                        }
-                    }
-
-                    PreferenceGroup {
                         title: qsTrId("dialog.preferences.updates_group")
+                        visible: root.updateService !== null
 
                         PreferenceSwitch {
                             objectName: "preferencesUpdateCheckSwitch"

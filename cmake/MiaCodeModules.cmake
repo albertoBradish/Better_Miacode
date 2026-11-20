@@ -31,7 +31,10 @@ miacode_add_module(miacode_base
         src/common/PixelGeometry.h
         src/common/ProcessDiagnostics.cpp
         src/common/ProcessDiagnostics.h
+        src/common/RuntimePaths.cpp
+        src/common/RuntimePaths.h
         src/common/TaskCancellation.h
+        src/common/TaskExecutionControl.h
         src/common/UiHangWatchdog.cpp
         src/common/UiHangWatchdog.h
         src/common/UiHangWatchdogPolicy.h
@@ -56,15 +59,32 @@ miacode_add_module(miacode_chart
         src/core/chart/SlideJudgementTiming.cpp
         src/core/chart/SlideJudgementTiming.h
         src/core/chart/document/ChartClockCount.h
+        src/core/chart/ChartPreviewRegion.cpp
+        src/core/chart/ChartPreviewRegion.h
+        src/core/chart/ChartVersion.cpp
+        src/core/chart/document/AdvancedMetadata.cpp
+        src/core/chart/document/AdvancedMetadata.h
         src/core/chart/document/SimaiDocument.cpp
         src/core/chart/document/SimaiDocument.h
         src/core/chart/document/SimaiTimingMetadata.cpp
         src/core/chart/document/SimaiTimingMetadata.h
+        src/core/chart/model/HandOrderRestPosition.h
+        src/core/chart/model/HandOrderHoldLock.h
+        src/core/chart/model/HandOrderRhythm.h
         src/core/chart/model/TimelineData.h
         src/core/chart/model/TimelineMarkerOffset.h
+        src/core/chart/parser/HandOrderAnnotationSyntax.cpp
+        src/core/chart/parser/HandOrderAnnotationSyntax.h
+        src/core/chart/transform/HandOrderPatternRules.cpp
+        src/core/chart/transform/HandOrderPatternRules.h
+        src/core/chart/transform/HandOrderPatternPriority.cpp
+        src/core/chart/transform/HandOrderPatternPriority.h
+        src/core/chart/transform/HandOrderInteraction.cpp
+        src/core/chart/transform/HandOrderInteraction.h
         src/core/chart/parser/SimaiCommentScan.cpp
         src/core/chart/parser/SimaiCommentScan.h
         src/core/chart/parser/SimaiParser.Driver.cpp
+        src/core/chart/parser/SimaiParser.HandOrder.cpp
         src/core/chart/parser/SimaiParser.Slide.cpp
         src/core/chart/parser/SimaiParser.StrictChecks.cpp
         src/core/chart/parser/SimaiParser.TouchTap.cpp
@@ -78,6 +98,15 @@ miacode_add_module(miacode_chart
         src/core/chart/transform/ChartBatchTransform.Subdivision.cpp
         src/core/chart/transform/ChartBatchTransform.Transform.cpp
         src/core/chart/transform/ChartBatchTransform.h
+        src/core/chart/transform/HandOrderEdit.cpp
+        src/core/chart/transform/HandOrderEdit.h
+        src/core/chart/transform/HandOrderAlternation.cpp
+        src/core/chart/transform/HandOrderScreenSplit.cpp
+        src/core/chart/transform/HandOrderScreenSplit.h
+        src/core/chart/transform/BasicHandOrderLayout.cpp
+        src/core/chart/transform/BasicHandOrderLayout.h
+        src/core/chart/transform/NativeSlideSplit.cpp
+        src/core/chart/transform/NativeSlideSplit.h
         src/core/chart/transform/ChartNormalization.cpp
         src/core/chart/transform/ChartNormalization.h
         src/core/chart/transform/ChartNoteSelection.h
@@ -86,12 +115,15 @@ miacode_add_module(miacode_chart
         src/core/chart/transform/ChartNormalizationSegmentPolicy.h
         src/core/chart/transform/Non384SnapTable.cpp
         src/core/chart/transform/Non384SnapTable.h
+        src/core/chart/transform/PlainSimaiExport.cpp
+        src/core/chart/transform/PlainSimaiExport.h
     PUBLIC miacode_base
     QRC resources/slide_data.qrc
 )
 # SimaiParser.cpp includes its partial translation units.
 set_source_files_properties(
     src/core/chart/parser/SimaiParser.Driver.cpp
+    src/core/chart/parser/SimaiParser.HandOrder.cpp
     src/core/chart/parser/SimaiParser.Slide.cpp
     src/core/chart/parser/SimaiParser.StrictChecks.cpp
     src/core/chart/parser/SimaiParser.TouchTap.cpp
@@ -100,12 +132,43 @@ set_source_files_properties(
 # ---- analysis: Muri and the analysis pipeline -----------------------------
 miacode_add_module(miacode_analysis
     SOURCES
+        src/core/analysis/hand_order/BasicHandOrder.cpp
+        src/core/analysis/hand_order/BasicHandOrder.h
+        src/core/analysis/hand_order/HandOrderProgress.h
+        src/core/analysis/hand_order/PatternHandOrderOptimization.cpp
+        src/core/analysis/hand_order/PatternHandOrderOptimization.h
+        src/core/analysis/hand_order/HandOrderJudge.cpp
+        src/core/analysis/hand_order/HandOrderJudge.h
+        src/core/analysis/hand_order/HandOrderFullReplay.cpp
+        src/core/analysis/hand_order/HandOrderFullReplay.h
+        src/core/analysis/hand_order/BasicHandOrderActions.cpp
+        src/core/analysis/hand_order/BasicHandOrderActions.h
+        src/core/analysis/hand_order/HandOrderConflictReview.cpp
+        src/core/analysis/hand_order/HandOrderConflictReview.h
+        src/core/analysis/hand_order/CombinedHandOrder.cpp
+        src/core/analysis/hand_order/CombinedHandOrder.h
+        src/core/analysis/hand_order/BasicHandOrderWifi.cpp
+        src/core/analysis/hand_order/BasicHandOrderWifi.h
+        src/core/analysis/hand_order/HandPlayContacts.cpp
+        src/core/analysis/hand_order/HandPlayContacts.h
+        src/core/analysis/hand_order/HandPlayPose.cpp
+        src/core/analysis/hand_order/HandPlayPose.h
+        src/core/analysis/hand_order/HandPlaySettings.h
+        src/core/analysis/hand_order/HandPlaySimulation.cpp
+        src/core/analysis/hand_order/HandPlaySimulation.h
+        src/core/analysis/hand_order/HandPlayReview.cpp
+        src/core/analysis/hand_order/HandPlayReview.h
+        src/core/analysis/HandOrderPressureAdapter.cpp
+        src/core/analysis/HandOrderPressureAdapter.h
+        src/core/analysis/ChartStructureAnalysis.cpp
+        src/core/analysis/ChartStructureAnalysis.h
         src/core/analysis/MuriAnalyzer.cpp
         src/core/analysis/MuriAnalyzer.h
         src/core/analysis/MuriAnalyzerGeometry.cpp
         src/core/analysis/MuriAnalyzerGeometry.h
         src/core/analysis/MuriAnalyzerInternal.h
         src/core/analysis/MuriAnalyzerModel.h
+        src/core/analysis/MuriTimeIndex.h
         src/core/analysis/MuriConfig.h
         src/core/analysis/MuriDiagnosticCollector.cpp
         src/core/analysis/MuriDiagnosticCollector.h
@@ -171,6 +234,8 @@ miacode_add_module(miacode_scene
         src/core/scene/PreviewJudgeEffectLayerState.h
         src/core/scene/PreviewJudgeFireworkLayerState.cpp
         src/core/scene/PreviewJudgeFireworkLayerState.h
+        src/core/scene/PreviewStandardFirework.cpp
+        src/core/scene/PreviewStandardFirework.h
         src/core/scene/PreviewJudgeOverlayShared.cpp
         src/core/scene/PreviewJudgeOverlayShared.h
         src/core/scene/PreviewLayerOrder.h
@@ -412,18 +477,24 @@ miacode_add_module(miacode_preview_quick
         src/preview/quick_scene/PreviewQuickHudLayer.h
         src/preview/quick_scene/PreviewQuickJudgeEffectLayer.cpp
         src/preview/quick_scene/PreviewQuickJudgeEffectLayer.h
-        src/preview/quick_scene/PreviewFireworkPostProcess.cpp
-        src/preview/quick_scene/PreviewFireworkPostProcess.h
+        src/preview/quick_scene/PreviewModernFireworkPostProcess.cpp
+        src/preview/quick_scene/PreviewModernFireworkPostProcess.h
         src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.cpp
         src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.h
+        src/preview/quick_scene/PreviewStandardFireworkNode.cpp
+        src/preview/quick_scene/PreviewStandardFireworkNode.h
         src/preview/quick_scene/PreviewQuickMaimuriDxJudgeLayer.cpp
         src/preview/quick_scene/PreviewQuickMaimuriDxJudgeLayer.h
         src/preview/quick_scene/PreviewQuickMuriActionLayer.cpp
         src/preview/quick_scene/PreviewQuickMuriActionLayer.h
         src/preview/quick_scene/PreviewQuickMuriPadLayer.cpp
         src/preview/quick_scene/PreviewQuickMuriPadLayer.h
+        src/preview/quick_scene/PreviewQuickSimulatedPlayLayer.cpp
+        src/preview/quick_scene/PreviewQuickSimulatedPlayLayer.h
         src/preview/quick_scene/PreviewQuickSceneRoot.cpp
         src/preview/quick_scene/PreviewQuickSceneRoot.h
+        src/preview/quick_scene/PatternCandidatePreview.cpp
+        src/preview/quick_scene/PatternCandidatePreview.h
         src/preview/quick_scene/PreviewQuickSectorNodes.cpp
         src/preview/quick_scene/PreviewQuickSectorNodes.h
         src/preview/quick_scene/PreviewQuickSlideMotionLayer.cpp
@@ -463,6 +534,7 @@ if(MIACODE_PREVIEW_MULTIMEDIA)
 endif()
 # qmltyperegistrar includes QML_ELEMENT headers by file name only.
 target_include_directories(miacode_preview_quick PRIVATE src/preview/quick_scene)
+target_include_directories(miacode_preview_quick PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_link_libraries(miacode_preview_quick PRIVATE Qt6::QuickPrivate)
 if (WIN32)
     target_link_libraries(miacode_preview_quick PRIVATE
@@ -480,11 +552,15 @@ qt_add_shaders(miacode_preview_quick "preview_sprite_shaders"
         src/preview/quick_scene/shaders/PreviewStageDimMaterial.frag
         src/preview/quick_scene/shaders/PreviewMeasureRing.vert
         src/preview/quick_scene/shaders/PreviewMeasureRing.frag
-        src/preview/quick_scene/shaders/PreviewFireworkMaterial.vert
-        src/preview/quick_scene/shaders/PreviewFireworkMaterial.frag
-        src/preview/quick_scene/shaders/PreviewFireworkPost.vert
-        src/preview/quick_scene/shaders/PreviewFireworkPost.frag
-        src/preview/quick_scene/shaders/PreviewFireworkStar.frag
+        src/preview/quick_scene/shaders/PreviewModernFireworkMaterial.vert
+        src/preview/quick_scene/shaders/PreviewModernFireworkMaterial.frag
+        src/preview/quick_scene/shaders/PreviewModernFireworkPost.vert
+        src/preview/quick_scene/shaders/PreviewModernFireworkPost.frag
+        src/preview/quick_scene/shaders/PreviewModernFireworkStar.frag
+        src/preview/quick_scene/shaders/PreviewStandardFirework.vert
+        src/preview/quick_scene/shaders/PreviewStandardFireworkSprite.frag
+        src/preview/quick_scene/shaders/PreviewStandardFireworkRainbow.frag
+        src/preview/quick_scene/shaders/PreviewStandardFireworkOutput.frag
 )
 qt_add_qml_module(miacode_preview_quick
     URI MiaCode.Preview
@@ -565,6 +641,12 @@ miacode_add_module(miacode_export
         src/export/cover_export/CoverPvFrameSource.h
         src/export/cover_export/SceneFrameRenderer.cpp
         src/export/cover_export/SceneFrameRenderer.h
+        src/export/session/ExportQuickBackgroundItem.cpp
+        src/export/session/ExportQuickBackgroundItem.h
+        src/export/session/ExportQuickWatermarkOverlay.cpp
+        src/export/session/ExportQuickWatermarkOverlay.h
+        src/export/video_export/VideoExportStageMediaSource.cpp
+        src/export/video_export/VideoExportStageMediaSource.h
         src/export/session/PreviewQuickD3D11ExportSession.cpp
         src/export/session/PreviewQuickD3D11ExportSession.h
         src/export/session/PreviewQuickExportSession.cpp
@@ -589,9 +671,10 @@ miacode_add_module(miacode_export
         src/export/video_export/VideoExportEstimateHistory.cpp
         src/export/video_export/VideoExportEstimateHistory.h
         src/export/video_export/VideoExportEncoder.cpp
+        src/export/video_export/VideoExportEncoding.cpp
+        src/export/video_export/VideoExportEncoding.h
+        src/export/video_export/VideoExportEncoderProfiles.cpp
         src/export/video_export/VideoExportFrameRender.cpp
-        src/export/video_export/VideoExportMediaTimeline.cpp
-        src/export/video_export/VideoExportMediaTimeline.h
         src/export/video_export/VideoExportPendingFrameRedraw.h
         src/export/video_export/VideoExportPipeline.cpp
         src/export/video_export/VideoExportPreparedTask.cpp
@@ -606,6 +689,13 @@ miacode_add_module(miacode_export
     PUBLIC miacode_audio_bass miacode_preview_quick Qt6::Quick Qt6::Qml
     QRC resources/intro.qrc
 )
+if (WIN32 OR APPLE)
+    target_include_directories(miacode_export PRIVATE "${MIACODE_FFMPEG_DEV_DIR}/include")
+else()
+    target_include_directories(miacode_export PRIVATE ${MIACODE_FFMPEG_INCLUDE_DIRS})
+endif()
+target_link_libraries(miacode_export PRIVATE
+    ${AVFORMAT_LIBRARY} ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY} ${SWSCALE_LIBRARY})
 if (WIN32)
     target_link_libraries(miacode_export PRIVATE
         d3d11        # D3D11 export session
@@ -631,6 +721,8 @@ miacode_add_module(miacode_media_tools
         src/media_tools/media/MediaPrependPolicy.h
         src/media_tools/media/PvCompressionPolicy.cpp
         src/media_tools/media/PvCompressionPolicy.h
+        src/media_tools/media/VideoAudioAlignment.cpp
+        src/media_tools/media/VideoAudioAlignment.h
         src/media_tools/net/NetBatchDownloadWorker.cpp
         src/media_tools/net/NetBatchDownloadWorker.h
         src/media_tools/net/NetBatchUploadScanner.cpp
@@ -658,3 +750,7 @@ miacode_add_module(miacode_media_tools
     PRIVATE Qt6::Network Qt6::Concurrent miniz
 )
 endif()
+
+target_sources(miacode_analysis PRIVATE
+    src/core/analysis/hand_order/HandOrderExperiment.cpp
+    src/core/analysis/hand_order/HandOrderExperiment.h)

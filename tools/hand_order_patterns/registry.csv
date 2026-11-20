@@ -1,0 +1,172 @@
+﻿ID,类别,名称（含别名）,检测结构 / 候选触发条件,建议特殊策略 / 约束,级别,优先级,术语状态,检测器族,参考资料 URL
+T01,纯键,交互 / Trill,两个固定键位交替出现≥4 Note,生成LR交替与起手镜像候选；保持节拍相位,S,P0,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T02,纯键,长交互,交互持续长度或时长超过阈值,整段保持交替，考虑耐力与起手切换成本,B,P1,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T03,纯键,定轨交互,交互两侧位置基本不变,整段锁定两侧轨道，减少无意义换手,B,P1,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T04,纯键,位移交互,交替节奏稳定，两组位置连续迁移,生成移动双轨交替手序而非逐点最近手,S,P0,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T05,纯键,楼梯交互,相邻键位逐级变化且呈交替节奏,同时生成双手交替与扫键替代候选,S,P1,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T06,纯键,三角交互,三点构成周期性三角往返,锁定周期起手和主轴，比较跨手成本,S,P1,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T07,纯键,轴交互 / 轴Trill,某固定点与其他移动点交错,固定轴手，另一手处理移动点；生成镜像,S,P0,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T08,纯键,轴三角,固定轴点，另一手在两点间往返,优先轴手固定、动手往返；处理夹手风险,S,P0,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T09,纯键,方向盘交互,交互键位按同方向沿外圈位移,交替手沿环形迁移；区别于单手扫圈,S,P1,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T10,纯键,大宇宙 / 四键位移交互,四键循环且具有固定交替结构,整段按周期分配LR；不单独逐音分页,S,P0,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T11,纯键,交互节奏散点,节奏等间隔且位置离散、近似交互,尝试交替手序并比对任意分手方案,B,P1,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T12,纯键,散点 / 散打 / 乱打,非周期单点密集出现,默认通用求解；保留左右手交替软偏置,B,P2,通用,交互/双轨,https://www.bilibili.com/video/BV1Lb421p7b5/
+T13,纯键,纵连 / 同键连打,同一位置连续击打,提高同手重复速度成本；必要时允许同键换手,B,P1,通用,同键/子弹,https://www.bilibili.com/opus/461149354380109054
+T14,纯键,二纵 / 三纵 / 短纵,同键连续2至4次,保留同手短促连打候选，勿一律交替,B,P1,通用,同键/子弹,https://www.bilibili.com/opus/461149354380109054
+T15,纯键,长纵,同键持续5次以上,比较同手持续与交替/拆分；体力权重递增,S,P1,通用,同键/子弹,https://www.bilibili.com/opus/461149354380109054
+T16,纯键,双纵 / 双手纵连,同两键形成重复同步双押,保持稳定左右键分工，控制重复击打可行性,S,P1,通用,同键/子弹,https://www.bilibili.com/opus/461149354380109054
+T17,纯键,子弹 / 快速双纵,短促、高速成对重复按键,成组建模而非将每个双押独立优化,S,P0,通用,同键/子弹,https://www.bilibili.com/video/BV1Lb421p7b5/
+T18,纯键,子弹圈,子弹组合沿外圈顺序位移,对整串生成分页/轮换/扫动候选,S,P1,有圈内叫法差异,同键/子弹,https://www.bilibili.com/video/BV1Lb421p7b5/
+T19,纯键,双押 / EACH,同拍两个外圈输入,两手分别占一个键；邻键特殊单手打法作可选项,C,P1,通用,双押/切键,https://www.bilibili.com/opus/461149354380109054
+T20,纯键,连续双押,相邻时刻重复出现EACH,对连续EACH成组分手，避免瞬时反复换边,S,P1,通用,双押/切键,https://www.bilibili.com/opus/461149354380109054
+T21,纯键,双押阵,大量不同键位组合的连续EACH,全段求解每拍左右对应，优先减少交手,S,P1,通用,双押/切键,https://www.bilibili.com/opus/461149354380109054
+T22,纯键,单双押 / 单双,单点和EACH按1-2型交替,生成节奏轴与自由手分工候选,S,P1,通用,双押/切键,https://www.bilibili.com/opus/461149354380109054
+T23,纯键,切键,按1-2-1-2或2-1-1节奏出现，双押与单点位置不重合,持续节奏轴手、另一手跨位移,S,P0,通用,双押/切键,https://www.bilibili.com/opus/461149354380109054
+T24,纯键,叠键,相邻两拍的按键集合交集非空,鼓励重叠位置同手负责，避免双手争同键,B,P1,通用,双押/切键,https://www.bilibili.com/opus/461149354380109054
+T25,纯键,轴叠键,固定键周期Tap，其他位置交错出现,固定轴手并按节奏节流移动手,S,P0,通用,双押/切键,https://www.bilibili.com/opus/461149354380109054
+T26,纯键,楼梯 / 阶梯,键号按±1连续移动若干拍,默认同手连续处理，备选按连续区段分页,S,P1,通用,扫描/旋转,https://www.bilibili.com/opus/461149354380109054
+T27,纯键,单手楼梯,与楼梯同型，且一手可覆盖相邻连续键,在高速且路径连续时提供单手模板,S,P1,手法派生,扫描/旋转,https://www.bilibili.com/opus/461149354380109054
+T28,纯键,扫键 / 流键,相邻按键快速连续且移动方向稳定,将扫过多个键视为连续手势并计一次起停,S,P0,通用,扫描/旋转,https://www.bilibili.com/opus/461149354380109054
+T29,纯键,折返 / 折返扫键,键位移到端点后沿原路线回返,一只手来回扫与中途换手均作为候选,S,P1,通用,扫描/旋转,https://www.bilibili.com/opus/461149354380109054
+T30,纯键,转圈 / 回转,外圈键号同方向±1模8推进≥4次,默认同手连续扫圈，备选按连续区段分页；不逐音符交替,S,P0,通用,扫描/旋转,https://www.bilibili.com/video/BV1Lb421p7b5/
+T31,纯键,加减速转圈,转圈期间输入间隔显著变化,按变速点切段，保持动作连续性与准确度,S,P1,通用,扫描/旋转,https://www.bilibili.com/video/BV1Lb421p7b5/
+T32,纯键,双押转圈 / EACH回转,双押对整体随圆周平移,允许稳定双手同向轮换，不逐拍交换分区,S,P1,通用,扫描/旋转,https://www.bilibili.com/video/BV1Lb421p7b5/
+T33,纯键,大臂圈 / 快速大圈,连续扫圈跨越较大圆弧或多圈,速度可行性筛选，惩罚无谓重启与别手,S,P1,通用,扫描/旋转,https://www.bilibili.com/video/BV1Lb421p7b5/
+T34,节奏,定拍,连续输入时间间隔稳定,仅用于推断拍点/周期；无需强制改手,T,P3,通用,节奏/节拍,https://www.bilibili.com/opus/461149354380109054
+T35,节奏,三连音 / Triplet,节拍划分等距为3,使用真实时间间隔，而非按16分等价处理,C,P2,通用,节奏/节拍,https://www.bilibili.com/opus/461149354380109054
+T36,节奏,跳拍 / Swing / Shuffle,交替长短间隔，常见2:1或3:1,按真实时长估计手速，保留成对动作,B,P1,通用,节奏/节拍,https://www.bilibili.com/opus/461149354380109054
+T37,节奏,绕手跳拍,跳拍与跨手位置交错,候选手序加入交叉手/绕手，不能只按最近手,S,P1,组合性术语,节奏/节拍,https://www.bilibili.com/video/BV1Lb421p7b5/
+T38,节奏,反拍 / Offbeat,输入持续落在相对主拍偏移位置,改判节奏相位；不单独定手,T,P3,通用,节奏/节拍,https://www.bilibili.com/opus/461149354380109054
+T39,节奏,短长间隔连打,两档以上相邻输入间隔交错,保留不均匀节奏与动作组，不强行等距,B,P2,描述性,节奏/节拍,https://www.bilibili.com/opus/461149354380109054
+T40,纯键,外圈连续输入,外圈按键连续形成局部流水,作为上层候选扫键/楼梯/转圈召回器,B,P2,描述性,扫描/旋转,https://www.bilibili.com/opus/461149354380109054
+T41,纯键,三连打 / 连续三连,三个连续击打形成循环单元,成组三连，比较同手2+1与LRL模式,B,P2,通用,节奏/节拍,https://www.bilibili.com/opus/461149354380109054
+T42,纯键,交互接跳拍,交互后衔接长短节奏,在交界处重估起手与相位，不强制全段交替,B,P2,组合性术语,节奏/节拍,https://www.bilibili.com/opus/461149354380109054
+T43,纯键,绕手子弹,子弹型成组重复沿跨侧位置移动，分页候选造成两手交错,整体联合子弹节奏和绕手/跨手模板；检测应基于候选动作而非Note名称,S,P0,组合性术语,同键/子弹,https://www.bilibili.com/video/BV1Lb421p7b5/
+S01,Slide,拍划 / Tap启动Slide,Slide正式启动时同起点有Tap,允许同手拍键顺势启动Slide；为两个事件绑定动作,S,P0,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S02,Slide,拍拍划,星头与正式启动之间插入同起点Tap,视为拍-拍-划动作组，勿把中间Tap交另一手,S,P0,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S03,Slide,换手拍划,星头/同拍Tap与Slide跨手连接,生成头手与滑动手不同的候选,S,P1,手法派生,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S04,Slide,同起点Slide拍划,相同起点星头相继出现且前条启动时接后条,锁定同起点连续拍划节奏，建链优化,S,P1,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S05,Slide,连续星星 / 连续Slide,下一星头时刻近似等于上一Slide启动时刻,使用星头/前一Slide完成的同步候选,S,P0,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S06,Slide,交替起点星星,Slide起点在两个区域反复交替,优先交替起点手与一只持续滑动手候选,S,P1,描述性,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S07,Slide,一笔画,前Slide路径终点与后Slide路径起点时空衔接,一只手连续扫轨迹，另一手负责星头,S,P0,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S08,Slide,往复一笔画,一笔画且下一轨迹反向覆盖前段,允许同手折返不停顿，惩罚强制换手,S,P0,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S09,Slide,连接Slide / 连结滑动链,一个Note对象含多个连接Slide段,把整条链作为路径约束，不拆成独立滑条,C,P0,官方Note结构,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S10,Slide,同起点连续星星,多条Slide共起点且启动接近,起点同手重复或交换起点手生成候选,S,P1,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S11,Slide,同起点分岔星星,同起点同时派出不同方向路径,检查双手占用和路径时间窗；或单手顺扫可行性,C,P0,结构性,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S12,Slide,错位星星 / 夹键星星,Slide头到启动期间插入其他位置Tap,分开星头、插键、滑动三类动作求解,S,P0,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S13,Slide,错时启动星星,两条重叠Slide的启动时刻不同,以绝对启动时刻调度手占用，不按绘图同步,C,P0,结构性,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S14,Slide,延迟星星 / 长等待Slide,星头到启动等待远长于常规,将星头与滑动分开分配，支持空档自由移动,C,P1,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S15,Slide,异速星星 / 不同速度成对滑动,起点或启动相似但路径时长不相同,不能假定同步完成；各自建立动作窗口,C,P0,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S16,Slide,慢星星,Slide完成持续时间显著长,可先完成部分路段后停留终点；终点判定风险建模,C,P1,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S17,Slide,快星星,有效划动窗口很短,约束单手移动速度，倾向快速连续动作,C,P1,通用,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S18,Slide,直线星星 / 穿心星星,Slide轨迹直线，穿心者经过C区,模板点到点扫过；检查路径穿屏中心冲突,B,P2,结构性,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S19,Slide,风车星星,连续星头沿外圈位移且等速穿心,生成拍键手与滑动手分工、绕手两种模板,S,P0,通用,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S20,Slide,弧线星星 / 圆弧星星,Slide呈单段弧线,连续曲线手势模型，避免端点直线距离误判,B,P2,结构性,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S21,Slide,p/q星星,Slide轨迹为p或q弯曲形状,使用轨迹经过区而非只用首尾键计算手距,C,P1,结构性,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S22,Slide,V型 / 折线星星,Slide轨迹含明显折角,动作路径按拐点表示；允许角点连续划动,C,P1,结构性,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S23,Slide,S型 / Z型星星,Slide轨迹有连续反向弯折,处理多折弯真实路径、考察手臂干涉,C,P1,结构性,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S24,Slide,Wi-Fi星星 / 扇形Slide,一条Slide拆分三条扇形支线,三路同步判区覆盖；不是普通单线Slide,C,P0,官方Note结构,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S25,Slide,双押星星 / EACH Slide,同拍两条Slide星头或同时划动,两手协调、同步轨迹与各自等待时间,S,P1,通用,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S26,Slide,对称双星,两条Slide左右或旋转对称,生成对称双手镜像动作模板,S,P1,描述性,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S27,Slide,交叉星星,两条Slide路径相交且时间重叠,加入手臂/触屏路径碰撞惩罚,C,P0,结构性,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S28,Slide,交叠星星,多条Slide触发判区重合,加强误触/串判检查，尝试换手和调度,C,P0,结构性,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S29,Slide,绕手星星,已分配手序需一手跨过另一手活动范围,只对候选解标注/惩罚，反向激发换手模板,B,P1,手法派生,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S30,Slide,魔法阵,对角直线Slide逐次旋转偏移1键,生成连续轮换手法，避免独立处理每条,S,P0,通用,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S31,Slide,星星转圈,星头沿外圈移动且连接连续Slide,按起点方向和Slide路径生成持续旋转候选,S,P1,组合性术语,Slide轨迹几何,https://www.bilibili.com/opus/461149354380109054
+S32,Slide,星星+Hold复合,Hold占手区间与Slide活跃区间重叠,强制占手冲突检查；支持Hold末端衔接滑动,C,P0,结构性,并行/路径冲突,https://www.bilibili.com/opus/461149354380109054
+S33,Slide,星星+Tap复合,Slide运动窗口内有Tap,允许另一手负责Tap或窗口内局部换手,S,P0,结构性,并行/路径冲突,https://www.bilibili.com/opus/461149354380109054
+S34,Slide,星星+Touch复合,Slide进行时另有Touch,检查判区共享，优先另一手处理Touch,C,P0,结构性,并行/路径冲突,https://www.bilibili.com/opus/461149354380109054
+S35,Slide,多线程 / 滑动过程重叠,数条Slide有效运动时间部分重叠,最多两手并行路径、冲突图和延迟策略,C,P0,结构性,并行/路径冲突,https://www.bilibili.com/opus/461149354380109054
+S36,Slide,起点重复Tap冲突,Slide起点A区附近在运动期仍出Tap,使用A区避让/合适的移动轨迹，防提前蹭判,C,P1,工程触发器,并行/路径冲突,https://www.bilibili.com/opus/461149354380109054
+S37,Slide,星头等待中单点,Slide等待期出现不相关Tap,把等待期释放为可用手资源,C,P0,结构性,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S38,Slide,滑动中接新星头,Slide正在运动时出现下一条星头,候选另一手击星头或路径换手,S,P0,通用,并行/路径冲突,https://www.bilibili.com/opus/461149354380109054
+S39,Slide,贴边对称双星换手,两条靠外侧、镜面对称Slide迫使交叉,生成双手交换位置完成滑动的整段模板,S,P1,结构性,并行/路径冲突,https://www.bilibili.com/opus/461149354380109054
+S40,Slide,滑动等待变化,同一串Slide的等待期不一致,每条单独解出头→起划时刻，禁止统一一拍假设,C,P0,结构性,星头-启动时间轴,https://www.bilibili.com/opus/461149354380109054
+S41,Slide,Slide + 快速扫键,Slide运动窗口紧邻快速外圈楼梯,联合求解扫键手与滑动手，避免互相抢手,S,P1,组合性术语,并行/路径冲突,https://www.bilibili.com/opus/461149354380109054
+H01,Hold,长条拘束 / Hold锁手,Hold时间覆盖其他Note,被占用手仅可做真实可兼容动作；优先另手,C,P0,通用,Hold占手,https://www.bilibili.com/opus/461149354380109054
+H02,Hold,Hold + Tap复合,Hold进行中有Tap,固定Hold手，其他手处理Tap；必要时允许交叉,C,P0,结构性,Hold占手,https://www.bilibili.com/opus/461149354380109054
+H03,Hold,Hold + Slide复合,Hold与Slide有效时间重叠,兼容性、终点衔接、滑动手分工,C,P0,结构性,Hold占手,https://www.bilibili.com/opus/461149354380109054
+H04,Hold,Hold双押,两个Hold时间区间重合,占满两手时禁止不可行第三任务或提示特殊手法,C,P0,通用,Hold占手,https://www.bilibili.com/opus/461149354380109054
+H05,Hold,连续Hold,相邻的Hold形成时间/位置链,允许左右交替及松手→下一Hold连续动作,B,P1,通用,Hold占手,https://www.bilibili.com/opus/461149354380109054
+H06,Hold,Hold交叉手,重叠Hold在空间上迫使跨臂,生成反手/换手候选，但不是必须交叉,S,P1,手法派生,Hold占手,https://www.bilibili.com/opus/461149354380109054
+H07,Hold,短Hold阵 / 翠翠薯条基型,短时Hold成组密集排列,按成对/重复节奏组处理，避免误判为普通Tap,B,P2,描述性,Hold占手,https://www.bilibili.com/opus/461149354380109054
+H08,Hold,Hold结束接Slide,Hold末端与另一Slide开始时间接近,允许松Hold同时滑动或释放手后接滑,S,P1,结构性,Hold占手,https://www.bilibili.com/opus/461149354380109054
+U01,Touch,Touch乱打,多Touch离散、不规则、密集,两手协调区分离，检查中心与边缘的跳跃时间,B,P1,通用,Touch几何/并行,https://mai-notes.com/filter
+U02,Touch,Touch流键 / 触摸扫动,Touch位置沿邻接感应区连续出现,同手内屏扫动动作模板,S,P1,通用,Touch几何/并行,https://mai-notes.com/filter
+U03,Touch,Touch转圈,Touch按照内圈或外圈感应区旋转,生成连续扫圈候选而非单个触点独立求解,S,P1,通用,Touch几何/并行,https://mai-notes.com/filter
+U04,Touch,Touch连打,同一/近邻Touch连续重复,同手触发与另一手交替候选比较,B,P2,通用,Touch几何/并行,https://mai-notes.com/filter
+U05,Touch,Touch + Tap协调,Touch和外圈Tap交错或同拍,检查跨内外屏时间与分手；候选一手一轨,S,P0,通用,Touch几何/并行,https://mai-notes.com/filter
+U06,Touch,Touch + Slide协调,Touch与Slide启动/运动重合,避开Slide同区卷入，优先双手分工,C,P0,通用,Touch几何/并行,https://mai-notes.com/filter
+U07,Touch,Touch Hold拘束,TouchHold与其他音符时间交叠,将一手视为持续占用，保留可兼容多指可选项,C,P0,官方Note结构,Touch几何/并行,https://mai-notes.com/filter
+U08,Touch,Touch双押 / 多押,同时存在2个或更多Touch,检测是否单手覆盖、是否必须双手或手掌,C,P0,结构性,Touch几何/并行,https://mai-notes.com/filter
+U09,Touch,Touch卷入 / Touch误触,Touch判区与Slide/邻近Note路径在时间上冲突,加入提前触发风险成本；换路径/换手优先,C,P0,通用,Touch几何/并行,https://mai-notes.com/filter
+U10,Touch,Touch海底谭,连续海底谭三击组中隔位Tap替换Touch,一手击打星头、Touch和启动拍并继续滑动；逐组双手交替,S,P1,玩家衍生,Touch几何/并行,https://mai-notes.com/filter
+U11,Touch,Touch Hold + Slide,TouchHold期间Slide与其邻接,检测可行性和路径穿越拘束手,C,P0,组合性术语,Touch几何/并行,https://mai-notes.com/filter
+A01,手法,绕手,候选解中一手横跨另一手活动路径,给出交叉绕手的动作成本，非谱面直接判定,B,P1,手法派生,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A02,手法,换手 / 持ち替え,星头手与Slide运动手不同,必须允许Slide头和轨迹分手，生成换手候选,S,P0,通用,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A03,手法,分页,按屏幕半区分手处理,作为通用基准策略/候选，转圈勿设唯一答案,B,P1,通用,候选手序属性,https://www.bilibili.com/read/cv6529/
+A04,手法,全换,转圈/散点中LR连续轮换,对高速转圈与流键产生交替手选项,S,P0,通用,候选手序属性,https://www.bilibili.com/read/cv6529/
+A05,手法,交叉手 / 交手,候选手序导致手腕或手臂在空间上交叉,碰撞罚项；必要时保留合法交手模板,C,P0,通用,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A06,手法,反手,候选需要手掌反向或明显跨侧击打,只输出解的姿势标签，不能单凭Note判定,B,P2,手法派生,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A07,手法,锁手 / 拘束,某手长期被Hold/TouchHold/Slide占据,占用时间窗管理而非单独谱面模板,C,P0,通用,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A08,手法,单手处理,一个连续音符串可由一手处理,生成单手扫/单手连打候选，考查速度,S,P1,手法派生,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A09,手法,双手分工,两条并行节奏线或滑动与Tap并发,角色分工整段求解，减少任务来回切换,S,P0,通用,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A10,手法,硬抗,候选用独立击打而非扫键/取巧,保留原解作基准，评估手速、能耗上限,T,P3,手法派生,候选手序属性,https://www.bilibili.com/read/cv6529/
+A11,手法,蹭键 / 扫键处理,快速相邻Tap可以连续划过,将多个Tap聚为连续动作；取代逐Note算力,S,P0,通用,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A12,手法,糊 / 餡蜜,相邻判定窗可被近似合并时间击打,仅作为可选近似解，须损失精度且受判定容忍范围约束,B,P2,手法派生,候选手序属性,https://www.bilibili.com/read/cv6529/
+A13,手法,Slide早消 / 快消,提前经过Slide大部分路径而终点留在后续判区,候选提前消除+终点校时；需判区模拟验证,C,P1,手法派生,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A14,手法,跳区,Slide判区允许合法跳过中间区,在版本和滑条种类支持时允许跳区捷径,C,P1,机制依赖,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A15,手法,A区免判,某些Slide不要求重新触发起点A区,模型可避开起点区域Tap，减少蹭判,C,P1,机制依赖,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A16,手法,拆弹,候选连续行为可能互相提前判定,对冲突Note生成不同接触顺序、手臂路径,S,P1,手法派生,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A17,手法,卷入 / 蹭判,相邻Note被非目标动作触发,检测损害判定的风险，淘汰高风险候选,C,P0,通用,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+A18,手法,圈单手扫,同方向连续转圈且速度可行,整圈由一只手连续扫过，另一手准备后续,S,P0,手法派生,候选手序属性,https://www.bilibili.com/read/cv6529/
+A19,手法,圈分页,转圈左右半区分别由两手处理,作为一种候选，适合部分中低速或接点要求,S,P0,手法派生,候选手序属性,https://www.bilibili.com/read/cv6529/
+A20,手法,圈全换,转圈按每Note交替左右手,作为候选，适合部分较慢的敲击圈与快速轮换,S,P0,手法派生,候选手序属性,https://www.bilibili.com/read/cv6529/
+A21,手法,拍键手 / 划屏手分工,连续星头和Slide同时发生,一手持续星头，另一手持续划轨迹,S,P0,手法派生,候选手序属性,https://www.bilibili.com/opus/461149354380109054
+N01,曲目名,海底谭 / 海底捞 / ウミユリ配置,连续星头→隔位Tap→同键启动拍，下一组在启动拍或再隔一格接入,一手击打本组三次并继续本条滑动；下一组换另一手，保留镜像,S,P0,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N02,曲目名,死镰 / Death Scythe配置,外圈序列旋转，Slide朝相反方向,Tap按序列分工，星头和滑动换手,S,P0,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N03,曲目名,Future白配置,连续每拍滑动并频繁从头手换成另一手,建立连续换手链，不按独立单Slide最近手,S,P1,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N04,曲目名,CYCLES配置,同拍或连续圆弧/ p-q 双Slide反复交织,试验双手连续弧形扫与镜像分手,S,P1,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N05,曲目名,Slip Flip配置,对称的圆弧与p/q Slide交替成组,复制原型的左右双轨组合进行模版匹配,S,P2,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N06,曲目名,Sugarbitter / 砂糖歌配置,相同起点的短间隔成对直线Slide,持续同起点拍划+一手连续滑动,S,P2,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N07,曲目名,激唱配置,左右两侧短快速扫键，由双押衔接,把扫键组与双押合并成连续手势,S,P1,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N08,曲目名,AMAZING MIGHTYYYY红配置,短长节奏 / 附点型快速分组,对成组节奏生成二击一组与交替候选,B,P2,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N09,曲目名,星空配置,大量大幅交叉的散点和交错手序,不能简单分页；比较交叉手和交替模板,S,P2,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N10,曲目名,Outlaw配置,短扫键组沿外圈移动，伴随双押边界,整体做扫描簇、连接EACH端点,S,P2,曲目命名,曲目/谱师原型,https://mai-notes.com/filter
+N11,曲目名,J型星星 / Jack-the-Ripper型,若干Slide路径拼成近似J形,先按原型轨迹序列匹配，补充手法样本,R,P3,社区形态俗称,曲目/谱师原型,
+N12,曲目名,水神段,社区已使用的典型谱面段名，结构定义待标注,仅登记曲目片段指纹，待提供手元/谱面样本,R,P3,原型待核验,曲目/谱师原型,https://www.bilibili.com/video/BV1P1421k7GQ/
+N13,曲目名,如龙段,社区已使用的典型谱面段名，结构定义待标注,仅登记曲目片段指纹，待提供手元/谱面样本,R,P3,原型待核验,曲目/谱师原型,https://www.bilibili.com/video/BV1P1421k7GQ/
+N14,曲目名,死镰段（泛称）,近似N02但可能包含其他外圈换手片段,优先使用N02检测，未匹配时保留模糊标签,R,P2,泛化俗称,曲目/谱师原型,https://www.bilibili.com/video/BV1P1421k7GQ/
+N15,曲目名,Oshama配置,以Oshama Scramble!相关谱面为参考的社区叫法,未确认唯一动作定义前只记录局部图匹配候选,R,P3,原型待核验,曲目/谱师原型,
+N16,谱师/梗,Artcore 553 / Fragrance型,局部节奏与5-5-3式分组近似,按节奏与位移联合检测；需正例校准,R,P3,谱师/梗,曲目/谱师原型,
+N17,谱师/梗,7.3折线 / 亲笔签名,反复出现特定折线与直线组合,按轨迹图指纹做镜像/旋转匹配,R,P3,谱师/梗,曲目/谱师原型,
+N18,谱师/梗,Akira Complex圆圈星星,Ether Strike相关旋转Slide局部特征,需原谱局部坐标样本后才启用,R,P3,归属名称存疑,曲目/谱师原型,
+N19,谱师/梗,mai-star式单手一笔画,Hold拘束与连续一笔画相交,先通过H01+S07组合捕获，再给样例取别名,B,P2,谱师风格,曲目/谱师原型,
+N20,谱师/梗,mai-star式二连,密集短促16分二连反复插入,使用节奏短双击标签，通常无需特殊手序,T,P3,谱师风格,曲目/谱师原型,
+N21,谱师/梗,翠翠薯条,短Hold成对密集排列，外观像薯条,H07匹配后别名标注；是否形成独立解法待验证,R,P3,谱师/梗,曲目/谱师原型,
+N22,谱师/梗,鸟式排键 / 鸟味,谱师小鳥遊さん的整体手感风格,不能用单个规则直接识别，依赖语料聚类,R,P3,谱师风格,曲目/谱师原型,
+G01,宏观标签,物量,整曲总Note与单位时间输入数高,用于用户画像/耐力权重，不改变单段分手,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G02,宏观标签,爆发 / 局部难,局部短窗密度显著高于背景,提高窗口内速度约束与候选宽度,B,P2,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G03,宏观标签,全体难,整曲持续较高复杂度,全局体力模型，非局部配置模板,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G04,宏观标签,尾杀 / 尾难,密集难段位于曲目后部,保留前段体力累积，在末段提高可靠性权重,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G05,宏观标签,开幕杀,谱面开始出现高复杂段,起手姿态初始化可针对性调整,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G06,宏观标签,BREAK集中 / 绝赞段,短时多个BREAK高占比,提高高价值Note的误判惩罚；不固定手序,B,P2,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G07,宏观标签,节奏难,输入相位、间隔或节拍不易预测,强化绝对时间窗建模，而非靠拍号均匀化,B,P2,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G08,宏观标签,混合节奏 / 混フレ,两条并行事件流具有不同周期,两手分轨/独立节奏相位候选,S,P1,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G09,宏观标签,变速 / Soflan,谱面BPM时间映射发生改变,解析成绝对秒时间线，避免跨变速算错等待期,C,P0,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G10,宏观标签,高密度交互,交互频率接近手速或耐力上限,加强同手输出约束，保持交换相位,B,P1,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G11,宏观标签,体力配置,大量高速且持续的动作,引入时间累积疲劳，防贪心反复大幅动作,B,P2,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G12,宏观标签,技术配置,局部多配置叠加且操作复杂,仅描述性标签，不单独决定手序,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G13,宏观标签,复合配置,两个以上局部模式时间重叠,联合求解，不让两模板独立生成互斥占手方案,C,P0,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G14,宏观标签,重复配置 / 重复乐句,旋转/镜像/时移后可找到重复Motif,重用首段高评分手序，保持解的一致性,B,P1,结构特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G15,宏观标签,视觉难 / 读谱难,滑动遮挡多、轨迹密集重叠,额外判区误触风险/轨迹可读性标签,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G16,宏观标签,低输入间隙 / 休息段,较长时间无事件或触发稀疏,可重置占手状态、疲劳恢复，作为分段边界,B,P2,结构特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G17,宏观标签,持续密集,高输入密度持续一段时间,体力代价不能按单点独立加总,B,P2,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G18,宏观标签,滑动过程占比高,一段时间内Slide持续运动比例大,提升滑动路径、双手并行的重要性,B,P2,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G19,宏观标签,输入间隔变化,相邻Note时间间隔多次切换,动作窗口必须用真实tick和秒，不只等距模式,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G20,宏观标签,孤立密度峰值,只有一个局部密度显著峰,识别优化重点片段，非专名手序,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G21,宏观标签,多个密度峰值,两个以上局部密度峰,作为切段和体力分配辅助,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G22,宏观标签,独立配置段落,相邻事件组间存在显著空隙,作为候选模板匹配与分段边界,T,P3,结构特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G23,宏观标签,稳定密度,局部Note间隔与密度变化很小,仅统计辅助，无需覆盖手序,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G24,宏观标签,前段密集 / 后段密集,高密区集中在开头或结尾,影响疲劳模型，但非独立手法,T,P3,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog
+G25,宏观标签,短暂高密度,短窗口内局部Note频率异常高,放宽候选数量，优先考虑连续动作/扫键,B,P2,曲目特征,宏观结构标签,https://maimai.party/?lang=zh-Hans&view=catalog

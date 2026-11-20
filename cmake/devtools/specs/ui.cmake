@@ -1,3 +1,69 @@
+miacode_add_dev_tool(playback_shortcut_scope_spec TEST
+    SOURCES
+        src/tools/ui/PlaybackShortcutScopeSpec.cpp
+        src/app/ui/chrome/EditorInputContext.cpp
+        src/app/ui/chrome/EditorInputContext.h
+        src/app/services/ShortcutRegistry.cpp
+        src/app/ui/chrome/ShortcutModel.cpp
+    LIBS miacode_base Qt6::Quick Qt6::Qml Qt6::Test
+    INCLUDES src
+)
+qt_add_resources(playback_shortcut_scope_spec "playback_shortcut_scope"
+    PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/shortcuts.json")
+set_tests_properties(playback_shortcut_scope_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+target_compile_definitions(playback_shortcut_scope_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+miacode_add_dev_tool(appearance_translations_spec TEST
+    SOURCES
+        src/tools/ui/AppearanceTranslationsSpec.cpp
+        src/app/services/PreferenceDocument.cpp
+        src/app/ui/preferences/LocaleService.cpp
+        src/app/ui/preferences/LocaleService.h
+        src/app/ui/preferences/ApplicationMenuTranslation.cpp
+        resources/fonts.qrc
+    LIBS miacode_base Qt6::Quick Qt6::QuickControls2 Qt6::Test
+    INCLUDES src
+)
+qt_add_resources(appearance_translations_spec "appearance_translations_i18n"
+    PREFIX "/i18n" BASE "${CMAKE_CURRENT_BINARY_DIR}"
+    FILES ${MIACODE_TRANSLATION_QM_FILES})
+add_dependencies(appearance_translations_spec miacode_lrelease)
+target_compile_definitions(appearance_translations_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\""
+    "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
+set_tests_properties(appearance_translations_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+if(MSVC)
+    target_compile_options(appearance_translations_spec PRIVATE /utf-8)
+endif()
+if(APPLE)
+    target_sources(appearance_translations_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslationMac.mm)
+    target_link_libraries(appearance_translations_spec PRIVATE "-framework AppKit")
+endif()
+
+miacode_add_dev_tool(appearance_preferences_spec TEST
+    SOURCES
+        src/tools/ui/AppearancePreferencesSpec.cpp
+        src/app/services/PreferenceDocument.cpp
+        src/app/ui/theme/UiTheme.cpp
+        src/app/ui/theme/ThemeVariantResolver.cpp
+        resources/app_icons.qrc
+        resources/fonts.qrc
+    LIBS miacode_base Qt6::Quick Qt6::QuickControls2 Qt6::Test
+    INCLUDES src
+)
+target_compile_definitions(appearance_preferences_spec PRIVATE
+    "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
+qt_add_resources(appearance_preferences_spec "appearance_preferences_i18n"
+    PREFIX "/i18n" BASE "${CMAKE_CURRENT_BINARY_DIR}"
+    FILES ${MIACODE_TRANSLATION_QM_FILES})
+add_dependencies(appearance_preferences_spec miacode_lrelease)
+set_tests_properties(appearance_preferences_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+if(MSVC)
+    target_compile_options(appearance_preferences_spec PRIVATE /utf-8)
+endif()
+
 miacode_add_dev_tool(qml_scintilla_editor_spec TEST
     SOURCES
         src/tools/ui/QmlScintillaEditorSpec.cpp
@@ -11,6 +77,16 @@ miacode_add_dev_tool(qml_scintilla_editor_spec TEST
         third_party/ScintillaQuick/src/render
 )
 set_tests_properties(qml_scintilla_editor_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+if(TARGET Qt6::qmltestrunner)
+    add_test(NAME qml_workbench_dock_spec COMMAND Qt6::qmltestrunner
+        -import "${MIACODE_QML_SPEC_IMPORT_ROOT}"
+        -input "${CMAKE_CURRENT_SOURCE_DIR}/src/tools/ui/tst_WorkbenchDock.qml")
+    set_tests_properties(qml_workbench_dock_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    add_test(NAME qml_hand_order_access_spec COMMAND Qt6::qmltestrunner
+        -import "${MIACODE_QML_SPEC_IMPORT_ROOT}"
+        -input "${CMAKE_CURRENT_SOURCE_DIR}/src/tools/ui/tst_HandOrderAccess.qml")
+    set_tests_properties(qml_hand_order_access_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
+endif()
 target_compile_definitions(qml_scintilla_editor_spec PRIVATE
     "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\""
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -44,13 +120,17 @@ miacode_add_dev_tool(qml_chart_drop_bridge_spec TEST
 miacode_add_dev_tool(document_model_save_spec TEST
     SOURCES
         src/tools/ui/DocumentModelSaveSpec.cpp
+        src/app/services/AutomaticChartPreparation.cpp
+        src/app/ui/document/DocumentModel.AdvancedMetadata.cpp
         src/app/ui/document/DocumentModel.cpp
         src/app/ui/document/DocumentModel.h
         src/app/ui/preferences/LocaleService.cpp
         src/app/ui/preferences/LocaleService.h
+        src/app/ui/preferences/ApplicationMenuTranslation.cpp
         src/app/services/PreferenceDocument.cpp
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
+        src/app/services/ChartFileSafety.cpp
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/DocumentProjection.cpp
         src/app/services/AnalysisService.cpp
@@ -63,9 +143,15 @@ miacode_add_dev_tool(document_model_save_spec TEST
         src/app/services/ChartMediaImport.cpp
         src/app/services/Id3TagReader.cpp
         src/app/services/ProjectPreferences.cpp
-    LIBS miacode_analysis miacode_audio miacode_editor_core Qt6::Core Qt6::Gui Qt6::Qml
+    LIBS miacode_analysis miacode_audio miacode_editor_core Qt6::Core Qt6::Gui Qt6::Qml Qt6::Concurrent miniz
     INCLUDES src
 )
+target_compile_definitions(document_model_save_spec PRIVATE
+    MIACODE_HAND_ORDER_FIXTURE_VERIFIER=\"d86b7deb3cd60139633631d30eb8ff1188042ad0c9f6cf74d770815d8c552519\")
+if(APPLE)
+    target_sources(document_model_save_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslationMac.mm)
+    target_link_libraries(document_model_save_spec PRIVATE "-framework AppKit")
+endif()
 
 miacode_add_dev_tool(qml_document_projection_spec TEST
     SOURCES
@@ -91,6 +177,8 @@ miacode_add_dev_tool(qml_analysis_model_spec TEST
 miacode_add_dev_tool(qml_shortcut_binding_spec TEST
     SOURCES
         src/tools/ui/QmlShortcutBindingSpec.cpp
+        src/app/ui/chrome/EditorInputContext.cpp
+        src/app/ui/chrome/EditorInputContext.h
         src/app/ui/chrome/ShortcutModel.cpp
         src/app/ui/chrome/ShortcutModel.h
         src/app/ui/chrome/ShortcutCommands.h
@@ -139,16 +227,23 @@ miacode_add_dev_tool(cover_export_session_spec TEST
         src/app/ui/export/CoverExportSession.h
         src/app/ui/preferences/LocaleService.cpp
         src/app/ui/preferences/LocaleService.h
+        src/app/ui/preferences/ApplicationMenuTranslation.cpp
         src/app/services/PreferenceDocument.cpp
         src/app/services/ProjectPreferences.cpp
         src/app/services/UiRequestService.cpp
         src/app/services/UiRequestService.h
-    LIBS miacode_export Qt6::Quick
+    LIBS miacode_export miacode_preview_quickplugin Qt6::Quick
     INCLUDES src
 )
 target_compile_definitions(cover_export_session_spec PRIVATE
     "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\""
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+if(APPLE)
+    target_sources(cover_export_session_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslationMac.mm)
+    target_link_libraries(cover_export_session_spec PRIVATE "-framework AppKit")
+else()
+    target_sources(cover_export_session_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslation.cpp)
+endif()
 
 miacode_add_dev_tool(qml_export_video_page_spec TEST
     SOURCES
@@ -172,9 +267,9 @@ miacode_add_dev_tool(export_file_picker_spec TEST
         src/app/ui/export/CoverExportSession.h
         src/app/ui/preferences/LocaleService.cpp
         src/app/ui/preferences/LocaleService.h
+        src/app/ui/preferences/ApplicationMenuTranslation.cpp
         src/app/services/PreferenceDocument.cpp
         src/app/services/ProjectPreferences.cpp
-        src/app/services/ExportIntroPreferences.cpp
         src/app/services/UiRequestService.cpp
         src/app/services/UiRequestService.h
         src/app/services/ShellNotifications.cpp
@@ -190,6 +285,8 @@ target_compile_definitions(export_file_picker_spec PRIVATE
     "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
 miacode_enable_native_file_dialogs(export_file_picker_spec)
 if(APPLE)
+    target_sources(export_file_picker_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslationMac.mm)
+    target_link_libraries(export_file_picker_spec PRIVATE "-framework AppKit")
     set_target_properties(export_file_picker_spec PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_GUI_IDENTIFIER "com.fanfaredash.MiaCodeFilePickerSpec"
@@ -231,9 +328,32 @@ miacode_add_dev_tool(qml_preview_rate_feedback_spec TEST
         src/app/services/ShellNotifications.h
         src/app/services/PlaybackControl.h
         src/app/services/PreviewSurface.h
-    LIBS miacode_base Qt6::Core Qt6::Gui Qt6::Qml Qt6::Test
+    LIBS miacode_base miacode_preview_quick Qt6::Core Qt6::Gui Qt6::Qml Qt6::Test
     INCLUDES src
 )
+
+if(TARGET miacode_stage_media)
+    miacode_add_dev_tool(comparison_previews_spec TEST
+        SOURCES
+            src/tools/ui/ComparisonPreviewsSpec.cpp
+            src/app/ui/preferences/ApplicationMenuTranslation.cpp
+            src/app/ui/preview/ComparisonPreviews.cpp src/app/ui/preview/ComparisonPreviews.h
+            src/app/ui/preview/PreviewModel.cpp src/app/ui/preview/PreviewModel.h
+            src/app/services/ChartWorkspace.cpp src/app/services/ChartWorkspace.h
+            src/app/ui/preferences/LocaleService.cpp src/app/ui/preferences/LocaleService.h
+            src/app/services/PreferenceDocument.cpp
+            src/app/services/ShellNotifications.cpp src/app/services/ShellNotifications.h
+        LIBS miacode_stage_media miacode_audio miacode_analysis miacode_preview_quickplugin Qt6::Concurrent Qt6::Test
+        INCLUDES src)
+    target_compile_definitions(comparison_previews_spec PRIVATE
+        "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\""
+        "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\"")
+    if(APPLE)
+        target_sources(comparison_previews_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslationMac.mm)
+        target_link_libraries(comparison_previews_spec PRIVATE "-framework AppKit")
+    endif()
+    set_tests_properties(comparison_previews_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()
 
 miacode_add_dev_tool(qml_net_page_compile_spec TEST
     SOURCES src/tools/ui/QmlNetPageCompileSpec.cpp
@@ -273,6 +393,48 @@ set_tests_properties(latency_model_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=
 target_compile_definitions(latency_model_spec PRIVATE
     "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
 
+miacode_add_dev_tool(hand_order_tools_spec TEST
+    SOURCES
+        src/app/services/JobProgressService.cpp
+        src/app/services/JobProgressService.h
+        src/tools/ui/HandOrderToolsSpec.cpp
+        src/app/services/HandOrderExperimentService.cpp src/app/services/HandOrderExperimentService.h
+        src/app/services/HandOrderAnalysisService.cpp
+        src/app/services/HandOrderAnalysisService.h
+        src/app/services/ChartWorkspace.cpp
+        src/app/services/ChartWorkspace.h
+        src/app/ui/editor/EditorController.cpp
+        src/app/ui/editor/EditorController.h
+    LIBS miacode_analysis miacode_editor_core ScintillaQuick::ScintillaQuick
+        Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test
+    INCLUDES src
+)
+target_compile_definitions(hand_order_tools_spec PRIVATE
+    "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
+qt_add_resources(hand_order_tools_spec "hand_order_tools_spec_i18n"
+    PREFIX "/i18n"
+    BASE "${CMAKE_CURRENT_BINARY_DIR}"
+    FILES ${MIACODE_TRANSLATION_QM_FILES})
+add_dependencies(hand_order_tools_spec miacode_lrelease)
+set_tests_properties(hand_order_tools_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+miacode_add_dev_tool(pattern_choices_panel_spec TEST
+    SOURCES src/tools/ui/PatternChoicesPanelSpec.cpp
+        src/app/services/EditorSyncController.cpp src/app/services/EditorSyncController.h
+        src/app/services/HandOrderExperimentService.cpp src/app/services/HandOrderExperimentService.h
+        src/app/services/HandOrderAnalysisService.cpp src/app/services/HandOrderAnalysisService.h
+        src/app/services/ChartWorkspace.cpp src/app/services/ChartWorkspace.h
+        src/app/services/JobProgressService.cpp src/app/services/JobProgressService.h
+    LIBS miacode_analysis miacode_editor_core miacode_preview_quick miacode_preview_quickplugin ScintillaQuick::ScintillaQuick
+        Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test
+    INCLUDES src
+)
+target_compile_definitions(pattern_choices_panel_spec PRIVATE
+    "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\""
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\""
+    "MIACODE_BUILD_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\"")
+add_dependencies(pattern_choices_panel_spec miacode_lrelease)
+set_tests_properties(pattern_choices_panel_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 # LocaleService also updates the native application menu after language changes.
 foreach(locale_spec IN ITEMS qml_app_background_model_spec document_model_save_spec timeline_surface_ready_spec cover_export_session_spec export_file_picker_spec qml_preview_rate_feedback_spec)
     target_sources(${locale_spec} PRIVATE src/app/ui/preferences/ApplicationMenuTranslation.cpp)
@@ -281,3 +443,30 @@ foreach(locale_spec IN ITEMS qml_app_background_model_spec document_model_save_s
         target_link_libraries(${locale_spec} PRIVATE "-framework AppKit")
     endif()
 endforeach()
+
+# Reuse the product-specific document adapter sources for isolated library tests.
+get_target_property(_library_spec_sources document_model_save_spec SOURCES)
+list(FILTER _library_spec_sources INCLUDE REGEX "(^|/)src/")
+list(FILTER _library_spec_sources EXCLUDE REGEX "DocumentModelSaveSpec.cpp$")
+miacode_add_dev_tool(chart_library_spec TEST
+    SOURCES ${_library_spec_sources}
+        src/app/services/JobProgressService.cpp
+        src/app/services/JobProgressService.h
+        src/tools/services/ChartLibrarySpec.cpp
+        src/app/services/ChartLibraryFiles.cpp
+        src/app/services/ManagedChartLibrary.cpp
+        src/app/services/LibraryImportIndex.cpp
+        src/app/services/LibraryImportZip.cpp
+        src/app/services/ChartLibraryFiles.h
+        src/app/ui/library/ChartLibraryModel.cpp
+        src/app/ui/library/ChartLibrarySongs.cpp
+        src/app/ui/library/ChartLibraryModel.h
+    LIBS miacode_analysis miacode_audio miacode_editor_core Qt6::Core Qt6::Gui Qt6::Qml Qt6::Concurrent Qt6::Test miniz
+    INCLUDES src)
+target_compile_definitions(chart_library_spec PRIVATE
+    "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\"")
+set_tests_properties(chart_library_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+if(APPLE)
+    target_sources(chart_library_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslationMac.mm)
+    target_link_libraries(chart_library_spec PRIVATE "-framework AppKit")
+endif()

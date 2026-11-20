@@ -1,3 +1,6 @@
+#include "core/chart/document/AdvancedMetadata.h"
+#include <QCryptographicHash>
+#include "app/services/ChartFileSafety.h"
 #include "app/services/ChartWorkspaceFileService.h"
 
 #include <QDir>
@@ -113,8 +116,7 @@ bool stageProjectFiles(ProjectSaveTransaction& transaction, const QDir& source,
             if (!transaction.add({}, name)) return false;
         }
     }
-    // Application project preferences and caches live in the isolated runtime.
-    // Save As must never copy upstream .miacode data into the new chart.
+    // Project preferences live in the isolated runtime. Leave both sidecars alone.
     return true;
 }
 
@@ -143,6 +145,19 @@ ChartWorkspaceFileService::ChartWorkspaceFileService(ChartWorkspace& workspace)
 {
 }
 
+void ChartWorkspaceFileService::observeCurrentDisk() const
+{
+    if (!workspace_) return;
+    const QString path = workspace_->snapshot().filePath;
+    QFile file(path);
+    if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) return;
+    const QByteArray bytes = file.readAll();
+    const auto text = decodeDocumentText(bytes);
+    if (file.error() == QFileDevice::NoError && text
+        && SimaiDocument::fromText(*text).toText() == SimaiDocument::fromText(workspace_->savedSourceText()).toText())
+        diskDigests_.insert(QFileInfo(path).absoluteFilePath(), QCryptographicHash::hash(bytes, QCryptographicHash::Sha256));
+}
+
 ChartWorkspaceFileResult ChartWorkspaceFileService::open(const QString& path, ChartDocumentOrigin origin) const
 {
     if (workspace_ == nullptr) return {false, 0, QStringLiteral("workspace_unavailable"), {}};
@@ -160,15 +175,17 @@ ChartWorkspaceFileResult ChartWorkspaceFileService::open(const QString& path, Ch
         return {false, workspace_->snapshot().revision, QStringLiteral("unsupported_file_type"), {}};
     }
     QFile file(normalizedPath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::ReadOnly)) {
         return {false, workspace_->snapshot().revision, QStringLiteral("open_failed"), {}};
     }
     bool usedSystemEncoding = false;
-    const auto text = decodeDocumentText(file.readAll(), &usedSystemEncoding);
+    const QByteArray openedBytes = file.readAll();
+    const auto text = decodeDocumentText(openedBytes, &usedSystemEncoding);
     if (!text || file.error() != QFileDevice::NoError) {
         return {false, workspace_->snapshot().revision, QStringLiteral("decode_failed"), {}};
     }
     const ChartWorkspaceResult result = workspace_->openSource(*text, normalizedPath, 0, origin);
+    if (result.accepted) diskDigests_.insert(QFileInfo(normalizedPath).absoluteFilePath(), QCryptographicHash::hash(openedBytes, QCryptographicHash::Sha256));
     return {result.accepted, result.revision,
             result.accepted ? QString() : QStringLiteral("open_failed"), result.issues,
             usedSystemEncoding};
@@ -219,14 +236,20 @@ std::optional<QString> ChartWorkspaceFileService::decodeDocumentText(
 {
     if (usedSystemEncoding != nullptr) *usedSystemEncoding = false;
     QStringDecoder utf8Decoder(QStringConverter::Utf8, QStringConverter::Flag::Stateless);
-    const QString text = utf8Decoder.decode(bytes);
-    if (!utf8Decoder.hasError()) return text;
+    QString text = utf8Decoder.decode(bytes);
+    if (!utf8Decoder.hasError()) {
+        // Match QIODevice::Text without discarding the original bytes used by
+        // backups and external-change detection. Writers expand LF only once.
+        text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+        return text;
+    }
     if (bytes.startsWith("\xEF\xBB\xBF")) return std::nullopt;
 
     QStringDecoder systemDecoder(QStringConverter::System, QStringConverter::Flag::Stateless);
-    const QString systemText = systemDecoder.decode(bytes);
+    QString systemText = systemDecoder.decode(bytes);
     if (systemDecoder.hasError()) return std::nullopt;
     if (usedSystemEncoding != nullptr) *usedSystemEncoding = true;
+    systemText.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
     return systemText;
 }
 
@@ -246,6 +269,24 @@ ChartWorkspaceFileResult ChartWorkspaceFileService::writeToPath(
         const auto sourceIdentity = QFileInfo(before.filePath).canonicalFilePath();
         if (normalizedPath == before.filePath || (!targetIdentity.isEmpty() && targetIdentity == sourceIdentity))
             return {false, before.revision, QStringLiteral("save_as_required"), {}};
+    }
+
+    const QString diskKey = QFileInfo(normalizedPath).absoluteFilePath();
+    const QByteArray originalDiskDigest = chart_file_safety::fileDigest(normalizedPath);
+    if (diskDigests_.contains(diskKey) && diskDigests_.value(diskKey) != originalDiskDigest)
+        return {false, before.revision, QStringLiteral("file_changed_externally"), {}};
+
+    QFile originalFile(normalizedPath);
+    if (originalFile.open(QIODevice::ReadOnly)) {
+        const auto original = decodeDocumentText(originalFile.readAll());
+        originalFile.close();
+        if (original && !metadata::conflictingKeys(*original).isEmpty()) {
+            if (difficultyId != 0)
+                return {false, before.revision, QStringLiteral("conflicting_metadata_fields"), {}};
+            QString backupError;
+            if (!chart_file_safety::backupOriginal(normalizedPath, nullptr, &backupError))
+                return {false, before.revision, backupError, {}};
+        }
     }
 
     SimaiDocument savedDocument = workspace_->documentForSectionSave(difficultyId);
@@ -284,7 +325,12 @@ ChartWorkspaceFileResult ChartWorkspaceFileService::writeToPath(
         file.cancelWriting();
         return result;
     }
+    if (chart_file_safety::fileDigest(normalizedPath) != originalDiskDigest) {
+        file.cancelWriting();
+        return {false, before.revision, QStringLiteral("file_changed_externally"), {}};
+    }
     if (!file.commit()) return fileFailure(QStringLiteral("commit_failed"));
+    diskDigests_.insert(diskKey, chart_file_safety::fileDigest(normalizedPath));
 
     if (transaction) transaction->commit();
     workspace_->markSectionSaved(savedDocument, normalizedPath, currentVideoPath);

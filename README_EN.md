@@ -2,9 +2,9 @@
 
 An independent enhancement fork of [MiaCode](https://github.com/Team-MiaCode/MiaCode). The list below covers only Better Miacode additions and improvements.
 
-Latest release: [2.0.1-better.11](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.11).
+Latest release: [2.0.1-better.14](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.14).
 
-[Download](https://github.com/albertoBradish/Better_Miacode/releases) · [Release source](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.11) · [中文](README.md) · [Issues](https://github.com/albertoBradish/Better_Miacode/issues)
+[Download](https://github.com/albertoBradish/Better_Miacode/releases) · [Release source](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.14) · [中文](README.md) · [Issues](https://github.com/albertoBradish/Better_Miacode/issues)
 
 ## Selection & editing
 

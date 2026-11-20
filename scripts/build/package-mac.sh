@@ -409,6 +409,7 @@ cmake_args=(
   -S "$ROOT_DIR"
   -B "$BUILD_DIR"
   -DCMAKE_BUILD_TYPE=Release
+  -UCMAKE_C_COMPILER_LAUNCHER -UCMAKE_CXX_COMPILER_LAUNCHER
   "-DMIACODE_RELEASE_CHANNEL=$RELEASE_CHANNEL"
   "-DMIACODE_BUILD_DEV_TOOLS=$BUILD_DEV_TOOLS"
   "-DMIACODE_FFMPEG_DEV_DIR=$MIACODE_FFMPEG_DEV_DIR"
@@ -445,6 +446,9 @@ mkdir -p "$DIST_DIR"
 cp -R "$APP_PATH" "$DIST_DIR/"
 mkdir -p "$DIST_DIR/MiaCode.app/Contents/Resources"
 printf 'BetterMiacode.package.v1\n' > "$DIST_DIR/MiaCode.app/Contents/Resources/.better-miacode-package"
+
+mkdir -p "$DIST_DIR/docs/releases"
+cp "$ROOT_DIR"/docs/releases/better_*.md "$DIST_DIR/docs/releases/"
 
 for release_doc in LICENSE THIRD_PARTY_NOTICES.md; do
   if [[ ! -f "$ROOT_DIR/$release_doc" ]]; then

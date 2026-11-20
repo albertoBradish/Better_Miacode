@@ -4,6 +4,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantList>
 
 namespace miacode {
 
@@ -34,6 +35,10 @@ public:
     Q_PROPERTY(bool cancellable READ cancellable NOTIFY changed)
     Q_PROPERTY(bool cancelRequested READ cancelRequested NOTIFY changed)
     Q_PROPERTY(bool chartExport READ chartExport NOTIFY changed)
+    Q_PROPERTY(bool pausable READ pausable NOTIFY changed)
+    Q_PROPERTY(bool paused READ paused NOTIFY changed)
+    Q_PROPERTY(QVariantList stages READ stages NOTIFY changed)
+    Q_PROPERTY(qint64 remainingSeconds READ remainingSeconds NOTIFY changed)
 
     explicit JobProgressService(QObject* parent = nullptr);
 
@@ -48,6 +53,12 @@ public:
     bool cancellable() const { return cancellable_; }
     bool cancelRequested() const { return cancelRequested_; }
     bool chartExport() const;
+    bool pausable() const { return pausable_; }
+    bool paused() const { return paused_; }
+    QVariantList stages() const;
+    qint64 remainingSeconds() const { return remainingSeconds_; }
+    void setPausable(bool enabled);
+    void setPaused(bool paused);
 
     // Returns the new job's token.
     quint64 begin(const LocalizedText& title,
@@ -57,25 +68,31 @@ public:
     void report(int percent, const LocalizedText& label);
     // A stage with no measurable progress; the shell shows a busy indicator.
     void reportIndeterminate(const LocalizedText& label);
+    void reportStages(int overall, const QVector<int>& percentages, qint64 remainingSeconds, const LocalizedText& label);
     void end();
     void retranslate();
 
     Q_INVOKABLE void requestCancel();
+    Q_INVOKABLE void requestPauseToggle();
 
 signals:
     void changed();
     void cancellationRequested(quint64 token);
+    void pauseRequested(quint64 token, bool paused);
 
 private:
     bool active_ = false;
     bool cancellable_ = false;
     bool cancelRequested_ = false;
     bool indeterminate_ = false;
+    bool pausable_ = false, paused_ = false;
     int percent_ = 0;
     quint64 token_ = 0;
     TaskType taskType_ = TaskType::Generic;
     LocalizedText title_;
     LocalizedText label_;
+    QVector<int> stages_;
+    qint64 remainingSeconds_ = -1;
 };
 
 }  // namespace miacode

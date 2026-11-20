@@ -23,6 +23,7 @@
 #include "core/chart/transform/ChartNormalization.h"
 #include "app/services/ChartNormalizationPreferences.h"
 #include "core/chart/transform/Non384SnapTable.h"
+#include "core/chart/transform/PlainSimaiExport.h"
 
 namespace {
 
@@ -2906,6 +2907,67 @@ void runInlineSpecs(QTextStream& err, int* failed)
             failed,
             err
         );
+    }
+
+    {
+        const QString annotated = QStringLiteral(
+            "1-5[4:1]~[head=l;track=0:l|0.5:r]/A1~m,");
+        const QString mirrored = miacode::chart_transform::transformChartText(
+            annotated, miacode::chart_transform::ChartTransformOp::MirrorLeftRight);
+        expectEqual(mirrored,
+                    QStringLiteral("8-4[4:1]~[head=l;track=0:l|0.5:r]/A8~m,"),
+                    QStringLiteral("mirror moves only native lanes and preserves annotation hands"),
+                    failed, err);
+        const QString swapped = miacode::chart_transform::transformChartText(
+            annotated, miacode::chart_transform::ChartTransformOp::MirrorLeftRight,
+            nullptr, miacode::chart_transform::HandOrderMirrorPolicy::SwapLeftRight);
+        expectEqual(swapped,
+                    QStringLiteral("8-4[4:1]~[head=r;track=0:r|0.5:l]/A8~m,"),
+                    QStringLiteral("explicit mirror policy swaps left and right hands only"),
+                    failed, err);
+        const QString selection = miacode::chart_transform::transformChartSelectionText(
+            annotated, miacode::chart_transform::ChartTransformOp::MirrorLeftRight);
+        expectEqual(selection, mirrored,
+                    QStringLiteral("selection mirror preserves complex annotation"), failed, err);
+        const QString rotated = miacode::chart_transform::transformChartText(
+            QStringLiteral("1~l/5~r,"),
+            miacode::chart_transform::ChartTransformOp::Rotate180);
+        expectEqual(rotated, QStringLiteral("5~l/1~r,"),
+                    QStringLiteral("rotation keeps hand names"), failed, err);
+        const QString breakToggled = miacode::chart_transform::toggleBreakForSelection(
+            QStringLiteral("1~l/5~m,"));
+        expectEqual(breakToggled, QStringLiteral("1b~l/5b~m,"),
+                    QStringLiteral("modifier transform retains note annotations"), failed, err);
+    }
+
+    {
+        const QString chart = QStringLiteral(
+            "1-5[4:1]~[head=l;track=0:l|0.5:r],,, ,\nE");
+        const auto normalized = miacode::chart_transform::normalizeChartText(
+            chart, miacode::simai::SimaiTimingMetadata(),
+            miacode::chart_transform::ChartNormalizationOptions{true, false});
+        expectTrue(normalized.ok && normalized.text.contains(
+            QStringLiteral("1-5[4:1]~[head=l;track=0:l|0.5:r]")),
+            QStringLiteral("normalization keeps the complex annotation attached to the slide"),
+            failed, err);
+    }
+
+    {
+        SimaiDocument source = SimaiDocument::createEmpty();
+        source.title = QStringLiteral("~ keeps metadata");
+        source.ensureDifficulty(5).chart = QStringLiteral(
+            "1~l/5~r, || ~ retained in comment\n"
+            "1-5[4:1]~[head=l;track=0:l|0.5:r],");
+        const QString before = source.toText();
+        const QString plainText = miacode::chart_transform::plainSimaiDocumentText(source);
+        const SimaiDocument plain = SimaiDocument::fromText(plainText);
+        expectEqual(source.toText(), before,
+                    QStringLiteral("plain Simai projection leaves source document untouched"), failed, err);
+        expectEqual(plain.title, source.title,
+                    QStringLiteral("plain Simai projection leaves metadata untouched"), failed, err);
+        expectEqual(plain.difficulty(5)->chart,
+                    QStringLiteral("1/5, || ~ retained in comment\n1-5[4:1],"),
+                    QStringLiteral("plain Simai projection strips chart annotations only"), failed, err);
     }
 }
 

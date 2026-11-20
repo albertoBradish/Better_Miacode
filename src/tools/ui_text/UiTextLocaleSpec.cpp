@@ -80,6 +80,35 @@ QSet<QString> idsFromTsFile(const QString& path, QTextStream& err)
     return ids;
 }
 
+struct CatalogEntry {
+    QString context, translation;
+};
+QHash<QString, CatalogEntry> catalogEntries(const QString& path, QTextStream& err)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return {};
+    QXmlStreamReader xml(&file);
+    QHash<QString, CatalogEntry> entries;
+    QString context;
+    while (!xml.atEnd()) {
+        xml.readNext();
+        if (!xml.isStartElement()) continue;
+        if (xml.name() == QLatin1String("name")) context = xml.readElementText();
+        else if (xml.name() == QLatin1String("message")) {
+            const QString id = xml.attributes().value(QStringLiteral("id")).toString();
+            CatalogEntry entry; entry.context = context;
+            while (xml.readNextStartElement()) {
+                if (xml.name() == QLatin1String("translation"))
+                    entry.translation = xml.readElementText(QXmlStreamReader::IncludeChildElements);
+                else xml.skipCurrentElement();
+            }
+            if (!id.isEmpty()) entries.insert(id, entry);
+        }
+    }
+    if (xml.hasError()) err << "catalog XML error: " << xml.errorString() << Qt::endl;
+    return entries;
+}
+
 // Unescape a C++ string-literal body into the runtime string.
 QString unescapeLiteral(const QString& raw)
 {
@@ -118,8 +147,14 @@ int main(int argc, char* argv[])
     // application embeds, so invariant 4 also guards the release pipeline.
     QTranslator translator;
     const QString enUsQmPath = QStringLiteral(MIACODE_EN_US_QM_PATH);
-    if (!translator.load(enUsQmPath)) {
-        err << "ui_text_locale_spec: could not load " << enUsQmPath << Qt::endl;
+    if (!translator.load(QStringLiteral(":/i18n/en_US.qm"))) {
+        err << "ui_text_locale_spec: could not load the embedded English catalog" << Qt::endl;
+        return 1;
+    }
+    QFile generatedEnglish(enUsQmPath), embeddedEnglish(QStringLiteral(":/i18n/en_US.qm"));
+    if (!generatedEnglish.open(QIODevice::ReadOnly) || !embeddedEnglish.open(QIODevice::ReadOnly)
+        || generatedEnglish.readAll() != embeddedEnglish.readAll()) {
+        err << "ui_text_locale_spec: embedded catalog differs from the generated QM" << Qt::endl;
         return 1;
     }
     if (!QCoreApplication::installTranslator(&translator)) {
@@ -146,6 +181,37 @@ int main(int argc, char* argv[])
     }
 
     const QSet<QString>& enIds = tsIds.value("en_US");
+
+    // Exercise the compiled catalogs through the same resource path and Qt
+    // ID lookup used by LocaleService. TS parity alone cannot catch a QM that
+    // stores a newly added message under its English source and named context.
+    for (const auto& ts : tsFiles) {
+        const QString name = QString::fromLatin1(ts.name);
+        const auto entries = catalogEntries(tsDir + QLatin1Char('/') + QString::fromLatin1(ts.file), err);
+        QTranslator catalog;
+        if (entries.isEmpty() || !catalog.load(QStringLiteral(":/i18n/%1.qm").arg(name))
+            || !QCoreApplication::installTranslator(&catalog)) {
+            err << "ui_text_locale_spec: cannot load embedded catalog " << name << Qt::endl;
+            ok = false; continue;
+        }
+        int resolved = 0, handOrderResolved = 0;
+        for (auto it = entries.cbegin(); it != entries.cend(); ++it) {
+            const QByteArray id = it.key().toUtf8();
+            const QString direct = catalog.translate(nullptr, id.constData());
+            if (!it.value().context.isEmpty() || it.value().translation.isEmpty()
+                || direct != it.value().translation || qtTrId(id.constData()) != it.value().translation) {
+                err << "ui_text_locale_spec: compiled ID lookup failed in " << name << ": " << it.key()
+                    << " (TS context=" << it.value().context << ")" << Qt::endl;
+                ok = false;
+            } else {
+                ++resolved;
+                if (it.key().startsWith(QStringLiteral("hand_order."))) ++handOrderResolved;
+            }
+        }
+        out << "embedded " << name << ": " << resolved << " IDs, " << handOrderResolved
+            << " hand-order IDs resolved through QTranslator and qtTrId" << Qt::endl;
+        QCoreApplication::removeTranslator(&catalog);
+    }
 
     for (const auto& ts : tsFiles) {
         const QByteArray name(ts.name);

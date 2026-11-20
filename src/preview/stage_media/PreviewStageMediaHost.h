@@ -1,5 +1,8 @@
 #pragma once
 
+#include <optional>
+#include "core/video/PreviewFrameRatePolicy.h"
+
 #include "common/LogEmissionPolicy.h"
 #include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/video/PreviewRenderSettings.h"
@@ -12,6 +15,7 @@
 #include <QVector>
 #include <QUrl>
 #include <QString>
+#include <memory>
 
 class QVideoSink;
 // Desktop preview decode backend: FFmpeg via QtAVPlayer (vendored under
@@ -20,10 +24,12 @@ class QVideoSink;
 // is held by value for frame-replay when a VideoOutput attaches late.
 #include <QVideoFrame>
 class QAVPlayer;
+struct PreviewVideoFrameDeliveryState;
 
 class PreviewStageMediaHost : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(double sourceFrameRate READ sourceFrameRate NOTIFY sourceFrameRateChanged)
     Q_PROPERTY(bool hasResolvedMedia READ hasResolvedMedia NOTIFY mediaStateChanged)
     Q_PROPERTY(bool hasVideoMedia READ hasVideoMedia NOTIFY mediaStateChanged)
     Q_PROPERTY(bool chartHasVideoBackground READ chartHasVideoBackground NOTIFY mediaStateChanged)
@@ -49,6 +55,9 @@ public:
     explicit PreviewStageMediaHost(QObject* parent = nullptr);
     ~PreviewStageMediaHost() override;
 
+    double sourceFrameRate() const { return sourceFrameRate_; }
+    double previewFrameRateLimit() const { return previewFrameRateLimit_; }
+    void setPreviewFrameRateLimit(double fps);
     void initializeBackendObjects();
     Q_INVOKABLE void attachVideoOutputObject(QObject* videoOutputObject);
     Q_INVOKABLE void attachVideoOutputObjects(QObject* videoOutputObject, QObject* innerVideoOutputObject);
@@ -58,6 +67,9 @@ public:
     bool hasResolvedMedia() const;
     bool hasVideoMedia() const;
     bool chartHasVideoBackground() const;
+    void setBackgroundPolicy(BackgroundPolicy policy);
+    void setChartIntroBackgroundActive(bool active);
+    void setExportIncludePv(std::optional<bool> include);
     bool hidePv() const;
     void setHidePv(bool hide);
     void setMissingMediaFallbackEnabled(bool enabled);
@@ -111,6 +123,7 @@ public:
     bool releaseDecoderForFileReplace();
 
     double currentPlaybackSecond() const;
+    double videoDurationSeconds() const;
     bool videoPlaybackActive() const;
     bool hasVideoFrame() const;
     double clockDeltaSeconds() const;
@@ -148,6 +161,7 @@ public:
 
 signals:
     void mediaStateChanged();
+    void sourceFrameRateChanged();
     void hidePvChanged();
     void mediaVisibilityChanged();
     void imageSourceChanged();
@@ -162,6 +176,8 @@ private:
     using PvMemoryBoundary = miacode::preview::pv_memory::BoundaryReason;
 
     void clearMedia();
+    void sealPendingVideoFrameDelivery();
+    void updateVideoFrameCoalescing();
     void reloadCurrentMediaPreservingPlayback();
     QString resolveMediaPath(const QString& chartPath) const;
     QString resolveStageMediaPath(const QString& chartPath, const QString& chartVideoOverridePath) const;
@@ -234,6 +250,9 @@ private:
     void schedulePvMemoryPeriodicSample();
     void destroyPvMemorySource();
 
+    miacode::preview_video::FrameRateGate frameRateGate_;
+    double previewFrameRateLimit_ = 0.0;
+    double sourceFrameRate_ = 0.0;
     MediaKind mediaKind_ = MediaKind::None;
     // 硬件/软件渲染 preference: false = platform hardware decode (default), true =
     // FFmpeg CPU decode. Set by MainWindow from the persisted user preference; read in
@@ -250,7 +269,10 @@ private:
     QString mediaStamp_;
     QUrl imageSource_;
     bool mediaVisible_ = true;
+    BackgroundPolicy backgroundPolicy_ = BackgroundPolicy::Normal;
+    bool chartIntroBackgroundActive_ = false;
     bool hidePv_ = false;
+    std::optional<bool> exportIncludePv_;
     bool missingMediaFallbackEnabled_ = false;
     PreviewBackgroundScaleMode backgroundScaleMode_ = PreviewBackgroundScaleMode::FillCrop;
     double layoutSquareScale_ = miacode::preview_video::kLayoutSquareScaleDefault;
@@ -260,6 +282,8 @@ private:
     // played (song audio is BASS-owned).
     QAVPlayer* player_ = nullptr;
     QMetaObject::Connection videoFrameConnection_;
+    QMetaObject::Connection videoFrameBoundaryConnection_;
+    std::shared_ptr<PreviewVideoFrameDeliveryState> videoFrameDelivery_;
     QMetaObject::Connection seekedConnection_;
     bool videoBackendLoaded_ = false;
     bool softwareDecodeFallbackTried_ = false;

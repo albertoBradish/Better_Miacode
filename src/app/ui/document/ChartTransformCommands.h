@@ -6,6 +6,7 @@
 #include <QVector>
 
 #include <functional>
+#include <optional>
 
 namespace miacode::ui {
 
@@ -33,6 +34,7 @@ struct ChartTransformSpec {
     // Menu grouping, matching the Widgets 调整 menu the QML one replaces:
     // 0 mirrors and rotations, 1 subdivision steps, 2 一键清空, 3 inside 更多.
     int section = 0;
+    std::optional<chart_transform::SubdivisionStep> subdivisionStep;
 };
 
 inline QVector<ChartTransformSpec> chartTransformSpecs()
@@ -42,6 +44,12 @@ inline QVector<ChartTransformSpec> chartTransformSpecs()
     const auto plain = [](ChartTransformOp op) {
         return [op](const QString& selection, const transform::SelectionContext&, int* changed) {
             return transform::transformChartSelectionText(selection, op, changed);
+        };
+    };
+    const auto mirrorAndSwapHands = [](ChartTransformOp op) {
+        return [op](const QString& selection, const transform::SelectionContext&, int* changed) {
+            return transform::transformChartSelectionText(
+                selection, op, changed, transform::HandOrderMirrorPolicy::SwapLeftRight);
         };
     };
     const auto selectionOnly = [](QString (*fn)(const QString&, int*)) {
@@ -58,9 +66,15 @@ inline QVector<ChartTransformSpec> chartTransformSpecs()
         {QStringLiteral("transform.mirror_lr"),
          plain(ChartTransformOp::MirrorLeftRight),
          QStringLiteral("action.transform.mirror_lr"), 0},
+        {QStringLiteral("transform.mirror_lr_swap_hands"),
+         mirrorAndSwapHands(ChartTransformOp::MirrorLeftRight),
+         QStringLiteral("action.transform.mirror_lr_swap_hands"), 0},
         {QStringLiteral("transform.mirror_ud"),
          plain(ChartTransformOp::MirrorUpDown),
          QStringLiteral("action.transform.mirror_ud"), 0},
+        {QStringLiteral("transform.mirror_ud_swap_hands"),
+         mirrorAndSwapHands(ChartTransformOp::MirrorUpDown),
+         QStringLiteral("action.transform.mirror_ud_swap_hands"), 0},
         {QStringLiteral("transform.rotate_180"),
          plain(ChartTransformOp::Rotate180),
          QStringLiteral("action.transform.rotate_180"), 0},
@@ -72,16 +86,16 @@ inline QVector<ChartTransformSpec> chartTransformSpecs()
          QStringLiteral("action.transform.rotate_cw_45"), 0},
         {QStringLiteral("transform.subdivision_up"),
          withContext(&transform::raiseSubdivisionForSelection),
-         QStringLiteral("document.subdivision_plus_1"), 1},
+         QStringLiteral("document.subdivision_plus_1"), 1, transform::SubdivisionStep::Raise},
         {QStringLiteral("transform.subdivision_down"),
          withContext(&transform::lowerSubdivisionForSelection),
-         QStringLiteral("document.subdivision_minus_1"), 1},
+         QStringLiteral("document.subdivision_minus_1"), 1, transform::SubdivisionStep::Lower},
         {QStringLiteral("transform.subdivision_half_up"),
          withContext(&transform::raiseSubdivisionHalfStepForSelection),
-         QStringLiteral("document.subdivision_plus_half"), 1},
+         QStringLiteral("document.subdivision_plus_half"), 1, transform::SubdivisionStep::RaiseHalfStep},
         {QStringLiteral("transform.subdivision_half_down"),
          withContext(&transform::lowerSubdivisionHalfStepForSelection),
-         QStringLiteral("document.subdivision_minus_half"), 1},
+         QStringLiteral("document.subdivision_minus_half"), 1, transform::SubdivisionStep::LowerHalfStep},
         {QStringLiteral("transform.clear_complete_elements"),
          {},
          QStringLiteral("menu.clear_elements"), 2},

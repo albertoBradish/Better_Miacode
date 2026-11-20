@@ -5,6 +5,9 @@
 #include "export/session/PreviewQuickD3D11ExportSession.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/quick_scene/PreviewQuickHudLayer.h"
+#include "core/scene/PreviewSlideMotionLayerState.h"
+#include "core/scene/PreviewTrackLayerState.h"
+#include "core/scene/PreviewActiveMarkerView.h"
 
 #include <QGuiApplication>
 #include <QDir>
@@ -37,6 +40,29 @@ QImage paint(const PreviewFrameState& state)
     return image;
 }
 
+bool verifyCompletionDisplay(QTextStream& err)
+{
+    bool ok = true;
+    for (const auto mode : {CompletionDisplay::Standard, CompletionDisplay::Modern, CompletionDisplay::Both}) {
+        PreviewFrameState state;
+        state.render.showObjectStatsHud = true;
+        state.render.showTimestamp = false;
+        state.render.centerDisplayMode = miacode::preview_gameplay::CenterDisplayMode::Off;
+        state.render.completionDisplay = mode;
+        state.hudStatsSnapshot.finaleRate = 12.34;
+        state.hudStatsSnapshot.deluxeRate = 56.789;
+        const QImage original = paint(state);
+        state.hudStatsSnapshot.finaleRate = 98.76;
+        ok &= require((original != paint(state)) == (mode != CompletionDisplay::Modern),
+                      "FiNALE changes rendered pixels only when its rate is visible", err);
+        state.hudStatsSnapshot.finaleRate = 12.34;
+        state.hudStatsSnapshot.deluxeRate = 87.654;
+        ok &= require((original != paint(state)) == (mode != CompletionDisplay::Standard),
+                      "DELUXE changes rendered pixels only when its rate is visible", err);
+    }
+    return ok;
+}
+
 bool verifyHudViewportConsistency(QTextStream& err)
 {
     PreviewFrameState state;
@@ -44,6 +70,9 @@ bool verifyHudViewportConsistency(QTextStream& err)
     state.render.showChartInfoHud = true;
     state.render.showObjectStatsHud = true;
     state.render.showDebugInfo = true;
+    state.render.showBpmHud = true;
+    state.render.showCpsHud = true;
+    state.render.showModsHud = true;
     state.render.centerDisplayMode = miacode::preview_gameplay::CenterDisplayMode::AchievementDxPlus;
     state.chartTitle = QStringLiteral("愛の残滓");
     state.chartArtist = QStringLiteral("藍月なくる");
@@ -57,8 +86,8 @@ bool verifyHudViewportConsistency(QTextStream& err)
     state.hudStatsSnapshot.finaleRate = 59.83;
     state.hudStatsSnapshot.deluxeRate = 59.522;
     bool ok = true;
-    const auto render = [&](const QSize& logicalSize, int dpi) {
-        QImage image(1920, 1080, QImage::Format_ARGB32_Premultiplied);
+    const auto render = [&](const QSize& logicalSize, const QSize& referenceSize, int dpi) {
+        QImage image(referenceSize, QImage::Format_ARGB32_Premultiplied);
         image.setDotsPerMeterX(qRound(dpi / 0.0254));
         image.setDotsPerMeterY(qRound(dpi / 0.0254));
         image.fill(Qt::transparent);
@@ -66,7 +95,8 @@ bool verifyHudViewportConsistency(QTextStream& err)
             QPainter painter(&image);
             // Compare layout at the same raster resolution, removing only the
             // viewport scale. A narrow pane must retain the export's layout.
-            painter.scale(1920.0 / logicalSize.width(), 1080.0 / logicalSize.height());
+            painter.scale(qreal(referenceSize.width()) / logicalSize.width(),
+                qreal(referenceSize.height()) / logicalSize.height());
             const auto transform = painter.worldTransform();
             miacode::preview::hud::paintPreviewHudOverlay(painter, state, logicalSize);
             miacode::preview::hud::paintCenterDisplay(painter, state, logicalSize);
@@ -78,14 +108,85 @@ bool verifyHudViewportConsistency(QTextStream& err)
     };
     for (const QString& font : {QString(), QStringLiteral(MIACODE_SOURCE_ROOT "/assets/fonts/MapleMonoNormalNL-CN-Regular.ttf")}) {
         state.hudFontSettings.paths.fill(font);
-        const QImage exported = render(QSize(1920, 1080), 96);
-        for (const QSize& viewport : {QSize(640, 360), QSize(800, 450), QSize(1280, 720), QSize(3840, 2160)}) {
-            for (int dpi : {96, 120, 144}) {
-                const bool matches = render(viewport, dpi) == exported;
-                if (!matches) err << "viewport=" << viewport.width() << "x" << viewport.height()
-                    << " dpi=" << dpi << " font=" << font << Qt::endl;
-                ok &= require(matches, "preview HUD layout matches export across viewport sizes and DPI", err);
+        for (const QSize& aspect : {QSize(16, 9), QSize(4, 3), QSize(1, 1), QSize(9, 16), QSize(3, 5)}) {
+            const QSize referenceSize = aspect * (1080 / qMin(aspect.width(), aspect.height()));
+            const QImage exported = render(referenceSize, referenceSize, 96);
+            for (qreal scale : {1.0 / 3.0, 2.0 / 3.0, 2.0}) {
+                const QSize viewport = referenceSize * scale;
+                for (int dpi : {96, 120, 144}) {
+                    const bool matches = render(viewport, referenceSize, dpi) == exported;
+                    if (!matches) err << "viewport=" << viewport.width() << "x" << viewport.height()
+                        << " dpi=" << dpi << " font=" << font << Qt::endl;
+                    ok &= require(matches, "preview HUD layout matches export across viewport sizes and DPI", err);
+                }
             }
+        }
+    }
+    return ok;
+}
+
+bool verifyHudAspectComposition(QTextStream& err)
+{
+    bool ok = true;
+    for (const QSize& size : {QSize(640, 360), QSize(480, 360), QSize(360, 360),
+                              QSize(360, 640), QSize(300, 500), QSize(240, 240)}) {
+        PreviewFrameState state;
+        state.render.showTimestamp = false;
+        state.render.showDebugInfo = false;
+        state.render.showBpmHud = false;
+        state.render.showCpsHud = false;
+        state.render.showMeterHud = false;
+        state.render.showModsHud = false;
+        state.render.showChartInfoHud = false;
+        state.render.showObjectStatsHud = false;
+        state.chartTitle = QStringLiteral("Test chart");
+        state.chartArtist = QStringLiteral("Artist");
+        state.chartDifficultyLabel = QStringLiteral("MASTER 13+");
+        state.chartDesigner = QStringLiteral("Designer");
+        TimelineTimingPoint timing;
+        timing.bpm = 195.5;
+        timing.meterExplicit = true;
+        timing.meterNumerator = 7;
+        timing.meterDenominator = 8;
+        state.timingPoints.append(timing);
+        state.hudStatsSnapshot.totalNotes = 1234;
+        const auto render = [&] {
+            QImage image(size, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            miacode::preview::hud::paintPreviewHudOverlay(painter, state, size);
+            return image;
+        };
+        QImage previous = render();
+        QVector<QRect> blocks;
+        for (int section = 0; section < 5; ++section) {
+            if (section == 0) state.render.showDebugInfo = true;
+            if (section == 1) state.render.showTimestamp = true;
+            if (section == 2) {
+                state.render.showBpmHud = true;
+                state.render.showCpsHud = true;
+                state.render.showMeterHud = true;
+                state.render.showModsHud = true;
+            }
+            if (section == 3) state.render.showChartInfoHud = true;
+            if (section == 4) state.render.showObjectStatsHud = true;
+            const QImage image = render();
+            QRect bounds;
+            for (int y = 0; y < size.height(); ++y) {
+                for (int x = 0; x < size.width(); ++x) {
+                    if (image.pixel(x, y) != previous.pixel(x, y))
+                        bounds = bounds.united(QRect(x, y, 1, 1));
+                }
+            }
+            if (bounds.isEmpty()) err << "empty HUD section=" << section << " size="
+                << size.width() << "x" << size.height() << Qt::endl;
+            ok &= require(!bounds.isEmpty(), "each enabled HUD section renders at every aspect ratio", err);
+            ok &= require(QRect(QPoint(1, 1), size - QSize(2, 2)).contains(bounds),
+                "HUD retains viewport margins without clipping", err);
+            for (const auto& occupied : blocks)
+                ok &= require(!occupied.intersects(bounds), "HUD sections do not overlap", err);
+            blocks.append(bounds);
+            previous = image;
         }
     }
     return ok;
@@ -178,16 +279,28 @@ bool verifyHudSpacing(QTextStream& err)
 int main(int argc, char** argv)
 {
     QGuiApplication app(argc, argv);
+    Q_INIT_RESOURCE(fonts);
     QTextStream err(stderr);
     bool ok = verifyHudSpacing(err);
+    ok &= verifyCompletionDisplay(err);
+    ok &= require(previewHudDefaultFontForArea(PreviewHudFontArea::Timestamp, 14).family().contains(
+        QStringLiteral("PuHuiTi"), Qt::CaseInsensitive), "default HUD resolves the bundled Alibaba font", err);
+    PreviewHudFontSettings chosen;
+    chosen.paths[static_cast<int>(PreviewHudFontArea::ExtraInfo)] = QStringLiteral(":/fonts/xiaolai_mono.ttf");
+    ok &= require(previewHudTimestampFontForArea(chosen, PreviewHudFontArea::ExtraInfo, 14).family()
+                      != previewHudTimestampFontForArea(chosen, PreviewHudFontArea::ObjectStats, 14).family(),
+                  "upper-right HUD can independently select the former bundled font", err);
     ok &= verifyHudViewportConsistency(err);
+    ok &= verifyHudAspectComposition(err);
     VideoExportSnapshot source;
     source.chartTextUtf8 = QStringLiteral("&title=HUD Spec\n&first=0\n&lv_5=12\n&inote_5=(120){4}1,\n");
     source.difficultyId = 5;
     source.originalChartPath = QStringLiteral("C:/charts/hud/maidata.txt");
     source.outputPath = QStringLiteral("C:/charts/hud/out.mp4");
     source.contentDurationSeconds = 1.0;
-    for (int area = 0; area < 5; ++area) source.hudFontSettings.paths[area] = QStringLiteral("C:/fonts/area-%1.ttf").arg(area);
+    source.showHandOrderAnnotations = false;
+    for (int area = 0; area < static_cast<int>(source.hudFontSettings.paths.size()); ++area)
+        source.hudFontSettings.paths[area] = QStringLiteral("C:/fonts/area-%1.ttf").arg(area);
     VideoExportSnapshot restored;
     QString error;
     const bool restoredOk = VideoExportSnapshot::fromJson(source.toJson(), &restored, &error);
@@ -195,12 +308,41 @@ int main(int argc, char** argv)
     ok &= require(restoredOk, "snapshot restores", err);
     ok &= require(!source.toJson().value(QStringLiteral("render")).toObject()
         .contains(QStringLiteral("fix_hud_text_layout")), "new snapshots omit obsolete HUD layout flag", err);
-    ok &= require(restored.hudFontSettings == source.hudFontSettings, "all five area paths round-trip", err);
+    ok &= require(restored.hudFontSettings == source.hudFontSettings, "all HUD area paths round-trip", err);
+    ok &= require(!restored.showHandOrderAnnotations, "resolved hand-order mode round-trips", err);
     VideoExportTask task;
     const bool taskOk = buildVideoExportTaskFromSnapshot(restored, &task, &error);
     if (!taskOk) err << "worker task error: " << error << Qt::endl;
     ok &= require(taskOk, "worker task reconstructs", err);
     ok &= require(task.hudFontSettings == source.hudFontSettings, "worker receives captured fonts", err);
+    ok &= require(!task.showHandOrderAnnotations, "worker receives resolved hand-order mode", err);
+
+    VideoExportSnapshot invalidHandOrder = source;
+    invalidHandOrder.chartTextUtf8 = QStringLiteral(
+        "&title=HUD Spec\n&first=0\n&lv_5=12\n&inote_5=(120){4}1~z,\n");
+    invalidHandOrder.showHandOrderAnnotations = true;
+    ok &= require(!buildVideoExportTaskFromSnapshot(invalidHandOrder, &task, &error)
+                      && error.contains(QStringLiteral("hand-order annotation")),
+                  "worker rejects invalid hand-order output", err);
+    invalidHandOrder.showHandOrderAnnotations = false;
+    ok &= require(buildVideoExportTaskFromSnapshot(invalidHandOrder, &task, &error),
+                  "original output can ignore invalid hand-order annotation", err);
+
+    VideoExportSnapshot wifiSnapshot = source;
+    wifiSnapshot.showHandOrderAnnotations = true;
+    wifiSnapshot.chartTextUtf8 = QStringLiteral("&title=Wifi Spec\n&first=0\n&lv_5=12\n&inote_5=(120){4}"
+        "1w5[4:1]~[track=split:0:l|0.5:r&0:r|0.75:l],2w6[4:1]~[track=single:0:m],\n");
+    ok &= require(VideoExportSnapshot::fromJson(wifiSnapshot.toJson(), &restored, &error)
+        && buildVideoExportTaskFromSnapshot(restored, &task, &error)
+        && task.noteMarkers.size() == 2
+        && task.noteMarkers.at(0).handOrderWifiMode == HandOrderWifiMode::Split
+        && task.noteMarkers.at(0).handOrderWifiSectorStops.size() == 2
+        && task.noteMarkers.at(1).handOrderWifiMode == HandOrderWifiMode::Single
+        && task.noteMarkers.at(1).handOrderTrackStops.constFirst().hand == HandOrderHand::Either,
+        "snapshot worker rebuilds native Wifi sectors and explicit single-hand mode from source text", err);
+    wifiSnapshot.chartTextUtf8.replace(QStringLiteral("single:0:m"), QStringLiteral("single:0:m|0.5:l"));
+    ok &= require(!buildVideoExportTaskFromSnapshot(wifiSnapshot, &task, &error),
+        "worker refuses a single-hand Wifi that changes hand", err);
 
     AmbientPreferences ambient;
     miacode::preferences::installPreferenceProvider(&ambient);
@@ -208,6 +350,7 @@ int main(int argc, char** argv)
     QJsonObject legacyJson = source.toJson();
     legacyJson.remove(QStringLiteral("hud_fonts"));
     QJsonObject oldRender = legacyJson.value(QStringLiteral("render")).toObject();
+    oldRender.remove(QStringLiteral("show_hand_order_annotations"));
     oldRender.insert(QStringLiteral("fix_hud_text_layout"), true);
     legacyJson.insert(QStringLiteral("render"), oldRender);
     VideoExportSnapshot legacy;
@@ -215,6 +358,7 @@ int main(int argc, char** argv)
     if (!legacyOk) err << "old snapshot error: " << error << Qt::endl;
     ok &= require(legacyOk, "old snapshot restores", err);
     ok &= require(legacy.hudFontSettings == PreviewHudFontSettings{}, "old snapshot uses bundled defaults regardless of ambient preferences", err);
+    ok &= require(legacy.showHandOrderAnnotations, "old snapshot keeps hand-order display default", err);
 
     const QString fontA = QStringLiteral(MIACODE_SOURCE_ROOT "/assets/fonts/XiaolaiMono-Regular.subset.ttf");
     const QString fontB = QStringLiteral(MIACODE_SOURCE_ROOT "/assets/fonts/MapleMonoNormalNL-CN-Regular.ttf");
@@ -229,6 +373,16 @@ int main(int argc, char** argv)
     const QImage before = paint(gl.frameState());
     const QFont fontBefore = previewHudTimestampFontForArea(frame.hudFontSettings, PreviewHudFontArea::Timestamp, 20);
     PreviewRuntime live;
+    live.setSuppressObjectStatsHud(true);
+    live.setShowObjectStatsHud(true);
+    ok &= require(!live.frameStateSnapshot()->render.showObjectStatsHud,
+        "editor canvas keeps object counts in its footer even when an old HUD flag is true", err);
+    live.setSuppressObjectStatsHud(false);
+    ok &= require(live.frameStateSnapshot()->render.showObjectStatsHud,
+        "export audition can show the independently requested object statistics", err);
+    live.setSuppressObjectStatsHud(true);
+    ok &= require(!live.frameStateSnapshot()->render.showObjectStatsHud,
+        "returning from export hides duplicate editor statistics again", err);
     live.setHudFontSettings(frame.hudFontSettings);
     const auto oldLive = live.frameStateSnapshot();
     frame.hudFontSettings.paths[static_cast<int>(PreviewHudFontArea::Timestamp)] = fontB;

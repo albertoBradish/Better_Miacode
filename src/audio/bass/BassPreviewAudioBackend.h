@@ -43,6 +43,7 @@ public:
     void setBackgroundTrackOffsetSeconds(double seconds) override;
     void setBackgroundTrackPlaybackRate(double rate) override;
     void applyPlaybackRateAtChartSecond(double rate, double chartSecond) override;
+    void bindOutputRoute(std::shared_ptr<PreviewOutputRoute> route) override { outputRoute_ = std::move(route); }
     void applyLevels(const PreviewAudioSettings& settings) override;
     void configureTimeline(
         const QVector<TimelineNoteMarker>& noteMarkers,
@@ -350,6 +351,7 @@ private:
     double preparedTimelinePlaybackRate_ = 1.0;
     bool engineInitialized_ = false;
     int lastNativeErrorCode_ = 0;
+    std::shared_ptr<PreviewOutputRoute> outputRoute_;
     quint32 masterMixer_ = 0;
     double masterMixerOutputBufferSeconds_ = 0.0;
     // Byte rate of masterMixer_'s format (BASS_ChannelSeconds2Bytes(mixer, 1.0)), so the

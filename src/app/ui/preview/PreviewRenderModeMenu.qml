@@ -9,6 +9,9 @@ AppStickyPopup {
     id: root
 
     required property var previewSession
+    signal playChecksRequested()
+    property bool playSettingsExpanded: false
+    onClosed: playSettingsExpanded = false
 
     contentItem: Column {
         spacing: 0
@@ -149,10 +152,30 @@ AppStickyPopup {
             }
         }
 
+        component SimulationKey: Row {
+            id: key
+            required property color markerColor
+            required property string label
+            spacing: 6
+            Rectangle {
+                width: 7
+                height: 7
+                radius: 3.5
+                color: key.markerColor
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+                text: key.label
+                color: Theme.colors.text.secondary
+                font.family: Theme.uiFont
+                font.pixelSize: Theme.uiFontSize
+            }
+        }
+
         ModeRow {
             width: parent.width
             label: qsTrId("qml.normal_rendering")
-            active: !root.previewSession.muriCheckEnabled
+            active: !root.previewSession.muriCheckEnabled && !root.previewSession.debugRendering && !root.previewSession.simulatedPlay && !root.previewSession.handOrderBreakdown
             onClicked: root.previewSession.setMuriCheckEnabled(false)
         }
 
@@ -161,6 +184,105 @@ AppStickyPopup {
             label: qsTrId("qml.muri_analysis")
             active: root.previewSession.muriCheckEnabled
             onClicked: root.previewSession.setMuriCheckEnabled(true)
+        }
+
+        ModeRow {
+            objectName: "handOrderBreakdownModeRow"
+            visible: root.previewSession.handOrderFeaturesEnabled === true
+            width: parent.width
+            label: qsTrId("preview.hand_order_breakdown")
+            active: root.previewSession.handOrderBreakdown
+            onClicked: root.previewSession.setHandOrderBreakdown()
+        }
+
+        ModeRow {
+            objectName: "simulatedPlayModeRow"
+            visible: root.previewSession.handOrderFeaturesEnabled === true
+            width: parent.width
+            label: qsTrId("preview.simulated_play")
+            active: root.previewSession.simulatedPlay
+            Accessible.description: qsTrId("preview.simulated_play_help")
+            onClicked: root.previewSession.setSimulatedPlay()
+        }
+
+        Column {
+            width: parent.width
+            visible: root.previewSession.simulatedPlay
+            leftPadding: 16
+            rightPadding: 8
+
+            ModeRow {
+                width: parent.width - parent.leftPadding - parent.rightPadding
+                label: qsTrId("play.settings.title")
+                active: root.playSettingsExpanded
+                onClicked: {
+                    root.playSettingsExpanded = !root.playSettingsExpanded
+                    if (root.playSettingsExpanded) playSettings.refreshDraft()
+                }
+            }
+
+            ScrollView {
+                id: settingsScroll
+                visible: root.playSettingsExpanded
+                width: Math.max(0, parent.width - parent.leftPadding - parent.rightPadding)
+                implicitWidth: root.playSettingsExpanded ? 405 : 0
+                implicitHeight: Math.min(playSettings.implicitHeight, 240,
+                    Math.max(88, (Overlay.overlay ? Overlay.overlay.height : 500) * 0.29))
+                height: implicitHeight
+                contentWidth: availableWidth
+                contentHeight: playSettings.implicitHeight
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical: AppScrollBar {}
+
+                SimulatedPlaySettings {
+                    id: playSettings
+                    width: settingsScroll.availableWidth
+                    previewSession: root.previewSession
+                }
+            }
+
+            ModeRow {
+                visible: root.previewSession.handOrderOverlayEnabled
+                width: parent.width - parent.leftPadding - parent.rightPadding
+                label: qsTrId("window.play_checks")
+                active: false
+                onClicked: {
+                    root.close()
+                    root.playChecksRequested()
+                }
+            }
+
+            ParameterRow {
+                width: parent.width - parent.leftPadding - parent.rightPadding
+                title: qsTrId("preview.simulated_play_palm_radius")
+                valueText: qsTrId("qml.1").arg(Math.round(root.previewSession.muriHandRadiusPx * 100
+                    / root.previewSession.muriParameterRanges.handRadiusDefault))
+                from: root.previewSession.muriParameterRanges.handRadiusMin
+                to: root.previewSession.muriParameterRanges.handRadiusMax
+                stepSize: root.previewSession.muriParameterRanges.handRadiusStep
+                value: root.previewSession.muriHandRadiusPx
+                onEdited: value => root.previewSession.setMuriHandRadiusPx(value)
+            }
+
+            Grid {
+                columns: 2
+                columnSpacing: 12
+                rowSpacing: 4
+                bottomPadding: 6
+                SimulationKey { markerColor: "#4eb3ff"; label: qsTrId("preview.simulated_play_left") }
+                SimulationKey { markerColor: "#ff6886"; label: qsTrId("preview.simulated_play_right") }
+                SimulationKey { markerColor: "#7ae9db"; label: qsTrId("preview.simulated_play_lift") }
+                SimulationKey { markerColor: "#ffc83a"; label: qsTrId("preview.simulated_play_conflict") }
+                SimulationKey { markerColor: "#e8e8e8"; label: qsTrId("preview.simulated_play_unassigned") }
+            }
+        }
+
+        ModeRow {
+            width: parent.width
+            label: qsTrId("qml.debug_rendering")
+            active: root.previewSession.debugRendering
+            onClicked: root.previewSession.setDebugRendering()
         }
 
         Item {
@@ -180,7 +302,7 @@ AppStickyPopup {
 
         AppSwitch {
             id: smoothSwitch
-            visible: !root.previewSession.muriCheckEnabled
+            visible: !root.previewSession.muriCheckEnabled && !root.previewSession.debugRendering && !root.previewSession.simulatedPlay && !root.previewSession.handOrderBreakdown
             width: parent.width
             leftPadding: 12
             rightPadding: 16
@@ -197,6 +319,63 @@ AppStickyPopup {
                 function onRenderModeChanged() {
                     if (smoothSwitch.checked !== root.previewSession.smoothStarErase)
                         smoothSwitch.checked = root.previewSession.smoothStarErase
+                }
+            }
+        }
+
+        ModeRow {
+            visible: root.previewSession.debugRendering
+            width: parent.width
+            label: qsTrId("preview.debug_compact")
+            active: root.previewSession.debugDisplayPreset === 0
+            onClicked: root.previewSession.applyDebugDisplayPreset(0)
+        }
+        ModeRow {
+            visible: root.previewSession.debugRendering
+            width: parent.width
+            label: qsTrId("preview.debug_detailed")
+            active: root.previewSession.debugDisplayPreset === 1
+            onClicked: root.previewSession.applyDebugDisplayPreset(1)
+        }
+        ScrollView {
+            id: debugPanel
+            visible: root.previewSession.debugRendering
+            width: parent.width
+            implicitWidth: root.widestChild(debugItems)
+            implicitHeight: Math.min(debugItems.implicitHeight, 280,
+                Math.max(80, (Overlay.overlay ? Overlay.overlay.height : 480) - 150))
+            height: implicitHeight
+            contentWidth: availableWidth
+            clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+            Column {
+                id: debugItems
+                width: debugPanel.availableWidth
+
+                Repeater {
+                    model: [
+                        ["showDebugInfo", qsTrId("preview.advanced_render_info")],
+                        ["labeledJudgeArea", qsTrId("qml.debug_labeled_judge_area")],
+                        ["showTimestamp", qsTrId("dialog.video_export.option.show_timestamp")],
+                        ["showBpmHud", qsTrId("dialog.video_export.option.show_bpm_hud")],
+                        ["showCpsHud", qsTrId("dialog.video_export.option.show_cps_hud")],
+                        ["showJudgeMarkers", qsTrId("qml.debug_muri_markers")],
+                        ["showTouchTrail", qsTrId("qml.debug_touch_trail")]
+                    ]
+
+                    delegate: AppCheckBox {
+                        required property var modelData
+                        width: parent.width
+                        leftPadding: 12
+                        rightPadding: 16
+                        text: modelData[1]
+                        checked: root.previewSession.canvasSettings[modelData[0]] === true
+                        onToggled: {
+                            root.previewSession.setCanvasSetting(modelData[0], checked)
+                            checked = Qt.binding(() => root.previewSession.canvasSettings[modelData[0]] === true)
+                        }
+                    }
                 }
             }
         }
@@ -229,6 +408,7 @@ AppStickyPopup {
 
             ParameterRow {
                 id: tapRow
+                visible: root.previewSession.muriCheckEnabled
                 width: muriParameters.rowContentWidth
                 title: qsTrId("validation.tap_on_slide_threshold")
                 valueText: qsTrId("qml.milliseconds_value").arg(root.previewSession.muriTapOnSlideThresholdMs)
@@ -238,6 +418,7 @@ AppStickyPopup {
                 value: root.previewSession.muriTapOnSlideThresholdMs
                 onEdited: value => root.previewSession.setMuriTapOnSlideThresholdMs(value)
             }
+
         }
     }
 }

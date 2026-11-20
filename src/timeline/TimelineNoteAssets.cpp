@@ -7,6 +7,7 @@
 
 #include "core/video/AssetPaths.h"
 #include "core/video/PreviewSkinConfig.h"
+#include "core/scene/PreviewHandOrderRendering.h"
 
 namespace {
 
@@ -36,37 +37,76 @@ const QPixmap& iconForType(const miacode::timeline::TimelineNoteAssetSet& assets
     return kEmptyPixmap;
 }
 
+QPixmap fallbackHandOrderArtwork(const QPixmap& original, HandOrderHand hand)
+{
+    if (original.isNull() || hand == HandOrderHand::Unspecified) return original;
+    // PreviewSpriteMaterial.frag, with no animated effect: keep source alpha,
+    // luminance and 28% of the original color. Pre-rendered art always wins.
+    const QColor target = hand == HandOrderHand::Left ? QColor::fromRgbF(0.22, 0.55, 1.0)
+        : hand == HandOrderHand::Right ? QColor::fromRgbF(1.0, 0.27, 0.33)
+        : QColor::fromRgbF(0.86, 0.88, 0.92);
+    QImage image = original.toImage().convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < image.height(); ++y) {
+        auto* row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            const QRgb pixel = row[x];
+            if (qAlpha(pixel) == 0) continue;
+            const double luminance = (0.2126 * qRed(pixel) + 0.7152 * qGreen(pixel) + 0.0722 * qBlue(pixel)) / 255.0;
+            const auto channel = [luminance](int source, double tint) {
+                return qRound(qBound(0.0, 0.28 * source + 0.72 * tint * luminance * 1.25 * 255.0, 255.0));
+            };
+            row[x] = qRgba(channel(qRed(pixel), target.redF()), channel(qGreen(pixel), target.greenF()),
+                channel(qBlue(pixel), target.blueF()), qAlpha(pixel));
+        }
+    }
+    return QPixmap::fromImage(image);
+}
+
 }  // namespace
 
 namespace miacode::timeline {
 
-TimelineNoteAssetSet loadTimelineNoteAssets(const QString& skinDirectory)
+static TimelineNoteAssetSet loadTimelineNoteArtwork(const QString& notesDir, const QString& overlaysDir,
+    HandOrderHand hand = HandOrderHand::Unspecified, QHash<QString, TimelineNoteMetrics>* metrics = nullptr)
 {
     TimelineNoteAssetSet assets;
-    const QString notesDir = skinDirectory.trimmed().isEmpty()
-        ? miacode::assets::assetPath(QStringLiteral("skin/skinSD"))
-        : QDir::cleanPath(skinDirectory);
-    if (!QFileInfo::exists(QDir(notesDir).filePath("tap.png"))) {
+    if (!QFileInfo::exists(QDir(overlaysDir).filePath("tap.png"))) {
         return assets;
     }
 
-    const auto loadRawIcon = [notesDir](const QStringList& fileNames) -> QPixmap {
+    QHash<QString, QPixmap> rawIconCache;
+    const auto loadRawIcon = [notesDir, overlaysDir, hand, &rawIconCache](const QStringList& fileNames) -> QPixmap {
         for (const QString& fileName : fileNames) {
-            const QString path = QDir(notesDir).filePath(fileName);
-            QPixmap pix(path);
-            if (!pix.isNull()) {
-                return pix;
+            auto found = rawIconCache.constFind(fileName);
+            if (found == rawIconCache.constEnd()) {
+                const QPixmap original(QDir(overlaysDir).filePath(fileName));
+                QPixmap artwork = original;
+                if (hand != HandOrderHand::Unspecified
+                    && !fileName.contains(QStringLiteral("border")) && !fileName.contains(QStringLiteral("_ex"))) {
+                    artwork = QPixmap(QDir(notesDir).filePath(fileName));
+                    if (artwork.isNull() || (!original.isNull() && artwork.size() != original.size())) {
+                        artwork = fallbackHandOrderArtwork(original, hand);
+                    }
+                }
+                rawIconCache.insert(fileName, artwork);
+                found = rawIconCache.constFind(fileName);
             }
+            if (!found.value().isNull()) return found.value();
         }
         return QPixmap();
     };
 
-    const auto putIcon = [&assets](const QString& key, const QPixmap& pix, int basePixelSize) {
+    const auto putIcon = [&assets, metrics](const QString& key, const QPixmap& pix, int basePixelSize) {
         if (pix.isNull()) {
             return;
         }
-        assets.noteIcons.insert(key, pix);
-        assets.noteIconBasePixelSizes.insert(key, qMax(1, basePixelSize));
+        const int pixelSize = qMax(1, basePixelSize);
+        if (metrics != nullptr) {
+            metrics->insert(key, TimelineNoteMetrics{pix.size(), pixelSize});
+        } else {
+            assets.noteIcons.insert(key, pix);
+            assets.noteIconBasePixelSizes.insert(key, pixelSize);
+        }
     };
 
     const auto loadIcon = [&loadRawIcon, &putIcon](const QString& key, const QStringList& fileNames, int basePixelSize) {
@@ -316,6 +356,154 @@ TimelineNoteAssetSet loadTimelineNoteAssets(const QString& skinDirectory)
     return assets;
 }
 
+QSize TimelineNoteMetrics::targetSize(qreal scale) const
+{
+    if (sourceSize.isEmpty()) {
+        return QSize();
+    }
+    const qreal normalizedScale = scale > 0.0 ? scale : 1.0;
+    const int targetBox = qMax(1, qRound(static_cast<qreal>(basePixelSize) * normalizedScale));
+    QSize size = sourceSize;
+    size.scale(targetBox, targetBox, Qt::KeepAspectRatio);
+    size.setWidth(qMax(1, size.width()));
+    size.setHeight(qMax(1, size.height()));
+    return size;
+}
+
+namespace {
+
+constexpr HandOrderHand kArtworkHands[] = {HandOrderHand::Left, HandOrderHand::Right, HandOrderHand::Either};
+
+const QStringList& splitTrackTypes()
+{
+    static const QStringList types{QStringLiteral("slide_track"), QStringLiteral("slide_track_each"),
+        QStringLiteral("slide_track_break"), QStringLiteral("slide_track_mine")};
+    return types;
+}
+
+QString handName(HandOrderHand hand)
+{
+    switch (hand) {
+    case HandOrderHand::Left: return QStringLiteral("l");
+    case HandOrderHand::Right: return QStringLiteral("r");
+    case HandOrderHand::Either: return QStringLiteral("m");
+    default: return {};
+    }
+}
+
+QString artworkKey(const QString& nativeType, HandOrderHand hand)
+{
+    const QString name = handName(hand);
+    return name.isEmpty() ? nativeType : QStringLiteral("hand_order/%1/%2").arg(name, nativeType);
+}
+
+QString splitArtworkKey(const QString& nativeType, HandOrderHand firstSector, HandOrderHand secondSector)
+{
+    const QString first = handName(firstSector);
+    const QString second = handName(secondSector);
+    return first.isEmpty() || second.isEmpty() ? nativeType
+        : QStringLiteral("hand_order/split/%1_%2/%3").arg(first, second, nativeType);
+}
+
+} // namespace
+
+QString handOrderNoteType(const TimelineNoteAssetSet& assets, const QString& nativeType, HandOrderHand hand)
+{
+    const QString key = artworkKey(nativeType, hand);
+    return assets.noteIcons.contains(key) ? key : nativeType;
+}
+
+QString handOrderSplitNoteType(const TimelineNoteAssetSet& assets, const QString& nativeType,
+    HandOrderHand firstSector, HandOrderHand secondSector)
+{
+    const QString key = splitArtworkKey(nativeType, firstSector, secondSector);
+    return assets.noteIcons.contains(key) ? key : nativeType;
+}
+
+TimelineNoteAssetSet loadTimelineNoteAssets(const QString& skinDirectory)
+{
+    const QString notesDir = skinDirectory.trimmed().isEmpty()
+        ? miacode::assets::assetPath(QStringLiteral("skin/skinSD"))
+        : QDir::cleanPath(skinDirectory);
+    TimelineNoteAssetSet assets = loadTimelineNoteArtwork(notesDir, notesDir);
+    for (HandOrderHand hand : kArtworkHands) {
+        const QString prefix = QStringLiteral("hand_order/%1/").arg(handName(hand));
+        const auto variants = loadTimelineNoteArtwork(QDir(notesDir).filePath(prefix), notesDir, hand);
+        for (auto it = variants.noteIcons.constBegin(); it != variants.noteIcons.constEnd(); ++it) {
+            assets.noteIcons.insert(prefix + it.key(), it.value());
+            assets.noteIconBasePixelSizes.insert(prefix + it.key(), variants.noteIconBasePixelSizes.value(it.key()));
+        }
+    }
+    // Local upper/lower halves follow each flattened track's own direction.
+    // Compose before scaling so the halves share one texture and leave no seam.
+    for (const QString& type : splitTrackTypes()) {
+        for (HandOrderHand first : kArtworkHands) {
+            for (HandOrderHand second : kArtworkHands) {
+                const QString firstType = handOrderNoteType(assets, type, first);
+                const QString secondType = handOrderNoteType(assets, type, second);
+                if (firstType == type || secondType == type) continue;
+                const QPixmap& upper = assets.noteIcons.value(firstType);
+                const QPixmap& lower = assets.noteIcons.value(secondType);
+                if (upper.size() != lower.size()) continue;
+                QPixmap composite(upper.size());
+                composite.fill(Qt::transparent);
+                QPainter painter(&composite);
+                const int middle = upper.height() / 2;
+                painter.setClipRect(QRect(0, 0, upper.width(), middle));
+                painter.drawPixmap(0, 0, upper);
+                painter.setClipRect(QRect(0, middle, lower.width(), lower.height() - middle));
+                painter.drawPixmap(0, 0, lower);
+                painter.end();
+                const QString key = splitArtworkKey(type, first, second);
+                assets.noteIcons.insert(key, composite);
+                assets.noteIconBasePixelSizes.insert(key, assets.noteIconBasePixelSizes.value(type));
+            }
+        }
+    }
+    assets.noteIcons.insert(QStringLiteral("wifi_single_badge"),
+        QPixmap::fromImage(*miacode::preview::scene::previewWifiSingleBadgeImage()));
+    assets.noteIconBasePixelSizes.insert(QStringLiteral("wifi_single_badge"), kNoteSize);
+    return assets;
+}
+
+QHash<QString, TimelineNoteMetrics> loadTimelineNoteMetrics(const QString& skinDirectory)
+{
+    const QString notesDir = skinDirectory.trimmed().isEmpty()
+        ? miacode::assets::assetPath(QStringLiteral("skin/skinSD")) : QDir::cleanPath(skinDirectory);
+    QHash<QString, TimelineNoteMetrics> native;
+    loadTimelineNoteArtwork(notesDir, notesDir, HandOrderHand::Unspecified, &native);
+    if (native.isEmpty()) return native;
+    auto metrics = native;
+    // Rendered variants must match the native dimensions. Layout can reuse
+    // those dimensions without tinting or composing the artwork again.
+    for (auto it = native.cbegin(); it != native.cend(); ++it) {
+        for (HandOrderHand hand : kArtworkHands) metrics.insert(artworkKey(it.key(), hand), it.value());
+    }
+    for (const QString& type : splitTrackTypes()) {
+        const auto it = native.constFind(type);
+        if (it == native.cend()) continue;
+        for (HandOrderHand first : kArtworkHands) {
+            for (HandOrderHand second : kArtworkHands) metrics.insert(splitArtworkKey(type, first, second), it.value());
+        }
+    }
+    const auto badge = miacode::preview::scene::previewWifiSingleBadgeImage();
+    if (badge) metrics.insert(QStringLiteral("wifi_single_badge"), TimelineNoteMetrics{badge->size(), kNoteSize});
+    return metrics;
+}
+
+QString handOrderNoteType(const QHash<QString, TimelineNoteMetrics>& metrics, const QString& nativeType, HandOrderHand hand)
+{
+    const QString key = artworkKey(nativeType, hand);
+    return metrics.contains(key) ? key : nativeType;
+}
+
+QString handOrderSplitNoteType(const QHash<QString, TimelineNoteMetrics>& metrics, const QString& nativeType,
+    HandOrderHand firstSector, HandOrderHand secondSector)
+{
+    const QString key = splitArtworkKey(nativeType, firstSector, secondSector);
+    return metrics.contains(key) ? key : nativeType;
+}
+
 int transformedPixmapScalePermille(qreal scale)
 {
     return qMax(1, qRound(scale * 1000.0));
@@ -389,15 +577,9 @@ QSize targetSizeForNoteType(
         return QSize();
     }
 
-    const qreal normalizedScale = scale > 0.0 ? scale : 1.0;
-    const int targetBox = qMax(
-        1,
-        qRound(static_cast<qreal>(noteIconBasePixelSizeForType(assets, type, fallbackPixelSize)) * normalizedScale));
-    QSize targetSize(base.width(), base.height());
-    targetSize.scale(targetBox, targetBox, Qt::KeepAspectRatio);
-    targetSize.setWidth(qMax(1, targetSize.width()));
-    targetSize.setHeight(qMax(1, targetSize.height()));
-    return targetSize;
+    return TimelineNoteMetrics{
+        base.size(), noteIconBasePixelSizeForType(assets, type, fallbackPixelSize)
+    }.targetSize(scale);
 }
 
 QPixmap transformNotePixmapToTargetSize(

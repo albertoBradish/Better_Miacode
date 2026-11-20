@@ -16,7 +16,7 @@ namespace miacode {
 namespace {
 QString target(const QString& principal) {
     const QString installation = QString::fromLatin1(QCryptographicHash::hash(
-        miacode::runtime_paths::root().toUtf8(), QCryptographicHash::Sha256).toHex());
+        miacode::runtime_paths::rootDirectory().toUtf8(), QCryptographicHash::Sha256).toHex());
     return QStringLiteral("BetterMiacode/%1/Majdata/").arg(installation) + QString::fromLatin1(
         QCryptographicHash::hash(principal.toUtf8(), QCryptographicHash::Sha256).toHex());
 }

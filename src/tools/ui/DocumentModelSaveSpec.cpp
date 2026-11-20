@@ -1,5 +1,8 @@
+#include "app/services/HandOrderFeaturePreferences.h"
 #include "app/ui/document/DocumentModel.h"
 #include "app/services/PreferenceDocument.h"
+#include "common/RuntimePaths.h"
+#include "app/services/StickingPublicationMetadata.h"
 #include <QDir>
 
 #include <QCoreApplication>
@@ -65,6 +68,7 @@ bool verifyDifficultyCardProjection()
     miacode::DocumentBridge* bridge = &fake;
     miacode::PreviewSurface* preview = nullptr;
     miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    model.setHandOrderFeaturesEnabled(true);
     const auto revision = workspace.snapshot().revision;
     const auto expert = model.difficultyCardTrack(4);
     const auto master = model.difficultyCardTrack(5);
@@ -115,6 +119,7 @@ bool verifyUnsupportedOpenShowsError()
     miacode::DocumentBridge* bridge = &fake;
     miacode::PreviewSurface* preview = nullptr;
     miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    model.setHandOrderFeaturesEnabled(true);
     int notices = 0;
     int replacements = 0;
     QVariantMap notice;
@@ -146,6 +151,73 @@ bool verifyUnsupportedOpenShowsError()
     return ok;
 }
 
+bool verifyStickingCopyOnOpen()
+{
+    QTemporaryDir directory;
+    if (!directory.isValid()) return false;
+    const QString original = directory.filePath(QStringLiteral("maidata.txt"));
+    const QString sticking = directory.filePath(QStringLiteral("maidata_sticking.txt"));
+    const QByteArray initial = "&title=Original\n&lv_5=12\n&inote_5=(150){16}2,1,2,1,E\n";
+    QFile source(original);
+    if (!source.open(QIODevice::WriteOnly) || source.write(initial) != initial.size()) return false;
+    source.close();
+    miacode::ChartWorkspace workspace;
+    miacode::ChartWorkspaceFileService files(workspace);
+    miacode::AnalysisService analysis(workspace);
+    analysis.setDiagnosticsDeferred(true);
+    miacode::ShellNotifications notifications;
+    miacode::UiRequestService requests;
+    FakeBridge fake;
+    miacode::DocumentBridge* bridge = &fake;
+    miacode::PreviewSurface* preview = nullptr;
+    miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    model.setHandOrderFeaturesEnabled(true);
+    bool ok = expect(model.openFile(QUrl::fromLocalFile(original))
+        && workspace.snapshot().filePath == sticking && read(sticking) == initial,
+        "opening maidata creates and selects the Sticking copy");
+    const QString infoPath = directory.filePath(QStringLiteral("Original MAS 拆分信息.txt"));
+    ok &= expect(QString::fromUtf8(read(infoPath)).contains(QStringLiteral("BPM：00:00:000/150.00")),
+        "creating the Sticking copy also writes per-difficulty publication information");
+    QFile info(infoPath);
+    if (!info.open(QIODevice::WriteOnly) || info.write("User edited") != 11) return false;
+    info.close();
+    model.setChartText(QStringLiteral("(150){16}2~r,1~l,2~r,1~l,E"));
+    ok &= expect(model.saveWholeDocument() && read(original) == initial
+        && read(sticking).contains("2~r,1~l,2~r,1~l"),
+        "saving edits the Sticking copy and preserves original bytes");
+    const QByteArray saved = read(sticking);
+    ok &= expect(model.openFile(QUrl::fromLocalFile(original))
+        && workspace.snapshot().filePath == sticking && read(sticking) == saved
+        && model.chartText().contains("2~r,1~l,2~r,1~l"),
+        "reopening maidata resumes the existing Sticking copy without replacing it");
+    ok &= expect(read(infoPath) == "User edited", "reopening preserves edited publication information");
+    ok &= expect(model.openFile(QUrl::fromLocalFile(directory.path()))
+        && workspace.snapshot().filePath == sticking && read(original) == initial,
+        "opening the project folder also selects its existing Sticking copy");
+    analysis.shutdown();
+    return ok;
+}
+
+bool verifyStickingPublicationMetadata()
+{
+    const auto document = SimaiDocument::fromText(QStringLiteral(
+        "&title=曲名😀/A:B?\n&first=1.25\n&artist=曲师\n&des=默认谱师\n"
+        "&lv_6=14+\n&des_6=难度谱师\n&inote_6=|| (888)\n(150){4}1,// (999)\n"
+        "(75)2,|| (777)\n(75)3,(87.5)4,(150)5,E\n"));
+    bool ok = expect(miacode::sticking::publicationVideoName(document, 6)
+        == QStringLiteral("【舞萌DX手序拆解／读谱辅助】曲名😀／A：B？ REMAS 14+.mp4"),
+        "publication video names retain Unicode, use REMAS, and replace illegal filename characters");
+    const QString text = miacode::sticking::publicationInfoText(document, 6);
+    ok &= expect(text.contains(QStringLiteral("曲名：曲名😀/A:B?\n曲师：曲师\n谱师：难度谱师\n"))
+        && text.contains(QStringLiteral("BPM：00:01:250/150.00 - 00:01:650/75.00"))
+        && text.contains(QStringLiteral("蓝色为左手，红色为右手"))
+        && text.contains(QStringLiteral("星星自暗变为全亮时"))
+        && !text.contains(QStringLiteral("999")) && !text.contains(QStringLiteral("888"))
+        && !text.contains(QStringLiteral("777")),
+        "publication information uses raw metadata and ordered BPM changes, excluding comments and repeated BPM");
+    return ok;
+}
+
 bool verifyRejectedDraftBlocksPersistenceAndLeave()
 {
     QTemporaryDir directory;
@@ -167,6 +239,7 @@ bool verifyRejectedDraftBlocksPersistenceAndLeave()
     miacode::DocumentBridge* bridge = &fake;
     miacode::PreviewSurface* preview = nullptr;
     miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    model.setHandOrderFeaturesEnabled(true);
     model.setWholeSourceEditorActive(true);
     const auto revision = workspace.snapshot().revision;
     const QByteArray originalBytes = read(path);
@@ -250,13 +323,29 @@ bool verifyPickerDirectories()
     miacode::DocumentBridge* bridge = &fake;
     miacode::PreviewSurface* preview = nullptr;
     miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    model.setHandOrderFeaturesEnabled(true);
     QString id;
     QVariantMap request;
     QObject::connect(&requests, &miacode::UiRequestService::fileRequested,
                      [&](const QString& nextId, const QVariantMap& value) { id = nextId; request = value; });
     const auto folder = [&] { return request.value("startFolder").toUrl().toLocalFile(); };
+    int invalidAudioNotices = 0;
+    QObject::connect(&requests, &miacode::UiRequestService::noticeRequested,
+                     [&](const QString&, const QVariantMap&) { ++invalidAudioNotices; });
+    model.createDocumentFromPickedAudio();
+    const auto newFilters = request.value("nameFilters").toStringList();
+    const auto openFilters = model.openFileNameFilters();
+    bool ok = expect(newFilters.size() == 1 && openFilters.size() == 1
+        && openFilters.first() == qtTrId("qml.simai_files_txt_simai"),
+        "new picker offers audio only; open picker offers charts only");
+    requests.submitFileResult(id, QUrl::fromLocalFile(directory.filePath("documents/not_audio.txt")));
+    ok &= expect(invalidAudioNotices == 1 && !QFileInfo::exists(directory.filePath("documents/maidata.txt")),
+                 "new chart rejects a non-audio path without creating a chart");
+    ok &= expect(!model.openChartFile(QUrl::fromLocalFile(directory.filePath("documents/song.mp3")))
+        && invalidAudioNotices == 2 && !QFileInfo::exists(directory.filePath("documents/maidata.txt")),
+        "open chart rejects an audio path without creating a chart");
     model.saveWholeDocument();
-    bool ok = expect(folder() == directory.filePath("documents")
+    ok &= expect(folder() == directory.filePath("documents")
         && request.value("startFile").toUrl().fileName() == QLatin1String("maidata.txt"),
         "first network-preview save uses remembered documents folder and maidata name");
     requests.cancelFileRequest(id);
@@ -284,9 +373,99 @@ bool verifyPickerDirectories()
     model.importChartBackgroundImage();
     ok &= expect(folder() == directory.filePath("images"), "video selection does not overwrite image source history");
     requests.cancelFileRequest(id);
+    root.mkpath("new_chart");
+    const QString audioPath = directory.filePath("new_chart/song.mp3");
+    QFile audio(audioPath);
+    if (!audio.open(QIODevice::WriteOnly) || audio.write("audio fixture") < 0) return false;
+    audio.close();
+    model.createDocumentFromPickedAudio();
+    requests.submitFileResult(id, QUrl::fromLocalFile(audioPath));
+    ok &= expect(QFileInfo::exists(directory.filePath("new_chart/track.mp3"))
+        && QFileInfo::exists(directory.filePath("new_chart/maidata.txt")),
+        "new chart from an audio file creates a track and chart beside it");
     analysis.shutdown();
     return ok;
 }
+
+bool verifyPlainSimaiExport()
+{
+    QTemporaryDir directory;
+    if (!directory.isValid()) return false;
+    const QString path = directory.filePath(QStringLiteral("maidata.txt"));
+    const QString plainPath = directory.filePath(QStringLiteral("plain.txt"));
+    const QByteArray annotated =
+        "&title=A~B\n&lv_5=12\n&inote_5=(120){4}1~l,E\n";
+    QFile source(path);
+    if (!source.open(QIODevice::WriteOnly) || source.write(annotated) != annotated.size()) {
+        return false;
+    }
+    source.close();
+
+    miacode::ChartWorkspace workspace;
+    miacode::ChartWorkspaceFileService files(workspace);
+    if (!files.open(path).accepted) return false;
+    miacode::AnalysisService analysis(workspace);
+    analysis.setDiagnosticsDeferred(true);
+    miacode::ShellNotifications notifications;
+    miacode::UiRequestService requests;
+    FakeBridge fake;
+    miacode::DocumentBridge* bridge = &fake;
+    miacode::PreviewSurface* preview = nullptr;
+    miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    model.setHandOrderFeaturesEnabled(true);
+    const auto before = workspace.snapshot();
+    bool ok = expect(model.exportPlainSimai(QUrl::fromLocalFile(plainPath)),
+                     "plain Simai export writes a separate file");
+    const QByteArray exported = read(plainPath);
+    ok &= expect(exported.contains("&title=A~B") && exported.contains("&inote_5=(120){4}1,E")
+                     && !exported.contains("1~l") && read(path) == annotated,
+                 "plain export strips chart annotations and preserves source metadata and file");
+    ok &= expect(!model.exportPlainSimai(QUrl::fromLocalFile(path)) && read(path) == annotated,
+                 "plain export refuses to overwrite the annotated source");
+    ok &= expect(workspace.snapshot().revision == before.revision
+                     && workspace.snapshot().dirty == before.dirty
+                     && workspace.snapshot().filePath == before.filePath,
+                 "plain export leaves workspace revision, dirty state and path unchanged");
+    analysis.shutdown();
+    return ok;
+}
+bool verifyFirstOpenAutomaticPreparation()
+{
+    QTemporaryDir directory;
+    const QString path = directory.filePath("maidata.txt");
+    const QByteArray source = "&title=First open\n&lv_5=12\n&inote_5=(120){4}1,2,3,4,E\n";
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly) || file.write(source) != source.size()) return false;
+    file.close();
+    auto preferences = PreferenceDocument::loadPreferencesObject();
+    auto ui = preferences.value("ui").toObject(); ui.insert("auto_normalize_enabled", true);
+    preferences.insert("ui", ui); PreferenceDocument::savePreferencesObject(preferences);
+    miacode::ChartWorkspace workspace;
+    miacode::ChartWorkspaceFileService files(workspace);
+    miacode::AnalysisService analysis(workspace); analysis.setDiagnosticsDeferred(true);
+    miacode::ShellNotifications notifications;
+    miacode::UiRequestService requests;
+    FakeBridge fake;
+    miacode::DocumentBridge* bridge = &fake;
+    miacode::PreviewSurface* preview = nullptr;
+    miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    model.setHandOrderFeaturesEnabled(true);
+    bool ok = expect(model.openChartFile(QUrl::fromLocalFile(path)), "real document-model open path accepts fixture");
+    QCoreApplication::processEvents();
+    QCoreApplication::processEvents();
+    const QString copy = directory.filePath("maidata_sticking.txt");
+    ok &= expect(read(path) == source && read(copy) == source && workspace.snapshot().filePath == copy
+        && !workspace.snapshot().dirty, "first open preserves source bytes and selects an unchanged Sticking copy");
+    ok &= expect(!QDir(directory.filePath(".autosave")).exists(),
+        "copy-on-open does not normalize the original or create a misleading backup");
+    ok &= expect(model.openChartFile(QUrl::fromLocalFile(path)), "already-opened chart reopens");
+    QCoreApplication::processEvents();
+    ok &= expect(read(path) == source && read(copy) == source && workspace.snapshot().filePath == copy,
+        "reopen retains both the original and existing Sticking copy");
+    analysis.shutdown();
+    return ok;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -294,6 +473,23 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
     QStandardPaths::setTestModeEnabled(true);
     app.setApplicationName(QStringLiteral("MiaCodeDocumentModelSaveSpec"));
-    return verifyDifficultyCardProjection() && verifyUnsupportedOpenShowsError()
-        && verifyRejectedDraftBlocksPersistenceAndLeave() && verifyPickerDirectories() ? 0 : 1;
+    QTemporaryDir profile;
+    if (!profile.isValid()) return 1;
+    QDir().mkpath(profile.filePath("source")); QDir().mkpath(profile.filePath("runtime/spec"));
+    const auto fixtureFile = [&](const QString& name, const QByteArray& data) {
+        QFile file(profile.filePath(name)); return file.open(QIODevice::WriteOnly) && file.write(data) == data.size();
+    };
+    if (!fixtureFile("baseline.json", "{}") || !fixtureFile("source/AGENTS.md", "synthetic fixture")
+        || !fixtureFile("runtime/spec/.better-miacode-runtime", "BetterMiacode.runtime.v1\n")) return 1;
+    qputenv("BETTER_MIACODE_RUNTIME_ROOT", profile.filePath("runtime/spec").toUtf8());
+    QString runtimeError;
+    if (!miacode::runtime_paths::initializeFromEnvironment(&runtimeError)) {
+        QTextStream(stderr) << runtimeError << Qt::endl;
+        return 1;
+    }
+    if (miacode::hand_order_features::unlock(QStringLiteral("test-hand-order"))
+        != miacode::hand_order_features::UnlockResult::Enabled) return 1;
+    return verifyFirstOpenAutomaticPreparation() && verifyDifficultyCardProjection() && verifyUnsupportedOpenShowsError()
+        && verifyStickingCopyOnOpen() && verifyStickingPublicationMetadata()
+        && verifyRejectedDraftBlocksPersistenceAndLeave() && verifyPickerDirectories() && verifyPlainSimaiExport() ? 0 : 1;
 }

@@ -1,4 +1,5 @@
 #include "core/chart/parser/SimaiParser.h"
+#include "core/chart/parser/HandOrderAnnotationSyntax.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -1529,6 +1530,182 @@ int main(int argc, char** argv)
         }
         expect(!oldFormStillMutatesHs,
                QStringLiteral("old bracket-less HS*N> form no longer mutates HS state (Q1)"));
+    }
+
+    {
+        const QString annotated = QStringLiteral(
+            "1m~l,1-5[4:1]~[head=l;track=0:l|0.5:r],2~m,\nE");
+        const QString plain = miacode::hand_order::stripAnnotations(annotated);
+        expect(plain == QStringLiteral("1m,1-5[4:1],2,\nE"),
+            QStringLiteral("hand-order projection retains base Simai text"));
+        const SimaiParseResult withHands = SimaiParser::parseForTimeline(annotated);
+        const SimaiParseResult base = SimaiParser::parseForTimeline(plain);
+        expect(withHands.ok && withHands.annotationErrors.isEmpty(),
+            QStringLiteral("valid hand-order suffixes parse without errors"));
+        expect(withHands.noteMarkers.size() == base.noteMarkers.size(),
+            QStringLiteral("hand-order suffixes preserve note count"));
+        if (withHands.noteMarkers.size() == base.noteMarkers.size()) {
+            bool preserved = true;
+            for (int i = 0; i < base.noteMarkers.size(); ++i) {
+                const TimelineNoteMarker& a = withHands.noteMarkers.at(i);
+                const TimelineNoteMarker& b = base.noteMarkers.at(i);
+                preserved = preserved && a.type == b.type && a.lane == b.lane
+                    && a.endLane == b.endLane && a.isMine == b.isMine
+                    && a.headMine == b.headMine && a.trackMine == b.trackMine
+                    && nearlyEqual(a.second, b.second)
+                    && nearlyEqual(a.endSecond, b.endSecond)
+                    && nearlyEqual(a.slideTraceSecond, b.slideTraceSecond);
+            }
+            expect(preserved, QStringLiteral("hand-order suffixes preserve base note semantics"));
+        }
+        const TimelineNoteMarker* slide = firstSlideLikeMarker(withHands);
+        expect(slide != nullptr && slide->handOrderHead == HandOrderHand::Left
+            && slide->handOrderTrackStops.size() == 2
+            && nearlyEqual(slide->handOrderTrackStops.at(1).progress, 0.5)
+            && slide->handOrderTrackStops.at(1).hand == HandOrderHand::Right,
+            QStringLiteral("slide hand switches at half of movement time"));
+        expect(!withHands.noteMarkers.isEmpty() && withHands.noteMarkers.constFirst().isMine
+            && withHands.noteMarkers.constFirst().handOrderHead == HandOrderHand::Left,
+            QStringLiteral("base Mine and hand-order m remain independent"));
+    }
+
+    {
+        const QString text = QStringLiteral(
+            "1-5[4:1]*-7[4:1]~[head=l;branch0=0:l|0.5:r;branch1=0:m],\nE");
+        const SimaiParseResult parsed = SimaiParser::parseForTimeline(text);
+        expect(parsed.ok && parsed.annotationErrors.isEmpty() && parsed.noteMarkers.size() == 2,
+            QStringLiteral("two slide branches accept independent hand tracks"));
+        if (parsed.noteMarkers.size() == 2) {
+            const TimelineNoteMarker& a = parsed.noteMarkers.at(0);
+            const TimelineNoteMarker& b = parsed.noteMarkers.at(1);
+            const TimelineNoteMarker& first = a.slideBranchIndex == 0 ? a : b;
+            const TimelineNoteMarker& second = a.slideBranchIndex == 1 ? a : b;
+            expect(first.slideBranchIndex == 0 && second.slideBranchIndex == 1
+                && first.handOrderTrackStops.size() == 2
+                && second.handOrderTrackStops.size() == 1
+                && !second.handOrderTrackStops.isEmpty()
+                && second.handOrderTrackStops.constFirst().hand == HandOrderHand::Either,
+                QStringLiteral("branch markers retain source-order hand assignment"));
+            expect(first.handOrderAnnotationCol == text.indexOf(QChar('~')) + 1
+                && first.handOrderAnnotationEndCol == text.indexOf(QChar(','))
+                && second.slideBranchSourceCol == text.indexOf(QChar('*')) + 2,
+                QStringLiteral("branch and annotation source columns map to original text"));
+            expect(!first.trackMine && !second.trackMine,
+                QStringLiteral("hand m inside a branch container does not create a Mine"));
+        }
+    }
+
+    {
+        const SimaiParseResult chain = SimaiParser::parseForTimeline(
+            QStringLiteral("5v5v2[8:1]~[track=0:l|0.75:r],\nE"));
+        const TimelineNoteMarker* slide = firstSlideLikeMarker(chain);
+        expect(chain.ok && chain.annotationErrors.isEmpty() && slide != nullptr
+            && slide->slideSegmentDurations.size() == 2
+            && slide->handOrderTrackStops.size() == 2
+            && nearlyEqual(slide->handOrderTrackStops.at(1).progress, 0.75),
+            QStringLiteral("chain slide retains segment timing with a hand switch"));
+
+        const SimaiParseResult wifi = SimaiParser::parseForTimeline(
+            QStringLiteral("1w5[8:1]~[track=0:l|0.5:r],\nE"));
+        const TimelineNoteMarker* wifiNote = firstSlideLikeMarker(wifi);
+        expect(wifi.ok && wifi.annotationErrors.isEmpty() && wifiNote != nullptr
+            && wifiNote->type == QLatin1String("wifi")
+            && wifiNote->handOrderTrackStops.size() == 2,
+            QStringLiteral("wifi accepts one hand track across its paths"));
+    }
+
+    {
+        const SimaiParseResult parsed = SimaiParser::parseForTimeline(
+            QStringLiteral("1~z,2~l,\nE"));
+        expect(parsed.ok && parsed.errors.isEmpty() && parsed.annotationErrors.size() == 1
+            && parsed.noteMarkers.size() == 2,
+            QStringLiteral("bad annotation preserves base chart and later notes"));
+        if (parsed.noteMarkers.size() == 2) {
+            expect(parsed.noteMarkers.at(0).handOrderHead == HandOrderHand::Unspecified
+                && parsed.noteMarkers.at(1).handOrderHead == HandOrderHand::Left,
+                QStringLiteral("bad annotation does not bind a hand or block the next note"));
+        }
+        const SimaiValidationReport report = SimaiParser::buildValidationReport(
+            QStringLiteral("1~z,2~l,\nE"), SimaiValidationLocale::English);
+        bool hasAnnotationIssue = false;
+        for (const SimaiValidationIssue& issue : report.issues) {
+            hasAnnotationIssue = hasAnnotationIssue || issue.isAnnotation;
+        }
+        expect(!report.ok && hasAnnotationIssue,
+            QStringLiteral("strict validation distinguishes annotation errors"));
+        for (const auto locale : {SimaiValidationLocale::Chinese, SimaiValidationLocale::Japanese}) {
+            const SimaiValidationReport localized = SimaiParser::buildValidationReport(
+                QStringLiteral("1~z,2~l,\nE"), locale);
+            bool translated = false;
+            for (const SimaiValidationIssue& issue : localized.issues) {
+                translated = translated || (issue.isAnnotation
+                    && issue.displayMessage.contains(locale == SimaiValidationLocale::Chinese
+                        ? QStringLiteral("手序标注无效") : QStringLiteral("運指の注釈が無効")));
+            }
+            expect(translated, QStringLiteral("hand-order errors follow the validation locale"));
+        }
+        expect(!parsed.annotationErrors.isEmpty()
+            && parsed.annotationErrors.constFirst().line == 1
+            && parsed.annotationErrors.constFirst().col == 2
+            && parsed.annotationErrors.constFirst().endCol == 3,
+            QStringLiteral("annotation error points to its original suffix"));
+    }
+
+    {
+        const QString malformed = QStringLiteral("1~[head=l; track=0:l],2~r,\nE");
+        const SimaiParseResult parsed = SimaiParser::parseForTimeline(malformed);
+        expect(parsed.ok && parsed.errors.isEmpty() && parsed.annotationErrors.size() == 1
+            && parsed.noteMarkers.size() == 2
+            && parsed.noteMarkers.at(1).handOrderHead == HandOrderHand::Right,
+            QStringLiteral("malformed container whitespace recovers at the next comma"));
+        expect(miacode::hand_order::stripAnnotations(malformed) == QStringLiteral("1,2,\nE"),
+            QStringLiteral("plain projection removes a malformed container as one suffix"));
+    }
+
+    {
+        const QString annotated = QStringLiteral(
+            "1~[track=0:l|| comment,7~l,\n2~r,\nE");
+        const QString plain = miacode::hand_order::stripAnnotations(annotated);
+        expect(plain == QStringLiteral("1|| comment,7~l,\n2,\nE"),
+            QStringLiteral("plain projection preserves native comments after a bad container"));
+        const SimaiParseResult parsed = SimaiParser::parseForTimeline(annotated);
+        const SimaiParseResult plainParsed = SimaiParser::parseForTimeline(plain);
+        expect(parsed.ok && parsed.annotationErrors.size() == 1
+            && parsed.noteMarkers.size() == 2
+            && plainParsed.noteMarkers.size() == parsed.noteMarkers.size()
+            && parsed.noteMarkers.at(1).handOrderHead == HandOrderHand::Right,
+            QStringLiteral("bad container respects comment boundary and recovers on next line"));
+        expect(!parsed.annotationErrors.isEmpty()
+            && parsed.annotationErrors.constFirst().col == 2
+            && parsed.annotationErrors.constFirst().endCol == annotated.indexOf(QStringLiteral("||")),
+            QStringLiteral("bad container diagnostic ends before native comment"));
+        const SimaiParseResult strict = SimaiParser::validateSyntax(annotated);
+        const SimaiParseResult plainStrict = SimaiParser::validateSyntax(plain);
+        expect(strict.annotationErrors.size() == 1
+            && strict.errors.size() == plainStrict.errors.size()
+            && strict.noteMarkers.size() == plainStrict.noteMarkers.size(),
+            QStringLiteral("strict base diagnostics agree with native comment projection"));
+    }
+
+    {
+        const QStringList invalid = {
+            QStringLiteral("12~l,"),
+            QStringLiteral("1~[head=l;track=0:l],"),
+            QStringLiteral("1-5[4:1]~[track=0.5:r],"),
+            QStringLiteral("1-5[4:1]~[track=0:l|0.5:r|0.5:m],"),
+            QStringLiteral("1-5[4:1]~[track=0:l|1:r],"),
+            QStringLiteral("1-5[4:1]*-7[4:1]~[branch0=0:l],"),
+            QStringLiteral("1-5[4:1]*-7[4:1]~[track=0:l;branch1=0:r],"),
+        };
+        bool allHaveAnnotationErrors = true;
+        for (const QString& text : invalid) {
+            const SimaiParseResult parsed = SimaiParser::parseForTimeline(text);
+            allHaveAnnotationErrors = allHaveAnnotationErrors
+                && parsed.ok && !parsed.noteMarkers.isEmpty()
+                && !parsed.annotationErrors.isEmpty();
+        }
+        expect(allHaveAnnotationErrors,
+            QStringLiteral("specified invalid hand-order forms keep their base notes"));
     }
 
     if (failed != 0) {

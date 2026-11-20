@@ -8,6 +8,7 @@
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
 #include "common/ProcessDiagnostics.h"
+#include "common/RuntimePaths.h"
 #include "common/UiHangWatchdog.h"
 #include "common/DebugOptions.h"
 #include "audio/WaveformCache.h"
@@ -44,6 +45,7 @@
 #include <cmath>
 #include <cstdio>
 #include <exception>
+#include <initializer_list>
 #include <new>
 
 #ifdef Q_OS_WIN
@@ -65,6 +67,8 @@
 #include "app/CliRequest.h"
 #include "app/services/CliIntegration.h"
 #include "app/StartupArguments.h"
+#include "app/CliRequest.h"
+#include "app/services/CliIntegration.h"
 
 namespace {
 
@@ -250,26 +254,21 @@ int main(int argc, char* argv[])
         || (wantsCliVideoExport(earlyArguments) && !wantsCliVideoExportWorker(earlyArguments)));
 #endif
     if (publicCliRequested) return runPublicCli(argc, argv, earlyArguments);
-    QString runtimeError;
-    if (!miacode::runtime_paths::initializePackagedRuntime(&runtimeError)
-        || !miacode::runtime_paths::initialize(&runtimeError)) {
-        std::fprintf(stderr, "Better Miacode refused startup: %s\n", runtimeError.toUtf8().constData());
+    QString runtimePathError;
+    if (!miacode::runtime_paths::initializePackagedRuntime(&runtimePathError)
+        || !miacode::runtime_paths::initializeFromEnvironment(&runtimePathError)
+        || !miacode::runtime_paths::configureProcessEnvironment(&runtimePathError)) {
+        std::fprintf(stderr, "Better Miacode runtime initialization failed: %s\n",
+                     runtimePathError.toUtf8().constData());
         return 78;
     }
     if (wantsCliVideoExport(earlyArguments) && !wantsCliVideoExportWorker(earlyArguments)
         && !miacode::CliIntegration::tasksEnabled()) {
-        std::fprintf(stderr, "CLI tasks are disabled. Enable command-line integration in Settings > About.\n");
+        std::fputs("CLI tasks are disabled. Enable command-line integration in Settings > About.\n", stderr);
         return 77;
     }
-    // Phase 6 — startup beacon. Heap-free, pure-Win32. Lands a tiny
-    // miacode_startup_beacon_<pid>.txt next to the eventual op-chain
-    // shadow log (MIACODE_LOG_DIR or %TEMP%). Its presence proves the
-    // process made it to line 1 of main() — its absence means the
-    // process died in static init / DLL load (outside our reach), which
-    // is a fundamentally different debug path than a crash inside our
-    // code. Written before MC_OP, before crash_recovery::install, and
-    // before QGuiApplication construction so a crash in any of those still
-    // leaves the breadcrumb behind.
+    // Every GUI, legacy CLI and worker role has validated the Better Miacode root
+    // and replaced inherited official-build log/temp overrides before logging.
     miacode::oplog::writeStartupBeacon(MIACODE_DISPLAY_VERSION_STRING);
 
 #ifdef Q_OS_WIN
@@ -521,6 +520,15 @@ int main(int argc, char* argv[])
     miacode::oplog::appendStartupBeaconLine("phase=before_qapplication_construct");
 #endif
     QGuiApplication app(argc, argv);
+    // All roles share this entry point. Establish the development identity
+    // before any configuration or cache is read.
+    app.setOrganizationName(QStringLiteral("BetterMiacode"));
+    app.setOrganizationDomain(QStringLiteral("better-miacode.local"));
+    app.setApplicationName(QStringLiteral("BetterMiacode"));
+    app.setApplicationVersion(MIACODE_DISPLAY_VERSION_STRING);
+#ifdef Q_OS_WIN
+    setWindowsAppUserModelId();
+#endif
     miacode::hang_watchdog::installGuiHeartbeat(&app);
     const auto shutdownGuiHeartbeat = qScopeGuard([]() {
         miacode::hang_watchdog::shutdownGuiHeartbeat();
@@ -621,12 +629,6 @@ int main(int argc, char* argv[])
     // (see logProcessStartupDiagnostics) so the collected project log has them.
     logProcessStartupDiagnostics(QStringLiteral("boot"));
 
-#ifdef Q_OS_WIN
-    setWindowsAppUserModelId();
-#endif
-    app.setApplicationName("BetterMiacode");
-    app.setApplicationDisplayName("Better Miacode");
-    app.setApplicationVersion(MIACODE_DISPLAY_VERSION_STRING);
     const QIcon appIcon = applicationWindowIcon();
 #ifndef Q_OS_MACOS
     app.setWindowIcon(appIcon);

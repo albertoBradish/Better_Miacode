@@ -76,23 +76,31 @@ Rectangle {
         }
     }
 
-    component CoverChecks: SettingsSection {
+    component CoverChecks: ColumnLayout {
         id: coverChecks
         property bool batch: false
-        title: qsTrId("video_cover.multiple")
-        enabled: root.session && !root.session.exportRunning
+        readonly property var presets: root.session
+            ? (batch ? root.session.batchCoverPresets : root.session.singleCoverPresets) : []
+        enabled: !!root.session && !root.session.exportRunning
         Layout.fillWidth: true
+        AppSwitch {
+            text: qsTrId("video_cover.multiple")
+            sectionTitle: true
+            checked: coverChecks.presets.length > 0
+            onToggled: root.session.setCompanionCoversEnabled(checked, coverChecks.batch)
+        }
         Flow {
             Layout.fillWidth: true
+            visible: coverChecks.presets.length > 0
             spacing: 12
             Repeater {
                 model: root.session ? root.session.singleCoverPresetOptions : []
                 delegate: AppCheckBox {
                     required property var modelData
-                    readonly property var selected: root.session ? (coverChecks.batch ? root.session.batchCoverPresets : root.session.singleCoverPresets) : []
+                    visible: modelData.value !== ""
                     text: modelData.label
-                    checked: modelData.value === "" ? selected.length === 0 : selected.indexOf(modelData.value) >= 0
-                    onToggled: if (root.session) root.session.setCoverPresetChecked(modelData.value, checked, coverChecks.batch)
+                    checked: coverChecks.presets.indexOf(modelData.value) >= 0
+                    onToggled: root.session.setCoverPresetChecked(modelData.value, checked, coverChecks.batch)
                 }
             }
         }
@@ -253,7 +261,10 @@ Rectangle {
                                 objectName: "batchOutputDirectoryField"
                                 Layout.fillWidth: true
                                 text: root.session ? root.session.batchOutputDirectory : ""
-                                onEditingFinished: if (root.session) root.session.batchOutputDirectory = text
+                                onEditingFinished: {
+                                    if (root.session) root.session.batchOutputDirectory = text
+                                    text = Qt.binding(() => root.session ? root.session.batchOutputDirectory : "")
+                                }
                             }
                             AppButton {
                                 text: qsTrId("action.browse")
@@ -428,13 +439,25 @@ Rectangle {
 
                         CoverChecks { visible: root.session && root.session.activeTab === "export" }
 
-                        RowLayout {
+                        GridLayout {
+                            id: mediaGrid
                             Layout.fillWidth: true
-                            spacing: 12
+                            columns: width >= resolutionMinimum + 230 ? 3 : 2
+                            columnSpacing: 12
+                            rowSpacing: Theme.settingsRowSpacing
+                            readonly property real resolutionMinimum: Math.max(156, Math.ceil(resolutionSize.advanceWidth) + 40)
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                Layout.preferredWidth: 0
+                                Layout.row: 0
+                                Layout.column: 0
+                                Layout.columnSpan: mediaGrid.columns === 3 ? 1 : 2
+                                Layout.preferredWidth: mediaGrid.resolutionMinimum
+                                TextMetrics {
+                                    id: resolutionSize
+                                    font: resolutionSelector.font
+                                    text: resolutionSelector.displayText
+                                }
                                 spacing: Theme.settingsLabelSpacing
                                 Text {
                                     text: qsTrId("dialog.video_export.resolution")
@@ -443,6 +466,7 @@ Rectangle {
                                     font.pixelSize: Theme.uiFontSize
                                 }
                                 AppComboBox {
+                                    id: resolutionSelector
                                     Layout.fillWidth: true
                                     enabled: root.session && root.session.outputModeIndex !== 1
                                     model: root.session ? root.session.resolutionOptions : []
@@ -453,7 +477,9 @@ Rectangle {
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                Layout.preferredWidth: 0
+                                Layout.row: mediaGrid.columns === 3 ? 0 : 1
+                                Layout.column: mediaGrid.columns === 3 ? 1 : 0
+                                Layout.preferredWidth: 100
                                 spacing: Theme.settingsLabelSpacing
                                 Text {
                                     text: qsTrId("dialog.video_export.fps")
@@ -478,7 +504,9 @@ Rectangle {
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                Layout.preferredWidth: 0
+                                Layout.row: mediaGrid.columns === 3 ? 0 : 1
+                                Layout.column: mediaGrid.columns === 3 ? 2 : 1
+                                Layout.preferredWidth: 100
                                 spacing: Theme.settingsLabelSpacing
                                 Text {
                                     text: qsTrId("dialog.video_export.audio_bitrate")
@@ -503,46 +531,68 @@ Rectangle {
                             }
                         }
 
-                        RowLayout {
+                        LabeledCombo {
                             Layout.fillWidth: true
-                            spacing: 12
+                            label: qsTrId("dialog.video_export.rate_mode")
+                            enabled: !!root.session && root.session.outputModeIndex !== 1
+                            options: root.session ? root.session.rateModeOptions : []
+                            currentValue: root.session ? root.session.rateModeIndex : 0
+                            onPicked: function(value) { if (root.session) root.session.rateModeIndex = value }
+                        }
+                        LabeledCombo {
+                            Layout.fillWidth: true
+                            visible: !!root.session && root.session.rateModeIndex === 0
+                            label: qsTrId("dialog.video_export.quality_level")
+                            enabled: !!root.session && root.session.outputModeIndex !== 1
+                            options: root.session ? root.session.qualityLevelOptions : []
+                            currentValue: root.session ? root.session.qualityLevelIndex : 1
+                            onPicked: function(value) { if (root.session) root.session.qualityLevelIndex = value }
+                        }
+                        LabeledFocusSlider {
+                            Layout.fillWidth: true
+                            visible: !!root.session && root.session.rateModeIndex === 1
+                            label: qsTrId("dialog.video_export.size_limit")
+                            enabled: !!root.session && root.session.outputModeIndex !== 1
+                            from: root.session ? root.session.sizeLimitMinMb : 5
+                            to: root.session ? root.session.sizeLimitMaxMb : 1000
+                            focusFrom: 20
+                            focusTo: 200
+                            value: root.session ? root.session.sizeLimitMb : 100
+                            unit: "MB"
+                            onMoved: function(value) { if (root.session) root.session.sizeLimitMb = Math.round(value) }
+                        }
+                        LabeledFocusSlider {
+                            Layout.fillWidth: true
+                            visible: !!root.session && root.session.rateModeIndex === 2
+                            label: qsTrId("dialog.video_export.video_bitrate")
+                            enabled: !!root.session && root.session.outputModeIndex !== 1
+                            from: root.session ? root.session.videoBitrateMinMbps : 0.1
+                            to: root.session ? root.session.videoBitrateMaxMbps : 100
+                            focusFrom: 1
+                            focusTo: 20
+                            value: root.session ? root.session.videoBitrateMbps : 8
+                            unit: "Mbps"
+                            decimals: -1
+                            onMoved: function(value) { if (root.session) root.session.videoBitrateMbps = value }
+                        }
+                        // One line, the same number the encoder is planned with. Batch
+                        // exports have one size per chart, so they show none.
+                        Text {
+                            readonly property real bytes: root.session ? root.session.estimatedSizeBytes : -1
+                            visible: !!root.session && root.session.activeTab === "export"
+                                     && root.session.outputModeIndex !== 1
+                            text: qsTrId("dialog.video_export.estimated_size")
+                                .arg(bytes >= 0 ? (bytes / 1e6).toFixed(1) + " MB" : "—")
+                            color: bytes >= 0 ? Theme.colors.text.secondary : Theme.colors.danger.primary
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.secondaryFontSize
+                        }
 
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredWidth: 0
-                                spacing: Theme.settingsLabelSpacing
-                                Text {
-                                    text: qsTrId("dialog.video_export.preset")
-                                    color: Theme.colors.text.secondary
-                                    font.family: Theme.uiFont
-                                    font.pixelSize: Theme.uiFontSize
-                                }
-                                AppComboBox {
-                                    Layout.fillWidth: true
-                                    enabled: root.session && root.session.outputModeIndex !== 1
-                                    model: root.session ? root.session.presetOptions : []
-                                    currentIndex: root.session ? root.session.presetIndex : 1
-                                    onActivated: if (root.session) root.session.presetIndex = currentIndex
-                                }
-                            }
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredWidth: 0
-                                spacing: Theme.settingsLabelSpacing
-                                Text {
-                                    text: qsTrId("dialog.video_export.size_preset")
-                                    color: Theme.colors.text.secondary
-                                    font.family: Theme.uiFont
-                                    font.pixelSize: Theme.uiFontSize
-                                }
-                                AppComboBox {
-                                    Layout.fillWidth: true
-                                    enabled: root.session && root.session.outputModeIndex !== 1
-                                    model: root.session ? root.session.sizePresetOptions : []
-                                    currentIndex: root.session ? root.session.sizePresetIndex : 0
-                                    onActivated: if (root.session) root.session.sizePresetIndex = currentIndex
-                                }
-                            }
+                        AppCheckBox {
+                            text: qsTrId("video_export.include_pv")
+                            enabled: root.session && root.session.outputModeIndex !== 1
+                            checked: root.session ? root.session.includePv : true
+                            onToggled: if (root.session) root.session.includePv = checked
                         }
 
                         SettingsSection {
@@ -556,6 +606,31 @@ Rectangle {
                                 Layout.fillWidth: true
                                 exportSession: root.session
                                 previewSession: root.previewSession
+                                highlightRange: root.session && root.session.dropAvailable
+                                highlightStartSeconds: root.session ? root.session.dropStartSeconds : 0
+                                highlightEndSeconds: root.session ? root.session.dropEndSeconds : 0
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                visible: root.session && root.session.dropAvailable
+                                Text {
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.WordWrap
+                                    text: root.session ? qsTrId("video_export.drop_range")
+                                        .arg(exportRangeSelector.formatSecond(root.session.dropStartSeconds))
+                                        .arg(exportRangeSelector.formatSecond(root.session.dropEndSeconds)) : ""
+                                    color: Theme.colors.text.secondary
+                                    font.family: Theme.uiFont
+                                    font.pixelSize: Theme.uiFontSize
+                                }
+                                AppButton {
+                                    text: qsTrId("video_export.use_drop_range")
+                                    enabled: root.settingsAvailable && root.session.rangePreviewAvailable
+                                    onClicked: {
+                                        root.session.adoptDropRange()
+                                        exportRangeSelector.seekToSelectedStart()
+                                    }
+                                }
                             }
                             RowLayout {
                                 Layout.fillWidth: true
@@ -625,6 +700,15 @@ Rectangle {
                         SettingsSection {
                             title: ""
 
+                            LabeledCombo {
+                                objectName: "exportHandOrderModeCombo"
+                                visible: root.previewSession && root.previewSession.handOrderFeaturesEnabled === true
+                                Layout.fillWidth: true
+                                label: qsTrId("dialog.video_export.option.hand_order_mode")
+                                options: root.session ? root.session.handOrderModeOptions : []
+                                currentValue: root.session ? root.session.handOrderModeIndex : 0
+                                onPicked: function(value) { if (root.session) root.session.handOrderModeIndex = value }
+                            }
 
                             AppSwitch {
                                 text: qsTrId("dialog.video_export.option.show_object_stats")
@@ -639,7 +723,9 @@ Rectangle {
                             AppButton {
                                 id: moreDisplayButton
                                 objectName: "exportMoreDisplayButton"
-                                text: qsTrId("dialog.video_export.more_display")
+                                text: checked ? qsTrId("dialog.video_export.less_display")
+                                              : qsTrId("dialog.video_export.more_display")
+                                Accessible.name: text
                                 checkable: true
                                 checked: false
                                 selected: checked
@@ -691,17 +777,9 @@ Rectangle {
                                 AppSwitch {
                                     objectName: "exportSlideTimingFromLaunchBeatSwitch"
                                     text: qsTrId("preview.canvas.slide_timing_from_launch_beat")
-                                    enabled: root.session ? root.session.showSlideJudgementTiming : false
+                                    enabled: root.session && root.session.showSlideJudgementTiming
                                     checked: root.session ? root.session.slideTimingFromLaunchBeat : false
                                     onToggled: if (root.session) root.session.slideTimingFromLaunchBeat = checked
-                                }
-                                AppSwitch {
-                                    objectName: "exportSlideTimingEarlyPerfectFromHeadSwitch"
-                                    Layout.leftMargin: 16
-                                    text: qsTrId("preview.canvas.slide_timing_early_perfect_from_head")
-                                    enabled: root.session ? root.session.showSlideJudgementTiming && root.session.slideTimingFromLaunchBeat : false
-                                    checked: root.session ? root.session.slideTimingEarlyPerfectFromHead : false
-                                    onToggled: if (root.session) root.session.slideTimingEarlyPerfectFromHead = checked
                                 }
                             }
                             AppSwitch {
@@ -757,9 +835,10 @@ Rectangle {
                                     objectName: "introStyleCombo"
                                     Layout.fillWidth: true
                                     model: [qsTrId("video_export.intro_style_classic"),
-                                            qsTrId("video_export.intro_style_pv_preview")]
-                                    currentIndex: root.session && root.session.introPvPreview ? 1 : 0
-                                    onActivated: if (root.session) root.session.introPvPreview = currentIndex === 1
+                                            qsTrId("video_export.intro_style_pv_preview"),
+                                            qsTrId("video_export.intro_style_chart_preview")]
+                                    currentIndex: root.session ? root.session.introStyleIndex : 0
+                                    onActivated: if (root.session) root.session.introStyleIndex = currentIndex
                                 }
                             }
                             RowLayout {
@@ -806,11 +885,10 @@ Rectangle {
                             }
                             LabeledSlider {
                                 objectName: "introPvBrightnessSlider"
-                                visible: !!root.session && root.session.introPvPreview
                                 label: qsTrId("dialog.render_settings.video.brightness")
                                 from: 0
                                 to: 100
-                                value: root.session ? root.session.introPvBrightness * 100 : 100
+                                value: root.session ? root.session.introPvBrightness * 100 : 80
                                 onMoved: function(v) {
                                     if (root.session)
                                         root.session.introPvBrightness = v / 100
@@ -825,7 +903,7 @@ Rectangle {
                             }
                             AppSwitch {
                                 text: qsTrId("cover.card_drop_shadow")
-                                checked: root.session ? root.session.introCardShadow : false
+                                checked: root.session ? root.session.introCardShadow : true
                                 onToggled: if (root.session) root.session.introCardShadow = checked
                             }
                             AppSwitch {
@@ -843,6 +921,26 @@ Rectangle {
                                    : qsTrId("video_export.intro_pv_segment")
                             visible: !!root.session && root.session.introPvPreview
                             enabled: root.introSettingsEnabled
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                AppComboBox {
+                                    Layout.fillWidth: true
+                                    model: [qsTrId("video_export.intro_automatic"), qsTrId("video_export.intro_follow_drop")]
+                                    currentIndex: root.session ? root.session.introWindowModeIndex : 0
+                                    onActivated: if (root.session) root.session.introWindowModeIndex = currentIndex
+                                }
+                                AppButton {
+                                    text: qsTrId("video_export.intro_automatic_segment")
+                                    onClicked: if (root.session) root.session.clearIntroWindowOverride()
+                                }
+                            }
+                            Text {
+                                text: root.session ? root.session.introSourceLabel : ""
+                                color: Theme.colors.text.secondary
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                            }
 
                             // The lane is the song. While the intro's music plays the
                             // playhead is the segment position (start + intro elapsed);
@@ -1038,7 +1136,12 @@ Rectangle {
                 Item { Layout.fillWidth: true }
                 AppButton {
                     text: root.session && root.session.exportRunning ? qsTrId("video_export.cancel_export") : qsTrId("video_export.start_export")
-                    enabled: !!root.session && (root.session.exportRunning || root.settingsAvailable)
+                    // A size limit that cannot hold the audio blocks a single MP4 export.
+                    enabled: !!root.session && (root.session.exportRunning
+                             || (root.settingsAvailable
+                                 && (root.session.activeTab === "batch"
+                                     || root.session.outputModeIndex === 1
+                                     || root.session.estimatedSizeBytes >= 0)))
                     emphasized: !(root.session && root.session.exportRunning)
                     onClicked: {
                         if (!root.session) return

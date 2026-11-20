@@ -3,6 +3,7 @@
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
 #include "core/scene/PreviewSlideTiming.h"
+#include "core/scene/PreviewOpacityCurves.h"
 #include "core/scene/PreviewTrackLayerState.h"
 
 #include <QCoreApplication>
@@ -171,19 +172,24 @@ bool launchBeats()
     ok &= check(QStringLiteral("(120){4}1pp4[2:1]/1h[2:1],,"),false);
     const auto quick=SimaiParser::parseForTimeline(QStringLiteral("(120){4}1-5[16:1],1,\nE"));
     const miacode::slide_judge::LaunchBeatIndex index(quick.noteMarkers);
+    const auto& marker = quick.noteMarkers.front();
+    const auto base = previewSlideTrackTimingForEffectiveFlowSpeed(7.5);
+    for (int step = -10; step <= 10; ++step) {
+        const double setting = step / 10.0;
+        const auto fade = previewSlideTrackTimingForMarker(marker, 7.5, setting);
+        const double offset = setting * .5;
+        ok &= require(near(fade.appearLeadInSeconds, base.appearLeadInSeconds - offset)
+                && near(fade.fullBrightLeadInSeconds, base.fullBrightLeadInSeconds - offset),
+            "signed timing shifts both endpoints of the native track fade");
+    }
     const auto timing=miacode::slide_judge::timingForMarker(quick.noteMarkers[0],&index);
-    ok &= require(timing.usesLaunchBeat && near(timing.brightnessCompleteSecond,.5)
-        && near(miacode::slide_judge::brightnessProgress(timing,.499),0)
-        && near(miacode::slide_judge::brightnessProgress(timing,.5),1),
-        "a launch beat already inside Perfect lights immediately at that beat");
-    const auto bypass=miacode::slide_judge::timingForMarker(quick.noteMarkers[0],&index,true);
-    ok &= require(bypass.fullBrightFromHead && bypass.usesLaunchBeat
-        && near(bypass.brightnessStartSecond,0) && near(bypass.brightnessCompleteSecond,0)
-        && near(miacode::slide_judge::brightnessProgress(bypass,-.001),0)
-        && near(miacode::slide_judge::brightnessProgress(bypass,0),1)
-        && near(miacode::slide_judge::brightnessProgress(bypass,.25),1)
-        && near(bypass.perfectStartSecond,timing.perfectStartSecond),
-        "early Perfect child option skips reveal at the original head without changing judgement");
+    ok &= require(timing.usesLaunchBeat && timing.fullBrightFromHead
+        && near(miacode::slide_judge::brightnessProgress(timing,-.1),1),
+        "an already-bright slide uses native opacity even before the head");
+    const auto fromHead = miacode::slide_judge::timingForMarker(quick.noteMarkers[0], &index, false);
+    ok &= require(!fromHead.usesLaunchBeat && fromHead.fullBrightFromHead
+        && near(fromHead.perfectStartSecond, timing.perfectStartSecond),
+        "native fade detection is independent of the reveal start preference");
     const auto noParent=miacode::slide_judge::timingForMarker(quick.noteMarkers[0],nullptr,true);
     ok &= require(!noParent.fullBrightFromHead && !noParent.usesLaunchBeat
         && noParent.brightnessCompleteSecond>0,
@@ -197,9 +203,8 @@ bool launchBeats()
     boundary.slideSegmentDurations[0]=boundaryDuration;
     boundary.endSecond=boundary.slideTraceSecond+boundaryDuration;
     const auto equal=miacode::slide_judge::timingForMarker(boundary,&index,true);
-    ok &= require(equal.valid && near(equal.perfectStartSecond,equal.brightnessStartSecond)
-        && !equal.fullBrightFromHead && near(equal.brightnessStartSecond,.5),
-        "Perfect starting exactly on the launch beat keeps launch behavior");
+    ok &= require(equal.valid && near(equal.perfectStartSecond,.5) && equal.fullBrightFromHead,
+        "Perfect starting exactly on the launch beat uses native opacity");
     boundary.slideSegmentDurations[0]+=0.1;
     boundary.endSecond+=0.1;
     const auto later=miacode::slide_judge::timingForMarker(boundary,&index,true);
@@ -210,7 +215,7 @@ bool launchBeats()
         miacode::timeline::offset::NonFiniteHandling::PassThrough);
     const miacode::slide_judge::LaunchBeatIndex shiftedIndex(shifted);
     const auto shiftedTiming=miacode::slide_judge::timingForMarker(shifted[0],&shiftedIndex);
-    ok &= require(shiftedTiming.usesLaunchBeat && near(shiftedTiming.brightnessStartSecond,-2.0),
+    ok &= require(shiftedTiming.usesLaunchBeat && near(shiftedTiming.brightnessStartSecond,-2.5),
         "launch matching preserves negative chart offsets without applying them twice");
     const auto shiftedBypass=miacode::slide_judge::timingForMarker(shifted[0],&shiftedIndex,true);
     ok &= require(shiftedBypass.fullBrightFromHead && near(shiftedBypass.brightnessStartSecond,-2.5)
@@ -224,14 +229,16 @@ bool launchBeats()
     fastState.skin.slideTrackImage=QImage(30,18,QImage::Format_ARGB32_Premultiplied);
     fastState.skin.slideTrackImage.fill(Qt::cyan);
     PreviewPreparedSceneCache fastCache;
-    fastCache.sync(fastState);
-    fastState.render.slideTimingEarlyPerfectFromHead=true;
     ok &= require(fastCache.sync(fastState)
         && fastCache.slideLikeLayer().entries[0].slideTimingGeometry->timing.fullBrightFromHead,
-        "the child option invalidates prepared timing even with unchanged chart data");
+        "an already-bright launch uses native fade in the prepared cache");
+    fastState.render.slideTimingFromLaunchBeat = false;
+    ok &= require(fastCache.sync(fastState)
+        && fastCache.slideLikeLayer().entries[0].slideTimingGeometry->timing.fullBrightFromHead,
+        "a matching launch still selects native fade when ordinary reveals start at the head");
     for(auto mode:{RenderMode::Native,RenderMode::EraseByArea,RenderMode::MaimuriDxStyle}) {
         fastState.muriRenderOptions.renderMode=mode;
-        for(double second:{0.0,.25,.52,.6,.625}) {
+        for(double second:{-.17,-.04,0.0,.25,.52,.6,.625}) {
             fastState.playheadSeconds=second;
             fastState.render.showSlideJudgementTiming=false;
             const auto plain=buildPreviewTrackLayerState(fastState,PreviewActiveMarkerView(fastState.noteMarkers),QRectF(0,0,540,540));

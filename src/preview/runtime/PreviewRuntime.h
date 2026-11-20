@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <QObject>
 #include <QElapsedTimer>
 #include <QHash>
@@ -92,6 +94,7 @@ public:
     explicit PreviewRuntime(QObject* parent = nullptr);
     ~PreviewRuntime() override;
 
+    void inheritDisplaySettings(const PreviewRuntime& source);
     void setVisibleHostWindow(QQuickWindow* window);
     void clearVisibleHostWindow(QQuickWindow* window);
     void notifyVisibleFramePresented();
@@ -106,25 +109,26 @@ public:
     void setStageMediaPresentationMode(
         miacode::preview::scene::PreviewStageMediaPresentationMode mode,
         bool requestUpdate = true);
-    void setExternalStageMediaDebugState(
-        miacode::preview::scene::PreviewExternalStageMediaType mediaType,
-        bool videoPlaybackActive,
-        double playbackSecond,
-        double clockDeltaSeconds,
-        qint64 videoFrameAgeMs,
-        bool videoFrameStalled,
-        bool requestUpdate = true);
-    void setExternalStageMediaProfileSummary(
-        bool separateSurfaceActive,
-        bool hasResolvedMedia,
-        bool hasVideoMedia,
-        const QString& mediaTypeName,
-        qint64 videoFrameCountTotal,
-        double videoFrameRate,
-        double videoFrameIntervalAvgMs,
-        double videoFrameIntervalMaxMs,
-        qint64 videoFrameStallCount,
-        const QString& videoDecodeDesc = QString());
+    struct ExternalStageMediaState {
+        miacode::preview::scene::PreviewExternalStageMediaType mediaType =
+            miacode::preview::scene::PreviewExternalStageMediaType::None;
+        bool separateSurfaceActive = false;
+        bool hasResolvedMedia = false;
+        bool hasVideoMedia = false;
+        QString mediaTypeName;
+        bool videoPlaybackActive = false;
+        double playbackSecond = 0.0;
+        double clockDeltaSeconds = 0.0;
+        qint64 videoFrameAgeMs = -1;
+        bool videoFrameStalled = false;
+        qint64 videoFrameCountTotal = 0;
+        double videoFrameRate = 0.0;
+        double videoFrameIntervalAvgMs = 0.0;
+        double videoFrameIntervalMaxMs = 0.0;
+        qint64 videoFrameStallCount = 0;
+        QString videoDecodeDesc;
+    };
+    void setExternalStageMediaState(const ExternalStageMediaState& state, bool requestUpdate = true);
     void setFramePacingDebugState(
         bool usesDisplayRefreshPacing,
         double targetFps,
@@ -138,6 +142,7 @@ public:
         const QUrl& backgroundImage,
         const QUrl& logoImage,
         const QVariantMap& bannerStyle = {});
+    void setIntroChartOutline(PreviewOutlineVariant variant, const QString& imagePath);
     void setIntroOverlayFrame(int authoringFrame, bool active, bool requestUpdate = true);
     void clearIntroOverlay(bool requestUpdate = true);
     void setIntroHidesChart(bool hides);
@@ -192,10 +197,12 @@ public:
     void setBackgroundBrightnessInner(double brightness);
     void setLayoutSquareScale(double scale);
     void setFireworkBrightness(double brightness);
+    void setFireworkStyle(PreviewFireworkStyle style);
     void setSmoothBrightness(bool smooth);
     void setBackgroundScaleMode(PreviewBackgroundScaleMode mode);
     void setTapFlowSpeed(double flowSpeed);
     void setTouchFlowSpeed(double flowSpeed);
+    void setStarFadeTiming(double timing);
     void setNoteFlowSpeed(double flowSpeed);
     void setSlideEarlierSecondAndTextOnTop(bool enabled);
     void setTapJudgeTextDistance(PreviewTapJudgeTextDistance distance);
@@ -211,11 +218,14 @@ public:
     void setSuppressDebugInfo(bool suppress);
     void setHudFontSettings(const miacode::preview::scene::PreviewHudFontSettings& settings);
     void setShowTimestamp(bool show);
+    void setCompletionDisplay(CompletionDisplay display);
     void setShowObjectStatsHud(bool show);
     void setCenterDisplayMode(miacode::preview_gameplay::CenterDisplayMode mode);
     void setSuppressObjectStatsHud(bool suppress);
     void setShowChartInfoHud(bool show);
     void setUseMineSkin(bool enabled);
+    void setShowHandOrderAnnotations(bool enabled);
+    void setShowHandOrderWatermark(bool enabled);
     void setChartInfo(const QString& title,
                       const QString& artist,
                       const QString& difficultyLabel,
@@ -298,6 +308,9 @@ signals:
     void noteSelectionFinished(const QSet<quint64>& locations, bool additive);
 
 private:
+    void refreshDebugInfoVisibility();
+    quint64 assetRevision_ = 0;
+    quint64 inheritedAssetRevision_ = 0;
     SimaiParseResult visualAidTiming_;
     int visualAidClockCount_ = 0;
     double visualAidFirstSeconds_ = 0.0;
@@ -325,51 +338,19 @@ private:
     bool introOverlayActive_ = false;
     int introOverlayFrame_ = 0;
     bool introHidesChart_ = false;
+    bool chartIntroPresentation_ = false;
+    std::optional<PreviewOutlineVariant> introOutlineVariant_;
+    QString introOutlineImagePath_;
+    miacode::preview::scene::PreviewAssetState introOutlineAssets_;
     bool introStillFrame_ = false;
     QVariantMap introBannerTrack_;
     QVariantMap introBannerTemplate_;
     QUrl introBackgroundImage_;
     QUrl introLogoImage_;
     QVariantMap introBannerStyle_;
-    // --- Firework PSO/texture warm-up (in-process QML path) ----------------
-    // Qt RHI compiles the custom PreviewQuickJudgeFireworkMaterial pipeline
-    // and uploads the firework colour-ball texture lazily on the FIRST
-    // firework draw. In a fresh session that first draw lands mid-playback
-    // when a real firework note fires, stalling the QSG render thread for
-    // ~50-300 ms. We warm this up here: once the skin assets (incl. the
-    // firework colour ball) are loaded, append a synthetic off-screen
-    // firework marker so the layer issues exactly one real textured draw
-    // at chart load — compiling the PSO + uploading the texture at a
-    // benign moment.
-    //
-    // `armed_` flips true when assets are ready. COMPLETION IS GATED ON A
-    // CONFIRMED PRESENT, not a blind present count and not a bare node emission:
-    // the scene root bumps `fireworkLayerDrawSignal_` (render thread) from a direct
-    // frameSwapped hook for each swapped frame that actually contained a firework
-    // node, and `done_` only flips once that signal has advanced past the value
-    // captured at arm (`fireworkWarmupArmDrawSignal_`) — i.e. once the synthetic
-    // has genuinely compiled the PSO, uploaded the texture AND reached the screen. To guarantee the
-    // synthetic is drawable wherever the playhead happens to be, it is
-    // RE-CENTERED on the live playhead whenever the playhead has travelled far
-    // enough to be about to leave the synthetic's lifecycle window, and on every
-    // marker refresh / reset while armed-but-not-done (its lifecycle window is
-    // fixed relative to its trigger second, so a seek / negative pre-roll /
-    // play-start would otherwise move the playhead out of the window and the
-    // layer would never draw it — the historical "probabilistic first-firework
-    // hitch"). The travel test is core/scene/PreviewFireworkWarmupPolicy.h,
-    // calibrated against the layer's real window by
-    // preview_firework_warmup_policy_spec; it replaced an unconditional
-    // per-playhead-change re-centre that cost a full PreviewPreparedSceneCache
-    // rebuild on EVERY preview frame for as long as the warm-up stayed armed.
-    // INVARIANT: while armed-but-not-done, exactly one synthetic is present in
-    // frameState_.noteMarkers and fireworkWarmupCenterSecond_ is its centre —
-    // any site that clears noteMarkers must re-append (setNoteMarkers, reset).
-    // `fireworkWarmupArmPresentCount_` + a present-count cap is only a backstop:
-    // if the firework never renders at all (layer disabled, non-rendering
-    // surface) the warm-up is abandoned so the synthetic and the per-playhead
-    // re-center work cannot linger for the whole session. Re-armed on
-    // visible-window change (a new QQuickWindow == a fresh QRhi pipeline cache,
-    // so the previously-warmed PSO/texture are gone).
+    // Warm the selected style's pipelines and textures with one synthetic marker.
+    // Completion requires a presented frame containing its render node. Recenter
+    // the marker during seeks and rearm when the visible window changes.
     bool fireworkWarmupArmed_ = false;
     bool fireworkWarmupDone_ = false;
     qint64 fireworkWarmupArmPresentCount_ = -1;

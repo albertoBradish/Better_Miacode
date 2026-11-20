@@ -8,24 +8,27 @@ Rectangle {
     required property var hostWindow
     required property var windowChrome
 
-    signal toggleSidebarRequested()
-    signal toggleBottomRequested()
+    signal workspaceSlotRequested(int index)
+    property var workspaceSlotTitles: []
     signal openRequested()
     signal openCurrentFolderRequested()
     signal saveRequested()
     signal saveWholeDocumentRequested()
     signal undoRequested()
     signal redoRequested()
+    signal handOrderRequested(string command)
+    property var handOrderRows: []
+    property var shortcuts: null
+    property bool handOrderEnabled: false
+    property bool handOrderAnalyzeEnabled: false
+    property bool handOrderBreakdown: false
     signal audioSettingsRequested()
     signal previewSettingsRequested()
     signal unavailableFeatureRequested(string featureName)
 
-    property bool sidebarActive: false
-    property bool bottomActive: false
     property bool saveEnabled: false
     property bool wholeDocumentSaveEnabled: false
     property bool currentFolderAvailable: false
-    property bool bottomPanelEnabled: true
     property bool canUndo: false
     property bool canRedo: false
     property bool integratedInTitleBar: false
@@ -102,12 +105,14 @@ Rectangle {
         }
         Item { width: 6; height: 1 }
         ToolBarButton {
+            property bool preservesEditTarget: true
             iconSource: Qt.resolvedUrl("icons/undo.svg")
             tooltip: qsTrId("qml.undo")
             enabled: root.canUndo
             onClicked: root.undoRequested()
         }
         ToolBarButton {
+            property bool preservesEditTarget: true
             iconSource: Qt.resolvedUrl("icons/redo.svg")
             tooltip: qsTrId("action.redo")
             enabled: root.canRedo
@@ -125,6 +130,39 @@ Rectangle {
         z: 1
 
         ToolBarButton {
+            objectName: "handOrderBasicLayoutButton"
+            visible: root.handOrderBreakdown
+            iconSource: Qt.resolvedUrl("icons/tools.svg")
+            label: qsTrId("hand_order.workflow.basic")
+            tooltip: qsTrId("hand_order.basic_layout_scope")
+                + "\n" + qsTrId("hand_order.basic_layout_next_step")
+                + (root.shortcuts && root.shortcuts.revision >= 0
+                    ? "\n" + root.shortcuts.displayText("hand_order.basic_layout") : "")
+            enabled: root.handOrderAnalyzeEnabled
+            focusPolicy: Qt.NoFocus
+            onClicked: root.handOrderRequested("hand_order.basic_layout")
+        }
+        ToolBarButton {
+            objectName: "handOrderContextOptimizationButton"
+            visible: root.handOrderBreakdown
+            iconSource: Qt.resolvedUrl("icons/tools.svg")
+            label: qsTrId("hand_order.workflow.context")
+            tooltip: qsTrId("hand_order.workflow.context_help")
+            enabled: root.handOrderAnalyzeEnabled
+            focusPolicy: Qt.NoFocus
+            onClicked: root.handOrderRequested("hand_order.analyze")
+        }
+        ToolBarButton {
+            objectName: "handOrderPlayReviewButton"
+            visible: root.handOrderBreakdown
+            iconSource: Qt.resolvedUrl("icons/tools.svg")
+            label: qsTrId("hand_order.workflow.play_review")
+            tooltip: qsTrId("hand_order.play_review.notice")
+            enabled: root.handOrderAnalyzeEnabled
+            focusPolicy: Qt.NoFocus
+            onClicked: root.handOrderRequested("hand_order.play_review")
+        }
+        ToolBarButton {
             visible: root.previewSettingsVisible
             iconSource: Qt.resolvedUrl("icons/audio-settings.svg")
             label: qsTrId("action.audio_settings")
@@ -138,20 +176,15 @@ Rectangle {
             tooltip: qsTrId("action.video_settings")
             onClicked: root.previewSettingsRequested()
         }
-        ToolBarButton {
-            iconSource: Qt.resolvedUrl("icons/panel-left.svg")
-            filledIconSource: Qt.resolvedUrl("icons/panel-left-fill.svg")
-            tooltip: root.sidebarActive ? qsTrId("qml.close_sidebar") : qsTrId("qml.open_sidebar")
-            active: root.sidebarActive
-            onClicked: root.toggleSidebarRequested()
-        }
-        ToolBarButton {
-            iconSource: Qt.resolvedUrl("icons/panel-bottom.svg")
-            filledIconSource: Qt.resolvedUrl("icons/panel-bottom-fill.svg")
-            tooltip: root.bottomActive ? qsTrId("qml.close_bottom_panel") : qsTrId("qml.open_bottom_panel")
-            enabled: root.bottomPanelEnabled
-            active: root.bottomActive
-            onClicked: root.toggleBottomRequested()
+        Repeater {
+            model: 3
+            delegate: ToolBarButton {
+                required property int index
+                objectName: "workspaceSlot" + (index + 1)
+                iconSource: Qt.resolvedUrl("icons/workspace-" + (index + 1) + ".svg")
+                tooltip: root.workspaceSlotTitles[index] ?? ""
+                onClicked: root.workspaceSlotRequested(index)
+            }
         }
     }
 

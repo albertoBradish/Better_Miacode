@@ -6,6 +6,7 @@
 #include "common/PixelGeometry.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/quick_scene/PreviewQuickHudLayer.h"
+#include "preview/quick_scene/PreviewQuickSimulatedPlayLayer.h"
 #include "core/scene/PreviewFrameState.h"
 #include "core/scene/PreviewHudState.h"
 #include "core/scene/PreviewNoteLayerAnomaly.h"
@@ -36,7 +37,7 @@
 
 namespace {
 
-constexpr int kPreviewQuickSceneLayerSlotCount = 23;
+constexpr int kPreviewQuickSceneLayerSlotCount = 24;
 constexpr qint64 kNoteLayersEmptyAnomalyLogIntervalMs = 2000;
 
 class PreviewQuickRootNode final : public QSGNode
@@ -143,106 +144,32 @@ void updateCenterDisplaySlot(
     const miacode::preview::scene::PreviewFrameState& state,
     const QSize& renderSize,
     QQuickWindow* window,
-    miacode::preview_gameplay::CenterDisplayMode& cachedMode,
-    double& cachedDeluxeRate,
-    double& cachedFinaleRate,
-    int& cachedCombo,
-    int& cachedDxScore,
-    int& cachedDxScoreMax,
-    int& cachedBreakCurrent,
-    int& cachedBreakTotal,
-    QSize& cachedRenderSize,
-    qreal& cachedDpr)
+    std::optional<miacode::preview::hud::CenterDisplayKey>& cachedKey)
 {
-    if (slot == nullptr || window == nullptr) {
-        return;
-    }
-    if (state.render.centerDisplayMode == miacode::preview_gameplay::CenterDisplayMode::Off) {
-        QSGNode* old = slot->firstChild();
-        if (old != nullptr) {
-            // Node owns its texture (beta8 leak fix below) — plain delete frees both.
-            slot->removeChildNode(old);
-            delete old;
-        }
-        cachedMode = miacode::preview_gameplay::CenterDisplayMode::Off;
-        return;
-    }
+    if (slot == nullptr || window == nullptr) return;
     const qreal dpr = window->effectiveDevicePixelRatio();
-    const QSize imageSize(qRound(renderSize.width() * dpr), qRound(renderSize.height() * dpr));
-    const bool isConstantDisplay =
-        state.render.centerDisplayMode == miacode::preview_gameplay::CenterDisplayMode::AchievementDxMinus101;
-    const bool isBreakOnlyDisplay =
-        state.render.centerDisplayMode == miacode::preview_gameplay::CenterDisplayMode::AchievementDxMinus100;
-    const miacode::preview::scene::PreviewHudStats stats =
-        !isConstantDisplay ? state.hudStatsSnapshot : miacode::preview::scene::PreviewHudStats();
-    if (!isConstantDisplay && !isBreakOnlyDisplay) {
-        if (cachedMode == state.render.centerDisplayMode
-            && qFuzzyCompare(cachedDeluxeRate + 1.0, stats.deluxeRate + 1.0)
-            && qFuzzyCompare(cachedFinaleRate + 1.0, stats.finaleRate + 1.0)
-            && cachedCombo == stats.combo
-            && cachedDxScore == stats.dxScore
-            && cachedDxScoreMax == stats.dxScoreMax
-            && cachedRenderSize == renderSize
-            && qFuzzyCompare(cachedDpr + 1.0, dpr + 1.0)) {
-            return;
-        }
-        cachedDeluxeRate = stats.deluxeRate;
-        cachedFinaleRate = stats.finaleRate;
-        cachedCombo = stats.combo;
-        cachedDxScore = stats.dxScore;
-        cachedDxScoreMax = stats.dxScoreMax;
-    }
-    if (isConstantDisplay || isBreakOnlyDisplay) {
-        bool unchanged = cachedMode == state.render.centerDisplayMode
-            && cachedRenderSize == renderSize
-            && qFuzzyCompare(cachedDpr + 1.0, dpr + 1.0);
-        if (isBreakOnlyDisplay && unchanged) {
-            unchanged = cachedBreakCurrent == stats.deluxeBreakCurrent
-                && cachedBreakTotal == stats.deluxeBreakTotal;
-            cachedBreakCurrent = stats.deluxeBreakCurrent;
-            cachedBreakTotal = stats.deluxeBreakTotal;
-        }
-        if (unchanged) {
-            return;
-        }
-    }
-    QImage image(imageSize, QImage::Format_ARGB32_Premultiplied);
-    image.setDevicePixelRatio(dpr);
-    image.fill(Qt::transparent);
-    QPainter painter(&image);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    painter.setRenderHint(QPainter::TextAntialiasing, true);
-    miacode::preview::hud::paintCenterDisplay(painter, state, renderSize);
-    painter.end();
-    QSGTexture* texture = window->createTextureFromImage(image);
-    if (texture == nullptr) {
-        return;
-    }
-    QSGSimpleTextureNode* node = dynamic_cast<QSGSimpleTextureNode*>(slot->firstChild());
-    if (node == nullptr) {
-        QSGNode* old = slot->firstChild();
-        if (old != nullptr) {
+    const auto key = miacode::preview::hud::centerDisplayKey(state, renderSize, dpr);
+    if (cachedKey && *cachedKey == key) return;
+    const auto display = miacode::preview::hud::rasterizeCenterDisplay(state, renderSize, dpr);
+    if (display.image.isNull()) {
+        if (QSGNode* old = slot->firstChild()) {
             slot->removeChildNode(old);
             delete old;
         }
+        cachedKey = key;
+        return;
+    }
+    QSGTexture* texture = window->createTextureFromImage(display.image);
+    if (texture == nullptr) return;
+    auto* node = static_cast<QSGSimpleTextureNode*>(slot->firstChild());
+    if (node == nullptr) {
         node = new QSGSimpleTextureNode();
-        // beta8 leak fix — the node MUST own its texture. Every stats change (once per judged
-        // note group) replaces the texture via setTexture(), and without OwnsTexture Qt never
-        // deletes the previous one: each replacement leaked a full-viewport QSGTexture (GPU
-        // copy + the QImage CPU copy retained inside QSGPlainTexture, ~4.6 MB at 512x512 @
-        // dpr 1.5). That was the 30-44 MB/s play-time leak behind the 掉帧→闪退 reports
-        // (logs_34/35). With OwnsTexture, setTexture() deletes the replaced texture and the
-        // node destructor deletes the last one — which is why the mode-off / type-mismatch
-        // paths above do a plain `delete old` with NO manual texture()-delete (that would
-        // now double-free). See docs/PREVIEW_FRAMEDROP_DIAGNOSIS_AND_FIX_SPEC_ZH.md §8.
         node->setOwnsTexture(true);
         slot->appendChildNode(node);
     }
     node->setTexture(texture);
-    node->setRect(0, 0, renderSize.width(), renderSize.height());
-    cachedMode = state.render.centerDisplayMode;
-    cachedRenderSize = renderSize;
-    cachedDpr = dpr;
+    node->setRect(display.rect);
+    cachedKey = key;
 }
 
 PreviewQuickRootNode* ensureLayerSlotRoot(QSGNode* oldNode, QQuickWindow* window)
@@ -708,6 +635,14 @@ void PreviewQuickSceneRoot::setLayerFlags(miacode::preview::scene::PreviewRender
     update();
 }
 
+void PreviewQuickSceneRoot::setStageBackgroundEnabled(bool enabled)
+{
+    if (stageBackgroundEnabled_ == enabled) return;
+    stageBackgroundEnabled_ = enabled;
+    emit stageBackgroundEnabledChanged();
+    update();
+}
+
 void PreviewQuickSceneRoot::setBackgroundColor(const QColor& color)
 {
     if (backgroundColor_ == color)
@@ -1038,8 +973,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         const quint64 previousGeneration = root->generation();
         root->resetTextureGeneration();
         textures = root->textures();
-        cachedCenterDisplayMode_ = miacode::preview_gameplay::CenterDisplayMode::Off;
-        cachedCenterDisplayRenderSize_ = QSize();
+        cachedCenterDisplayKey_.reset();
         appendQuickSceneLog(
             QStringLiteral("texture_generation_reset"),
             QString(
@@ -1106,7 +1040,19 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
 
     const bool releaseStorage = preparedCache_.key().storageGeneration != state->sceneStorageGeneration;
     const bool cacheRebuilt = preparedCache_.sync(*state);
+    // The same Maimuri renderer consumes the player's resolved area times.
+    // Keep the original report intact for the ordinary Muri mode.
+    std::optional<miacode::preview::scene::PreviewFrameState> playState;
+    if (const auto* play = preparedCache_.playSimulation()) {
+        playState = *state;
+        playState->muriAnalysisReport = play->report();
+        state = &*playState;
+    }
     if (cacheRebuilt) {
+        muriPadCursor_.reset(releaseStorage);
+        muriActionCursor_.reset(releaseStorage);
+        muriPadIndices_ = {};
+        muriActionIndices_ = {};
         guideCursor_.reset(releaseStorage);
         headCursor_.reset(releaseStorage);
         trackCursor_.reset(releaseStorage);
@@ -1121,6 +1067,10 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     }
 
     const double playheadSeconds = state->playheadSeconds;
+    miacode::preview::scene::syncPreviewLayerWindowCursor(preparedCache_.muriPadLayer(), playheadSeconds, &muriPadCursor_);
+    miacode::preview::scene::syncPreviewLayerWindowCursor(preparedCache_.muriActionLayer(), playheadSeconds, &muriActionCursor_);
+    preparedCache_.collectMuriPadIndices(*state, muriPadCursor_.activePreparedIndices, &muriPadIndices_);
+    preparedCache_.collectMuriActionIndices(*state, muriActionCursor_.activePreparedIndices, &muriActionIndices_);
     miacode::preview::scene::syncPreviewLayerWindowCursor(preparedCache_.guideLayer(), playheadSeconds, &guideCursor_);
     miacode::preview::scene::syncPreviewLayerWindowCursor(preparedCache_.headLayer(), playheadSeconds, &headCursor_);
     miacode::preview::scene::syncPreviewLayerWindowCursor(preparedCache_.slideLikeLayer(), playheadSeconds, &trackCursor_);
@@ -1146,10 +1096,13 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
             layerStat.activeCount = activeCount;
         };
 
+    // Only events generated from the simulated player's inputs can judge.
+    const bool showAutoplayFeedback = !preparedCache_.key().showSimulatedPlay;
     int slotIndex = 0;
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::StageBackgroundLayer),
+        stageBackgroundEnabled_ && miacode::preview::scene::previewRenderLayerEnabled(
+            layerFlags_, miacode::preview::scene::StageBackgroundLayer),
         "stage_background",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
@@ -1160,21 +1113,13 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         *state,
         renderSize,
         window(),
-        cachedCenterDisplayMode_,
-        cachedCenterDisplayDeluxeRate_,
-        cachedCenterDisplayFinaleRate_,
-        cachedCenterDisplayCombo_,
-        cachedCenterDisplayDxScore_,
-        cachedCenterDisplayDxScoreMax_,
-        cachedCenterDisplayBreakCurrent_,
-        cachedCenterDisplayBreakTotal_,
-        cachedCenterDisplayRenderSize_,
-        cachedCenterDisplayDpr_);
+        cachedCenterDisplayKey_);
     // The skin overlays the full-circle firework through its own alpha.
     bool judgeFireworkNodeProduced = false;
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::JudgeFireworkLayer),
+        showAutoplayFeedback && miacode::preview::scene::previewRenderLayerEnabled(
+            layerFlags_, miacode::preview::scene::JudgeFireworkLayer),
         "judge_firework",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
@@ -1215,7 +1160,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         "muri_pad",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
-            return muriPadLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
+            return muriPadLayer_.updateNode(oldChild, *state, muriPadIndices_, renderSize, window(), textures);
         });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
@@ -1223,7 +1168,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         "muri_action",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
-            return muriActionLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
+            return muriActionLayer_.updateNode(oldChild, *state, muriActionIndices_, renderSize, window(), textures);
         });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
@@ -1316,7 +1261,8 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     // slots). Matches MajdataPlay, where Slide-OK sprites sit under the notes.
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::ChartReviewLayer),
+        showAutoplayFeedback && miacode::preview::scene::previewRenderLayerEnabled(
+            layerFlags_, miacode::preview::scene::ChartReviewLayer),
         "slide_shape_native",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
@@ -1348,7 +1294,8 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::JudgeTouchLayer),
+        showAutoplayFeedback && miacode::preview::scene::previewRenderLayerEnabled(
+            layerFlags_, miacode::preview::scene::JudgeTouchLayer),
         "touch_judge",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
@@ -1420,7 +1367,8 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     );
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::JudgeLayer),
+        showAutoplayFeedback && miacode::preview::scene::previewRenderLayerEnabled(
+            layerFlags_, miacode::preview::scene::JudgeLayer),
         "judge_effect",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
@@ -1440,7 +1388,8 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     );
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::ChartReviewLayer),
+        showAutoplayFeedback && miacode::preview::scene::previewRenderLayerEnabled(
+            layerFlags_, miacode::preview::scene::ChartReviewLayer),
         "chart_review",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
@@ -1480,6 +1429,14 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         preparedCache_.maimuriDxJudgeLayer().entries.size(),
         maimuriDxJudgeCursor_.activePreparedIndices.size()
     );
+    updateLayerSlotProfiled(layerSlotAt(root, slotIndex++),
+        preparedCache_.key().showSimulatedPlay
+            && miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::SimulatedPlayLayer),
+        "simulated_play", layerStatsForFrame, [&](QSGNode* oldChild) {
+            using namespace miacode::preview::scene;
+            return updatePreviewSimulatedPlayLayer(oldChild, *preparedCache_.playSimulation(), playheadSeconds,
+                playfieldRectForStage(stageRectForSize(renderSize), state->render.layoutSquareScale), window());
+        });
     // Selection is transient editor feedback. Export roots have no runtime.
     updateLayerSlotProfiled(layerSlotAt(root, slotIndex++), runtime_ != nullptr,
         "selection", layerStatsForFrame, [&](QSGNode* oldChild) {

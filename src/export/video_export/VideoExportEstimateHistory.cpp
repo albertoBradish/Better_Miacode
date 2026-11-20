@@ -1,6 +1,7 @@
 #include "common/RuntimePaths.h"
 #include "export/video_export/VideoExportEstimateHistory.h"
 #include "export/video_export/VideoExportSnapshot.h"
+#include "common/RuntimePaths.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -9,7 +10,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
-#include <QStandardPaths>
 
 #include <algorithm>
 #include <cmath>
@@ -18,49 +18,13 @@ namespace miacode::video_export {
 namespace {
 
 constexpr int kMaximumSamples = 64;
-constexpr auto kHistorySchema = "miacode_export_performance_v1";
+constexpr auto kHistorySchema = "miacode_export_performance_v2";
 
 struct Sample {
     ExportEstimateProfile profile;
     qint64 elapsedMs = 0;
     QString createdAtUtc;
 };
-
-QString presetToken(VideoExportPreset preset)
-{
-    return preset == VideoExportPreset::Fast
-        ? QStringLiteral("fast")
-        : QStringLiteral("high_quality");
-}
-
-VideoExportSizePreset sizePresetFromToken(const QString& token)
-{
-    if (token == QLatin1String("compact")) {
-        return VideoExportSizePreset::Compact;
-    }
-    if (token == QLatin1String("ultra_compact_with_pv")) {
-        return VideoExportSizePreset::UltraCompactWithPv;
-    }
-    if (token == QLatin1String("ultra_compact")) {
-        return VideoExportSizePreset::UltraCompact;
-    }
-    return VideoExportSizePreset::Standard;
-}
-
-QString sizePresetToken(VideoExportSizePreset preset)
-{
-    switch (preset) {
-    case VideoExportSizePreset::Compact:
-        return QStringLiteral("compact");
-    case VideoExportSizePreset::UltraCompactWithPv:
-        return QStringLiteral("ultra_compact_with_pv");
-    case VideoExportSizePreset::UltraCompact:
-        return QStringLiteral("ultra_compact");
-    case VideoExportSizePreset::Standard:
-    default:
-        return QStringLiteral("standard");
-    }
-}
 
 bool validProfile(const ExportEstimateProfile& profile)
 {
@@ -110,12 +74,10 @@ QVector<Sample> loadSamples(const QString& path)
         sample.profile.outputHeight = object.value(QStringLiteral("height")).toInt();
         sample.profile.fps = object.value(QStringLiteral("fps")).toInt();
         sample.profile.durationSeconds = object.value(QStringLiteral("duration_seconds")).toDouble();
-        const QString preset = object.value(QStringLiteral("preset")).toString();
-        sample.profile.preset = preset == QLatin1String("fast")
-            ? VideoExportPreset::Fast
-            : VideoExportPreset::HighQuality;
-        sample.profile.sizePreset = sizePresetFromToken(
-            object.value(QStringLiteral("size_preset")).toString());
+        sample.profile.rateMode = videoRateModeFromToken(
+            object.value(QStringLiteral("rate_mode")).toString(), sample.profile.rateMode);
+        sample.profile.qualityLevel = videoQualityLevelFromToken(
+            object.value(QStringLiteral("quality_level")).toString(), sample.profile.qualityLevel);
         sample.profile.outputMode = videoExportOutputModeFromToken(object.value(QStringLiteral("output_mode")).toString());
         sample.elapsedMs = object.value(QStringLiteral("elapsed_ms")).toVariant().toLongLong();
         sample.createdAtUtc = object.value(QStringLiteral("created_at_utc")).toString();
@@ -137,8 +99,8 @@ QJsonObject sampleToJson(const Sample& sample)
     object.insert(QStringLiteral("height"), sample.profile.outputHeight);
     object.insert(QStringLiteral("fps"), sample.profile.fps);
     object.insert(QStringLiteral("duration_seconds"), sample.profile.durationSeconds);
-    object.insert(QStringLiteral("preset"), presetToken(sample.profile.preset));
-    object.insert(QStringLiteral("size_preset"), sizePresetToken(sample.profile.sizePreset));
+    object.insert(QStringLiteral("rate_mode"), videoRateModeToken(sample.profile.rateMode));
+    object.insert(QStringLiteral("quality_level"), videoQualityLevelToken(sample.profile.qualityLevel));
     object.insert(QStringLiteral("output_mode"), videoExportOutputModeToken(sample.profile.outputMode));
     object.insert(QStringLiteral("elapsed_ms"), sample.elapsedMs);
     return object;
@@ -153,15 +115,18 @@ ExportEstimateProfile exportEstimateProfileForSnapshot(const ::VideoExportSnapsh
     profile.outputHeight = snapshot.outputHeight;
     profile.fps = snapshot.fps;
     profile.durationSeconds = snapshot.contentDurationSeconds;
-    profile.preset = snapshot.preset;
-    profile.sizePreset = snapshot.sizePreset;
+    profile.rateMode = snapshot.encoding.mode;
+    profile.qualityLevel = snapshot.encoding.quality;
     profile.outputMode = snapshot.outputMode;
     return profile;
 }
 
 QString exportEstimateHistoryPath()
 {
-    const QString root = miacode::runtime_paths::directory("cache");
+    const QString root = miacode::runtime_paths::dataDirectory();
+    if (root.isEmpty()) {
+        return QString();
+    }
     return QDir(root).filePath(QStringLiteral("export-performance-history.json"));
 }
 
@@ -181,8 +146,8 @@ qint64 predictedExportTotalMs(
     const double requestedWork = workUnits(profile);
     for (const Sample& sample : loadSamples(resolvedHistoryPath(historyPathOverride))) {
         if (sample.profile.outputMode != profile.outputMode
-            || sample.profile.preset != profile.preset
-            || sample.profile.sizePreset != profile.sizePreset) {
+            || sample.profile.rateMode != profile.rateMode
+            || sample.profile.qualityLevel != profile.qualityLevel) {
             continue;
         }
         const double sampleWork = workUnits(sample.profile);
@@ -237,6 +202,9 @@ bool recordSuccessfulExportPerformance(
         return false;
     }
     const QString path = resolvedHistoryPath(historyPathOverride);
+    if (path.isEmpty()) {
+        return false;
+    }
     QVector<Sample> samples = loadSamples(path);
     samples.append(Sample{profile, elapsedMs, QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)});
     if (samples.size() > kMaximumSamples) {

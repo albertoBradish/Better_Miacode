@@ -10,10 +10,12 @@
 #include "app/services/ChartWorkspace.h"
 #include "core/analysis/MuriRenderOptions.h"
 #include "core/analysis/MuriTypes.h"
+#include "core/analysis/MuriPanelEntries.h"
 #include "common/TaskCancellation.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"
 #include "core/analysis/TimelineSlowRefresh.h"
+#include "core/analysis/hand_order/HandPlaySimulation.h"
 
 namespace miacode {
 
@@ -36,12 +38,23 @@ struct AnalysisSnapshot {
     int difficultyId = 0;
     bool available = false;
     bool pending = false;
+    bool validationReady = false;
     SimaiValidationLocale locale = SimaiValidationLocale::English;
     SimaiValidationReport validation;
     QVector<TimelineNoteMarker> noteMarkers;
     QByteArray noteMarkerSignature;
     MuriAnalysisReport muri;
     QVector<MuriStaticReference> muriStaticReferences;
+    QVector<miacode::muri::MuriPanelEntrySource> muriPanelEntries;
+};
+
+struct PlayAnalysisSnapshot {
+    quint64 revision = 0;
+    quint64 generation = 0;
+    int difficultyId = 0;
+    bool enabled = false;
+    bool pending = false;
+    QVector<hand_order::PlayIssue> issues;
 };
 
 class AnalysisService final : public QObject
@@ -59,6 +72,8 @@ public:
 
     AnalysisSnapshot snapshot() const;
     const ParsedChartSnapshot& parsedSnapshot() const { return parsedSnapshot_; }
+    const PlayAnalysisSnapshot& playSnapshot() const { return playSnapshot_; }
+    MuriRenderOptions playOptions() const { return renderOptions_; }
     void requestAnalysis();
     void shutdown();
     void setDiagnosticsDeferred(bool deferred);
@@ -77,11 +92,11 @@ public:
 
 signals:
     void parseReady(int difficultyId, quint64 revision);
-    // The whole pending/available value is installed before this signal is
-    // emitted. Consumers read it once and gate the complete package by the
-    // workspace (difficultyId, revision) identity.
+    // Each stage publishes under the same workspace identity. available marks
+    // complete diagnostics; validationReady also permits syntax-only results.
     void snapshotChanged(int difficultyId, quint64 revision);
     void analysisReady(int difficultyId, quint64 revision);
+    void playSnapshotChanged();
 
 private:
     void cancelPendingAnalysis();
@@ -89,10 +104,13 @@ private:
     static AnalysisSnapshot diagnose(const ParsedChartSnapshot& parsed,
                                     SimaiValidationLocale locale,
                                     const MuriRenderOptions& renderOptions,
-                                    double staticTapOnSlideThresholdSeconds);
+                                    double staticTapOnSlideThresholdSeconds,
+                                    const std::function<void(const SimaiValidationReport&)>& validationReady = {});
     void dispatchPendingParse();
     void requestDiagnostics();
     void dispatchDiagnostics();
+    void refreshPlayAnalysis(const ParsedChartSnapshot& request);
+    void dispatchPlayAnalysis();
     bool identityIsCurrent(int difficultyId, quint64 revision) const;
 
     ChartWorkspace* workspace_ = nullptr;
@@ -101,13 +119,17 @@ private:
     double staticTapOnSlideThresholdSeconds_ = -1.0;
     ParsedChartSnapshot parsedSnapshot_;
     AnalysisSnapshot snapshot_;
+    PlayAnalysisSnapshot playSnapshot_;
     std::optional<ParsedChartSnapshot> pendingParse_;
     QTimer diagnosticsTimer_;
+    QTimer playTimer_;
     miacode::task::CancellationFlag parseCancellation_;
     miacode::task::CancellationFlag diagnosticsCancellation_;
+    miacode::task::CancellationFlag playCancellation_;
     quint64 diagnosticsGeneration_ = 0;
     bool parseWorkerRunning_ = false;
     bool diagnosticsWorkerRunning_ = false;
+    bool playWorkerRunning_ = false;
     bool diagnosticsRequested_ = false;
     bool diagnosticsDeferred_ = false;
     bool shuttingDown_ = false;

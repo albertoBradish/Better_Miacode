@@ -4,6 +4,7 @@
 #include <QTextStream>
 
 #include "app/runtime/playback/PlaybackIdentityGate.h"
+#include "app/runtime/playback/PreviewFramePacingPolicy.h"
 #include "app/runtime/playback/SelectionPlaybackRange.h"
 
 namespace {
@@ -71,6 +72,21 @@ bool verifySelectionAuditionBounds(QTextStream& err)
     return ok;
 }
 
+bool verifyLowPerformanceFrameDeadlines(QTextStream& err)
+{
+    using miacode::runtime::preview_pacing::nextLowPerformanceFrameDeadline;
+    constexpr qint64 interval = 16666667;
+    constexpr qint64 deadline = interval * 10;
+    bool ok = require(nextLowPerformanceFrameDeadline(deadline, deadline, interval) == deadline + interval,
+        QStringLiteral("each low-performance tick advances exactly one 60 Hz interval"), err);
+    ok &= require(nextLowPerformanceFrameDeadline(deadline, deadline + 2000000, interval) == deadline + interval,
+        QStringLiteral("a small timer delay does not shift the 60 Hz phase"), err);
+    const qint64 late = deadline + interval * 4;
+    ok &= require(nextLowPerformanceFrameDeadline(deadline, late, interval) == late + interval,
+        QStringLiteral("a slow frame drops missed slots and does not queue a catch-up burst"), err);
+    return ok;
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -80,6 +96,7 @@ int main(int argc, char** argv)
     bool ok = true;
     ok &= verifyPlaybackIdentityGateBehavior(err);
     ok &= verifySelectionAuditionBounds(err);
+    ok &= verifyLowPerformanceFrameDeadlines(err);
     if (ok) {
         QTextStream(stdout) << "playback_coordinator_spec: OK" << Qt::endl;
     }

@@ -6,6 +6,7 @@
 #include <QMetaObject>
 #include <QPointer>
 #include <QQuickItem>
+#include <QRectF>
 #include <QTimer>
 
 #include <memory>
@@ -33,10 +34,12 @@ class TimelineQuickItem : public QQuickItem
     Q_PROPERTY(int headerMarkerLeftLimit READ headerMarkerLeftLimit WRITE setHeaderMarkerLeftLimit NOTIFY headerInsetsChanged)
     Q_PROPERTY(int headerMarkerRightLimit READ headerMarkerRightLimit WRITE setHeaderMarkerRightLimit NOTIFY headerInsetsChanged)
     Q_PROPERTY(qreal zoomScale READ zoomScale NOTIFY zoomScaleChanged)
+    Q_PROPERTY(bool lowPerformanceMode READ lowPerformanceMode WRITE setLowPerformanceMode NOTIFY lowPerformanceModeChanged)
     Q_PROPERTY(bool followPreviewEnabled READ followPreviewEnabled WRITE setFollowPreviewEnabled NOTIFY followPreviewEnabledChanged)
     Q_PROPERTY(bool viewportLockEnabled READ viewportLockEnabled WRITE setViewportLockEnabled NOTIFY viewportLockEnabledChanged)
     Q_PROPERTY(bool followProgressEnabled READ followProgressEnabled WRITE setFollowProgressEnabled NOTIFY followProgressEnabledChanged)
     Q_PROPERTY(int timelineTop READ timelineTop NOTIFY sceneMetricsChanged)
+    Q_PROPERTY(QRectF noteViewportRect READ noteViewportRect NOTIFY noteViewportRectChanged)
     Q_PROPERTY(int minimumViewportHeight READ minimumViewportHeight CONSTANT)
     Q_PROPERTY(bool ready READ isReady NOTIFY readyChanged)
     Q_PROPERTY(QString hoverTooltipText READ hoverTooltipText NOTIFY hoverTooltipChanged)
@@ -61,6 +64,8 @@ public:
     void setHeaderMarkerRightLimit(int value);
 
     qreal zoomScale() const;
+    bool lowPerformanceMode() const { return lowPerformanceMode_; }
+    void setLowPerformanceMode(bool enabled);
     bool followPreviewEnabled() const;
     void setFollowPreviewEnabled(bool enabled);
     bool viewportLockEnabled() const;
@@ -68,6 +73,7 @@ public:
     bool followProgressEnabled() const;
     void setFollowProgressEnabled(bool enabled);
     int timelineTop() const;
+    QRectF noteViewportRect() const;
     int minimumViewportHeight() const;
     bool isReady() const;
     QString hoverTooltipText() const;
@@ -82,10 +88,12 @@ signals:
     void stateBridgeChanged();
     void headerInsetsChanged();
     void zoomScaleChanged();
+    void lowPerformanceModeChanged();
     void followPreviewEnabledChanged();
     void viewportLockEnabledChanged();
     void followProgressEnabledChanged();
     void sceneMetricsChanged();
+    void noteViewportRectChanged();
     void readyChanged();
     void hoverTooltipChanged();
     void timelineSurfaceReady();
@@ -116,8 +124,10 @@ protected:
 
 private:
     void syncSourceState();
+    void syncNoteViewportRect();
     void updateReadyState(bool ready);
     bool canBecomeReady() const;
+    miacode::timeline::TimelineAxisProjection axisProjection() const;
     miacode::timeline::TimelineSceneState currentSceneState() const;
     double clampSceneSecond(double second) const;
     double viewportCenterSecondForScroll(double horizontalScrollValue) const;
@@ -139,12 +149,15 @@ private:
     int headerMarkerLeftLimit_ = 0;
     int headerMarkerRightLimit_ = 0;
     qreal cachedZoomScale_ = 0.5;
+    bool lowPerformanceMode_ = false;
     bool cachedFollowPreviewEnabled_ = false;
     bool cachedViewportLockEnabled_ = false;
     bool cachedFollowProgressEnabled_ = true;
     int cachedTimelineTop_ = 0;
+    QRectF cachedNoteViewportRect_;
     bool ready_ = false;
     QString hoverTooltipText_;
+    miacode::timeline::TimelineAxisMode cachedAxisMode_ = miacode::timeline::TimelineAxisMode::Horizontal;
     QPointF hoverTooltipPosition_;
     quint64 appearanceRevision_ = 0;
     qreal cachedDevicePixelRatio_ = 0.0;
@@ -201,7 +214,7 @@ private:
     quint64 selectionLayoutRevision_ = 0;
     double selectionScroll_ = 0;
     bool dragActive_ = false;
-    int dragStartX_ = 0;
+    qreal dragStartTimePosition_ = 0;
     double dragStartScrollValue_ = 0.0;
     double lastPaintedHorizontalScrollValue_ = -1.0;
     int heldHorizontalKeyScrollDirection_ = 0;

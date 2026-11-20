@@ -1,9 +1,11 @@
 #pragma once
 
 #include "core/chart/IntroConfig.h"
+#include "core/chart/ChartPreviewRegion.h"
 #include "core/scene/PreviewHudState.h"
 
 #include <functional>
+#include <optional>
 #include <QFileInfo>
 #include <QString>
 #include <QUrl>
@@ -19,14 +21,14 @@
 #include "core/analysis/MuriTypes.h"
 #include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/video/PreviewGameplayConfig.h"
-#include "export/video_export/VideoExportRuntimePolicy.h"
+#include "export/video_export/VideoExportEncoding.h"
 #include "export/video_export/VideoExportOutput.h"
-enum class VideoExportPreset {
-    Fast,
-    HighQuality,
-};
+#include "export/video_export/VideoWatermarkSettings.h"
 
-using VideoExportSizePreset = miacode::video_export::VideoExportSizePreset;
+struct ChartIntroOutline {
+    PreviewOutlineVariant variant = PreviewOutlineVariant::Line;
+    QString imagePath;
+};
 
 // Pre-roll "track-start" intro banner spec. Populated from the chart in
 // buildVideoExportSnapshot; consumed by the export session when `enabled`.
@@ -58,7 +60,7 @@ struct IntroBannerSpec {
     bool blurBackground = true;
     // Soft drop shadow behind the difficulty card. (The card itself is NOT
     // optional — an intro always carries it.)
-    bool cardShadow = false;
+    bool cardShadow = true;
     // Difficulty-card custom fonts (absolute paths into the portable font
     // library; empty == the bundled default). Overlaid onto the banner template's
     // `fonts` block on every intro render path (preview + export) via
@@ -70,13 +72,45 @@ struct IntroBannerSpec {
     // card holds over the chart's own PV + music from pvPreviewStartSeconds
     // (chart second == media second) for the fixed kPvPreviewHoldSeconds, then
     // the cycle-2 wipe hands off. A chart without a video PV shows the crisp 曲绘.
-    // The style is a dialog preference; the start belongs to the chart and is
-    // read from its project preferences when the spec is built.
+    // The style and segment start are selected for each export.
     bool pvPreview = false;
+    bool chartPreview = false;
+    std::optional<ChartIntroOutline> chartOutline;
     double pvPreviewStartSeconds = 0.0;
+    // Zero means the legacy fixed-length window.
+    double pvPreviewEndSeconds = 0.0;
+    miacode::chart_preview::IntroWindowMode previewWindowMode = miacode::chart_preview::IntroWindowMode::Automatic;
+    miacode::chart_preview::IntroWindowSource previewWindowSource = miacode::chart_preview::IntroWindowSource::Default;
     // Background-only gain, independent of the chart's normal PV brightness.
-    double pvPreviewBrightness = 1.0;
+    double pvPreviewBrightness = 0.8;
 };
+
+inline bool hasChartPreviewIntro(const IntroBannerSpec& intro, bool fullRangeExport)
+{
+    return fullRangeExport && intro.enabled && intro.pvPreview && intro.chartPreview;
+}
+
+inline double introPreviewMediaSecond(const IntroBannerSpec& intro, double elapsedSeconds)
+{
+    const double second = qMax(0.0, intro.pvPreviewStartSeconds) + qMax(0.0, elapsedSeconds);
+    return intro.pvPreviewEndSeconds > intro.pvPreviewStartSeconds
+        ? qMin(second, intro.pvPreviewEndSeconds) : second;
+}
+
+inline double introPreviewMusicSeconds(const IntroBannerSpec& intro)
+{
+    using namespace miacode::intro;
+    const double windowSeconds = intro.pvPreviewEndSeconds - intro.pvPreviewStartSeconds;
+    return windowSeconds > 0.0 && windowSeconds < kPvPreviewHoldSeconds - 1e-6
+        ? windowSeconds : kPvPreviewHoldSeconds + kPvPreviewAudioTailSeconds;
+}
+
+inline void freezeIntroPreviewWindow(IntroBannerSpec& intro, const miacode::chart_preview::IntroWindow& window)
+{
+    intro.pvPreviewStartSeconds = window.range.startSeconds;
+    intro.pvPreviewEndSeconds = window.range.endSeconds;
+    intro.previewWindowSource = window.source;
+}
 
 inline int introDurationFrames(const IntroBannerSpec& intro)
 {
@@ -181,6 +215,16 @@ inline void copyIntroStyling(const IntroBannerSpec& from, IntroBannerSpec* to)
     to->fontDisplayPath = from.fontDisplayPath;
     to->fontBodyPath = from.fontBodyPath;
     to->pvPreview = from.pvPreview;
+    to->chartPreview = from.chartPreview;
+    to->chartOutline = from.chartOutline;
+    to->previewWindowMode = from.previewWindowMode;
+    // Resolved demo/drop ranges belong to the source chart, not its visual style.
+    // Only an explicit user range may survive a rebuild of the same export task.
+    if (from.previewWindowSource == miacode::chart_preview::IntroWindowSource::Explicit) {
+        to->pvPreviewStartSeconds = from.pvPreviewStartSeconds;
+        to->pvPreviewEndSeconds = from.pvPreviewEndSeconds;
+        to->previewWindowSource = from.previewWindowSource;
+    }
     to->pvPreviewBrightness = from.pvPreviewBrightness;
 }
 
@@ -188,10 +232,11 @@ inline void copyIntroStyling(const IntroBannerSpec& from, IntroBannerSpec* to)
 // the 曲绘 backdrop), blur toggle, card drop shadow, PV-preview timeline.
 // `pvVideoUnderlay` says whether the caller composites the PV segment under the
 // overlay; without it the PV preview falls back to the crisp backdrop image.
-inline QVariantMap introBannerStyleMap(const IntroBannerSpec& intro, bool pvVideoUnderlay = false)
+inline QVariantMap introBannerStyleMap(const IntroBannerSpec& intro, bool pvVideoUnderlay = false,
+                                       BackgroundPolicy policy = BackgroundPolicy::Normal)
 {
     QUrl backdrop;
-    if (intro.backgroundMode == QStringLiteral("custom")
+    if (usesBackgroundMedia(policy) && intro.backgroundMode == QStringLiteral("custom")
         && !intro.customBackgroundPath.trimmed().isEmpty()
         && QFileInfo::exists(intro.customBackgroundPath)) {
         backdrop = QUrl::fromLocalFile(intro.customBackgroundPath);
@@ -201,11 +246,19 @@ inline QVariantMap introBannerStyleMap(const IntroBannerSpec& intro, bool pvVide
     style.insert(QStringLiteral("backdropBlurEnabled"), intro.blurBackground);
     style.insert(QStringLiteral("cardShadowEnabled"), intro.cardShadow);
     style.insert(QStringLiteral("pvPreviewMode"), intro.pvPreview);
+    style.insert(QStringLiteral("chartPreviewMode"), intro.pvPreview && intro.chartPreview);
+    style.insert(QStringLiteral("backgroundSuppressed"), !usesBackgroundMedia(policy));
     style.insert(QStringLiteral("pvPreviewHoldFrames"), miacode::intro::kPvPreviewHoldFrames);
     style.insert(QStringLiteral("pvPreviewVideoUnderlay"), intro.pvPreview && pvVideoUnderlay);
     style.insert(QStringLiteral("pvPreviewBrightness"), intro.pvPreviewBrightness);
     return style;
 }
+
+enum class HandOrderExportMode {
+    FollowPreview = 0,
+    Original = 1,
+    Annotated = 2,
+};
 
 struct VideoExportTask {
     miacode::preview::scene::PreviewHudFontSettings hudFontSettings;
@@ -228,12 +281,16 @@ struct VideoExportTask {
     double backgroundBrightnessInner = miacode::preview_video::kBackgroundBrightnessInnerDefault;
     double layoutSquareScale = miacode::preview_video::kLayoutSquareScaleDefault;
     double fireworkBrightness = miacode::preview_video::kFireworkBrightnessDefault;
+    PreviewFireworkStyle fireworkStyle = PreviewFireworkStyle::Standard;
+    CompletionDisplay completionDisplay = CompletionDisplay::Automatic;
     bool smoothBrightness = miacode::preview_video::kSmoothBrightnessDefault;
+    bool outlineAutomatic = true;
     PreviewOutlineVariant outlineVariant = PreviewOutlineVariant::Line;
     QString outlineImagePath;
     PreviewBackgroundScaleMode backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
     double tapFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
     double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
+    double starFadeTiming = 0.0;
     bool slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
     PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
     PreviewJudgeEffectStyle judgeEffectStyle = PreviewJudgeEffectStyle::Standard;
@@ -254,12 +311,16 @@ struct VideoExportTask {
     // quality bump for charts with stereo BGM, transparent for casual
     // phone playback. Routed into ffmpeg as `-b:a <kbps>k`.
     int audioBitrateKbps = 192;
-    // Export-quality toggle. HighQuality uses compactness-oriented software
-    // tuning; Fast uses pipelined readback and prefers hardware encoding.
-    VideoExportPreset preset = VideoExportPreset::HighQuality;
-    VideoExportSizePreset sizePreset = VideoExportSizePreset::Standard;
+    // Video rate control chosen on the export page; see planVideoRate.
+    miacode::video_export::VideoEncodingSettings encoding;
+    bool includePv = true;
     bool fullRangeExport = true;
     bool showTimestamp = true;
+    HandOrderExportMode handOrderExportMode = HandOrderExportMode::FollowPreview;
+    // Resolved at export start and frozen into the worker snapshot.
+    bool showHandOrderAnnotations = true;
+    bool showHandOrderWatermark = false;
+    miacode::video_export::VideoWatermarkSettings videoWatermark;
     bool showMeasureLines = false;
     bool showJudgementSkeleton = false;
     bool showSlideJudgementTiming = false;

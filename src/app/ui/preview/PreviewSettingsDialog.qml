@@ -7,6 +7,7 @@ import MiaCode.UI
 AppDialog {
     id: root
 
+    property var comparisons: null
     required property var previewSettings
 
     property int currentPageIndex: 0
@@ -150,6 +151,13 @@ AppDialog {
                 }
             }
 
+            AppSwitch {
+                objectName: "synchronizeComparisonPreviews"
+                visible: root.currentPageIndex === 0 && !!root.comparisons
+                text: qsTrId("preview.comparison.sync")
+                checked: root.comparisons?.synchronize ?? true
+                onToggled: root.comparisons.synchronize = checked
+            }
             ScrollView {
                 id: pageViewport
                 Layout.fillWidth: true

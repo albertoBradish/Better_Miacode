@@ -2,7 +2,6 @@
 #include "core/scene/PreviewProgressStatsCache.h"
 
 #include <QFontDatabase>
-#include <QFontInfo>
 #include <QHash>
 #include <QFileInfo>
 #include <QDateTime>
@@ -103,43 +102,12 @@ QString formatPreviewHudTimeLabel(double seconds)
 
 QFont previewHudDefaultFontForArea(PreviewHudFontArea area, int pointSize, QFont::Weight weight)
 {
-    if (area == PreviewHudFontArea::DebugInfo) {
-        static const QString embeddedMapleMonoFamily = []() -> QString {
-            const int fontId = QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/maple_mono_cn.ttf"));
-            const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-            return families.isEmpty() ? QStringLiteral("Maple Mono Normal NL CN") : families.first();
-        }();
-        QFont font(embeddedMapleMonoFamily);
-        font.setPointSize(pointSize);
-        font.setWeight(weight);
-        font.setStyleHint(QFont::Monospace);
-        font.setFixedPitch(true);
-        return font;
-    }
-
-    static const QString embeddedXiaolaiMonoFamily = []() -> QString {
-        const int fontId = QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/xiaolai_mono.ttf"));
-        if (fontId < 0) {
-            return QString();
-        }
-        const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-        return families.isEmpty() ? QString() : families.first();
-    }();
-
-    QFont font;
-    if (!embeddedXiaolaiMonoFamily.isEmpty()) {
-        font.setFamily(embeddedXiaolaiMonoFamily);
-    } else {
-        font.setFamily(QStringLiteral("Xiaolai Mono"));
-    }
-    if (font.family().isEmpty() || QFontInfo(font).family().compare(font.family(), Qt::CaseInsensitive) != 0) {
-        font = previewHudDefaultFontForArea(PreviewHudFontArea::DebugInfo, pointSize, weight);
-    } else {
-        font.setPointSize(pointSize);
-        font.setWeight(weight);
-    }
-    font.setStyleHint(QFont::Monospace);
-    font.setFixedPitch(true);
+    Q_UNUSED(area);
+    static const QString family = previewHudFontFamilyForFile(
+        QStringLiteral(":/fonts/alibaba_puhuiti_3_75_semibold.ttf"));
+    QFont font(family);
+    font.setPointSize(pointSize);
+    font.setWeight(weight);
     return font;
 }
 
@@ -153,21 +121,13 @@ QFont previewHudTimestampFontForArea(
         font.setWeight(weight);
         return font;
     }
-    return previewHudDefaultFontForArea(PreviewHudFontArea::Timestamp, pointSize, weight);
+    return previewHudDefaultFontForArea(area, pointSize, weight);
 }
 
 QFont previewHudMonoFontForArea(
     const PreviewHudFontSettings& settings, PreviewHudFontArea area, int pointSize, QFont::Weight weight)
 {
-    const QString customFamily = previewHudFontFamilyForFile(settings.path(area));
-    if (!customFamily.isEmpty()) {
-        QFont font(customFamily);
-        font.setPointSize(pointSize);
-        font.setWeight(weight);
-        return font;
-    }
-
-    return previewHudDefaultFontForArea(PreviewHudFontArea::DebugInfo, pointSize, weight);
+    return previewHudTimestampFontForArea(settings, area, pointSize, weight);
 }
 
 QVector<PreviewHudFontAreaChoice> previewHudFontAreaChoices()
@@ -185,6 +145,9 @@ QVector<PreviewHudFontAreaChoice> previewHudFontAreaChoices()
         {PreviewHudFontArea::ObjectStats,
          "dialog.video_export.option.hud_font_area.object_stats",
          "DELUXE Rate: 101.0000%  TAP: 128/128"},
+        {PreviewHudFontArea::ExtraInfo,
+         "preview.hud_extra_info",
+         "BPM: 174.00  CPS: 8  Meter: 4/4  Mods: NONE"},
         {PreviewHudFontArea::DebugInfo,
          "dialog.video_export.option.hud_font_area.debug",
          "Present: 60.0 FPS  max=17ms"},

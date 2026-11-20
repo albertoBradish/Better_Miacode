@@ -84,15 +84,14 @@ inline double previewVisualLeadInStartSecond(
     const QVector<TimelineNoteMarker>& noteMarkers,
     double requestedSecond,
     double tapFlowSpeed,
-    double touchFlowSpeed)
+    double touchFlowSpeed,
+    double starFadeTiming)
 {
     if (requestedSecond > kTimelineZeroSecondTolerance || noteMarkers.isEmpty()) {
         return requestedSecond;
     }
 
     const auto tapTiming = miacode::preview::scene::previewTapTimingForFlowSpeed(static_cast<qreal>(tapFlowSpeed));
-    const auto slideTrackTiming =
-        miacode::preview::scene::previewSlideTrackTimingForFlowSpeed(static_cast<qreal>(tapFlowSpeed));
     const auto touchTiming =
         miacode::preview::scene::previewTouchTimingForFlowSpeed(static_cast<qreal>(touchFlowSpeed));
 
@@ -117,6 +116,7 @@ inline double previewVisualLeadInStartSecond(
             }
             if (qMax(marker.second, qMax(marker.endSecond, marker.slideTraceSecond)) + kTimelineZeroSecondTolerance
                 >= requestedSecond) {
+                const auto slideTrackTiming = miacode::preview::scene::previewSlideTrackTimingForMarker(marker, tapFlowSpeed, starFadeTiming);
                 earliestSecond = qMin(earliestSecond, marker.second - slideTrackTiming.appearLeadInSeconds);
             }
             continue;

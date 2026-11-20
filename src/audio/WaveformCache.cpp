@@ -18,6 +18,7 @@
 #include "audio/AudioFileDecoder.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
+#include "common/RuntimePaths.h"
 
 namespace miacode::waveform {
 
@@ -221,17 +222,7 @@ QString normalizeTrackPath(const QString& trackPath)
 
 QString projectDataDirectoryPathForFile(const QString& filePath)
 {
-    const QString normalizedPath = filePath.isEmpty() ? QString() : QDir::cleanPath(filePath);
-    if (normalizedPath.isEmpty()) {
-        return QString();
-    }
-
-    const QFileInfo fileInfo(normalizedPath);
-    const QString projectDirectoryPath = fileInfo.absolutePath();
-    if (projectDirectoryPath.isEmpty()) {
-        return QString();
-    }
-    return miacode::runtime_paths::projectDirectory(filePath);
+    return miacode::runtime_paths::projectDirectoryForChart(filePath);
 }
 
 QString waveformCacheDirectoryPath(const QString& projectDataDirectoryPath)

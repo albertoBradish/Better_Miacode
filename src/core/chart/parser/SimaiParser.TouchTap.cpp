@@ -10,7 +10,11 @@ void parseTouchToken(ParseState* state, const QString& token, int lineNumber, in
     }
 
     QString normalizedToken = token;
-    if (normalizedToken.size() >= 2
+    // Common official-chart transcription: centre TouchHold has no EX form.
+    // Normalize only the parser view; the source token keeps its UTF-16 span.
+    const bool centerHoldAlias = normalizedToken.startsWith(QStringLiteral("C1xh"), Qt::CaseInsensitive);
+    if (centerHoldAlias) normalizedToken.replace(0, 4, QStringLiteral("Ch"));
+    if (!centerHoldAlias && normalizedToken.size() >= 2
         && normalizedToken.at(0).toUpper() == QChar('C')
         && (normalizedToken.at(1) == QChar('1') || normalizedToken.at(1) == QChar('2'))) {
         // Both lenient and strict accept C1/C2 as aliases for C, so the

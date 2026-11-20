@@ -8,6 +8,7 @@
 
 #include "common/OperationLog.h"
 #include "core/chart/parser/SimaiParser.h"
+#include "core/chart/parser/HandOrderAnnotationSyntax.h"
 #include "core/chart/transform/ChartNormalizationSegmentPolicy.h"
 #include "core/chart/transform/Non384SnapTable.h"
 
@@ -705,20 +706,22 @@ QString canonicalizeToken(const QString& token)
     if (trimmed.isEmpty()) {
         return QString();
     }
+    const auto annotation = miacode::hand_order::splitToken(trimmed);
+    const QString& nativeToken = annotation.baseToken;
 
     TouchTokenParts touchParts;
-    if (parseTouchTokenParts(trimmed, &touchParts) && touchParts.valid) {
-        return buildTouchToken(touchParts);
+    if (parseTouchTokenParts(nativeToken, &touchParts) && touchParts.valid) {
+        return buildTouchToken(touchParts) + annotation.suffix;
     }
 
     NoteTokenParts noteParts;
-    if (parseNoteTokenParts(trimmed, &noteParts) && noteParts.valid) {
-        return buildNoteToken(noteParts);
+    if (parseNoteTokenParts(nativeToken, &noteParts) && noteParts.valid) {
+        return buildNoteToken(noteParts) + annotation.suffix;
     }
 
     SlideTokenParts slideParts;
-    if (parseSlideTokenParts(trimmed, &slideParts) && slideParts.valid) {
-        return buildSlideToken(slideParts);
+    if (parseSlideTokenParts(nativeToken, &slideParts) && slideParts.valid) {
+        return buildSlideToken(slideParts) + annotation.suffix;
     }
 
     return trimmed;
@@ -730,29 +733,31 @@ QString renderTokenForGrid(const QString& token, int gridBeats, bool reduceTo384
     if (trimmed.isEmpty()) {
         return QString();
     }
+    const auto annotation = miacode::hand_order::splitToken(trimmed);
+    const QString& nativeToken = annotation.baseToken;
 
     TouchTokenParts touchParts;
-    if (parseTouchTokenParts(trimmed, &touchParts) && touchParts.valid) {
+    if (parseTouchTokenParts(nativeToken, &touchParts) && touchParts.valid) {
         touchParts.bracketSuffix = normalizeSingleBracketSuffix(
             touchParts.bracketSuffix,
             gridBeats,
             reduceTo384Grid,
             DurationNormalizationOptions{true, false});
-        return buildTouchToken(touchParts);
+        return buildTouchToken(touchParts) + annotation.suffix;
     }
 
     NoteTokenParts noteParts;
-    if (parseNoteTokenParts(trimmed, &noteParts) && noteParts.valid) {
+    if (parseNoteTokenParts(nativeToken, &noteParts) && noteParts.valid) {
         noteParts.bracketSuffix = normalizeSingleBracketSuffix(
             noteParts.bracketSuffix,
             gridBeats,
             reduceTo384Grid,
             DurationNormalizationOptions{true, true});
-        return buildNoteToken(noteParts);
+        return buildNoteToken(noteParts) + annotation.suffix;
     }
 
     SlideTokenParts slideParts;
-    if (parseSlideTokenParts(trimmed, &slideParts) && slideParts.valid) {
+    if (parseSlideTokenParts(nativeToken, &slideParts) && slideParts.valid) {
         for (SlideSegmentParts& seg : slideParts.segments) {
             const int openBracket = seg.text.indexOf(QLatin1Char('['));
             if (openBracket >= 0) {
@@ -764,7 +769,7 @@ QString renderTokenForGrid(const QString& token, int gridBeats, bool reduceTo384
                 seg.text = seg.text.left(openBracket) + normalizedBracket;
             }
         }
-        return buildSlideToken(slideParts);
+        return buildSlideToken(slideParts) + annotation.suffix;
     }
 
     return trimmed;

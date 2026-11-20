@@ -13,9 +13,21 @@ struct SimaiMessage {
     QString message;
 };
 
+// UTF-16 token ranges produced by the native parser's lexer.
+struct SimaiSourceToken {
+    int line = 1;
+    int col = 1;
+    int length = 0;
+    int firstParseOrder = 0;
+    int markerCount = 0;
+    bool nativeValid = false;
+};
+
 struct SimaiParseResult {
     bool ok = true;
     QVector<SimaiMessage> errors;
+    // Annotation diagnostics do not change the validity of the base chart.
+    QVector<SimaiMessage> annotationErrors;
     QVector<SimaiMessage> warnings;
     QVector<double> measureLineSeconds;
     QVector<double> textLineStartSeconds;
@@ -24,6 +36,7 @@ struct SimaiParseResult {
     double endSecond = 0.0;
     double endQuarterBeat = 0.0;
     QVector<TimelineNoteMarker> noteMarkers;
+    QVector<SimaiSourceToken> sourceTokens;
     double durationSeconds = 0.0;
 };
 
@@ -43,6 +56,7 @@ struct SimaiValidationIssue {
     int col = 1;
     int endCol = 1;
     SimaiValidationSeverity severity = SimaiValidationSeverity::Error;
+    bool isAnnotation = false;
     QString rawMessage;
     QString displayMessage;
 };

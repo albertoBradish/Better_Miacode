@@ -2,54 +2,15 @@
 
 #include <optional>
 
-#include <QString>
 #include <QtGlobal>
 
 namespace miacode::video_export {
 
-enum class VideoExportSizePreset {
-    Standard,
-    Compact,
-    UltraCompactWithPv,
-    UltraCompact,
-    Target30Mb,
-    Target100Mb,
-    Target200Mb,
-};
-
 constexpr int kVideoExportWorkerMaxCrashRetries = 1;
-
-struct VideoExportSizePolicy {
-    double bitrateCoefficient = 0.0;
-    qint64 minBitrateKbps = 0;
-    qint64 maxBitrateKbps = 0;
-    double maxRateMultiplier = 1.0;
-    double bufferMultiplier = 1.0;
-    int gopSeconds = 2;
-    int maxAudioBitrateKbps = 320;
-    // A size preset adjusts the quality tier selected by Fast/HighQuality;
-    // it never replaces that tier's base CRF.
-    int x264CrfAdjustment = 0;
-    bool disableVideoBackground = false;
-    bool usePeakConstrainedVbr = false;
-};
-
-VideoExportSizePolicy videoExportSizePolicy(VideoExportSizePreset preset);
-QString videoExportSizePresetToken(VideoExportSizePreset preset);
-qint64 videoExportTargetBytes(VideoExportSizePreset preset);
-qint64 videoExportTargetBitrateKbps(VideoExportSizePreset preset, double seconds, int audioKbps);
-int effectiveVideoExportAudioBitrateKbps(VideoExportSizePreset preset, int requestedKbps);
-int effectiveVideoExportX264Crf(VideoExportSizePreset preset, int baseCrf);
 
 bool shouldRequestOffscreenPboReadback(
     const std::optional<bool>& enableOverride,
     const std::optional<bool>& disableOverride
-);
-
-bool shouldUsePremultipliedExportPipe(
-    bool d3d11BackendActive,
-    bool fastPreset,
-    const std::optional<bool>& overrideValue
 );
 
 bool shouldRetryVideoExportWorkerAfterCrash(

@@ -2,6 +2,7 @@
 #include "core/chart/ChartAssetPaths.h"
 
 #include <QFile>
+#include <QFileInfo>
 #include <QTemporaryDir>
 #include <QTextStream>
 
@@ -192,12 +193,13 @@ bool verifyProjectSaveAs(QTextStream& out, miacode::ChartDocumentOrigin origin)
         || !QDir().mkpath(target.filePath(QStringLiteral(".miacode")))) return false;
     const QByteArray chart = "&title=Online\n&video=videos/custom.mp4\n&lv_5=12\n&inote_5=(120){4}1,E\n";
     const QStringList resources{QStringLiteral("track.flac"), QStringLiteral("bg.jpg"),
-        QStringLiteral("pv.mp4"), QStringLiteral("videos/custom.mp4"),
-        QStringLiteral(".miacode/preferences.json"), QStringLiteral(".miacode/miacode_settings.json")};
+        QStringLiteral("pv.mp4"), QStringLiteral("videos/custom.mp4")};
     if (!writeBytes(original, chart)) return false;
     for (const QString& resource : resources) {
         if (!writeBytes(source.filePath(resource), resource.toUtf8())) return false;
     }
+    if (!writeBytes(source.filePath(QStringLiteral(".miacode/preferences.json")), "official settings")
+        || !writeBytes(source.filePath(QStringLiteral(".miacode/miacode_settings.json")), "official ui")) return false;
     if (!writeBytes(target.filePath(QStringLiteral("track.mp3")), "old track")
         || !writeBytes(target.filePath(QStringLiteral(".miacode/preferences.json")), "old settings")) return false;
     miacode::ChartWorkspace workspace;
@@ -219,7 +221,7 @@ bool verifyProjectSaveAs(QTextStream& out, miacode::ChartDocumentOrigin origin)
     }
     ok &= expect(readBytes(target.filePath(QStringLiteral(".miacode/preferences.json"))) == "old settings"
         && !QFileInfo::exists(target.filePath(QStringLiteral(".miacode/miacode_settings.json"))),
-        QStringLiteral("save as does not migrate upstream project preferences into the isolated application"), out);
+        QStringLiteral("save as does not import official project settings"), out);
     ok &= expect(miacode::chart_assets::resolveTrackPath(saved) == target.filePath(QStringLiteral("track.flac"))
         && miacode::chart_assets::resolveChartVideoPath(saved, workspace.document().videoPath)
             == target.filePath(QStringLiteral("videos/custom.mp4")),

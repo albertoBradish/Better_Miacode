@@ -33,9 +33,12 @@ namespace miacode::ui {
 class DocumentModel final : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool handOrderFeaturesEnabled READ handOrderFeaturesEnabled NOTIFY handOrderFeaturesChanged)
     Q_PROPERTY(QVariantList normalizationGridOptions READ normalizeGridOptions NOTIFY localeLabelsChanged)
     Q_PROPERTY(QVariantList normalizationSectionOptions READ normalizeSectionOptions NOTIFY localeLabelsChanged)
     Q_PROPERTY(QVariantList normalizationSyntaxOptions READ normalizeSyntaxOptions NOTIFY localeLabelsChanged)
+    Q_PROPERTY(QVariantList songTabs READ songTabs NOTIFY songTabsChanged)
+    Q_PROPERTY(int currentSongTab READ currentSongTab NOTIFY songTabsChanged)
     Q_PROPERTY(QString chartText READ chartText WRITE setChartText NOTIFY chartTextChanged)
     Q_PROPERTY(QString metadataTitle READ metadataTitle WRITE setMetadataTitle NOTIFY metadataChanged)
     Q_PROPERTY(QString metadataArtist READ metadataArtist WRITE setMetadataArtist NOTIFY metadataChanged)
@@ -49,6 +52,7 @@ class DocumentModel final : public QObject
     Q_PROPERTY(bool metadataHasVideo READ metadataHasVideo NOTIFY metadataMediaChanged)
     Q_PROPERTY(QString metadataClockCount READ metadataClockCount WRITE setMetadataClockCount NOTIFY metadataChanged)
     Q_PROPERTY(QString metadataExtraText READ metadataExtraText WRITE setMetadataExtraText NOTIFY metadataChanged)
+    Q_PROPERTY(QString metadataConflictText READ metadataConflictText NOTIFY metadataChanged)
     Q_PROPERTY(QString metadataExtraError READ metadataExtraError NOTIFY metadataChanged)
     Q_PROPERTY(bool unifiedDesignerEnabled READ unifiedDesignerEnabled NOTIFY unifiedDesignerEnabledChanged)
     Q_PROPERTY(QVariantList designerSlots READ designerSlots NOTIFY documentStateChanged)
@@ -85,6 +89,8 @@ class DocumentModel final : public QObject
     Q_PROPERTY(qulonglong bookmarkGeneration READ bookmarkGeneration NOTIFY bookmarksChanged)
 
 public:
+    bool handOrderFeaturesEnabled() const { return handOrderFeaturesEnabled_; }
+    void setHandOrderFeaturesEnabled(bool enabled) { if (handOrderFeaturesEnabled_ == enabled) return; handOrderFeaturesEnabled_ = enabled; emit handOrderFeaturesChanged(); }
     explicit DocumentModel(
         miacode::ShellNotifications& notifications, miacode::ChartWorkspace& workspace,
         miacode::ChartWorkspaceFileService& fileService,
@@ -111,7 +117,13 @@ public:
     bool metadataHasVideo() const;
     QString metadataClockCount() const;
     QString metadataExtraText() const;
+    QString takeNormalizationOriginalChart(int difficultyId, const QString& normalized);
+    void scheduleFirstOpenPreparation();
+    Q_INVOKABLE QString advancedMetadataValue(const QString& key) const;
+    Q_INVOKABLE QVariantList advancedMetadataGroups(int difficultyId) const;
+    Q_INVOKABLE QString setAdvancedMetadataField(const QString& key, const QString& value);
     QString metadataExtraError() const;
+    QString metadataConflictText() const;
     QString wholeBpm() const;
     bool unifiedDesignerEnabled() const;
     QVariantList designerSlots() const;
@@ -178,13 +190,24 @@ public:
 
     // Fresh values for every open, shared by the shell and save-before-leave.
     Q_INVOKABLE QVariantMap fileDialogLocation(bool saveMode) const;
+    Q_INVOKABLE QStringList openFileNameFilters() const;
+    Q_INVOKABLE QVariantMap plainSimaiExportLocation() const;
     Q_INVOKABLE bool openFile(const QUrl& fileUrl);
+    bool openAdditionalSong(const QString& path);
+    QVariantList songTabs() const { return songTabs_; }
+    int currentSongTab() const { return activeSongIndex_; }
+    Q_INVOKABLE bool activateSongTab(int index);
+    Q_INVOKABLE void requestCloseSongTab(int index);
+    void requestLeaveAllSongs(std::function<void(bool)> decided);
+    QStringList openSongPaths() const;
+    bool openChartFile(const QUrl& fileUrl);
     QJsonObject documentIdentity() const;
     net::NetEnginePort::Cancel openNetPreview(const QString& path, const QJsonObject& expected,
                                              net::NetEnginePort::Done done);
     Q_INVOKABLE bool save();
     Q_INVOKABLE bool saveWholeDocument();
     Q_INVOKABLE bool saveAs(const QUrl& fileUrl);
+    Q_INVOKABLE bool exportPlainSimai(const QUrl& fileUrl);
     // Flush current form input and refuse to hide or save a rejected draft.
     Q_INVOKABLE bool finishPendingEdits();
     Q_INVOKABLE bool discardChanges();
@@ -226,6 +249,7 @@ public:
         const QString& text, int anchor, int position, const QVariantMap& options) const;
     miacode::editor::SimaiTextEditResult transformChartSelection(
         const QString& text, int anchor, int position, const QString& opId) const;
+    void confirmChartTransform(const QString& summary, std::function<void(bool)> onResolved);
     mutable miacode::chart_selection::ChartSelectionBeatIndex selectionBeatIndex_;
     Q_INVOKABLE QVariantMap selectionBeatSummary(
         const QString& text, int anchor, int position) const;
@@ -234,6 +258,9 @@ public:
     // the menubar's 调整 menu and the editor's context menu build from this, so
     // neither carries its own copy of the operation list or its labels.
     Q_INVOKABLE QVariantList chartTransformMenu() const;
+    Q_INVOKABLE QVariantList handOrderMenu() const;
+    miacode::simai::SimaiTimingMetadata chartTimingMetadata() const;
+    miacode::ChartWorkspaceSnapshot chartWorkspaceSnapshot() const;
     Q_INVOKABLE QString chartTransformMoreLabel() const;
 
     // Stored normalize options, as the same map normalizeChartSelection takes.
@@ -246,6 +273,8 @@ public:
     Q_INVOKABLE QVariantList normalizeSyntaxOptions() const;
 
 signals:
+    void songTabsChanged();
+    void handOrderFeaturesChanged();
     void localeLabelsChanged();
     void editingFinishedRequested();
     void chartTextChanged();
@@ -267,6 +296,14 @@ signals:
     void bookmarksChanged();
 
 private:
+    QList<ChartWorkspace::SongState> parkedSongs_;
+    int activeSongIndex_ = 0;
+    QVariantList songTabs_;
+    void refreshSongTabs();
+    void resumeSong(const ChartWorkspace::SongState& song);
+    bool canSaveToSongPath(const QString& path);
+    int parkedIndexForPath(const QString& path) const;
+    bool handOrderFeaturesEnabled_ = false;
     bool openFileWithOrigin(const QUrl& fileUrl, ChartDocumentOrigin origin);
     mutable QString workspaceId_;
     enum class WorkspaceCommitKind {
@@ -357,8 +394,8 @@ private:
     // a never-saved chart wrote nothing and said nothing: the file service
     // refused an empty path and the prompt just went away.
     void createChartBesideAudio(const QString& audioPath, bool overwriteExisting = false);
-    void ensureTrackCopyThenCreate(const QString& audioPath, const QString& targetPath);
-    void createEmptyDocumentAt(const QString& targetPath, const QString& sourceAudioPath);
+    bool ensureTrackCopyThenCreate(const QString& audioPath, const QString& targetPath);
+    bool createEmptyDocumentAt(const QString& targetPath, const QString& sourceAudioPath);
     void handleDroppedAudio(const QString& audioPath, std::function<void()> finished);
     void leaveThenCreateDroppedChart(const QString& audioPath, bool overwriteExisting,
                                      std::function<void()> finished);
@@ -367,5 +404,6 @@ private:
     void saveSectionOrAskForPath(int difficultyId, std::function<void(bool)> onSaved);
     void requestLeaveSection(int difficultyId, std::function<void(bool)> onDecided);
     bool closeDecisionPending_ = false;
+    quint64 autoPreparationGeneration_ = 0;
 };
 } // namespace miacode::ui

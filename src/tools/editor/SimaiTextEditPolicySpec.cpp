@@ -202,6 +202,29 @@ int main(int argc, char** argv)
                      policyCase.expected, policyCase.label, out, &failed);
     }
 
+    {
+        SimaiTextEditRequest request;
+        request.text = QStringLiteral("1");
+        request.anchor = request.position = request.text.size();
+        request.input = QStringLiteral("~");
+        const auto result = miacode::editor::applySimaiTextEditPolicy(request);
+        expect(result.consumed && result.completion.active
+                   && result.completion.opening == QLatin1Char('~')
+                   && result.completion.startPosition == 2
+                   && result.completion.candidates.contains(QStringLiteral("l")),
+               QStringLiteral("typing tilde starts hand completion after native note"), out, &failed);
+
+        request.text = QStringLiteral("1-5[4:1]~");
+        request.anchor = request.position = request.text.size();
+        request.input = QStringLiteral("[");
+        const auto bracket = miacode::editor::applySimaiTextEditPolicy(request);
+        expect(bracket.consumed && bracket.transaction.replacementText == QLatin1String("[]")
+                   && bracket.completion.active
+                   && bracket.completion.candidates.contains(QStringLiteral("track="))
+                   && !bracket.completion.candidates.contains(QStringLiteral("8:1]")),
+               QStringLiteral("annotation bracket keeps pairing but offers container keys"), out, &failed);
+    }
+
     // A refused command-modified key must tell its adapter whether Qt's text
     // control would still type the literal character. Qt drops Ctrl-modified
     // characters itself, and Alt/Option is a real composition modifier, but a

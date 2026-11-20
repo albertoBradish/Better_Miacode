@@ -176,13 +176,6 @@ miacode_add_dev_tool(video_export_audio_render_plan_spec TEST
     INCLUDES src
 )
 
-miacode_add_dev_tool(video_export_media_timeline_spec TEST
-    SOURCES
-        src/tools/video_export/VideoExportMediaTimelineSpec.cpp
-    LIBS miacode_export Qt6::Core Qt6::Gui
-    INCLUDES src
-)
-
 miacode_add_dev_tool(chart_zip_packager_spec TEST
     SOURCES
         src/tools/zip_export/ChartZipPackagerSpec.cpp
@@ -256,6 +249,10 @@ miacode_add_dev_tool(ui_text_locale_spec TEST
 target_compile_definitions(ui_text_locale_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\""
     "MIACODE_EN_US_QM_PATH=\"${CMAKE_CURRENT_BINARY_DIR}/en_US.qm\"")
+qt_add_resources(ui_text_locale_spec "ui_text_spec_i18n"
+    PREFIX "/i18n"
+    BASE "${CMAKE_CURRENT_BINARY_DIR}"
+    FILES ${MIACODE_TRANSLATION_QM_FILES})
 add_dependencies(ui_text_locale_spec miacode_lrelease)
 
 miacode_add_dev_tool(native_chrome_policy_spec TEST
@@ -293,6 +290,174 @@ miacode_add_dev_tool(media_prepend_policy_spec TEST
     LIBS miacode_media_tools Qt6::Core
     INCLUDES src
 )
+miacode_add_dev_tool(batch_cleanup_core_spec TEST
+    SOURCES
+        src/tools/batch_cleaner/BatchCleanupCoreSpec.cpp
+        src/batch_cleaner/BatchCleanupCore.cpp
+    LIBS miacode_chart Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_edit_spec TEST
+    SOURCES src/tools/chart_transform/HandOrderEditSpec.cpp
+    LIBS miacode_chart Qt6::Core
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_screen_split_spec TEST
+    SOURCES src/tools/chart_transform/HandOrderScreenSplitSpec.cpp
+    LIBS miacode_chart Qt6::Core
+    INCLUDES src
+)
+
+miacode_add_dev_tool(native_slide_split_spec TEST
+    SOURCES src/tools/chart_transform/NativeSlideSplitSpec.cpp
+    LIBS miacode_chart miacode_analysis miacode_scene Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(basic_hand_order_spec TEST
+    SOURCES src/tools/analysis/BasicHandOrderSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_local_context_spec TEST
+    SOURCES src/tools/analysis/HandOrderLocalContextSpec.cpp
+    LIBS miacode_analysis miacode_chart Qt6::Core
+    INCLUDES src
+)
+
+miacode_add_dev_tool(basic_hand_order_layout_spec TEST
+    SOURCES src/tools/chart_transform/BasicHandOrderLayoutSpec.cpp
+    LIBS miacode_chart Qt6::Core
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_touch_judge_spec TEST
+    SOURCES src/tools/analysis/HandOrderTouchJudgeSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_full_replay_spec TEST
+    SOURCES src/tools/analysis/HandOrderFullReplaySpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(basic_hand_order_replay_spec TEST
+    SOURCES src/tools/analysis/BasicHandOrderReplaySpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(wifi_hand_order_render_spec TEST
+    SOURCES src/tools/video_export/WifiHandOrderRenderSpec.cpp
+    LIBS miacode_export Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+target_compile_definitions(wifi_hand_order_render_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\""
+)
+
+miacode_add_dev_tool(slide_hand_order_render_spec TEST
+    SOURCES src/tools/video_export/SlideHandOrderRenderSpec.cpp
+    LIBS miacode_export Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+target_compile_definitions(slide_hand_order_render_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\""
+)
+
+miacode_add_dev_tool(hand_order_player_model_spec TEST
+    SOURCES src/tools/analysis/HandOrderPlayerModelSpec.cpp
+    LIBS Qt6::Core
+    INCLUDES src
+)
+
+miacode_add_dev_tool(simulated_play_render_spec TEST
+    SOURCES src/tools/video_export/SimulatedPlayRenderSpec.cpp
+    LIBS miacode_export Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+target_compile_definitions(simulated_play_render_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\""
+)
+
+miacode_add_dev_tool(hand_order_player_integration_spec TEST
+    SOURCES src/tools/analysis/HandOrderPlayerIntegrationSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_ergonomics_spec TEST
+    SOURCES src/tools/analysis/HandOrderErgonomicsSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(lance_pattern_spec TEST
+    SOURCES src/tools/analysis/LancePatternSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_hold_candidates_spec TEST
+    SOURCES src/tools/analysis/HandOrderHoldCandidatesSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_slide_timing_spec TEST
+    SOURCES src/tools/analysis/HandOrderSlideTimingSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(pattern_hand_order_optimization_spec TEST
+    SOURCES src/tools/analysis/PatternHandOrderOptimizationSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_pattern_rules_spec TEST
+    SOURCES src/tools/analysis/HandOrderPatternRulesSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(pattern_candidate_render_spec TEST
+    SOURCES src/tools/video_export/PatternCandidateRenderSpec.cpp
+    LIBS miacode_export miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+target_compile_definitions(pattern_candidate_render_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+miacode_add_dev_tool(hand_order_progress_spec TEST
+    SOURCES src/tools/analysis/HandOrderProgressSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_context_guard_spec TEST
+    SOURCES src/tools/analysis/HandOrderContextGuardSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_verification_tail_spec TEST
+    SOURCES src/tools/analysis/HandOrderVerificationTailSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
+miacode_add_dev_tool(hand_order_gesture_variants_spec TEST
+    SOURCES src/tools/analysis/HandOrderGestureVariantsSpec.cpp
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
+    INCLUDES src
+)
 miacode_add_dev_tool(chart_note_selection_spec TEST
     SOURCES src/tools/chart_selection/ChartNoteSelectionSpec.cpp
     LIBS miacode_timeline Qt6::Core Qt6::Gui
@@ -309,16 +474,16 @@ miacode_add_dev_tool(chart_tools_spec TEST
     INCLUDES src
 )
 
+miacode_add_dev_tool(hand_order_note_selection_spec TEST
+    SOURCES src/tools/chart_selection/HandOrderNoteSelectionSpec.cpp
+        src/app/ui/editor/EditorController.cpp src/app/ui/editor/EditorController.h
+        src/app/ui/editor/NoteSelectionEdit.h
+    LIBS miacode_analysis miacode_editor_core miacode_timeline Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+
 miacode_add_dev_tool(timeline_note_selection_interaction_spec TEST
     SOURCES src/tools/timeline/TimelineNoteSelectionInteractionSpec.cpp
     LIBS miacode_timeline_quick Qt6::Core Qt6::Gui Qt6::Quick Qt6::Test
     INCLUDES src)
 set_tests_properties(timeline_note_selection_interaction_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-
-miacode_add_dev_tool(batch_cleanup_core_spec TEST
-    SOURCES
-        src/tools/batch_cleaner/BatchCleanupCoreSpec.cpp
-        src/batch_cleaner/BatchCleanupCore.cpp
-    LIBS miacode_chart Qt6::Core Qt6::Gui
-    INCLUDES src
-)

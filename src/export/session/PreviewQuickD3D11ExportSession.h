@@ -1,5 +1,7 @@
 #pragma once
 
+#include "export/video_export/VideoWatermarkSettings.h"
+
 #include <QImage>
 #include <QObject>
 #include <QSize>
@@ -21,6 +23,7 @@ class QQuickRenderControl;
 class QQuickWindow;
 class PreviewQuickHudLayer;
 class PreviewQuickSceneRoot;
+class ExportQuickBackgroundItem;
 
 // P5 — D3D11/QRhi export session (plan P5.1/P5.2), parallel to the OpenGL
 // PreviewQuickExportSession (which stays the default + fallback path).
@@ -54,6 +57,7 @@ public:
     explicit PreviewQuickD3D11ExportSession(QObject* parent = nullptr);
     ~PreviewQuickD3D11ExportSession() override;
 
+    void setBackgroundFrame(const QImage& image, bool cacheable, bool fullFrame, qreal brightness);
     void setFrameState(const miacode::preview::scene::PreviewFrameState& state);
     void applyExportFrameTick(
         double playheadSeconds,
@@ -89,7 +93,8 @@ public:
     void setChartLayersVisible(bool visible);
     bool introOverlayReady() const { return introItem_ != nullptr; }
 
-    bool initialize(QString* errorMessage = nullptr);
+    bool initialize(QString* errorMessage = nullptr,
+                    const miacode::video_export::VideoWatermarkSettings& watermark = {});
     void invalidate();
     bool isInitialized() const;
 
@@ -124,6 +129,7 @@ private:
     void resetReadbackRing();
     void applyFrameSize();
     void applyIntroGeometry();
+    void applyChartGeometry();
     void destroyIntroOverlay();
     void applyFrameState();
     void bindFrameStateIfNeeded();
@@ -138,11 +144,16 @@ private:
     QQuickRenderControl* renderControl_ = nullptr;
     QQuickWindow* quickWindow_ = nullptr;
     QQuickItem* rootItem_ = nullptr;
+    ExportQuickBackgroundItem* backgroundItem_ = nullptr;
+    bool backgroundEnabled_ = false;
+    bool backgroundFullFrame_ = false;
+    qreal backgroundBrightness_ = 1.0;
     PreviewQuickSceneRoot* sceneRoot_ = nullptr;
     PreviewQuickHudLayer* hudLayer_ = nullptr;
     QQmlEngine* qmlEngine_ = nullptr;
     QQuickItem* introItem_ = nullptr;
     bool introActive_ = false;
+    bool introChartPreviewSplit_ = false;
     std::unique_ptr<D3dObjects> d3d_;
     static constexpr int kReadbackRingSize = 8;
     QImage readbackRing_[kReadbackRingSize];

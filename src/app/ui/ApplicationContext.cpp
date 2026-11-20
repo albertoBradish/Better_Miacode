@@ -1,6 +1,7 @@
 #include "app/ui/ApplicationContext.h"
 
 #include "app/services/update/UpdateService.h"
+#include "app/ui/preferences/LocaleService.h"
 
 namespace miacode::ui {
 ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
@@ -14,7 +15,10 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
                 services.uiRequests(), services.documentBridgeSlot(),
                 services.previewSurfaceSlot(), this)
     , analysis_(services.workspace(), services.analysis(), this)
+    , handOrderAnalysis_(services.workspace(), &services.analysis(), this)
     , preview_(services.shellNotifications(), services.previewSurfaceSlot(), services.playbackControlSlot(), this)
+    , comparisons_(services.workspace(), preview_, this)
+    , chartStructure_(services.workspace(), services.files(), this)
     , timeline_(services.shellNotifications(), services.timelineSurfaceSlot(), this)
     , commands_(document_, services.documentBridgeSlot(), this)
     , pages_(services.shellNotifications(), document_, services.editorPageRouterSlot(),
@@ -34,8 +38,36 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
     , netUpload_(services.netService(), services.uiRequests(), this)
     , cli_(this)
     , chartTools_(services.uiRequests(), this)
+    , chartLibrary_(services.uiRequests(), document_, this)
     , lifecycle_(services.editorPageRouterSlot(), this)
 {
+    handOrderAnalysis_.setJobProgress(&services.jobProgress());
+    connect(&handOrderAnalysis_, &miacode::HandOrderAnalysisService::patternPanelRequested, this,
+        [this] { timeline_.setCurrentTabId(QStringLiteral("patterns")); });
+    connect(&preview_, &PreviewModel::playingChanged, this, [this] {
+        handOrderAnalysis_.setPlaybackActive(preview_.playing());
+    });
+    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
+            &handOrderAnalysis_, &miacode::HandOrderAnalysisService::retranslate);
+    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
+            &editor_, &EditorController::retranslate);
+    preview_.setComparisons(&comparisons_);
+    preview_.setStructure(&chartStructure_);
+    const auto syncStructureTransport = [this] {
+        chartStructure_.setPlaying(preview_.playing());
+        chartStructure_.setPlaybackDuration(preview_.durationSeconds());
+    };
+    connect(&preview_, &PreviewModel::playingChanged, this, syncStructureTransport);
+    connect(&preview_, &PreviewModel::transportChanged, this, syncStructureTransport);
+    syncStructureTransport();
+    const auto syncStructurePerformance = [this] {
+        chartStructure_.setLowPerformanceMode(preferences_.lowPerformanceMode());
+    };
+    connect(&preferences_, &WorkbenchSettings::workflowSettingsChanged, this, syncStructurePerformance);
+    syncStructurePerformance();
+    connect(&LocaleService::instance(), &LocaleService::languageChanged,
+            &chartStructure_, &ChartStructureModel::changed);
+
     net_.setHost(&document_, &services.uiRequests());
     if (auto* netService = services.netService()) {
         netService->setDocumentSnapshotHandler([this] { return document_.documentIdentity(); });
@@ -61,6 +93,32 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
     syncEditorAppearance();
     connect(&preferencesModel_, &miacode::ui::PreferencesModel::editorChanged,
             this, syncEditorAppearance);
+    const auto syncHandOrderRest = [this]() {
+        const double speed = preferencesModel_.handOrderReturnSpeed();
+        editor_.setHandOrderReturnSpeed(speed);
+        handOrderAnalysis_.setReturnSpeed(speed);
+        const int sweepThreshold = preferencesModel_.handOrderSweepThreshold();
+        editor_.setHandOrderSweepThreshold(sweepThreshold);
+        handOrderAnalysis_.setSweepThreshold(sweepThreshold);
+        const bool colorUnresolved = preferencesModel_.handOrderColorUnresolved();
+        editor_.setHandOrderColorUnresolved(colorUnresolved);
+        handOrderAnalysis_.setColorUnresolved(colorUnresolved);
+        const auto values = preferencesModel_.handOrderPlayerProfile();
+        hand_order::PlayerProfile profile;
+        profile.maxComfortableTapRate = values.value(QStringLiteral("maxComfortableTapRate")).toDouble();
+        profile.comfortableMoveSpeed = values.value(QStringLiteral("comfortableMoveSpeed")).toDouble();
+        profile.staminaCapacity = values.value(QStringLiteral("staminaCapacity")).toDouble();
+        profile.recoveryHalfLife = values.value(QStringLiteral("recoveryHalfLife")).toDouble();
+        profile.techniquePreference = values.value(QStringLiteral("techniquePreference")).toDouble();
+        profile.postureWeight = values.value(QStringLiteral("postureWeight")).toDouble();
+        handOrderAnalysis_.setPlayerProfile(profile);
+        handOrderAnalysis_.setMaxWorkUnits(
+            qint64(preferencesModel_.handOrderSearchBudgetMillions()) * 1000000);
+        handOrderAnalysis_.refreshParserPolicy();
+    };
+    syncHandOrderRest();
+    connect(&preferencesModel_, &miacode::ui::PreferencesModel::editorChanged,
+            this, syncHandOrderRest);
 
     const auto applyEditorSettings = [this] {
         const int inputHandlingMode = preferencesModel_.editorInputHandlingMode();
@@ -85,6 +143,18 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
             &latency_, &LatencyModel::refreshFromDocument);
     applyEditorSettings();
     editor_.setWholeBpm(document_.wholeBpm());
+    handOrderAnalysis_.setPlaybackActive(preview_.playing());
+    const auto syncHandOrderFeatures = [this] {
+        const bool enabled = preferencesModel_.handOrderFeaturesEnabled();
+        editor_.setHandOrderFeaturesEnabled(enabled);
+        document_.setHandOrderFeaturesEnabled(enabled);
+        chartStructure_.setHandOrderFeaturesEnabled(enabled);
+        handOrderAnalysis_.setFeaturesEnabled(enabled);
+        handOrderAnalysis_.setBackgroundEnabled(enabled);
+        preview_.setHandOrderFeaturesEnabled(enabled);
+    };
+    connect(&preferencesModel_, &PreferencesModel::handOrderFeaturesChanged, this, syncHandOrderFeatures);
+    syncHandOrderFeatures();
 }
 
 QObject* ApplicationContext::document() { return &document_; }
