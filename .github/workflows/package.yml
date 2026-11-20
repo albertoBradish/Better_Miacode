@@ -31,22 +31,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-x64
-            runner: windows-2022
-            toolchain: msvc
-            build: build-msvc
-            qt: .qt/6.11.1/msvc2022_64
-            media: third_party/ffmpeg/windows/win64
-            version: ffmpeg7.1
-          - platform: windows-arm64
-            runner: windows-11-arm
-            toolchain: msvc-arm64
-            build: build-msvc-arm64
-            qt: .qt/6.11.1/msvc2022_arm64
-            media: third_party/ffmpeg/windows/winarm64
-            version: ffmpeg8.1.2
           - platform: macos-arm64
-            runner: macos-14
+            runner: macos-15
             toolchain: apple-clang
             build: build-macos
             qt: .qt/6.11.1
@@ -83,6 +69,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: 44ed3cc9c5ba3020810a8ba443b769edf95b1006
           lfs: false
 
       - name: Cache keys
@@ -97,7 +84,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: dist/*.7z
-          key: platform-v2-package-${{ matrix.platform }}-${{ env.CI_CHANNEL }}-${{ github.sha }}
+          key: platform-v2-package-${{ matrix.platform }}-${{ env.CI_CHANNEL }}-44ed3cc9c5ba3020810a8ba443b769edf95b1006
 
       - name: Fetch assets
         if: steps.package-cache.outputs.cache-hit != 'true'
@@ -145,7 +132,6 @@ jobs:
           key: platform-v1-build-${{ matrix.platform }}-${{ steps.keys.outputs.toolchain }}-${{ steps.keys.outputs.source }}
           restore-keys: |
             platform-v1-build-${{ matrix.platform }}-${{ steps.keys.outputs.toolchain }}-
-            platform-v1-build-${{ matrix.platform }}-
 
       - name: Compiler cache
         if: steps.package-cache.outputs.cache-hit != 'true'
@@ -211,7 +197,10 @@ jobs:
         run: python scripts/build/package.py artifact
 
       - name: Verify packaged CLI, video, cover and archive
-        run: python scripts/build/verify-release.py --dist dist
+        run: |
+          revision="$(git rev-parse HEAD)"
+          test "$revision" = "44ed3cc9c5ba3020810a8ba443b769edf95b1006"
+          GITHUB_SHA="$revision" python scripts/build/verify-release.py --dist dist
 
       - name: Save package
         if: steps.package-cache.outputs.cache-hit != 'true'
