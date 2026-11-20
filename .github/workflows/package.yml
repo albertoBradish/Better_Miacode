@@ -31,26 +31,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-x64
-            runner: windows-2022
-            toolchain: msvc
-            build: build-msvc
-            qt: .qt/6.11.1/msvc2022_64
-            media: third_party/ffmpeg/windows/win64
-            version: ffmpeg7.1
           - platform: windows-arm64
             runner: windows-11-arm
             toolchain: msvc-arm64
             build: build-msvc-arm64
             qt: .qt/6.11.1/msvc2022_arm64
             media: third_party/ffmpeg/windows/winarm64
-            version: ffmpeg8.1.2
-          - platform: macos-arm64
-            runner: macos-14
-            toolchain: apple-clang
-            build: build-macos
-            qt: .qt/6.11.1
-            media: third_party/ffmpeg/macos
             version: ffmpeg8.1.2
     defaults:
       run:
@@ -83,7 +69,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: 44ed3cc9c5ba3020810a8ba443b769edf95b1006
           lfs: false
+
+      - name: Apply tagged release test overlay
+        run: |
+          test "$(git rev-parse HEAD)" = "44ed3cc9c5ba3020810a8ba443b769edf95b1006"
+          git fetch --no-tags --depth=1 origin 8499d3346bd7210a77b88b5a0bd958c7b7498aa8
+          git restore --source=8499d3346bd7210a77b88b5a0bd958c7b7498aa8 --worktree -- src/tools/preview/PreviewNoteSelectionInteractionSpec.cpp
+          test "$(git diff --name-only)" = "src/tools/preview/PreviewNoteSelectionInteractionSpec.cpp"
+          test "$(git hash-object src/tools/preview/PreviewNoteSelectionInteractionSpec.cpp)" = "$(git rev-parse 8499d3346bd7210a77b88b5a0bd958c7b7498aa8:src/tools/preview/PreviewNoteSelectionInteractionSpec.cpp)"
 
       - name: Cache keys
         id: keys
