@@ -1,3 +1,4 @@
+#include "common/DebugLog.h"
 #include "preview/quick_scene/PreviewQuickSceneRoot.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewSceneAssetRepository.h"
@@ -124,11 +125,12 @@ bool verifyWindowInteraction(QTextStream& out, QTextStream& err)
     int pauseRequests = 0;
     // PreviewRuntime publishes the pause request to its host. No audio backend,
     // document session or second playback clock is constructed in this spec.
-    QObject::connect(&runtime, &PreviewRuntime::noteSelectionStarted, &window, [&] {
+    QObject selectionObserver;
+    QObject::connect(&runtime, &PreviewRuntime::noteSelectionStarted, &selectionObserver, [&] {
         ++pauseRequests;
         playing = false;
     });
-    QObject::connect(&runtime, &PreviewRuntime::noteSelectionFinished, &window,
+    QObject::connect(&runtime, &PreviewRuntime::noteSelectionFinished, &selectionObserver,
         [&](const QSet<quint64>& locations, bool additive) { requests.append({locations, additive}); });
 
     const auto press = [&](const QPoint& point, Qt::KeyboardModifiers modifiers) {
@@ -220,7 +222,11 @@ bool verifyWindowInteraction(QTextStream& out, QTextStream& err)
 
     out << "preview_note_selection_interaction_spec " << (ok ? "PASS" : "FAIL")
         << " pause_requests=" << pauseRequests << " completed_requests=" << finishes.count() << Qt::endl;
+    root.setRuntime(nullptr);
+    root.setParentItem(nullptr);
     window.hide();
+    window.releaseResources();
+    QCoreApplication::processEvents();
     return ok;
 }
 }
@@ -231,5 +237,7 @@ int main(int argc, char** argv)
     QGuiApplication app(argc, argv);
     qRegisterMetaType<QSet<quint64>>();
     QTextStream out(stdout), err(stderr);
-    return verifyWindowInteraction(out, err) ? 0 : 1;
+    const bool ok = verifyWindowInteraction(out, err);
+    miacode::debug_log::shutdownAsyncLogWriter();
+    return ok ? 0 : 1;
 }
