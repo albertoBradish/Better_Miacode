@@ -28,19 +28,6 @@ AppDialog {
     }
     body: Column {
         spacing: Theme.panelPadding
-        Label {
-            width: parent.width
-            text: qsTrId("hand_order.workflow.overview")
-            color: Theme.colors.text.secondary
-            wrapMode: Text.Wrap
-        }
-        Label {
-            width: parent.width
-            text: root.reviewingPlay ? qsTrId("hand_order.play_review.notice")
-                : root.service && root.service.optimizingPatterns ? qsTrId("hand_order.optimize.notice") : qsTrId("hand_order.workflow.combined_help")
-            color: Theme.colors.text.secondary
-            wrapMode: Text.Wrap
-        }
         LabeledCombo {
             width: parent.width
             visible: !root.reviewingPlay
@@ -163,7 +150,7 @@ AppDialog {
                     width: parent.width
                     Label {
                         Layout.fillWidth: true
-                        text: modelData.line + ":" + modelData.col + " · " + modelData.statusText + " · " + modelData.reason
+                        text: modelData.line + ":" + modelData.col + " · " + modelData.statusText
                         color: Theme.colors.text.primary
                         wrapMode: Text.Wrap
                     }
@@ -175,16 +162,6 @@ AppDialog {
                     }
                 }
                 Label {
-                    width: parent.width
-                    text: (modelData.context ? qsTrId("hand_order.auto.context_notice") + " " : "")
-                        + (modelData.originalAnnotation.length > 0
-                            ? qsTrId("hand_order.auto.original_annotation").arg(modelData.originalAnnotation)
-                            : modelData.context ? qsTrId("hand_order.auto.original_unannotated") : "")
-                    visible: modelData.context || modelData.originalAnnotation.length > 0
-                    color: Theme.colors.text.secondary
-                    wrapMode: Text.Wrap
-                }
-                Label {
                     objectName: "handOrderAutomaticIntervals_" + modelData.line + "_" + modelData.col
                     width: parent.width
                     visible: modelData.intervals.length > 0
@@ -193,56 +170,9 @@ AppDialog {
                     wrapMode: Text.Wrap
                 }
                 Label {
-                    objectName: "handOrderAutomaticEvidence_" + modelData.line + "_" + modelData.col
                     width: parent.width
-                    visible: modelData.judgementKind.length > 0
-                    text: qsTrId("hand_order.auto.judgement").arg(modelData.judgementKindText).arg(modelData.judgementQualityText)
-                        .arg(Number(modelData.judgementSecond).toFixed(4)).arg(Number(modelData.judgementMargin * 1000).toFixed(1))
-                        + " · " + modelData.evidence
-                    color: Theme.colors.text.secondary
-                    wrapMode: Text.Wrap
-                }
-                Label {
-                    width: parent.width
-                    visible: modelData.handoffCount > 0
-                    text: modelData.handoffSummary
-                    color: Theme.colors.text.secondary
-                    wrapMode: Text.Wrap
-                }
-                Label {
-                    width: parent.width
-                    visible: modelData.conditions.length > 0
-                    text: (modelData.fullReplayVerified ? qsTrId("hand_order.auto.full_replay_verified") + " · " : "")
-                        + qsTrId("hand_order.auto.conditions") + " " + modelData.conditions
-                    color: Theme.colors.text.secondary
-                    wrapMode: Text.Wrap
-                }
-                Label {
-                    objectName: "handOrderConfidence_" + modelData.line + "_" + modelData.col
-                    width: parent.width
-                    visible: modelData.hasCandidate && (modelData.status === "review"
-                        || modelData.status === "undecided" || modelData.status === "heuristic")
-                    text: modelData.confidenceText + " · " + modelData.pressureText + " · " + modelData.counterfactualSummary
-                    color: Theme.colors.text.secondary
-                    wrapMode: Text.Wrap
-                }
-                Label {
-                    width: parent.width
-                    visible: modelData.hasAssignments
-                    text: (modelData.noteAssignments.length > 0
-                        ? modelData.noteAssignments + " · " + qsTrId("hand_order.auto.motion_metrics")
-                            .arg(Number(modelData.peakSpeed).toFixed(2)).arg(Number(modelData.cost).toFixed(3))
-                        : qsTrId("hand_order.auto.suggestion").arg(modelData.head).arg(modelData.track)
-                            .arg(Number(modelData.peakSpeed).toFixed(2)).arg(Number(modelData.cost).toFixed(3)))
-                    color: Theme.colors.text.secondary
-                    wrapMode: Text.Wrap
-                }
-                Label {
-                    width: parent.width
-                    visible: modelData.hasCandidate && modelData.playerCost > 0
-                    text: qsTrId("hand_order.auto.player_effort")
-                        .arg(Number(modelData.peakTapRate).toFixed(2))
-                        .arg(Number(modelData.peakLoad).toFixed(2))
+                    text: modelData.noteAssignments
+                    visible: text.length > 0
                     color: Theme.colors.text.secondary
                     wrapMode: Text.Wrap
                 }
