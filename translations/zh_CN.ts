@@ -7218,7 +7218,8 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.sort_descending"><source>Descending order</source><translation>倒序</translation></message>
 <message id="library.sort_constant"><source>Highest chart constant</source><translation>谱面定数</translation></message>
 <message id="library.sort_designer"><source>Designer of the highest difficulty</source><translation>谱师</translation></message>
-<message id="library.selected_actions"><source>%1 selected</source><translation>已选 %1 首</translation></message>
+<message id="library.selected_actions"><source>Batch actions (%1 selected)</source><translation>批量操作（已选 %1 首）</translation></message>
+<message id="library.exit_selection"><source>Exit selection</source><translation>退出多选</translation></message>
 <message id="library.batch_normalize"><source>Normalize selected charts</source><translation>批量整理谱面</translation></message>
 <message id="library.batch_cleanup_metadata"><source>Clean up metadata automatically</source><translation>批量自动整理元数据</translation></message>
 <message id="library.batch_zip"><source>Export a ZIP for each song</source><translation>批量导出谱面</translation></message>

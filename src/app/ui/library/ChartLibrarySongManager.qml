@@ -6,6 +6,8 @@ import MiaCode.UI
 ColumnLayout {
     id: root
     required property var library
+    required property AppMenu batchMenu
+    signal reviewRequested()
     signal editSourceRequested(string path)
     readonly property Item cornerSourceItem: actions
     property bool batchMode: false
@@ -61,7 +63,6 @@ ColumnLayout {
                 AppMenuItem { text: qsTrId("library.choose_root"); onTriggered: if (root.stage()) root.library.chooseRoot() }
                 AppMenuItem { text: qsTrId("library.export"); enabled: root.populated; onTriggered: if (root.stage()) root.library.chooseExport() }
                 AppMenuItem { text: qsTrId("library.consolidate"); enabled: root.populated; onTriggered: if (root.stage()) dedupDialog.open() }
-                AppMenuItem { visible: root.narrow; height: visible ? implicitHeight : 0; text: qsTrId("library.batch"); onTriggered: { root.batchMode = !root.batchMode; root.mobileDetail = false } }
                 AppMenuItem { text: qsTrId("library.refresh"); onTriggered: if (root.stage()) root.library.refresh() }
                 AppMenuItem {
                     text: qsTrId("library.delete_pack")
@@ -81,8 +82,51 @@ ColumnLayout {
             enabled: !root.library.busy
             onClicked: if (root.stage()) importDialog.open()
         }
-        AppButton { visible: root.populated && !root.narrow; text: qsTrId("library.batch"); selected: root.batchMode; onClicked: { root.batchMode = !root.batchMode; root.mobileDetail = false } }
+        AppButton {
+            objectName: "enterLibraryBatchMode"
+            visible: root.populated && !root.batchMode
+            text: qsTrId("library.batch")
+            onClicked: {
+                if (!root.stage()) return
+                root.mobileDetail = false
+                root.batchMode = true
+            }
+        }
+        AppDropDownButton {
+            id: batchActions
+            objectName: "libraryBatchActionsButton"
+            visible: root.batchMode
+            text: qsTrId("library.selected_actions").arg(root.library.selectedCount)
+            enabled: root.library.selectedCount > 0 && !root.library.busy
+            expanded: root.batchMenu.active
+            onClicked: expanded ? root.batchMenu.close() : root.batchMenu.openAt(batchActions)
+        }
+        AppButton {
+            visible: root.batchMode && root.library.proposals.length > 0
+            text: qsTrId("library.review").arg(root.library.proposals.length)
+            onClicked: root.reviewRequested()
+        }
+        AppButton {
+            visible: root.batchMode && root.library.canUndoBatch
+            text: qsTrId("library.undo_batch")
+            onClicked: root.library.undoBatch()
+        }
         AppButton { visible: root.library.busy; text: qsTrId("library.cancel"); onClicked: root.library.cancel() }
+    }
+    Flow {
+        Layout.minimumWidth: 0
+        Layout.fillWidth: true
+        visible: root.batchMode && !root.narrow && root.library.selectedCount > 0
+        enabled: !root.library.busy
+        spacing: 6
+        Repeater {
+            model: root.batchMenu.count
+            delegate: AppButton {
+                required property int index
+                objectName: "libraryBatchAction_" + index
+                action: root.batchMenu.itemAt(index)?.action ?? null
+            }
+        }
     }
     Label {
         Layout.minimumWidth: 0
@@ -173,6 +217,7 @@ ColumnLayout {
                 AppCheckBox { text: qsTrId("library.duplicates"); checked: root.library.duplicatesOnly; onToggled: root.library.duplicatesOnly = checked }
                 AppButton { text: qsTrId("library.select_visible"); onClicked: root.library.selectVisible(true) }
                 AppButton { text: qsTrId("library.clear_visible"); onClicked: root.library.selectVisible(false) }
+                AppButton { text: qsTrId("library.exit_selection"); onClicked: root.batchMode = false }
             }
             Label { visible: !songs.count && !root.library.busy; text: qsTrId("library.dock_empty"); color: Theme.colors.text.secondary }
             ListView {

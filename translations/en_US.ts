@@ -7199,7 +7199,8 @@ Movement L %3 / R %4 · Alternation %5</translation>
 <message id="library.sort_descending"><source>Descending order</source><translation>Descending order</translation></message>
 <message id="library.sort_constant"><source>Highest chart constant</source><translation>Highest chart constant</translation></message>
 <message id="library.sort_designer"><source>Designer of the highest difficulty</source><translation>Designer of the highest difficulty</translation></message>
-<message id="library.selected_actions"><source>%1 selected</source><translation>%1 selected</translation></message>
+<message id="library.selected_actions"><source>Batch actions (%1 selected)</source><translation>Batch actions (%1 selected)</translation></message>
+<message id="library.exit_selection"><source>Exit selection</source><translation>Exit selection</translation></message>
 <message id="library.batch_normalize"><source>Normalize selected charts</source><translation>Normalize selected charts</translation></message>
 <message id="library.batch_cleanup_metadata"><source>Clean up metadata automatically</source><translation>Clean up metadata automatically</translation></message>
 <message id="library.batch_zip"><source>Export a ZIP for each song</source><translation>Export a ZIP for each song</translation></message>

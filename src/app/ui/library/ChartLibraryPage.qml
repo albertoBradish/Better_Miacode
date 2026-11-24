@@ -75,6 +75,8 @@ Item {
                 Layout.fillHeight: true
                 visible: !root.editing
                 library: root.library
+                batchMenu: batchActionsMenu
+                onReviewRequested: review.open()
                 onEditSourceRequested: path => {
                     if (!root.flush()) return
                     root.library.openBuffer(path)
@@ -130,37 +132,6 @@ Item {
                     }
                 }
             }
-            Flow {
-                Layout.fillWidth: true
-                spacing: 8
-                visible: !root.editing && songs.batchMode && (root.library.selectedCount > 0 || root.library.canUndoBatch)
-                AppDropDownButton {
-                    id: selectedActions
-                    visible: root.library.selectedCount > 0
-                    text: qsTrId("library.selected_actions").arg(root.library.selectedCount)
-                    enabled: !root.library.busy
-                    expanded: batchMenu.active
-                    onClicked: batchMenu.active ? batchMenu.close() : batchMenu.openAt(selectedActions)
-                    AppMenu {
-                        id: batchMenu
-                        AppMenuItem { text: qsTrId("library.batch_normalize"); onTriggered: if (root.flush()) root.library.prepareNormalization() }
-                        AppMenuItem { text: qsTrId("library.batch_cleanup_metadata"); onTriggered: if (root.flush()) root.library.prepareMetadataCleanup() }
-                        AppMenuItem { text: qsTrId("library.batch_zip"); onTriggered: if (root.flush()) zipOptions.open() }
-                        AppMenuItem { text: qsTrId("library.batch_queue"); onTriggered: if (root.flush()) render.open() }
-                        AppMenuItem { text: qsTrId("library.batch_unlink"); onTriggered: if (root.flush()) unlink.open() }
-                    }
-                }
-                AppButton {
-                    visible: root.library.proposals.length > 0
-                    text: qsTrId("library.review").arg(root.library.proposals.length)
-                    onClicked: review.open()
-                }
-                AppButton {
-                    visible: root.library.canUndoBatch
-                    text: qsTrId("library.undo_batch")
-                    onClicked: root.library.undoBatch()
-                }
-            }
             RowLayout {
                 visible: root.library.busy
                 Layout.fillWidth: true
@@ -182,6 +153,39 @@ Item {
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 color: Theme.colors.text.secondary
+            }
+        }
+    }
+    AppMenu {
+        id: batchActionsMenu
+        AppMenuItem {
+            action: Action {
+                text: qsTrId("library.batch_normalize")
+                onTriggered: if (root.flush()) root.library.prepareNormalization()
+            }
+        }
+        AppMenuItem {
+            action: Action {
+                text: qsTrId("library.batch_cleanup_metadata")
+                onTriggered: if (root.flush()) root.library.prepareMetadataCleanup()
+            }
+        }
+        AppMenuItem {
+            action: Action {
+                text: qsTrId("library.batch_zip")
+                onTriggered: if (root.flush()) zipOptions.open()
+            }
+        }
+        AppMenuItem {
+            action: Action {
+                text: qsTrId("library.batch_queue")
+                onTriggered: if (root.flush()) render.open()
+            }
+        }
+        AppMenuItem {
+            action: Action {
+                text: qsTrId("library.batch_unlink")
+                onTriggered: if (root.flush()) unlink.open()
             }
         }
     }

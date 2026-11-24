@@ -7217,7 +7217,8 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.sort_descending"><source>Descending order</source><translation>降順</translation></message>
 <message id="library.sort_constant"><source>Highest chart constant</source><translation>最高譜面定数</translation></message>
 <message id="library.sort_designer"><source>Designer of the highest difficulty</source><translation>最高難度の譜面制作者</translation></message>
-<message id="library.selected_actions"><source>%1 selected</source><translation>%1 曲を選択</translation></message>
+<message id="library.selected_actions"><source>Batch actions (%1 selected)</source><translation>一括操作（%1 曲選択中）</translation></message>
+<message id="library.exit_selection"><source>Exit selection</source><translation>複数選択を終了</translation></message>
 <message id="library.batch_normalize"><source>Normalize selected charts</source><translation>選択した譜面を一括で整形</translation></message>
 <message id="library.batch_cleanup_metadata"><source>Clean up metadata automatically</source><translation>メタデータを一括で自動整理</translation></message>
 <message id="library.batch_zip"><source>Export a ZIP for each song</source><translation>楽曲ごとに ZIP を出力</translation></message>
