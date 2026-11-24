@@ -7191,6 +7191,7 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="preview.comparison.seek"><source>Preview position</source><translation>预览播放位置</translation></message>
 <message id="preview.comparison.linked"><source>Linked</source><translation>同步</translation></message>
 <message id="preview.comparison.sync"><source>Synchronize playback for previews of the same song</source><translation>同一首歌的预览同步播放</translation></message>
+<message id="preview.comparison.workspace_title"><source>Child Preview %1</source><translation>子预览%1</translation></message>
 <message id="preview.heatmap"><source>Pressure map</source><translation>热力图</translation></message>
 <message id="preview.heatmap_youtube"><source>YouTube-style curve</source><translation>YouTube 风格曲线</translation></message>
 <message id="library.create"><source>New library</source><translation>新建谱库</translation></message>

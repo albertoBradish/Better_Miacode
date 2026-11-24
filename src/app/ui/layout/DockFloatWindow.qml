@@ -15,7 +15,7 @@ ApplicationWindow {
     property bool sourceEditorFocused: false
     property bool sourceEditorOverlayHeld: false
 
-    title: workspace.panelTitle(panelId)
+    title: workspace.floatingPanelTitle(panelId)
     flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowCloseButtonHint | Qt.WindowMaximizeButtonHint
     transientParent: workspace.Window.window
     visible: !!transientParent?.visible && workspace.isFloating(panelId)

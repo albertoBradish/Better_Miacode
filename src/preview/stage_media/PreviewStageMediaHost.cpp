@@ -40,6 +40,7 @@
 #include <QTimer>
 #include <QVariant>
 #include <QtMath>
+#include <utility>
 
 #include "preview/stage_media/PreviewStageMediaHostInternal.h"
 
@@ -48,6 +49,11 @@ using namespace miacode::preview::psmh_detail;
 namespace {
 
 constexpr int kVideoFrameIntervalWindowSize = 120;
+
+QVideoSink* videoSinkFor(QObject* output)
+{
+    return output ? qobject_cast<QVideoSink*>(output->property("videoSink").value<QObject*>()) : nullptr;
+}
 
 }  // namespace
 
@@ -92,12 +98,22 @@ void PreviewStageMediaHost::attachVideoOutputObject(QObject* videoOutputObject)
 
 void PreviewStageMediaHost::attachVideoOutputObjects(QObject* videoOutputObject, QObject* innerVideoOutputObject)
 {
-    if (videoOutputObject_ == videoOutputObject && innerVideoOutputObject_ == innerVideoOutputObject) {
-        return;
+    if (!videoOutputObject) return;
+    for (const auto& binding : std::as_const(videoOutputs_)) {
+        if (binding.output == videoOutputObject && binding.innerOutput == innerVideoOutputObject) return;
     }
-    videoOutputObject_ = videoOutputObject;
-    innerVideoOutputObject_ = innerVideoOutputObject;
-    bindVideoOutput();
+    detachVideoOutputObjects(videoOutputObject, nullptr);
+    videoOutputs_.removeIf([](const VideoOutputBinding& binding) { return binding.output.isNull(); });
+    const VideoOutputBinding binding{videoOutputObject, innerVideoOutputObject,
+        videoSinkFor(videoOutputObject), videoSinkFor(innerVideoOutputObject)};
+    videoOutputs_.append(binding);
+    if (lastVideoFrame_.isValid()) {
+        if (binding.sink) binding.sink->setVideoFrame(lastVideoFrame_);
+        if (backgroundScaleMode_ == PreviewBackgroundScaleMode::InnerCircleFitOuterFill
+            && binding.innerSink && binding.innerSink != binding.sink) {
+            binding.innerSink->setVideoFrame(lastVideoFrame_);
+        }
+    }
     recordPvMemoryBoundary(PvMemoryBoundary::OutputAttach);
 }
 
@@ -108,19 +124,45 @@ void PreviewStageMediaHost::detachVideoOutputObject(QObject* videoOutputObject)
 
 void PreviewStageMediaHost::detachVideoOutputObjects(QObject* videoOutputObject, QObject* innerVideoOutputObject)
 {
-    if (videoOutputObject_ == nullptr || videoOutputObject == nullptr) {
+    if (!videoOutputObject) return;
+    for (qsizetype i = 0; i < videoOutputs_.size(); ++i) {
+        const auto& candidate = videoOutputs_.at(i);
+        if (candidate.output != videoOutputObject
+            || (innerVideoOutputObject && candidate.innerOutput != innerVideoOutputObject)) continue;
+        const auto binding = videoOutputs_.takeAt(i);
+        if (binding.sink) binding.sink->setVideoFrame(QVideoFrame());
+        if (binding.innerSink && binding.innerSink != binding.sink)
+            binding.innerSink->setVideoFrame(QVideoFrame());
+        recordPvMemoryBoundary(PvMemoryBoundary::OutputDetach);
         return;
     }
-    if (videoOutputObject_ != videoOutputObject) {
-        return;
+}
+
+bool PreviewStageMediaHost::hasVideoOutput() const
+{
+    for (const auto& binding : videoOutputs_) {
+        if (binding.sink) return true;
     }
-    if (innerVideoOutputObject != nullptr && innerVideoOutputObject_ != innerVideoOutputObject) {
-        return;
+    return false;
+}
+
+void PreviewStageMediaHost::clearVideoOutputFrames()
+{
+    for (const auto& binding : std::as_const(videoOutputs_)) {
+        if (binding.sink) binding.sink->setVideoFrame(QVideoFrame());
+        if (binding.innerSink && binding.innerSink != binding.sink)
+            binding.innerSink->setVideoFrame(QVideoFrame());
     }
-    videoOutputObject_.clear();
-    innerVideoOutputObject_.clear();
-    bindVideoOutput();
-    recordPvMemoryBoundary(PvMemoryBoundary::OutputDetach);
+}
+
+void PreviewStageMediaHost::pushVideoOutputFrame(const QVideoFrame& frame)
+{
+    const bool useInner = backgroundScaleMode_ == PreviewBackgroundScaleMode::InnerCircleFitOuterFill;
+    for (const auto& binding : std::as_const(videoOutputs_)) {
+        if (binding.sink) binding.sink->setVideoFrame(frame);
+        if (useInner && binding.innerSink && binding.innerSink != binding.sink)
+            binding.innerSink->setVideoFrame(frame);
+    }
 }
 
 bool PreviewStageMediaHost::mediaVisible() const

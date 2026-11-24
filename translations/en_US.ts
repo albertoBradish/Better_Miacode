@@ -7172,6 +7172,7 @@ Movement L %3 / R %4 · Alternation %5</translation>
 <message id="preview.comparison.seek"><source>Preview position</source><translation>Preview position</translation></message>
 <message id="preview.comparison.linked"><source>Linked</source><translation>Linked</translation></message>
 <message id="preview.comparison.sync"><source>Synchronize playback for previews of the same song</source><translation>Synchronize playback for previews of the same song</translation></message>
+<message id="preview.comparison.workspace_title"><source>Child Preview %1</source><translation>Child Preview %1</translation></message>
 <message id="preview.heatmap"><source>Pressure map</source><translation>Pressure map</translation></message>
 <message id="preview.heatmap_youtube"><source>YouTube-style curve</source><translation>YouTube-style curve</translation></message>
 <message id="library.create"><source>New library</source><translation>New library</translation></message>

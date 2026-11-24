@@ -94,7 +94,8 @@ public:
     explicit PreviewRuntime(QObject* parent = nullptr);
     ~PreviewRuntime() override;
 
-    void inheritDisplaySettings(const PreviewRuntime& source);
+    void inheritDisplaySettings(const PreviewRuntime& source,
+        const miacode::preview::scene::PreviewAssetState* outline = nullptr);
     void setVisibleHostWindow(QQuickWindow* window);
     void clearVisibleHostWindow(QQuickWindow* window);
     void notifyVisibleFramePresented();

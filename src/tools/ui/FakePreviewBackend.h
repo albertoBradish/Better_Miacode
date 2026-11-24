@@ -20,6 +20,8 @@ struct FakeBackendRate {
     double position = 16.0;
     bool playing = false;
     QObject* runtime = nullptr;
+    QObject* mediaHost = nullptr;
+    QVariantMap renderSettings;
 };
 
 class FakeSurface final : public miacode::PreviewSurface
@@ -39,7 +41,7 @@ public:
     double playbackRate() const override { return shared_.rate; }
     QString playbackRateLabel() const override { return rateLabelFor(shared_.rate); }
     QObject* previewRuntimeObject() const override { return shared_.runtime; }
-    QObject* stageMediaHostObject() const override { return nullptr; }
+    QObject* stageMediaHostObject() const override { return shared_.mediaHost; }
     double canvasAspectRatio() const override { return 1.0; }
     QStringList statsTexts() const override { return {}; }
     RenderMode muriRenderMode() const override { return mode_; }
@@ -59,7 +61,7 @@ public:
     QString currentCustomOutlineFileName() const override { return {}; }
     void applyOutlineVariant(PreviewOutlineVariant, bool, bool) override {}
     void applyCustomOutlineFileName(const QString&, bool) override {}
-    QVariantMap renderSettings() const override { return {}; }
+    QVariantMap renderSettings() const override { return shared_.renderSettings; }
     void setRenderSetting(const QString&, const QVariant&) override {}
     void refreshSurfaces() override {}
     void applySfxLevels() override {}

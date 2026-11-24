@@ -1,15 +1,18 @@
 #include "app/ui/preview/ComparisonPreviews.h"
 #include "app/ui/preview/PreviewModel.h"
 #include "common/RuntimePaths.h"
+#include "core/video/AssetPaths.h"
 #include "tools/ui/FakePreviewBackend.h"
 #include "tools/preview/NullPreviewAudioBackend.h"
 
 #include <QGuiApplication>
+#include <QImage>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickWindow>
 #include <QQuickItem>
+#include <QVideoSink>
 #include <QtQml/QQmlExtensionPlugin>
 Q_IMPORT_QML_PLUGIN(MiaCode_PreviewPlugin)
 #include <QTemporaryDir>
@@ -67,8 +70,20 @@ int main(int argc, char** argv)
     Rendered rendered;
     preview_audio::installPreviewAudioBackendProvider({[&] { return std::make_unique<AudioProbe>(rendered); }, {}});
     test::FakeBackendRate shared;
+    root.mkpath("assets/background/outlines");
+    assets::setAssetRoot(root.filePath("assets"));
+    const auto writeImage = [&](const QString& relative, const QColor& color) {
+        QImage image(32, 32, QImage::Format_ARGB32);
+        image.fill(color);
+        return image.save(root.filePath(relative));
+    };
+    if (!writeImage("assets/background/outlines/1.maimai.png", Qt::red)
+        || !writeImage("assets/background/outlines/8.DX.png", Qt::blue)) return 2;
     PreviewRuntime live;
+    PreviewStageMediaHost primaryMedia;
     shared.runtime = &live;
+    shared.mediaHost = &primaryMedia;
+    shared.renderSettings.insert(QStringLiteral("outlineAutomatic"), true);
     test::FakeSurface surface(shared);
     test::FakeControl control(shared);
     PreviewSurface* surfaceSlot = &surface;
@@ -88,7 +103,36 @@ int main(int argc, char** argv)
     const auto settled = [](auto predicate) {
         return QTest::qWaitFor(predicate, 10000);
     };
-    const QString chart = "&title=Twin\n&first=1.25\n&lv_5=12\n&inote_5=(120){4}1,2,3,4,E\n&lv_6=13+\n&inote_6=(120){4}5,6,E\n";
+    {
+        root.mkpath("video");
+        // The FFmpeg probe reads the stream header. A raw clip keeps the test
+        // independent of external encoders and of GPU decoder availability.
+        QByteArray clip = "YUV4MPEG2 W16 H16 F30:1 Ip A1:1 C420jpeg\n";
+        for (int i = 0; i < 30; ++i) {
+            clip += "FRAME\n";
+            clip += QByteArray(16 * 16, char(16 + i * 4));
+            clip += QByteArray(16 * 16 / 2, char(128));
+        }
+        if (!put("video/test.mp4", clip) || !put("video/maidata.txt", "&title=Video\n")) return 2;
+        QVideoSink firstSink, secondSink;
+        QObject firstOutput, secondOutput;
+        firstOutput.setProperty("videoSink", QVariant::fromValue(static_cast<QObject*>(&firstSink)));
+        secondOutput.setProperty("videoSink", QVariant::fromValue(static_cast<QObject*>(&secondSink)));
+        PreviewStageMediaHost video;
+        video.setVideoDecodePreference(true);
+        video.attachVideoOutputObject(&firstOutput);
+        video.attachVideoOutputObject(&secondOutput);
+        video.setChartPath(root.filePath("video/maidata.txt"), QStringLiteral("test.mp4"));
+        video.startPlayback(0);
+        check(settled([&] { return firstSink.videoFrame().isValid() && secondSink.videoFrame().isValid(); }),
+            "one decoder supplies the same video to both preview sinks");
+        video.detachVideoOutputObject(&firstOutput);
+        check(!firstSink.videoFrame().isValid() && secondSink.videoFrame().isValid(),
+            "detaching one output leaves the other consumer attached");
+        check(video.releaseDecoderForFileReplace() && !secondSink.videoFrame().isValid(),
+            "releasing a video clears retained frames on every sink");
+    }
+    const QString chart = "&title=Twin\n&first=1.25\n&lv_5=12\n&inote_5=(120){4}1,2,3,4,E\n&lv_6=13+\n&inote_6=(120){4}5,C,E\n";
     const auto open = [&](const QString& folder, const QString& text, int difficulty) {
         root.mkpath(folder);
         put(folder + "/maidata.txt", text.toUtf8());
@@ -111,6 +155,8 @@ int main(int argc, char** argv)
     views.addCurrent();
     check(!views.count(), "an empty editor adds nothing");
     open("A", chart, 5);
+    if (!writeImage("A/bg.png", Qt::black)) return 2;
+    primaryMedia.setChartPath(root.filePath("A/maidata.txt"));
     views.addCurrent();
     workspace.selectDifficulty(6);
     views.addCurrent();
@@ -147,14 +193,34 @@ Window {
     if (!ui) { QTextStream(stderr) << component.errorString(); return 1; }
     auto* pane = ui->findChild<QQuickItem*>("mainPane");
     check(pane && settled([&] { return pane->childItems().size()==2; }), "both child previews use workspace panel hosts");
-    check(qobject_cast<PreviewStageMediaHost*>(a->mediaHost())->hidePv(), "child preview suppresses video decoding");
+    check(a->workspaceLabel() == "A" && b->workspaceLabel() == "B"
+        && a->title().contains(QStringLiteral("Twin")), "workspace labels are separate from chart titles");
+    const auto closeButtons = ui->findChildren<QQuickItem*>("closeComparisonPreviewButton");
+    check(closeButtons.size() == 2 && closeButtons.front()->isVisible(), "children expose visible close buttons");
+    check(settled([&] { return a->mediaHost() == &primaryMedia && b->mediaHost() == &primaryMedia; }),
+        "linked children share the primary media host for the same file");
+    b->setSyncEnabled(false);
+    auto* local = qobject_cast<PreviewStageMediaHost*>(b->mediaHost());
+    check(local && local != &primaryMedia && local->imageSource() == primaryMedia.imageSource(),
+        "an independent clock keeps its own media route for the same background");
+    b->setSyncEnabled(true);
+    check(b->mediaHost() == &primaryMedia && local && !local->hasResolvedMedia(),
+        "rejoining a shared clock releases the redundant media route");
     ui.reset();
+    a->setSurfaceVisible(true);
+    b->setSurfaceVisible(true);
     views.setPresentationActive(true);
     auto* aScene = qobject_cast<PreviewRuntime*>(a->runtime());
     auto* bScene = qobject_cast<PreviewRuntime*>(b->runtime());
     check(aScene && bScene && aScene != bScene && bScene != &live, "each difficulty owns its own render state");
     check(a->linked() && b->linked() && settled([&] { return aScene->frameState().noteMarkers.size() == 4
         && bScene->frameState().noteMarkers.size() == 2; }), "pins keep distinct difficulty data");
+    check(settled([&] {
+        const auto& firstOutline = aScene->frameState().assets.outlineImage;
+        const auto& secondOutline = bScene->frameState().assets.outlineImage;
+        return !firstOutline.isNull() && !secondOutline.isNull()
+            && firstOutline.pixelColor(0, 0) == Qt::red && secondOutline.pixelColor(0, 0) == Qt::blue;
+    }), "automatic judgement rings use each pinned difficulty's own note types");
     check(!aScene->frameState().noteMarkers.isEmpty() && std::abs(aScene->frameState().noteMarkers.first().second - 1.25) < 0.001, "first offset is included once");
     workspace.replaceDifficultyChart(5, "(120){4}1,2,3,E");
     check(settled([&] { return aScene->frameState().noteMarkers.size() == 3; })
@@ -186,6 +252,9 @@ Window {
     views.setSynchronize(true);
     const auto tabA = workspace.captureSong();
     open("B", QString(chart).replace(QStringLiteral("Twin"), QStringLiteral("Other")), 5);
+    primaryMedia.setChartPath(root.filePath("B/maidata.txt"));
+    check(a->mediaHost() && a->mediaHost() != &primaryMedia && b->mediaHost() == a->mediaHost(),
+        "an independent child group shares one media host without the current document");
     a->seek(1.5);
     check(a->position() == 1.5 && b->position() == 1.5 && shared.position == 3.0, "same-song pins still share a clock after switching documents");
     a->togglePlayback();

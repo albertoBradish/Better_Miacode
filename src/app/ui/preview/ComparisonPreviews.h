@@ -25,8 +25,10 @@ class ComparisonPreview final : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString panelId MEMBER panelId_ CONSTANT)
     Q_PROPERTY(QObject* runtime READ runtime CONSTANT)
-    Q_PROPERTY(QObject* mediaHost READ mediaHost CONSTANT)
+    Q_PROPERTY(QObject* mediaHost READ mediaHost NOTIFY mediaHostChanged)
     Q_PROPERTY(QString title READ title NOTIFY chartChanged)
+    Q_PROPERTY(QString workspaceLabel READ workspaceLabel CONSTANT)
+    Q_PROPERTY(bool surfaceVisible READ surfaceVisible WRITE setSurfaceVisible NOTIFY surfaceVisibleChanged)
     Q_PROPERTY(double duration READ duration NOTIFY transportChanged)
     Q_PROPERTY(double lowerBound READ lowerBound NOTIFY transportChanged)
     Q_PROPERTY(double position READ position NOTIFY positionChanged)
@@ -36,8 +38,11 @@ class ComparisonPreview final : public QObject {
 public:
     ~ComparisonPreview() override;
     QObject* runtime() { return &scene_; }
-    QObject* mediaHost() { return &media_; }
+    QObject* mediaHost() const { return mediaSource_; }
     QString title() const { return title_; }
+    QString workspaceLabel() const;
+    bool surfaceVisible() const { return surfaceVisible_; }
+    void setSurfaceVisible(bool visible);
     double duration() const { return displayedDuration_; }
     double lowerBound() const { return lowerBound_; }
     double position() const { return position_; }
@@ -52,15 +57,20 @@ public:
     Q_INVOKABLE void close();
 signals:
     void chartChanged();
+    void mediaHostChanged();
+    void surfaceVisibleChanged();
     void positionChanged();
     void transportChanged();
 private:
     friend class ComparisonPreviews;
-    ComparisonPreview(ComparisonPreviews& owner, int difficulty);
+    ComparisonPreview(ComparisonPreviews& owner, int difficulty, int workspaceNumber);
     void readChart(const SimaiDocument& document);
     void scheduleBuild();
     void startBuild();
     void inheritAppearance();
+    void setMediaSource(PreviewStageMediaHost* source);
+    void releaseOwnedMedia();
+    void updateMediaPlayback(double second, bool playing, double rate, bool moved, bool jump);
     void present(double position, double duration, bool playing, double rate, bool jump);
     void setLocalClock(double second, bool running);
     double localPosition() const;
@@ -73,8 +83,16 @@ private:
     ComparisonPreviews& owner_;
     const QString panelId_;
     const int difficulty_;
+    const int workspaceNumber_;
     PreviewSong song_;
     QString title_, chart_;
+    SimaiDocument versionMetadata_;
+    QString automaticOutlinePath_;
+    QString videoOverridePath_;
+    QString outlinePath_;
+    PreviewOutlineVariant outlineVariant_ = PreviewOutlineVariant::None;
+    preview::runtime::PreviewOutlineImageMode outlineImageMode_ = preview::runtime::PreviewOutlineImageMode::Direct;
+    std::optional<preview::scene::PreviewAssetState> outlineAssets_;
     simai::SimaiTimingMetadata timing_;
     double first_ = 0;
     int clockCount_ = 0;
@@ -86,6 +104,11 @@ private:
     QTimer debounce_;
     PreviewRuntime scene_;
     PreviewStageMediaHost media_;
+    QPointer<PreviewStageMediaHost> mediaSource_;
+    QMetaObject::Connection mediaStateConnection_, mediaVisibilityConnection_;
+    bool mediaPlaying_ = false;
+    bool mediaNeedsSync_ = false;
+    bool surfaceVisible_ = false;
     std::unique_ptr<QtPreviewSfxRuntime> audio_;
     double pan_ = 0;
     bool syncEnabled_ = true, audioReady_ = false;
@@ -136,6 +159,8 @@ private:
     bool sameSong(const PreviewSong& left, const PreviewSong& right) const;
     void refreshDocument();
     void refreshMediaPreference();
+    void refreshMediaRoutes();
+    void queueMediaRouteRefresh();
     void regroup();
     void updateClocks(ComparisonPreview* seekLeader = nullptr, bool seek = false);
     void remove(ComparisonPreview* item);
@@ -143,6 +168,7 @@ private:
     ChartWorkspace& workspace_;
     PreviewModel& main_;
     QPointer<PreviewRuntime> mainScene_;
+    QPointer<PreviewStageMediaHost> mainMedia_;
     PreviewSong current_;
     QList<ComparisonPreview*> items_;
     QHash<QString,QByteArray> digests_;
@@ -155,5 +181,11 @@ private:
     bool presentationActive_ = true;
     bool mainAvailable_ = false;
     bool showMediaWhenPaused_ = true;
+    bool forceJudgeAreaWhenPaused_ = false;
+    bool automaticOutline_ = false;
+    PreviewOutlineVariant outlineVariant_ = PreviewOutlineVariant::Line;
+    BackgroundPolicy backgroundPolicy_ = BackgroundPolicy::Normal;
+    bool mediaReloadPending_ = false;
+    bool mediaRouteRefreshQueued_ = false;
 };
 }

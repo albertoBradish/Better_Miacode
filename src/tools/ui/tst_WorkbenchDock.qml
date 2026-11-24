@@ -292,6 +292,8 @@ Item {
             floatingShortcutFocus.visible = false
             floatingShortcutFocus.parent = root
             preferences.workspaceLayout = {}
+            preferences.timelineLayoutMode = "horizontal"
+            preferences.timelineVerticalDirection = "falling"
             preferences.workspaceHiddenPanels = {}
             preferences.savedWorkspaceLayouts = {}
             preferences.savedWorkspaceLayoutOrder = []
@@ -311,10 +313,11 @@ Item {
         function test_comparisonsUseDockLayout() {
             const before = JSON.stringify(root.preferences.workspaceLayout)
             const id = "comparison-test"
-            dock.comparisonPanels = [{panelId: id, title: "Test Master"}]
+            dock.comparisonPanels = [{panelId: id, title: "Test Master", workspaceLabel: "A"}]
             tryVerify(() => !!dock.hostFor(id) && dock.hostFor(id).visible)
             verify(dock.hostFor(id) !== dock.hostFor("preview"))
-            compare(dock.panelTitle(id), "Test Master")
+            compare(dock.panelTitle(id), "Child Preview A")
+            compare(dock.floatingPanelTitle(id), "Test Master")
             dock.togglePanelMaximization(id, null)
             compare(dock.maximizedPanel, id)
             dock.comparisonPanels = []

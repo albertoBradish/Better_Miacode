@@ -89,8 +89,13 @@ miacode::preview::pv_memory::Observation PreviewStageMediaHost::pvMemoryObservat
     observation.media.mediaStatus = mediaKind_ == MediaKind::Video
         ? QStringLiteral("video") : QStringLiteral("none");
     observation.media.positionMs = lastSeekMs_;
-    observation.media.videoOutputAttached = videoOutputObject_ != nullptr;
-    observation.media.videoSinkAttached = videoSink_ != nullptr;
+    for (const auto& binding : videoOutputs_) {
+        if (binding.output) {
+            observation.media.videoOutputAttached = true;
+            break;
+        }
+    }
+    observation.media.videoSinkAttached = hasVideoOutput();
     if (!includeProcess) {
         return observation;
     }
@@ -351,20 +356,7 @@ void PreviewStageMediaHost::handleDecodedVideoFrame(const QVideoFrame& frame,
     observePvMemoryFrame(frame, {});
     lastFramePtsSeconds_ = ptsSeconds;
     lastFrameDurationSeconds_ = qMax(0.0, durationSeconds);
-    if (videoSink_ != nullptr) {
-        videoSink_->setVideoFrame(frame);
-    }
-    // The inner-circle sink only has a consumer in InnerCircleFitOuterFill; in
-    // every other scale mode its VideoOutput is invisible. Pushing there anyway
-    // made each decoded frame a second consumer that pins a decode-pool surface
-    // for as long as the sink holds it — on the D3D11VA two-device bridge that
-    // is exactly the resource the decoder needs back.
-    // refreshInnerVideoSinkForScaleMode() re-primes it with lastVideoFrame_ when
-    // the mode turns on, so switching into mode 3 mid-playback still shows the
-    // current frame immediately.
-    if (innerVideoSinkActive() && innerVideoSink_ != videoSink_) {
-        innerVideoSink_->setVideoFrame(frame);
-    }
+    pushVideoOutputFrame(frame);
 
     // NOTE — deliberately NO per-frame QVideoFrame::toImage() here. Calling it
     // on a QtAVPlayer D3D11VA *hardware* frame from the GUI thread maps a

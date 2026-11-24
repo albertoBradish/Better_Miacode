@@ -89,7 +89,12 @@ Item {
     signal panelVisibilityChanged(string panelId, bool shown)
 
     function panelTitle(id) {
-        if (id.startsWith("comparison-")) return comparisonPanels.find(p => p.panelId === id)?.title ?? ""
+        if (id.startsWith("comparison-")) {
+            const pane = comparisonPanels.find(p => p.panelId === id)
+            if (!pane?.workspaceLabel) return ""
+            const title = qsTrId("preview.comparison.workspace_title")
+            return (title.includes("%1") ? title : "Child Preview %1").arg(pane.workspaceLabel)
+        }
         switch (id) {
         case "editor": return qsTrId("workspace.editor")
         case "timeline": return qsTrId("window.timeline")
@@ -102,6 +107,12 @@ Item {
         case "patterns": return qsTrId("hand_order.pattern.tab")
         }
         return ""
+    }
+
+    function floatingPanelTitle(id) {
+        return id.startsWith("comparison-")
+            ? comparisonPanels.find(p => p.panelId === id)?.title ?? ""
+            : panelTitle(id)
     }
 
     function panelShown(id) {

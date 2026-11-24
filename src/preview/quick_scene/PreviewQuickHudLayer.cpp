@@ -390,14 +390,12 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
             const qreal descent = glyphs.valid ? glyphs.bottom : metrics.descent();
             const qreal advance = hudLineAdvance(font, metrics, glyphs, key.shadow);
             const qreal bearing = informationLeftBearing(metrics, lines);
-            const int rows = compact ? 5 : lines.size();
+            const int rows = compact ? rateLines + 3 : lines.size();
             QVector<qreal> rowOffsets(rows, 0);
             const qreal em = hudFontPixelSize(font, metrics);
             for (int row = 1; row < rows; ++row) {
                 // Separate rate headings from their values and the next group.
-                const qreal groupGap = compact
-                    ? (row == 1 ? 0.12 * em : row == 2 ? 0.35 * em : 0)
-                    : (row <= rateLines ? (row % 2 ? 0.12 : 0.35) * em : 0);
+                const qreal groupGap = row <= rateLines ? (row % 2 ? 0.12 : 0.35) * em : 0;
                 rowOffsets[row] = rowOffsets[row - 1] + advance + groupGap;
             }
             const qreal height = ascent + descent + rowOffsets.last();
@@ -405,10 +403,10 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
             const qreal right = key.stage.right() - key.padding - key.shadow;
             std::array<qreal, 2> columnWidths = {0, 0};
             const auto rowFor = [compact, rateLines](int i) {
-                return compact ? (i < rateLines ? i % 2 : 2 + (i - rateLines) / 2) : i;
+                return compact && i >= rateLines ? rateLines + (i - rateLines) / 2 : i;
             };
             const auto columnFor = [compact, rateLines](int i) {
-                return compact ? (i < rateLines ? i / 2 : (i - rateLines) % 2) : 0;
+                return compact ? (i < rateLines ? 1 : (i - rateLines) % 2) : 0;
             };
             for (int i = 0; i < lines.size(); ++i) {
                 const qreal width = informationTextWidth(metrics, lines[i]) + bearing;
@@ -425,8 +423,9 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
             bool fits = true;
             for (int row = 0; row < rows; ++row) {
                 const QRectF available = informationRowRect(key, top + rowOffsets[row], ascent + descent, true);
-                const QRectF bounds(left, top + rowOffsets[row], blockWidth, ascent + descent);
-                if (available.isEmpty() || blockWidth > available.width()
+                const qreal rowWidth = compact && row < rateLines ? columnWidths[1] : blockWidth;
+                const QRectF bounds(right - rowWidth, top + rowOffsets[row], rowWidth, ascent + descent);
+                if (available.isEmpty() || rowWidth > available.width()
                     || bounds.adjusted(0, 0, key.shadow, key.shadow).intersects(key.timestamp)) {
                     fits = false;
                     break;

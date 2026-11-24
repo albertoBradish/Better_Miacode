@@ -159,6 +159,7 @@ void LatencySandboxController::installSandboxScene()
     // this), so the single mode-aware dispatch resolves to LatencyAudition levels.
     owner_->applyPreviewAudioSettingsToRuntime();
     setupSandboxPreviewState();
+    owner_->applyEffectivePreviewOutlineVariantToCanvas();
     applyPlayheadToScene(restoreSecond);
 }
 
@@ -178,6 +179,7 @@ void LatencySandboxController::teardownSandboxScene()
         // teardown), so this dispatch resolves to the user's normal mix — no
         // snapshot needed. This is the deterministic restore on every page exit.
         owner_->applyPreviewAudioSettingsToRuntime();
+        owner_->applyEffectivePreviewOutlineVariantToCanvas();
     }
 }
 

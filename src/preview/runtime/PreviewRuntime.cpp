@@ -269,19 +269,23 @@ void PreviewRuntime::publishFrameStateSnapshot()
         std::memory_order_release);
 }
 
-void PreviewRuntime::inheritDisplaySettings(const PreviewRuntime& source)
+void PreviewRuntime::inheritDisplaySettings(const PreviewRuntime& source,
+    const miacode::preview::scene::PreviewAssetState* outline)
 {
     const auto& other = source.frameState_;
+    const auto& outlineAssets = outline ? *outline : other.assets;
     const bool assetsChanged = inheritedAssetRevision_ != source.assetRevision_;
+    const bool outlineChanged = frameState_.assets.outlineImage.cacheKey() != outlineAssets.outlineImage.cacheKey()
+        || frameState_.assets.layoutRingDiameterRatio != outlineAssets.layoutRingDiameterRatio;
     const bool measuresChanged = visualAidMode_ != source.visualAidMode_
         || visualAidCustomBeats_ != source.visualAidCustomBeats_;
-    if (!assetsChanged && !measuresChanged && frameState_.render == other.render
+    if (!assetsChanged && !outlineChanged && !measuresChanged && frameState_.render == other.render
         && frameState_.hudFontSettings == other.hudFontSettings
         && frameState_.muriRenderOptions == other.muriRenderOptions) return;
 
+    if (outlineChanged) frameState_.assets = outlineAssets;
     if (assetsChanged) {
         inheritedAssetRevision_ = source.assetRevision_;
-        frameState_.assets = other.assets;
         frameState_.skin = other.skin;
         frameState_.judgeOverlay = other.judgeOverlay;
         frameState_.judgeEffect = other.judgeEffect;

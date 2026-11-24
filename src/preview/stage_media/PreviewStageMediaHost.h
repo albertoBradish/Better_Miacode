@@ -76,6 +76,10 @@ public:
     bool mediaVisible() const;
     void setMediaVisible(bool visible);
     QUrl imageSource() const;
+    QString chartPath() const { return chartPath_; }
+    QString resolvedMediaPath() const { return mediaPath_; }
+    static QString resolveChartMediaPath(const QString& chartPath, const QString& videoOverridePath,
+        bool includePv, bool allowPlaceholder = false);
     // Resolved video file path. Empty when not in Video mode. Returned
     // as a local file path (not a QUrl) since the only consumer is the
     // out-of-process worker projector which converts to a SerialString
@@ -160,6 +164,9 @@ public:
     QString videoDecodeDescription() const;
 
 signals:
+    void chartMediaSourceChanged();
+    void decoderReleaseRequested();
+    void decodeSettingsChanged();
     void mediaStateChanged();
     void sourceFrameRateChanged();
     void hidePvChanged();
@@ -183,7 +190,9 @@ private:
     QString resolveStageMediaPath(const QString& chartPath, const QString& chartVideoOverridePath) const;
     void loadImageMedia(const QString& path);
     void loadVideoMedia(const QString& path);
-    void bindVideoOutput();
+    bool hasVideoOutput() const;
+    void clearVideoOutputFrames();
+    void pushVideoOutputFrame(const QVideoFrame& frame);
     void schedulePreparedPlaybackTimeout(quint64 transactionId, qint64 targetMs);
     void schedulePausedSeekTimeout(quint64 generation, qint64 targetMs);
     void updateClockDelta();
@@ -292,10 +301,13 @@ private:
     // Latest decoded frame, replayed into the QML sink when a VideoOutput
     // attaches after decoding has already produced frames (e.g. paused bg).
     QVideoFrame lastVideoFrame_;
-    QPointer<QObject> videoOutputObject_;
-    QPointer<QObject> innerVideoOutputObject_;
-    QPointer<QVideoSink> videoSink_;
-    QPointer<QVideoSink> innerVideoSink_;
+    struct VideoOutputBinding {
+        QPointer<QObject> output;
+        QPointer<QObject> innerOutput;
+        QPointer<QVideoSink> sink;
+        QPointer<QVideoSink> innerSink;
+    };
+    QList<VideoOutputBinding> videoOutputs_;
     quint64 videoSourceGeneration_ = 0;
     double timelineOffsetSeconds_ = 0.0;
     double playbackRate_ = 1.0;

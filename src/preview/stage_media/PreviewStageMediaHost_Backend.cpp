@@ -473,4 +473,5 @@ void PreviewStageMediaHost::setVideoDecodePreference(bool preferSoftware)
                 videoDecodeUsesSoftware() ? QStringLiteral("software") : QString());
         }
     }
+    emit decodeSettingsChanged();
 }

@@ -44,6 +44,7 @@
 #include <QTimer>
 #include <QVariant>
 #include <QtMath>
+#include <utility>
 
 #include "preview/stage_media/PreviewStageMediaHostInternal.h"
 
@@ -59,8 +60,11 @@ struct PreviewVideoFrameDeliveryState {
 
 void PreviewStageMediaHost::setPreviewFrameRateLimit(double fps)
 {
-    previewFrameRateLimit_ = std::isfinite(fps) && fps > 0.0 ? fps : 0.0;
+    const double limit = std::isfinite(fps) && fps > 0.0 ? fps : 0.0;
+    if (previewFrameRateLimit_ == limit) return;
+    previewFrameRateLimit_ = limit;
     frameRateGate_.reset();
+    emit decodeSettingsChanged();
 }
 
 void PreviewStageMediaHost::sealPendingVideoFrameDelivery()
@@ -245,28 +249,25 @@ void PreviewStageMediaHost::setBackgroundScaleMode(PreviewBackgroundScaleMode mo
 
 bool PreviewStageMediaHost::innerVideoSinkActive() const
 {
-    return innerVideoSink_ != nullptr
-        && backgroundScaleMode_ == PreviewBackgroundScaleMode::InnerCircleFitOuterFill;
+    if (backgroundScaleMode_ != PreviewBackgroundScaleMode::InnerCircleFitOuterFill) return false;
+    for (const auto& binding : videoOutputs_) {
+        if (binding.innerSink && binding.innerSink != binding.sink) return true;
+    }
+    return false;
 }
 
 PreviewStageMediaHost::InnerVideoSinkRefresh PreviewStageMediaHost::refreshInnerVideoSinkForScaleMode()
 {
-    if (innerVideoSink_ == nullptr || innerVideoSink_ == videoSink_) {
-        return InnerVideoSinkRefresh::None;
+    const bool showInner = backgroundScaleMode_ == PreviewBackgroundScaleMode::InnerCircleFitOuterFill;
+    if (showInner && !lastVideoFrame_.isValid()) return InnerVideoSinkRefresh::None;
+    auto result = InnerVideoSinkRefresh::None;
+    const QVideoFrame frame = showInner ? lastVideoFrame_ : QVideoFrame();
+    for (const auto& binding : std::as_const(videoOutputs_)) {
+        if (!binding.innerSink || binding.innerSink == binding.sink) continue;
+        binding.innerSink->setVideoFrame(frame);
+        result = showInner ? InnerVideoSinkRefresh::Primed : InnerVideoSinkRefresh::Cleared;
     }
-    if (innerVideoSinkActive()) {
-        if (lastVideoFrame_.isValid()) {
-            innerVideoSink_->setVideoFrame(lastVideoFrame_);
-            return InnerVideoSinkRefresh::Primed;
-        }
-        // Entered the mode with nothing retained — the inner circle stays blank
-        // until the next decoded frame lands.
-        return InnerVideoSinkRefresh::None;
-    }
-    // Leaving the mode: drop the retained frame so the inner sink stops pinning
-    // a decode-pool surface (same reason releaseVideoBackend() clears it).
-    innerVideoSink_->setVideoFrame(QVideoFrame());
-    return InnerVideoSinkRefresh::Cleared;
+    return result;
 }
 
 double PreviewStageMediaHost::layoutSquareScale() const
@@ -313,6 +314,7 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
     clearMedia();
     if (chartPath_.isEmpty()) {
         appendPreviewStageMediaLog(QStringLiteral("set_chart_path"), QStringLiteral("chart=(empty) kind=none"));
+        emit chartMediaSourceChanged();
         return;
     }
 
@@ -321,6 +323,7 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
         appendPreviewStageMediaLog(
             QStringLiteral("set_chart_path"),
             QStringLiteral("chart=%1 media=(none) kind=none").arg(chartPath_));
+        emit chartMediaSourceChanged();
         return;
     }
     const bool isVideo = miacode::chart_assets::isVideoBackgroundPath(mediaPath_);
@@ -340,6 +343,7 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
                     ? QStringLiteral("(none)")
                     : chartVideoOverridePath_)
     );
+    emit chartMediaSourceChanged();
 }
 
 void PreviewStageMediaHost::clearMedia()
@@ -376,20 +380,8 @@ void PreviewStageMediaHost::clearMedia()
     // real cause of "pv占用" / "无法替换原文件": read still works but rename is
     // refused. Dropping the sink frame lets the format-context refcount reach
     // zero so ~QAVFormatContext -> avformat_close_input runs. Must happen
-    // BEFORE videoSink_.clear() (which only nulls our QPointer, not the sink's
-    // frame). See project_pv_file_lock_release.
-    if (videoSink_ != nullptr) {
-        videoSink_->setVideoFrame(QVideoFrame());
-    }
-    videoSink_.clear();
-    // handleDecodedVideoFrame pushes each decoded frame into BOTH the outer sink
-    // and the inner-circle sink (InnerCircleFitOuterFill scale mode). A frame
-    // left in the inner sink pins the same QAVFormatContext -> pv.mp4 stays open.
-    // Release it symmetrically with the outer sink.
-    if (innerVideoSink_ != nullptr) {
-        innerVideoSink_->setVideoFrame(QVideoFrame());
-    }
-    innerVideoSink_.clear();
+    // before unloading the decoder, for every attached outer and inner sink.
+    clearVideoOutputFrames();
     if (player_ != nullptr) {
         player_->stop();
         player_->setSource(QString());
@@ -451,6 +443,7 @@ void PreviewStageMediaHost::clearMedia()
 bool PreviewStageMediaHost::releaseDecoderForFileReplace()
 {
     MC_OP("PreviewStageMediaHost::releaseDecoderForFileReplace");
+    emit decoderReleaseRequested();
     // Soft path first: drops the retained sink frames (both sinks), unloads the
     // demuxer, resets media state and generation counters. On its own this is
     // not enough on Windows because the QAVPlayer keeps its own
@@ -470,6 +463,7 @@ bool PreviewStageMediaHost::releaseDecoderForFileReplace()
         player_ = nullptr;
     }
     videoBackendLoaded_ = false;
+    mediaStamp_.clear();
     appendPreviewStageMediaLog(
         QStringLiteral("release_decoder_for_file_replace"),
         QStringLiteral("player_destroyed=1"));
@@ -484,18 +478,22 @@ QString PreviewStageMediaHost::resolveMediaPath(const QString& chartPath) const
 QString PreviewStageMediaHost::resolveStageMediaPath(
     const QString& chartPath, const QString& chartVideoOverridePath) const
 {
-    QString resolved = miacode::chart_assets::resolveChartVideoPath(
-        chartPath, chartVideoOverridePath);
-    if (resolved.isEmpty()) {
-        resolved = resolveMediaPath(chartPath);
-    }
     const bool allowPlaceholder = missingMediaFallbackEnabled_ && !chartIntroBackgroundActive_;
+    return resolveChartMediaPath(chartPath, chartVideoOverridePath, exportIncludePv_.value_or(!hidePv_), allowPlaceholder);
+}
+
+QString PreviewStageMediaHost::resolveChartMediaPath(const QString& chartPath,
+    const QString& videoOverridePath, bool includePv, bool allowPlaceholder)
+{
+    if (chartPath.isEmpty()) return {};
+    QString resolved = miacode::chart_assets::resolveChartVideoPath(chartPath, videoOverridePath);
+    if (resolved.isEmpty()) resolved = miacode::chart_assets::resolveBackgroundMediaPath(chartPath);
     if (resolved.isEmpty()) {
         return allowPlaceholder
             ? miacode::chart_assets::resolveDisplayBackgroundImagePath(chartPath)
             : QString();
     }
-    if (exportIncludePv_.value_or(!hidePv_) && miacode::chart_assets::isVideoBackgroundPath(resolved)) {
+    if (includePv && miacode::chart_assets::isVideoBackgroundPath(resolved)) {
         return resolved;
     }
     const QString imagePath = miacode::chart_assets::resolveUsableBackgroundImagePath(chartPath);
@@ -566,7 +564,6 @@ void PreviewStageMediaHost::loadVideoMedia(const QString& path)
     videoPlaybackPendingStart_ = false;
     resetVideoFrameDiagnostics();
     resetStaleEndOfMediaRecovery();
-    bindVideoOutput();
     beginPvMemorySource();
 
     // (Re)connect the decoded-frame stream, capturing the current source
@@ -618,44 +615,5 @@ void PreviewStageMediaHost::loadVideoMedia(const QString& path)
     emit imageSourceChanged();
     emit mediaStateChanged();
     emit diagnosticsChanged();
-    return;
-}
-
-void PreviewStageMediaHost::bindVideoOutput()
-{
-    // Push model: resolve the QVideoSink owned by the QML VideoOutput; decoded
-    // frames are pushed into it from handleDecodedVideoFrame. The decoded-frame
-    // signal connection itself is owned by loadVideoMedia (per source
-    // generation), so this only (re)binds the sink target.
-    videoSink_.clear();
-    innerVideoSink_.clear();
-    const auto resolveSink = [](QObject* videoOutputObject) -> QVideoSink* {
-        if (videoOutputObject == nullptr) {
-            return nullptr;
-        }
-        QObject* sinkObject = nullptr;
-        const QVariant sinkVariant = videoOutputObject->property("videoSink");
-        if (sinkVariant.isValid()) {
-            sinkObject = sinkVariant.value<QObject*>();
-        }
-        return qobject_cast<QVideoSink*>(sinkObject);
-    };
-    videoSink_ = resolveSink(videoOutputObject_);
-    innerVideoSink_ = resolveSink(innerVideoOutputObject_);
-    if (lastVideoFrame_.isValid()) {
-        if (videoSink_ != nullptr) {
-            videoSink_->setVideoFrame(lastVideoFrame_);
-        }
-        if (innerVideoSinkActive() && innerVideoSink_ != videoSink_) {
-            innerVideoSink_->setVideoFrame(lastVideoFrame_);
-        }
-    }
-    appendPreviewStageMediaLog(
-        QStringLiteral("bind_video_output"),
-        QStringLiteral("attached=%1 sink=%2 inner_attached=%3 inner_sink=%4")
-            .arg(videoOutputObject_ != nullptr ? 1 : 0)
-            .arg(videoSink_ != nullptr ? 1 : 0)
-            .arg(innerVideoOutputObject_ != nullptr ? 1 : 0)
-            .arg(innerVideoSink_ != nullptr ? 1 : 0));
     return;
 }

@@ -7190,6 +7190,7 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="preview.comparison.seek"><source>Preview position</source><translation>プレビューの再生位置</translation></message>
 <message id="preview.comparison.linked"><source>Linked</source><translation>同期中</translation></message>
 <message id="preview.comparison.sync"><source>Synchronize playback for previews of the same song</source><translation>同じ曲のプレビューを同期再生</translation></message>
+<message id="preview.comparison.workspace_title"><source>Child Preview %1</source><translation>子プレビュー%1</translation></message>
 <message id="preview.heatmap"><source>Pressure map</source><translation>ヒートマップ</translation></message>
 <message id="preview.heatmap_youtube"><source>YouTube-style curve</source><translation>YouTube 風の曲線</translation></message>
 <message id="library.create"><source>New library</source><translation>ライブラリを作成</translation></message>

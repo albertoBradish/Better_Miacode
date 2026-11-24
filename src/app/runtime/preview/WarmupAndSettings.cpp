@@ -470,6 +470,7 @@ QVariantMap Session::previewRenderSettings() const
         {QStringLiteral("scaleMode"), static_cast<int>(state_.previewBackgroundScaleMode_)},
         {QStringLiteral("fireworkBrightness"), percentOf(state_.previewFireworkBrightness_)},
         {QStringLiteral("completionDisplay"), static_cast<int>(state_.completionDisplay_)},
+        {QStringLiteral("outlineVariant"), static_cast<int>(previewAppearanceValues_.outlineVariant)},
         {QStringLiteral("outlineAutomatic"), state_.previewOutlineVariantUsesAutoSelection_},
         {QStringLiteral("resolvedOutlinePath"), resolvePreviewCustomOutlinePath()},
         {QStringLiteral("fireworkStyle"), static_cast<int>(state_.previewFireworkStyle_)},
@@ -847,6 +848,8 @@ void miacode::runtime::StageMediaHost::refreshChartVersion()
 
 QString miacode::runtime::StageMediaHost::effectivePreviewCustomOutlinePath() const
 {
+    if (state_.latencySandboxAuditionActive_ && state_.previewOutlineVariantUsesAutoSelection_)
+        return {};
     return resolvePreviewCustomOutlinePath();
 }
 
@@ -1121,6 +1124,7 @@ void Session::applyPreviewOutlineVariant(
     bool persistState)
 {
     stageMedia_->applyPreviewOutlineVariant(variant, useAutoSelection, persistState);
+    emit applicationServices_.shellNotifications().previewRenderSettingsChanged();
 }
 
 QString Session::resolvePreviewCustomOutlinePath() const
@@ -1141,6 +1145,7 @@ QString Session::currentPreviewCustomOutlineFileName() const
 void Session::applyPreviewCustomOutlineFileName(const QString& fileName, bool persistState)
 {
     stageMedia_->applyPreviewCustomOutlineFileName(fileName, persistState);
+    emit applicationServices_.shellNotifications().previewRenderSettingsChanged();
 }
 
 Session::PreviewSkinVariant Session::previewSkinVariantFromStorageValue(const QString& value) const
