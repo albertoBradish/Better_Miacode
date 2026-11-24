@@ -109,36 +109,30 @@ Item {
         workspaceDock.activate("sidebar")
     }
 
-    function defaultDockTree(preset, forPreset = false) {
-        const classic = forPreset && preset === "default"
-        const timelineMode = forPreset ? (preset === "preview" ? "vertical_before_editor" : "horizontal")
-                                       : preferences.timelineLayoutMode
-        const editing = preset === "editing"
-        const previewing = preset === "preview"
-        const analyzing = preset === "analysis"
+    function defaultDockTree(preset) {
+        const library = Layouts.group(["sidebar", "library"], preset === "preview" ? "library" : "sidebar")
         const editor = Layouts.group(["editor"])
-        const diagnosticTabs = root.previewSession.simulatedPlay ? ["validation", "muri", "play_checks", "patterns"]
-            : ["validation", "muri", "patterns"]
-        const diagnostics = Layouts.group(diagnosticTabs, timelineSession.currentTabId)
-        const timeline = Layouts.group(["timeline"])
-        const previewPanel = Layouts.group(["preview"])
-        const ratio = previewing ? 0.57 : editing ? 0.30 : (classic ? preferences.previewDefaultWidthRatio : preferences.previewWidthRatio)
-        const bottomRatio = analyzing ? 0.42 : editing ? 0.28 : (classic ? preferences.bottomPanelDefaultHeightRatio : preferences.bottomPanelHeightRatio)
-        let center = Layouts.split("vertical", 1 - bottomRatio, editor,
-                                   Layouts.group(["timeline"].concat(diagnosticTabs), timelineSession.currentTabId))
-        if (timelineMode !== "horizontal") {
-            const editorAndDiagnostics = Layouts.split("vertical", 1 - bottomRatio, editor, diagnostics)
-            const verticalWidth = preferences.timelineVerticalWidthRatio
-            center = timelineMode === "vertical_before_editor"
-                ? Layouts.split("horizontal", verticalWidth, timeline, editorAndDiagnostics)
-                : Layouts.split("horizontal", 1 - verticalWidth, editorAndDiagnostics, timeline)
+        const preview = Layouts.group(["preview"])
+        const diagnostics = ["validation", "muri", "patterns"]
+        if (root.previewSession.simulatedPlay) diagnostics.push("play_checks")
+        if (preset === "default") {
+            const center = Layouts.split("vertical", 0.75, editor,
+                Layouts.group(["timeline"].concat(diagnostics), "timeline"))
+            const work = root.previewOnLeft ? Layouts.split("horizontal", 0.5, preview, center)
+                                            : Layouts.split("horizontal", 0.5, center, preview)
+            return Layouts.split("horizontal", 0.105, library, work)
         }
-        const work = !classic && previewOnLeft ? Layouts.split("horizontal", ratio, previewPanel, center)
-                                   : Layouts.split("horizontal", 1 - ratio, center, previewPanel)
-        const outlineWidth = classic ? preferences.sidebarDefaultWidth
-            : preferences.sidebarWidth + (preferences.efficientSidebarEnabled ? 20 : 0)
-        const outlineRatio = Math.max(0.05, Math.min(0.6, outlineWidth / Math.max(1, workspaceDock.width)))
-        return Layouts.split("horizontal", outlineRatio, Layouts.group(["sidebar"]), work)
+        const timeline = Layouts.group(["timeline"])
+        const center = Layouts.split("vertical", preset === "editing" ? 0.72 : 0.81,
+            editor, Layouts.group(diagnostics, "muri"))
+        if (preset === "editing") {
+            const main = Layouts.split("horizontal", 0.63, center, preview)
+            return Layouts.split("horizontal", 0.15, timeline,
+                Layouts.split("horizontal", 0.12, library, main))
+        }
+        const work = Layouts.split("horizontal", 0.29, center, preview)
+        return Layouts.split("horizontal", 0.215, library,
+            Layouts.split("horizontal", 0.13, timeline, work))
     }
 
     function undo() {

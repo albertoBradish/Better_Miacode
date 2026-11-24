@@ -30,7 +30,7 @@ Item {
         property var workspaceLayout: ({})
         property var savedWorkspaceLayouts: ({})
         property var savedWorkspaceLayoutOrder: []
-        property var workspaceListOrder: ["default", "editing", "preview", "analysis"]
+        property var workspaceListOrder: ["default", "editing", "preview"]
         function moveWorkspaceEntry(key, destination) {
             const keys = workspaceListOrder.slice()
             keys.splice(keys.indexOf(key), 1)
@@ -44,6 +44,7 @@ Item {
         property bool bottomPanelVisible: true
         property bool timelinePanelVisible: true
         property string timelineLayoutMode: "horizontal"
+        property string timelineVerticalDirection: "falling"
         property var workspaceHiddenPanels: ({})
         property int sidebarWidth: 190
         readonly property int sidebarDefaultWidth: 190
@@ -272,6 +273,7 @@ Item {
         when: windowShown
 
         function init() {
+            preferences.workspaceHiddenPanels = { library: true }
             // Hiding a Qt.Tool window can leave the offscreen main window marked
             // active without a Quick focus item. Restore both before each case.
             root.Window.window.requestActivate()
@@ -293,7 +295,7 @@ Item {
             preferences.workspaceHiddenPanels = {}
             preferences.savedWorkspaceLayouts = {}
             preferences.savedWorkspaceLayoutOrder = []
-            preferences.workspaceListOrder = ["default", "editing", "preview", "analysis"]
+            preferences.workspaceListOrder = ["default", "editing", "preview"]
             sharedLibrary.query = ""
             sharedLibrary.controlHeld = false
             preferences.sidebarVisible = true
@@ -320,19 +322,31 @@ Item {
             compare(JSON.stringify(root.preferences.workspaceLayout), before)
         }
 
+        function test_workspaceSlotDefaultsAndTimelineStyle() {
+            compare(dock.slotKeys.join(","), "default,editing,preview")
+            preferences.workspaceHiddenPanels = {}
+            verify(dock.panelShown("library"))
+            const tree = JSON.stringify(dock.tree)
+            dock.applyTimelineStyle("rising")
+            compare(preferences.timelineVerticalDirection, "rising")
+            compare(preferences.timelineLayoutMode, "vertical")
+            compare(JSON.stringify(dock.tree), tree)
+            dock.applyTimelineStyle("horizontal")
+        }
+
         function test_managerPreviewsUntilApply() {
             const before = JSON.stringify(preferences.workspaceLayout)
             const manager = findChild(dock, "workspaceManagerDialog")
             dock.showManager()
             tryCompare(manager, "opened", true)
             const list = findChild(manager.body, "workspaceEntryList")
-            tryVerify(() => list.itemAtIndex(3) !== null)
+            tryVerify(() => list.itemAtIndex(2) !== null)
             const dragRow = list.itemAtIndex(1)
             mouseDrag(dragRow, dragRow.width - 17, dragRow.height / 2, 0, dragRow.height + 2, Qt.LeftButton)
-            compare(preferences.workspaceListOrder.join(","), "default,preview,editing,analysis")
-            const row = list.itemAtIndex(3)
+            compare(preferences.workspaceListOrder.join(","), "default,preview,editing")
+            const row = list.itemAtIndex(2)
             mouseClick(row, row.width / 2, row.height / 2)
-            compare(manager.selectedKey, "analysis")
+            compare(manager.selectedKey, "editing")
             compare(JSON.stringify(preferences.workspaceLayout), before)
             const accept = findChild(manager.footer, "dialogFooterAccept")
             verify(accept.enabled)
@@ -533,7 +547,8 @@ Item {
             preferences.savedWorkspaceLayouts = { "Library docked": docked }
             preferences.savedWorkspaceLayoutOrder = ["Library docked"]
             dock.applyBuiltin("default")
-            tryVerify(() => dock.useNativeFrame && !libraryPane.visible)
+            verify(dock.panelShown("library"))
+            verify(!dock.useNativeFrame)
             dock.applySaved("Library docked")
             tryVerify(() => libraryPane.visible && !dock.isFloating("library"))
             verify(libraryPane === libraryInstance && libraryPane.library === modelInstance)
@@ -547,7 +562,7 @@ Item {
             preferences.savedWorkspaceLayouts = { "Library floated": floated }
             preferences.savedWorkspaceLayoutOrder = ["Library floated"]
             dock.applyBuiltin("default")
-            tryVerify(() => !libraryPane.visible)
+            verify(dock.panelShown("library"))
             dock.applySaved("Library floated")
             tryVerify(() => libraryPane.visible && dock.isFloating("library"))
             verify(libraryPane === libraryInstance && libraryPane.library === modelInstance)

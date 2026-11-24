@@ -40,7 +40,7 @@ Item {
     readonly property var baseTree: customTree || defaultTree
     readonly property var tree: {
         const diagnostics = panelShown("play_checks") ? Layouts.ensurePanel(baseTree, "play_checks", "muri", false) : baseTree
-        let layout = panelShown("library") ? Layouts.ensurePanel(diagnostics, "library") : diagnostics
+        let layout = panelShown("library") ? Layouts.ensurePanel(diagnostics, "library", "sidebar", false) : diagnostics
         if (!comparisonPanels.length) return layout
         layout = Layouts.pruneComparisons(layout, comparisonPanels.map(p => p.panelId))
         for (const item of comparisonPanels) {
@@ -58,15 +58,14 @@ Item {
         && (id !== "play_checks" || root.playChecksAvailable)
         && (id !== "patterns" || root.handOrderFeaturesEnabled)).concat(comparisonPanels.map(p => p.panelId))
     readonly property var savedNames: preferences.savedWorkspaceLayoutOrder ?? Object.keys(preferences.savedWorkspaceLayouts).sort((a, b) => a.localeCompare(b))
-    readonly property var slotKeys: preferences.workspaceSlots ?? ["editing", "preview", "analysis"]
+    readonly property var slotKeys: preferences.workspaceSlots ?? ["default", "editing", "preview"]
     readonly property var layoutKeys: preferences.workspaceListOrder
-        ?? ["default", "editing", "preview", "analysis"].concat(savedNames.map(name => "saved:" + name))
+        ?? ["default", "editing", "preview"].concat(savedNames.map(name => "saved:" + name))
     function layoutTitle(key) {
         switch (key) {
         case "default": return qsTrId("workspace.classic")
         case "editing": return qsTrId("workspace.editing")
         case "preview": return qsTrId("workspace.preview")
-        case "analysis": return qsTrId("workspace.analysis")
         default: return key.startsWith("saved:") ? key.slice(6) : ""
         }
     }
@@ -107,7 +106,11 @@ Item {
 
     function panelShown(id) {
         if (id === "patterns" && !root.handOrderFeaturesEnabled) return false
-        if (id === "library") return libraryAvailable && preferences.workspaceHiddenPanels?.library === false
+        if (id === "library") {
+            const hidden = preferences.workspaceHiddenPanels?.library
+            return libraryAvailable && (hidden !== undefined ? !hidden
+                : !customTree || Layouts.pathFor(customTree, "library") !== null)
+        }
         if (id === "play_checks") return playChecksAvailable && preferences.bottomPanelVisible
             && preferences.workspaceHiddenPanels?.play_checks !== true
         if (id === "sidebar") return compactSidebarShown ?? preferences.sidebarVisible
@@ -371,16 +374,9 @@ Item {
         commit(Layouts.activate(tree, id), nextFloating)
     }
 
-    function applyTimelinePlacement(mode) {
-        if (preferences.timelineLayoutMode === mode)
-            return
-        const previousTree = customTree
-        preferences.timelineLayoutMode = mode
-        if (!previousTree || isFloating("timeline"))
-            return
-        const editorPath = Layouts.pathFor(previousTree, "editor")
-        const edge = mode === "horizontal" ? "bottom" : mode === "vertical_before_editor" ? "left" : "right"
-        commit(Layouts.dock(previousTree, "timeline", editorPath, edge), floating)
+    function applyTimelineStyle(style) {
+        preferences.timelineLayoutMode = style === "horizontal" ? "horizontal" : "vertical"
+        if (style !== "horizontal") preferences.timelineVerticalDirection = style
     }
 
     function applyPreviewSide(left) {
@@ -395,13 +391,14 @@ Item {
         maximizedPanel = ""
         if (preferences.previewDetached)
             dockPreview()
-        preferences.timelineLayoutMode = id === "preview" ? "vertical_before_editor" : "horizontal"
-        preferences.sidebarVisible = true
+        preferences.timelineLayoutMode = id === "default" ? "horizontal" : "vertical"
+        preferences.timelineVerticalDirection = "falling"
+        if (preferencesModel) preferencesModel.previewOnLeft = false
+        preferences.sidebarVisible = id !== "editing"
         preferences.timelinePanelVisible = true
         preferences.bottomPanelVisible = true
-        preferences.workspaceHiddenPanels = {}
+        preferences.workspaceHiddenPanels = id === "editing" ? { library: true } : {}
         if (id === "default") {
-            if (preferencesModel) preferencesModel.previewOnLeft = false
             preferences.efficientSidebarEnabled = false
             preferences.sidebarWidth = preferences.sidebarDefaultWidth
             preferences.previewWidthRatio = preferences.previewDefaultWidthRatio
@@ -418,10 +415,11 @@ Item {
             return
         maximizedPanel = ""
         preferences.timelineLayoutMode = saved.timelineLayoutMode
+        if (saved.timelineVerticalDirection) preferences.timelineVerticalDirection = saved.timelineVerticalDirection
         preferences.sidebarVisible = saved.sidebarVisible ?? true
         preferences.timelinePanelVisible = saved.timelinePanelVisible ?? true
         preferences.bottomPanelVisible = saved.bottomPanelVisible ?? true
-        preferences.workspaceHiddenPanels = saved.hiddenPanels || {}
+        preferences.workspaceHiddenPanels = Object.assign({ library: Layouts.pathFor(saved.tree, "library") === null }, saved.hiddenPanels || {})
         if (typeof saved.previewOnLeft === "boolean" && preferencesModel)
             preferencesModel.previewOnLeft = saved.previewOnLeft
         if (typeof saved.efficientSidebar === "boolean")
@@ -456,6 +454,7 @@ Item {
         return {
             version: 1, tree: Layouts.pruneComparisons(tree, []), floating: savedFloating, nativeFrame: defaultNativeLayout,
             timelineLayoutMode: preferences.timelineLayoutMode,
+            timelineVerticalDirection: preferences.timelineVerticalDirection,
             sidebarVisible: preferences.sidebarVisible,
             timelinePanelVisible: preferences.timelinePanelVisible,
             bottomPanelVisible: preferences.bottomPanelVisible,

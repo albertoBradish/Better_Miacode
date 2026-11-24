@@ -775,11 +775,6 @@ Item {
                 enabled: !!workspaceMenu.workspace
                 onTriggered: workspaceMenu.workspace.applyBuiltin("preview")
             }
-            AppMenuAction {
-                text: qsTrId("workspace.analysis")
-                enabled: !!workspaceMenu.workspace
-                onTriggered: workspaceMenu.workspace.applyBuiltin("analysis")
-            }
             AppMenuSeparator {}
             AppMenu {
                 id: shownPanels
@@ -845,37 +840,20 @@ Item {
                 Instantiator {
                     model: [
                         { mode: "horizontal", label: qsTrId("timeline.layout.horizontal") },
-                        { mode: "vertical_before_editor", label: qsTrId("timeline.layout.before_editor") },
-                        { mode: "vertical_after_editor", label: qsTrId("timeline.layout.after_editor") }
+                        { mode: "falling", label: qsTrId("timeline.layout.falling") },
+                        { mode: "rising", label: qsTrId("timeline.layout.rising") }
                     ]
                     delegate: AppMenuItem {
                         required property var modelData
                         text: modelData.label
                         enabled: !!workspaceMenu.workspace
                         checkable: true
-                        checked: workspaceMenu.workspace?.preferences.timelineLayoutMode === modelData.mode
-                        onTriggered: workspaceMenu.workspace.applyTimelinePlacement(modelData.mode)
+                        checked: (workspaceMenu.workspace?.preferences.timelineLayoutMode === "horizontal"
+                            ? "horizontal" : workspaceMenu.workspace?.preferences.timelineVerticalDirection) === modelData.mode
+                        onTriggered: workspaceMenu.workspace.applyTimelineStyle(modelData.mode)
                     }
                     onObjectAdded: (index, object) => timelineLayoutMenu.insertItem(index, object)
                     onObjectRemoved: (index, object) => timelineLayoutMenu.removeItem(object)
-                }
-
-                AppMenu {
-                    title: qsTrId("timeline.layout.direction")
-                    AppMenuAction {
-                        text: qsTrId("timeline.layout.falling")
-                        enabled: !!workspaceMenu.workspace
-                        checkable: true
-                        checked: workspaceMenu.workspace?.preferences.timelineVerticalDirection === "falling"
-                        onTriggered: workspaceMenu.workspace.preferences.timelineVerticalDirection = "falling"
-                    }
-                    AppMenuAction {
-                        text: qsTrId("timeline.layout.rising")
-                        enabled: !!workspaceMenu.workspace
-                        checkable: true
-                        checked: workspaceMenu.workspace?.preferences.timelineVerticalDirection === "rising"
-                        onTriggered: workspaceMenu.workspace.preferences.timelineVerticalDirection = "rising"
-                    }
                 }
 
                 AppMenu {

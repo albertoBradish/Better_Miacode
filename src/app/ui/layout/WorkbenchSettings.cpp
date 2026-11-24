@@ -24,8 +24,8 @@ namespace {
 constexpr auto kUiSection = "ui";
 constexpr auto kWorkspaceLayout = "workspace_layout";
 constexpr auto kSavedWorkspaceLayouts = "saved_workspace_layouts";
-const QStringList kBuiltinLayouts = {QStringLiteral("default"), QStringLiteral("editing"), QStringLiteral("preview"), QStringLiteral("analysis")};
-const QStringList kInitialSlots = kBuiltinLayouts.mid(1);
+const QStringList kBuiltinLayouts = {QStringLiteral("default"), QStringLiteral("editing"), QStringLiteral("preview")};
+const QStringList kInitialSlots = kBuiltinLayouts;
 const QString kSavedPrefix = QStringLiteral("saved:");
 constexpr auto kWorkspaceListOrder = "workspace_list_order";
 constexpr auto kWorkspaceSlots = "workspace_shortcuts";
@@ -110,7 +110,9 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     autoNormalizeEnabled_ = ui.value(QStringLiteral("auto_normalize_enabled")).toBool(false);
     warnEmptyDifficulty_ = ui.value(QStringLiteral("warn_empty_difficulty")).toBool(true);
     timelineLayoutMode_ = ui.value(QStringLiteral("timeline_layout_mode")).toString(QStringLiteral("horizontal"));
-    if (!QStringList{QStringLiteral("horizontal"), QStringLiteral("vertical_before_editor"), QStringLiteral("vertical_after_editor")}.contains(timelineLayoutMode_)) timelineLayoutMode_ = QStringLiteral("horizontal");
+    if (timelineLayoutMode_ == QStringLiteral("vertical_before_editor") || timelineLayoutMode_ == QStringLiteral("vertical_after_editor"))
+        timelineLayoutMode_ = QStringLiteral("vertical");
+    else if (timelineLayoutMode_ != QStringLiteral("vertical")) timelineLayoutMode_ = QStringLiteral("horizontal");
     timelineVerticalDirection_ = ui.value(QStringLiteral("timeline_vertical_direction")).toString(QStringLiteral("falling"));
     if (!QStringList{QStringLiteral("falling"), QStringLiteral("rising")}.contains(timelineVerticalDirection_)) timelineVerticalDirection_ = QStringLiteral("falling");
     workspaceLayout_ = ui.value(QLatin1String(kWorkspaceLayout)).toObject().toVariantMap();
@@ -648,10 +650,11 @@ void WorkbenchSettings::setWarnEmptyDifficulty(bool value)
 
 void WorkbenchSettings::setTimelineLayoutMode(const QString& value)
 {
-    if (!QStringList{QStringLiteral("horizontal"), QStringLiteral("vertical_before_editor"), QStringLiteral("vertical_after_editor")}.contains(value)) return;
-    if (timelineLayoutMode_ == value) return;
-    timelineLayoutMode_ = value;
-    storeUiValue("timeline_layout_mode", value);
+    const QString mode = value.startsWith(QStringLiteral("vertical_")) ? QStringLiteral("vertical") : value;
+    if (mode != QStringLiteral("vertical") && mode != QStringLiteral("horizontal")) return;
+    if (timelineLayoutMode_ == mode) return;
+    timelineLayoutMode_ = mode;
+    storeUiValue("timeline_layout_mode", mode);
     emit workflowSettingsChanged();
 }
 
