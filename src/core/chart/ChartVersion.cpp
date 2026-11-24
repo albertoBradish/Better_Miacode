@@ -12,6 +12,13 @@ constexpr const char* families[] = {"maimai", "GreeN", "ORANGE", "PiNK", "MURASA
     "MiLK", "FiNALE", "DX", "Splash", "UNiVERSE", "FESTiVAL", "BUDDiES", "PRiSM",
     "CiRCLE", "LightDX", "Gamble", "MAGiCAL"};
 
+bool hasOfficialPlus(Family family)
+{
+    return family != Family::Finale && family != Family::Magical
+        && family != Family::LightDx && family != Family::Gamble;
+}
+} // namespace
+
 std::optional<Version> namedVersion(QString token)
 {
     token = token.normalized(QString::NormalizationForm_KC).simplified().toLower();
@@ -31,6 +38,7 @@ std::optional<Version> namedVersion(QString token)
     return std::nullopt;
 }
 
+namespace {
 Version minimumVersion(const TimelineNoteMarker& marker)
 {
     const bool touch = marker.type == QLatin1String("touch");
@@ -61,6 +69,32 @@ QString Version::outlineFileName() const
     // MAGiCAL has no bundled line. Use the last available arcade family's artwork.
     const int asset = static_cast<int>(family == Family::Magical ? Family::Circle : family);
     return QStringLiteral("%1.%2.png").arg(asset).arg(QLatin1String(families[asset - 1]));
+}
+
+QString Version::name() const
+{
+    const QString base = QString::fromLatin1(families[static_cast<int>(family) - 1]);
+    return plus ? base + QStringLiteral(" PLUS") : base;
+}
+
+int Version::officialSortKey() const
+{
+    if (family == Family::LightDx || family == Family::Gamble || (plus && !hasOfficialPlus(family)))
+        return 0;
+    return 2 * static_cast<int>(family) + (plus ? 1 : 0);
+}
+
+QStringList officialNames()
+{
+    QStringList names;
+    for (int index = 1; index <= static_cast<int>(std::size(families)); ++index) {
+        const auto family = static_cast<Family>(index);
+        const Version base{family};
+        if (!base.officialSortKey()) continue;
+        names.append(base.name());
+        if (hasOfficialPlus(family)) names.append(Version{family, true}.name());
+    }
+    return names;
 }
 
 Version detect(const SimaiDocument& document, const QVector<TimelineNoteMarker>& markers)
