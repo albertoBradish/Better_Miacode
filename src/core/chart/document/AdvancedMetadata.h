@@ -19,6 +19,7 @@ struct Field {
 };
 QVector<Field> advancedFields(int difficultyId);
 QString fieldValue(const SimaiDocument& document, const QString& key);
+QString displayLevelForConstant(const QString& constant);
 // Empty means valid. Optional empty fields remain absent rather than becoming zero.
 QString validateField(const QString& key, const QString& value);
 QStringList conflictingKeys(const QString& source);

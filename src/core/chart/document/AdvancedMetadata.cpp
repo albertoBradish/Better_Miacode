@@ -97,6 +97,18 @@ QString fieldValue(const SimaiDocument& document, const QString& key)
     return {};
 }
 
+QString displayLevelForConstant(const QString& constant)
+{
+    static const QRegularExpression decimal(QStringLiteral(R"(^(\d+)(?:\.(\d+))?$)"));
+    const auto match = decimal.match(constant.trimmed());
+    bool ok = false;
+    const int level = match.captured(1).toInt(&ok);
+    if (!ok || level <= 0) return {};
+    const auto fraction = match.capturedView(2);
+    const bool plus = !fraction.isEmpty() && fraction.front() >= QLatin1Char('6');
+    return QString::number(level) + (plus ? "+" : "");
+}
+
 QString validateField(const QString& key, const QString& value)
 {
     const QString text = value.trimmed();

@@ -74,7 +74,7 @@ void zipExportOptions(const QString& base)
     const QString path = folder.filePath("maidata.txt");
     const QByteArray bytes = "&title=Test\n&artist=Artist\n&des=Designer\n&first=0.25\n&clock_count=4\n"
         "&wholebpm=120\n&video=pv.mp4\n&version=Custom\n&level_constant_5=14.8\n&lv_5=14+\n"
-        "&inote_5=(120){4}1,2,3,4,E\n&lv_4=13\n&inote_4=(120){4}4,3,2,1,E\n";
+        "&inote_5=(120){4}1,2,3,4,E\n&lv_4=13.7\n&inote_4=(120){4}4,3,2,1,E\n";
     put(path, bytes);
     put(folder.filePath("pv.mp4"), "video");
     put(folder.filePath("bg.jpg"), "image");
@@ -96,7 +96,8 @@ void zipExportOptions(const QString& base)
         const bool hasVideo = zipPath == archive;
         check(text.contains("&inote_4=") && text.contains("&inote_5=") && text.contains("&first=0.25")
             && text.contains("&wholebpm=120") && text.contains("&lv_5=14+") && text.contains("&des=Designer")
-            && !text.contains("&level_constant") && !text.contains("&version="), "basic ZIP retains timing and both charts");
+            && text.contains("&lv_4=13+\n") && !text.contains("13.7")
+            && !text.contains("&level_constant") && !text.contains("&version="), "basic ZIP retains timing and display grades for both charts");
         check((mz_zip_reader_locate_file(&zip, "pv.mp4", nullptr, 0) >= 0) == hasVideo
             && text.contains("&video=pv.mp4") == hasVideo && mz_zip_reader_locate_file(&zip, "bg.jpg", nullptr, 0) >= 0
             && mz_zip_reader_locate_file(&zip, "track.mp3", nullptr, 0) >= 0, "companion only omits video and its reference");
@@ -823,12 +824,16 @@ void batchLibraryActions(const QString& base)
     check(put(two, "&title=Song 2\n&artist=Beta\n&version=GreeN PLUS\n&genre=maimai\n"
         "&lv_5=13+\n&des_5=Beta\n&inote_5=(160){4}1,E\n")
         && put(three, "&title=Song 3\n&artist=Alpha\n&version=Custom\n&wholebpm=190\n"
-            "&lv_4=13+\n&level_constant_4=14.1\n&des_4=Alpha\n&inote_4=(90){4}2,E\n"
+            "&lv_4=13+\n&level_constant_4=15.1\n&des_4=Alpha\n&inote_4=(90){4}2,E\n"
             "&lv_5=13\n&des_5=Wrong designer\n&inote_5=(90){4}3,E\n")
         && put(ten, "&title=Song 10\n&artist=Gamma\n&version=maimai DX PRiSM\n&genre=maimai\n"
             "&lv_4=13?\n&des_4=Gamma\n&inote_4=(140){4}4,E\n")
-        && put(twenty, "&title=Song 20\n&des=Default designer\n&lv_4=13.6\n&inote_4=(172){4}1,E\n"
-            "&lv_5=14\n&level_constant_5=13.9\n&inote_5=(172){4}A1,E\n")
+        && put(twenty, "&title=Song 20\n&des=Default designer\n"
+            "&lv_3=12.9\n&level_constant_3=12.8\n&inote_3=(172){4}2,E\n"
+            "&lv_4=13.6\n&inote_4=(172){4}1,E\n"
+            "&level_constant_5=13.9\n&inote_5=(172){4}A1,E\n"
+            "&lv_6=14+\n&level_constant_6=14.5\n&inote_6=(172){4}3,E\n"
+            "&lv_7=13?\n&level_constant_7=13.8\n&inote_7=(172){4}4,E\n")
         && put(QFileInfo(two).dir().filePath("track.mp3"), "audio")
         && put(QFileInfo(ten).dir().filePath("track.mp3"), "audio"), "batch action fixtures created");
     for (const auto& path : {two, three, ten, twenty})
@@ -890,7 +895,10 @@ void batchLibraryActions(const QString& base)
     check(cleaned.contains("&level_constant_4=13.6") && cleaned.contains("&lv_4=13+"),
         "batch decimal migration moves the value and derives a display level");
     check(cleaned.contains("&lv_5=13+") && cleaned.contains("&inote_5=(172){4}A1,E"),
-        "batch level derivation preserves chart bodies");
+        "batch cleanup fills a missing grade and preserves the chart body");
+    check(cleaned.contains("&lv_6=14+\n&level_constant_6=14.5\n"), "batch cleanup preserves a hand-entered plus grade");
+    check(cleaned.contains("&lv_7=13?\n&level_constant_7=13.8\n"), "batch cleanup preserves a hand-entered banquet grade");
+    check(cleaned.contains("&lv_3=12.9\n&level_constant_3=12.8\n"), "batch cleanup preserves both conflicting decimal values");
     model.undoBatch();
     check(settled(model) && get(twenty) == beforeCleanup, "one undo restores every automatic metadata correction");
 
@@ -913,7 +921,7 @@ void batchLibraryActions(const QString& base)
         mz_free(data);
         mz_zip_reader_end(&zip);
     }
-    check(opened && contents.contains("&inote_4=") && contents.contains("&inote_5=")
+    check(opened && SimaiDocument::fromText(QString::fromUtf8(contents)).difficultyIds() == QVector<int>{3, 4, 5, 6, 7}
         && get(output.filePath("Song 20.zip")) == "previous ZIP"
         && QFile::exists(output.filePath("Song 20 (2)_noPV.zip")),
         "batch ZIP includes every difficulty and preserves existing archives");

@@ -2,6 +2,7 @@
 #include "app/services/ChartLibraryFiles.h"
 #include "app/services/ChartNormalizationPreferences.h"
 #include "app/services/PreferenceDocument.h"
+#include "core/chart/document/AdvancedMetadata.h"
 #include "core/chart/document/SimaiDocument.h"
 
 #include <QDir>
@@ -34,6 +35,12 @@ zip_export::ChartZipResult exportChartZip(zip_export::ChartZipInput input, const
         document.extraFields.removeIf([](const SimaiRawField& field) {
             return !playbackFields.contains(field.key.toLower());
         });
+        for (const int slot : document.difficultyIds()) {
+            auto& level = document.difficulty(slot)->level;
+            if (!level.contains('.')) continue;
+            const auto displayed = metadata::displayLevelForConstant(level);
+            if (!displayed.isEmpty()) level = displayed;
+        }
         input.chartText = document.toText();
     }
     if (!paired) return zip_export::packChartToZip(input, progress);

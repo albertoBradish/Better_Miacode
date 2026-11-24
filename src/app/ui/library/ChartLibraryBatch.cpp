@@ -14,24 +14,11 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <optional>
 
 namespace miacode::ui {
 namespace {
-QString displayLevel(const QString& constant)
-{
-    static const QRegularExpression decimal(QStringLiteral(R"(^(\d+)(?:\.(\d+))?$)"));
-    const auto match = decimal.match(constant.trimmed());
-    bool ok = false;
-    const int level = match.captured(1).toInt(&ok);
-    if (!ok || level <= 0) return {};
-    const auto fraction = match.capturedView(2);
-    const bool plus = !fraction.isEmpty() && fraction.front() >= QLatin1Char('6');
-    return QString::number(level) + (plus ? "+" : "");
-}
-
 QVariantMap metadataEdits(const SimaiDocument& doc)
 {
     QVariantMap fields;
@@ -59,18 +46,19 @@ QVariantMap metadataEdits(const SimaiDocument& doc)
                 }
             }
         }
+        const auto grade = difficulty.level.trimmed();
+        if (!grade.isEmpty() && !grade.contains('.')) continue;
         const auto suffix = QString::number(slot);
         const auto constantKey = "level_constant_" + suffix;
         const auto constant = metadata::fieldValue(doc, constantKey).trimmed();
-        const auto grade = difficulty.level.trimmed();
-        auto next = displayLevel(constant);
-        if (grade.contains('.')) {
+        const auto next = metadata::displayLevelForConstant(grade.isEmpty() ? constant : grade);
+        if (next.isEmpty()) continue;
+        if (!grade.isEmpty()) {
             // Keep two existing values intact when their decimal constants disagree.
             if (!constant.isEmpty() && constant.toDouble() != grade.toDouble()) continue;
-            next = displayLevel(grade);
-            if (!next.isEmpty() && constant.isEmpty()) fields.insert(constantKey, grade);
+            if (constant.isEmpty()) fields.insert(constantKey, grade);
         }
-        if (!next.isEmpty() && next != grade) fields.insert("lv_" + suffix, next);
+        fields.insert("lv_" + suffix, next);
     }
     if (latestVersion) fields.insert("version", latestVersion->name());
     return fields;
