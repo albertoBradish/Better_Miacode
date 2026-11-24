@@ -6778,12 +6778,12 @@ Held %8 · Slides %9 · Overlap %10</source>
         <translation>標準レイアウト</translation>
     </message>
     <message id="workspace.editing">
-        <source>Editing layout</source>
-        <translation>編集レイアウト</translation>
+        <source>Editing</source>
+        <translation>編集</translation>
     </message>
     <message id="workspace.preview">
-        <source>Preview layout</source>
-        <translation>プレビューレイアウト</translation>
+        <source>Preview</source>
+        <translation>プレビュー</translation>
     </message>
     <message id="workspace.maximize_panel">
         <source>Maximize active panel</source>
@@ -7291,7 +7291,7 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.batch_import_summary"><source>Imported %1 · Merged %2 · Duplicates %3 · Conflicts %4 · Failed %5</source><translation>追加 %1・統合 %2・重複 %3・競合 %4・失敗 %5</translation></message>
 <message id="library.delete_pack"><source>Delete pack</source><translation>パックを削除</translation></message>
 <message id="library.delete_library"><source>Delete library</source><translation>ライブラリを削除</translation></message>
-<message id="library.delete_collection_prompt"><source>Type “%1” to delete its registration and the private copies managed by this library. Original sources and unrelated files are kept.</source><translation>「%1」と入力すると、登録とこのライブラリが管理するコピーが削除されます。元ファイルやその他のファイルは保持されます。</translation></message>
+<message id="library.delete_collection_prompt"><source>Type “%1” to delete its registration and the private copies managed by this library.</source><translation>「%1」と入力すると、登録とこのライブラリが管理するコピーが削除されます。</translation></message>
 <message id="library.confirm_collection_name"><source>Collection name to confirm deletion</source><translation>削除を確認するために名前を入力</translation></message>
 <message id="library.collection_deleted"><source>Deleted %1</source><translation>「%1」を削除しました</translation></message>
 <message id="library.saved_registration_failed"><source>Could not update the library after saving charts.</source><translation>譜面の保存後にライブラリを更新できませんでした。</translation></message>

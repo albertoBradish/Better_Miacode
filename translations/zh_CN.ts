@@ -6779,12 +6779,12 @@ Held %8 · Slides %9 · Overlap %10</source>
         <translation>默认布局</translation>
     </message>
     <message id="workspace.editing">
-        <source>Editing layout</source>
-        <translation>编辑布局</translation>
+        <source>Editing</source>
+        <translation>编辑</translation>
     </message>
     <message id="workspace.preview">
-        <source>Preview layout</source>
-        <translation>预览布局</translation>
+        <source>Preview</source>
+        <translation>预览</translation>
     </message>
     <message id="workspace.maximize_panel">
         <source>Maximize active panel</source>
@@ -7210,8 +7210,8 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.sort_title"><source>Title</source><translation>曲名</translation></message>
 <message id="library.sort_artist"><source>Artist</source><translation>曲师</translation></message>
 <message id="library.sort_genre"><source>Genre</source><translation>流派</translation></message>
-<message id="library.sort_ascending"><source>Ascending order</source><translation>升序</translation></message>
-<message id="library.sort_descending"><source>Descending order</source><translation>降序</translation></message>
+<message id="library.sort_ascending"><source>Ascending order</source><translation>正序</translation></message>
+<message id="library.sort_descending"><source>Descending order</source><translation>倒序</translation></message>
 <message id="library.sort_constant"><source>Highest chart constant</source><translation>谱面定数</translation></message>
 <message id="library.sort_designer"><source>Designer of the highest difficulty</source><translation>谱师</translation></message>
 <message id="library.selected_actions"><source>%1 selected</source><translation>已选 %1 首</translation></message>
@@ -7292,7 +7292,7 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.batch_import_summary"><source>Imported %1 · Merged %2 · Duplicates %3 · Conflicts %4 · Failed %5</source><translation>新增 %1，合并 %2，重复 %3，冲突 %4，失败 %5</translation></message>
 <message id="library.delete_pack"><source>Delete pack</source><translation>删除曲包</translation></message>
 <message id="library.delete_library"><source>Delete library</source><translation>删除谱库</translation></message>
-<message id="library.delete_collection_prompt"><source>Type “%1” to delete its registration and the private copies managed by this library. Original sources and unrelated files are kept.</source><translation>输入「%1」以删除登记及本谱库管理的私有副本。来源文件和其他资料会保留。</translation></message>
+<message id="library.delete_collection_prompt"><source>Type “%1” to delete its registration and the private copies managed by this library.</source><translation>输入「%1」以删除登记及本谱库管理的私有副本。</translation></message>
 <message id="library.confirm_collection_name"><source>Collection name to confirm deletion</source><translation>输入名称以确认删除</translation></message>
 <message id="library.collection_deleted"><source>Deleted %1</source><translation>已删除「%1」</translation></message>
 <message id="library.saved_registration_failed"><source>Could not update the library after saving charts.</source><translation>谱面已保存，但谱库更新失败。</translation></message>
@@ -7486,7 +7486,7 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="preview.auto_detect"><source>Auto detect</source><translation>自动检测</translation></message>
 <message id="preview.completion_display"><source>Achievement display</source><translation>完成度显示</translation></message>
 <message id="preview.completion_default"><source>Default</source><translation>默认</translation></message>
-<message id="export.zip.without_pv"><source>Also export a copy without PV</source><translation>同步导出不含 PV 的版本</translation></message>
+<message id="export.zip.without_pv"><source>Also export a copy without PV</source><translation>同步导出不含 pv.mp4 的版本</translation></message>
 <message id="export.zip.basic_metadata"><source>Export basic metadata only</source><translation>只导出基础元数据</translation></message>
 <message id="export.zip.normalize"><source>Normalize exported charts</source><translation>自动整理导出谱面</translation></message>
 </context>

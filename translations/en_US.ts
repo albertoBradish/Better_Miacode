@@ -6779,12 +6779,12 @@ Held %8 · Slides %9 · Overlap %10</translation>
         <translation>Default layout</translation>
     </message>
     <message id="workspace.editing">
-        <source>Editing layout</source>
-        <translation>Editing layout</translation>
+        <source>Editing</source>
+        <translation>Editing</translation>
     </message>
     <message id="workspace.preview">
-        <source>Preview layout</source>
-        <translation>Preview layout</translation>
+        <source>Preview</source>
+        <translation>Preview</translation>
     </message>
     <message id="workspace.maximize_panel">
         <source>Maximize active panel</source>
@@ -7273,7 +7273,7 @@ Movement L %3 / R %4 · Alternation %5</translation>
 <message id="library.batch_import_summary"><source>Imported %1 · Merged %2 · Duplicates %3 · Conflicts %4 · Failed %5</source><translation>Imported %1 · Merged %2 · Duplicates %3 · Conflicts %4 · Failed %5</translation></message>
 <message id="library.delete_pack"><source>Delete pack</source><translation>Delete pack</translation></message>
 <message id="library.delete_library"><source>Delete library</source><translation>Delete library</translation></message>
-<message id="library.delete_collection_prompt"><source>Type “%1” to delete its registration and the private copies managed by this library. Original sources and unrelated files are kept.</source><translation>Type “%1” to delete its registration and the private copies managed by this library. Original sources and unrelated files are kept.</translation></message>
+<message id="library.delete_collection_prompt"><source>Type “%1” to delete its registration and the private copies managed by this library.</source><translation>Type “%1” to delete its registration and the private copies managed by this library.</translation></message>
 <message id="library.confirm_collection_name"><source>Collection name to confirm deletion</source><translation>Collection name to confirm deletion</translation></message>
 <message id="library.collection_deleted"><source>Deleted %1</source><translation>Deleted %1</translation></message>
 <message id="library.saved_registration_failed"><source>Could not update the library after saving charts.</source><translation>Could not update the library after saving charts.</translation></message>
