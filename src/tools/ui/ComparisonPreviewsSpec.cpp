@@ -163,13 +163,18 @@ int main(int argc, char** argv)
     auto* a = get(0);
     auto* b = get(1);
     if (!a || !b) return 1;
-    a->focusAudio(true);
-    check(masterGain == 0, "pointing at a pin mutes master audio without changing transport");
-    views.focusMainAudio();
-    check(masterGain == 1, "pointing at main restores the master renderer");
+    views.focusPanelAudio(a->panelId());
+    check(masterGain == 0, "focusing a child mutes the main preview");
+    views.focusPanelAudio(QStringLiteral("editor"));
+    check(masterGain == 0, "focusing an editor preserves the selected child");
+    views.focusPanelAudio(QStringLiteral("preview"));
+    check(masterGain == 1, "focusing the main preview restores its renderer");
     views.setMixAudio(true); views.setMainPan(-0.8); a->setScreenPan(0.7);
     check(std::abs(masterGain - 0.3) < 0.001 && masterPan == -0.8, "three windows reserve headroom and follow their screen positions");
+    views.focusPanelAudio(b->panelId());
+    check(std::abs(masterGain - 0.3) < 0.001 && masterPan == -0.8, "focus leaves mixed gain and pan intact");
     views.setMixAudio(false);
+    check(masterGain == 0, "leaving mix mode restores the last focused child");
     b->setSyncEnabled(false);
     check(!b->linked() && a->linked(), "individual sync icon detaches a single transport");
     b->setSyncEnabled(true);
@@ -185,7 +190,7 @@ Window {
     id: host
     width: 700; height: 500; visible: true
     Item { id: mainPane; objectName: "mainPane"; anchors.fill: parent }
-    Item { id: panels; function hostFor(id) { return mainPane } }
+    Item { id: panels; objectName: "dock"; property string activePanel: ""; function hostFor(id) { return mainPane } }
     ComparisonPreviewPanels { dock: panels; comparisons: testComparisons; workspaceWindow: host; primaryPane: mainPane }
 }
 )qml", QUrl());
@@ -193,6 +198,14 @@ Window {
     if (!ui) { QTextStream(stderr) << component.errorString(); return 1; }
     auto* pane = ui->findChild<QQuickItem*>("mainPane");
     check(pane && settled([&] { return pane->childItems().size()==2; }), "both child previews use workspace panel hosts");
+    auto* dock = ui->findChild<QQuickItem*>("dock");
+    dock->setProperty("activePanel", QStringLiteral("preview"));
+    auto* window = qobject_cast<QQuickWindow*>(ui.get());
+    QTest::mouseMove(window, QPoint(310, 150));
+    QCoreApplication::processEvents();
+    check(masterGain == 1, "moving over a child leaves the main preview selected");
+    dock->setProperty("activePanel", b->panelId());
+    check(masterGain == 0, "activating a child panel selects its audio");
     check(a->workspaceLabel() == "A" && b->workspaceLabel() == "B"
         && a->title().contains(QStringLiteral("Twin")), "workspace labels are separate from chart titles");
     const auto closeButtons = ui->findChildren<QQuickItem*>("closeComparisonPreviewButton");

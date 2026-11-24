@@ -29,9 +29,11 @@ Item {
         value: !!root.workspaceWindow?.visible && root.comparisonsVisible
         when: !!root.comparisons
     }
-    HoverHandler {
-        parent: root.primaryPane
-        onHoveredChanged: if (hovered) root.comparisons?.focusMainAudio()
+    Connections {
+        target: root.dock
+        function onActivePanelChanged() {
+            root.comparisons?.focusPanelAudio(root.dock.activePanel)
+        }
     }
     Timer {
         interval: 100
@@ -51,7 +53,6 @@ Item {
             syncAvailable: root.comparisons?.synchronize ?? false
             canvasRatio: root.canvasRatio
             freeAspect: root.freeAspect
-            HoverHandler { onHoveredChanged: tile.comparison?.focusAudio(hovered) }
             Timer {
                 interval: 100; repeat: true; triggeredOnStart: true
                 running: tile.visible && !!root.comparisons?.mixAudio

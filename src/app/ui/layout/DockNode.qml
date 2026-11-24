@@ -138,10 +138,14 @@ Item {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 clip: true
+            }
 
-                TapHandler {
-                    gesturePolicy: TapHandler.DragThreshold
-                    onTapped: if (groupItem.selected) root.workspace.activePanel = groupItem.selected
+            Item {
+                anchors.fill: panelSlot
+
+                PointHandler {
+                    acceptedButtons: Qt.LeftButton
+                    onActiveChanged: if (active && groupItem.selected) root.workspace.activePanel = groupItem.selected
                 }
 
                 HoverHandler {

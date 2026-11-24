@@ -23,7 +23,7 @@ struct PreviewSong {
 
 class ComparisonPreview final : public QObject {
     Q_OBJECT
-    Q_PROPERTY(QString panelId MEMBER panelId_ CONSTANT)
+    Q_PROPERTY(QString panelId READ panelId CONSTANT)
     Q_PROPERTY(QObject* runtime READ runtime CONSTANT)
     Q_PROPERTY(QObject* mediaHost READ mediaHost NOTIFY mediaHostChanged)
     Q_PROPERTY(QString title READ title NOTIFY chartChanged)
@@ -39,6 +39,7 @@ public:
     ~ComparisonPreview() override;
     QObject* runtime() { return &scene_; }
     QObject* mediaHost() const { return mediaSource_; }
+    QString panelId() const { return panelId_; }
     QString title() const { return title_; }
     QString workspaceLabel() const;
     bool surfaceVisible() const { return surfaceVisible_; }
@@ -49,7 +50,6 @@ public:
     bool playing() const { return playing_; }
     bool syncEnabled() const { return syncEnabled_; }
     void setSyncEnabled(bool value);
-    Q_INVOKABLE void focusAudio(bool enter);
     Q_INVOKABLE void setScreenPan(double pan);
     bool linked() const { return linked_; }
     Q_INVOKABLE void togglePlayback();
@@ -142,7 +142,7 @@ public:
     void setPresentationActive(bool value);
     bool mixAudio() const { return mixAudio_; }
     void setMixAudio(bool value);
-    Q_INVOKABLE void focusMainAudio();
+    Q_INVOKABLE void focusPanelAudio(const QString& panelId);
     Q_INVOKABLE void setMainPan(double pan);
     bool synchronize() const { return synchronize_; }
     void setSynchronize(bool value);

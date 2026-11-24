@@ -113,11 +113,19 @@ void ComparisonPreviews::setMixAudio(bool value)
     emit mixAudioChanged();
 }
 
-void ComparisonPreviews::focusMainAudio()
+void ComparisonPreviews::focusPanelAudio(const QString& panelId)
 {
-    if (!focused_) return;
-    focused_ = nullptr;
-    updateAudioRoutes();
+    ComparisonPreview* preview = nullptr;
+    if (panelId != QStringLiteral("preview")) {
+        const auto it = std::find_if(items_.cbegin(), items_.cend(), [&](const ComparisonPreview* item) {
+            return item->panelId() == panelId;
+        });
+        if (it == items_.cend()) return;
+        preview = *it;
+    }
+    if (focused_ == preview) return;
+    focused_ = preview;
+    if (!mixAudio_) updateAudioRoutes();
 }
 
 void ComparisonPreviews::setMainPan(double pan)
@@ -138,12 +146,6 @@ void ComparisonPreviews::updateAudioRoutes()
     }
     main_.routeAudio(!multi || mix || !focused_ ? gain : 0, mix ? mainPan_ : 0);
     updateClocks();
-}
-
-void ComparisonPreview::focusAudio(bool enter)
-{
-    if (enter && owner_.focused_ != this) { owner_.focused_ = this; owner_.updateAudioRoutes(); }
-    else if (!enter && owner_.focused_ == this) owner_.focusMainAudio();
 }
 
 void ComparisonPreview::setScreenPan(double pan)
