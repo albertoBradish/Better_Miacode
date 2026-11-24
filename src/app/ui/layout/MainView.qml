@@ -415,7 +415,7 @@ Item {
                 titleBarLeadingInset: titleBar.leadingInset
                 shortcuts: root.shortcutModel
                 handOrderRows: root.documentSession.handOrderFeaturesEnabled ? root.documentSession.handOrderMenu() : []
-                handOrderBreakdown: root.previewSession.handOrderBreakdown
+                handOrderBreakdown: !splitView.exportVideoActive && root.previewSession.handOrderBreakdown
                 handOrderAnalyzeEnabled: root.chartEditorActive && !root.shortcutModel.captureActive
                 handOrderEnabled: menuCommands.canTransform && !root.shortcutModel.captureActive
                 onHandOrderRequested: command => root.applyChartTransform(command)

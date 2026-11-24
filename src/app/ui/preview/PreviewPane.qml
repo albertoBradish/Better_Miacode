@@ -123,6 +123,7 @@ Rectangle {
     PreviewRenderModeMenu {
         id: renderModeMenu
         previewSession: root.previewSession
+        exportPageActive: root.exportPageActive
         onPlayChecksRequested: root.playChecksRequested()
     }
 

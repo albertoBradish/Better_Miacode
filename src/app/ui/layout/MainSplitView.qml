@@ -83,7 +83,7 @@ Item {
         && timelineSession.validationTabVisible
     readonly property bool muriVisible: chartPanelMode && workspaceDock.panelShown("muri")
         && timelineSession.muriTabVisible
-    readonly property bool patternsVisible: root.previewSession.handOrderFeaturesEnabled === true && chartPanelMode && workspaceDock.panelShown("patterns")
+    readonly property bool patternsVisible: chartPanelMode && workspaceDock.panelShown("patterns")
     readonly property bool playChecksVisible: workspaceDock.panelShown("play_checks")
     readonly property bool timelineVisible: chartPanelMode && workspaceDock.panelShown("timeline")
         && timelineSession.timelineTabVisible
@@ -580,6 +580,7 @@ Item {
         defaultTree: root.defaultDockTree("default")
         builtinTree: root.defaultDockTree
         libraryAvailable: !!root.libraryModel
+        exportVideoActive: root.exportVideoActive
         handOrderFeaturesEnabled: root.previewSession.handOrderFeaturesEnabled === true
         playChecksAvailable: root.viewState.difficultyEditorActive && root.previewSession.simulatedPlay
             && root.previewSession.handOrderOverlayEnabled

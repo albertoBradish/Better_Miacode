@@ -27,6 +27,7 @@ Item {
     property bool libraryAvailable: false
     property bool playChecksAvailable: false
     property bool handOrderFeaturesEnabled: false
+    property bool exportVideoActive: false
 
     property var comparisonPanels: []
     property var sessionLayout: null
@@ -54,9 +55,11 @@ Item {
     readonly property bool defaultNativeLayout: !!nativeFrame && comparisonPanels.length === 0 && !customTree && preferences.timelineLayoutMode === "horizontal" && !panelShown("library")
     readonly property bool useNativeFrame: defaultNativeLayout && maximizedPanel.length === 0
     readonly property var nativeFrameItem: nativeFrameLoader.item
-    readonly property var panelIds: Layouts.panels.filter(id => (id !== "library" || root.libraryAvailable)
+    readonly property var registeredPanelIds: Layouts.panels.filter(id => (id !== "library" || root.libraryAvailable)
         && (id !== "play_checks" || root.playChecksAvailable)
         && (id !== "patterns" || root.handOrderFeaturesEnabled)).concat(comparisonPanels.map(p => p.panelId))
+    readonly property var panelIds: exportVideoActive
+        ? registeredPanelIds.filter(id => id !== "patterns" && id !== "play_checks") : registeredPanelIds
     readonly property var savedNames: preferences.savedWorkspaceLayoutOrder ?? Object.keys(preferences.savedWorkspaceLayouts).sort((a, b) => a.localeCompare(b))
     readonly property var slotKeys: preferences.workspaceSlots ?? ["default", "editing", "preview"]
     readonly property var layoutKeys: preferences.workspaceListOrder
@@ -116,13 +119,12 @@ Item {
     }
 
     function panelShown(id) {
-        if (id === "patterns" && !root.handOrderFeaturesEnabled) return false
+        if (!panelIds.includes(id)) return false
         if (id === "library") {
             const hidden = preferences.workspaceHiddenPanels?.library
-            return libraryAvailable && (hidden !== undefined ? !hidden
-                : !customTree || Layouts.pathFor(customTree, "library") !== null)
+            return hidden !== undefined ? !hidden : !customTree || Layouts.pathFor(customTree, "library") !== null
         }
-        if (id === "play_checks") return playChecksAvailable && preferences.bottomPanelVisible
+        if (id === "play_checks") return preferences.bottomPanelVisible
             && preferences.workspaceHiddenPanels?.play_checks !== true
         if (id === "sidebar") return compactSidebarShown ?? preferences.sidebarVisible
         if (id === "timeline") return preferences.bottomPanelVisible && preferences.timelinePanelVisible
@@ -505,7 +507,7 @@ Item {
     Item { id: staging; visible: false }
 
     Instantiator {
-        model: root.panelIds.filter(id => id !== "preview")
+        model: root.registeredPanelIds.filter(id => id !== "preview")
         delegate: DockFloatWindow {
             required property string modelData
             panelId: modelData

@@ -9,6 +9,7 @@ AppStickyPopup {
     id: root
 
     required property var previewSession
+    property bool exportPageActive: false
     signal playChecksRequested()
     property bool playSettingsExpanded: false
     onClosed: playSettingsExpanded = false
@@ -243,7 +244,7 @@ AppStickyPopup {
             }
 
             ModeRow {
-                visible: root.previewSession.handOrderOverlayEnabled
+                visible: !root.exportPageActive && root.previewSession.handOrderOverlayEnabled
                 width: parent.width - parent.leftPadding - parent.rightPadding
                 label: qsTrId("window.play_checks")
                 active: false

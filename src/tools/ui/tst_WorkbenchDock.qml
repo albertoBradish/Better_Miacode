@@ -99,6 +99,7 @@ Item {
 
     WorkbenchDock {
         id: dock
+        exportVideoActive: root.exportVideoActive
         handOrderFeaturesEnabled: true
         anchors.left: activityRail.right
         anchors.right: parent.right
@@ -282,6 +283,8 @@ Item {
         }
 
         function cleanup() {
+            root.exportVideoActive = false
+            dock.playChecksAvailable = false
             dock.maximizedPanel = ""
             dock.activePanel = ""
             const manager = findChild(dock, "workspaceManagerDialog")
@@ -364,6 +367,47 @@ Item {
             verify(!dock.panelShown("patterns"))
             dock.handOrderFeaturesEnabled = true
             verify(dock.panelIds.includes("patterns"))
+        }
+
+        function test_exportHidesHandOrderPanels_data() {
+            return [{tag: "docked", floating: false}, {tag: "floating", floating: true}]
+        }
+
+        function test_exportHidesHandOrderPanels(data) {
+            dock.playChecksAvailable = true
+            root.enabledPanels = ["editor", "sidebar", "preview", "patterns", "play_checks"]
+            root.selectedBottom = "patterns"
+            if (data.floating)
+                dock.updateFloatingGeometry("patterns", {x: 30, y: 30, width: 400, height: 300})
+            tryVerify(() => data.floating ? dock.windowFor("patterns")?.visible : dock.hostFor("patterns").visible)
+            if (!data.floating)
+                tryCompare(dock.hostFor("patterns").parent, "height", root.height * preferences.bottomPanelHeightRatio)
+            const floatingWindow = dock.windowFor("patterns")
+            const layout = JSON.stringify(preferences.workspaceLayout)
+            const hidden = JSON.stringify(preferences.workspaceHiddenPanels)
+            const editorHeight = editor.height
+
+            root.exportVideoActive = true
+            for (const id of ["patterns", "play_checks"]) {
+                verify(!dock.panelIds.includes(id))
+                verify(!dock.panelPresent(id))
+                dock.setPanelShown(id, true)
+                verify(!dock.panelShown(id))
+            }
+            if (data.floating)
+                tryCompare(floatingWindow, "visible", false)
+            else
+                tryVerify(() => editor.height > editorHeight)
+            verify(dock.panelPresent("preview"))
+
+            root.exportVideoActive = false
+            tryVerify(() => data.floating ? floatingWindow.visible : dock.hostFor("patterns").visible)
+            verify(dock.panelPresent("play_checks"))
+            compare(dock.windowFor("patterns"), floatingWindow)
+            compare(JSON.stringify(preferences.workspaceLayout), layout)
+            compare(JSON.stringify(preferences.workspaceHiddenPanels), hidden)
+            if (!data.floating)
+                tryCompare(editor, "height", editorHeight)
         }
 
         function test_nativeDefaultAndFixedActivityRail() {
