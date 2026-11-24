@@ -740,7 +740,15 @@ Item {
         visible: active && workspaceDock.panelPresent("library")
         sourceComponent: ChartLibraryPage {
             library: root.libraryModel
+            normalizeZipDefault: root.preferences.autoNormalizeEnabled === true
             onEditorRequested: { workspaceDock.setPanelShown("editor", true); workspaceDock.activate("editor") }
+            onRenderRequested: charts => {
+                root.pages.exportSession?.appendLibraryBatch(charts)
+                if (root.pages.openVideoExportPage("batch")) {
+                    workspaceDock.setPanelShown("editor", true)
+                    workspaceDock.activate("editor")
+                }
+            }
         }
     }
 

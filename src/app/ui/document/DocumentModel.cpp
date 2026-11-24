@@ -2156,6 +2156,7 @@ void DocumentModel::publishWorkspaceCommit(
     emitDocumentStateChanged(kind);
     if (replacement) emit documentReplaced();
     if (kind == WorkspaceCommitKind::Open) scheduleFirstOpenPreparation();
+    if (kind == WorkspaceCommitKind::SavePoint) emit documentSaved(currentFilePath());
 }
 
 void DocumentModel::emitDocumentStateChanged(WorkspaceCommitKind kind)

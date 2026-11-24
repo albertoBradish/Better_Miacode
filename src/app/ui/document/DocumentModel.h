@@ -273,6 +273,7 @@ public:
     Q_INVOKABLE QVariantList normalizeSyntaxOptions() const;
 
 signals:
+    void documentSaved(const QString& path);
     void songTabsChanged();
     void handOrderFeaturesChanged();
     void localeLabelsChanged();

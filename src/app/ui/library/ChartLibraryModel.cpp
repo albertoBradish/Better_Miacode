@@ -2,13 +2,14 @@
 #include "app/ui/document/DocumentModel.h"
 #include "app/services/UiRequestService.h"
 #include "common/RuntimePaths.h"
-#include "app/services/PreferenceDocument.h"
-#include "app/services/ChartNormalizationPreferences.h"
 #include "core/chart/document/SimaiDocument.h"
 #include "app/services/ManagedChartLibrary.h"
 #include "core/chart/document/AdvancedMetadata.h"
 #include <QRegularExpression>
 #include "core/chart/ChartAssetPaths.h"
+#include "core/chart/ChartVersion.h"
+#include "core/chart/document/ChartClockCount.h"
+#include <QCollator>
 #include <QDateTime>
 #include <QGuiApplication>
 #include <QDirIterator>
@@ -20,6 +21,11 @@
 #include <QTextCursor>
 #include <QUuid>
 #include <algorithm>
+#include <utility>
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#include <shlwapi.h>
+#endif
 
 namespace miacode::ui {
 namespace {
@@ -48,6 +54,35 @@ QString storageDirectory(const char* name)
     return directory.filePath(QString::fromLatin1(name));
 }
 QString recoveryPath() { return QDir(storageDirectory("sessions")).filePath("chart-library.json"); }
+
+double positiveNumber(const QString& raw)
+{
+    const double value = raw.trimmed().toDouble();
+    return qIsFinite(value) && value > 0.0 ? value : 0.0;
+}
+
+double sortConstant(const QString& label)
+{
+    static const QRegularExpression pattern(QStringLiteral(R"(^(\d+(?:\.\d+)?)([+?]?)$)"));
+    const auto match = pattern.match(label.trimmed());
+    if (!match.hasMatch()) return 0.0;
+    return positiveNumber(match.captured(1)) + (match.captured(2) == "+" ? 0.6 : 0.0);
+}
+
+int logicalCompare(const QString& a, const QString& b)
+{
+#ifdef Q_OS_WIN
+    return StrCmpLogicalW(reinterpret_cast<const wchar_t*>(a.utf16()), reinterpret_cast<const wchar_t*>(b.utf16()));
+#else
+    static const auto collator = [] {
+        QCollator numeric;
+        numeric.setCaseSensitivity(Qt::CaseInsensitive);
+        numeric.setNumericMode(true);
+        return numeric;
+    }();
+    return collator.compare(a, b);
+#endif
+}
 }
 LibraryDocument::LibraryDocument(QString path,QByteArray bytes,QObject* parent)
     : QObject(parent),original(std::move(bytes)),expectedHash(library::digest(original)),path_(std::move(path))
@@ -78,8 +113,12 @@ ChartLibraryModel::ChartLibraryModel(miacode::UiRequestService& requests,Documen
 {
     refreshTimer_.setSingleShot(true); refreshTimer_.setInterval(800);
     recoveryTimer_.setSingleShot(true); recoveryTimer_.setInterval(500);
-    connect(&refreshTimer_,&QTimer::timeout,this,[this]{if(!busy_)refresh();});
+    connect(&refreshTimer_, &QTimer::timeout, this, [this] {
+        if (busy_) refreshTimer_.start();
+        else refresh();
+    });
     connect(&recoveryTimer_,&QTimer::timeout,this,&ChartLibraryModel::saveRecovery);
+    connect(&document, &DocumentModel::documentSaved, this, &ChartLibraryModel::queueSavedChart);
     connect(&watcher_,&QFileSystemWatcher::directoryChanged,this,[this]{refreshTimer_.start();});
     connect(&watcher_,&QFileSystemWatcher::fileChanged,this,[this]{refreshTimer_.start();});
     connect(&progress_, &JobProgressService::cancellationRequested, this, [this](quint64 token) { if(token==progress_.token())cancel(); });
@@ -125,7 +164,52 @@ QHash<int,QByteArray> ChartLibraryModel::roleNames() const
     {VersionRole,"chartVersion"},{DigestRole,"sha256"},{DuplicateRole,"copies"},{SelectedRole,"selected"}}; }
 void ChartLibraryModel::Entry::updateSearch()
 {
-    search = QStringList{path, title, artist, levels, version, pack, genre, songId, kind, versionCategory}.join(' ').toCaseFolded();
+    search = QStringList{path, title, artist, levels, version, pack, genre, songId, kind, versionCategory, highestDesigner}.join(' ').toCaseFolded();
+}
+
+QStringList ChartLibraryModel::genreSuggestions() const
+{
+    QStringList names{QStringLiteral("POPS＆アニメ"), QStringLiteral("niconico＆ボーカロイド"), QStringLiteral("東方Project"),
+                      QStringLiteral("ゲーム＆バラエティ"), QStringLiteral("オンゲキ＆CHUNITHM"), QStringLiteral("maimai"),
+                      QStringLiteral("宴会場"), QStringLiteral("SEGA"), QStringLiteral("オリジナル＆ジョイポリス")};
+    names.append(genres_);
+    names.removeDuplicates();
+    return names;
+}
+
+QStringList ChartLibraryModel::versionSuggestions() const
+{
+    auto names = chart_version::officialNames();
+    QStringList custom;
+    for (const auto& entry : entries_) {
+        if (!entry.version.isEmpty() && entry.officialVersion == 0) custom.append(entry.version);
+    }
+    custom.removeDuplicates();
+    std::sort(custom.begin(), custom.end(), [](const auto& a, const auto& b) { return logicalCompare(a, b) < 0; });
+    names.append(custom);
+    return names;
+}
+
+QStringList ChartLibraryModel::versionCategorySuggestions() const
+{
+    auto names = chart_version::officialNames();
+    names.append(versions_);
+    names.removeDuplicates();
+    return names;
+}
+
+void ChartLibraryModel::setSortColumn(int column)
+{
+    if (column < SortTitle || column > SortDesigner || sortColumn_ == column) return;
+    sortColumn_ = column;
+    rebuildFilter();
+}
+
+void ChartLibraryModel::setSortDescending(bool descending)
+{
+    if (sortDescending_ == descending) return;
+    sortDescending_ = descending;
+    rebuildFilter();
 }
 
 void ChartLibraryModel::setPack(const QString& value)
@@ -145,15 +229,14 @@ void ChartLibraryModel::setVersionCategory(const QString& value)
 
 void ChartLibraryModel::rebuildFilter(QVector<Entry>* replacement)
 {
+    const auto matches = [none = uncategorized()](const QString& filter, const QString& field) {
+        return filter.isEmpty() || (filter == none ? field.isEmpty() : filter == field);
+    };
     beginResetModel();
     if (replacement) {
         entries_.swap(*replacement);
-        QSet<QString> packs, genres, versions;
-        if (!root_.isEmpty()) {
-            const QDir packRoot(QDir(root_).filePath("packs"));
-            for (const auto& folder : packRoot.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks))
-                if (!folder.isJunction()) packs.insert(folder.fileName());
-        }
+        QSet<QString> packs = indexedPacks_;
+        QSet<QString> genres, versions;
         for (const auto& name : catalogNames("genre")) genres.insert(name);
         for (const auto& name : catalogNames("miacode_version_category")) versions.insert(name);
         for (const auto& entry : entries_) {
@@ -165,18 +248,43 @@ void ChartLibraryModel::rebuildFilter(QVector<Entry>* replacement)
         genres_ = genres.values(); genres_.sort();
         versions_ = versions.values(); versions_.sort();
         if (!packs.contains(pack_)) pack_.clear();
-        if (!genres.contains(genre_)) genre_.clear();
-        if (!versions.contains(versionCategory_)) versionCategory_.clear();
+        if (genre_ != uncategorized() && !genres.contains(genre_)) genre_.clear();
+        if (versionCategory_ != uncategorized() && !versions.contains(versionCategory_)) versionCategory_.clear();
     }
     visible_.clear();
     const auto words=query_.toCaseFolded().split(QLatin1Char(' '),Qt::SkipEmptyParts);
     for(int i=0;i<entries_.size();++i) {
         const auto& e=entries_[i]; bool keep=!duplicatesOnly_ || e.copies>1;
-        keep = keep && (pack_.isEmpty() || e.pack == pack_) && (genre_.isEmpty() || e.genre == genre_)
-            && (versionCategory_.isEmpty() || e.versionCategory == versionCategory_);
+        keep = keep && (pack_.isEmpty() || e.pack == pack_) && matches(genre_, e.genre)
+            && matches(versionCategory_, e.versionCategory);
         for(const auto& word:words) keep=keep&&e.search.contains(word);
         if(keep)visible_.append(i);
     }
+    const auto compareNumber = [](auto a, auto b) { return (a > b) - (a < b); };
+    const auto compareSong = [this, compareNumber](int left, int right) {
+        const auto& a = entries_[left];
+        const auto& b = entries_[right];
+        int compare = 0;
+        switch (sortColumn_) {
+        case SortArtist: compare = logicalCompare(a.artist, b.artist); break;
+        case SortBpm: compare = compareNumber(a.bpm, b.bpm); break;
+        case SortVersion:
+            if (a.version.isEmpty() != b.version.isEmpty()) return !a.version.isEmpty();
+            if ((a.officialVersion != 0) != (b.officialVersion != 0))
+                return sortDescending_ ? a.officialVersion == 0 : a.officialVersion != 0;
+            compare = a.officialVersion ? compareNumber(a.officialVersion, b.officialVersion)
+                                        : logicalCompare(a.version, b.version);
+            break;
+        case SortGenre: compare = logicalCompare(a.genre, b.genre); break;
+        case SortConstant: compare = compareNumber(a.highestConstant, b.highestConstant); break;
+        case SortDesigner: compare = logicalCompare(a.highestDesigner, b.highestDesigner); break;
+        default: break;
+        }
+        if (compare == 0) compare = logicalCompare(a.title, b.title);
+        if (compare == 0) compare = a.path.compare(b.path);
+        return sortDescending_ ? compare > 0 : compare < 0;
+    };
+    std::sort(visible_.begin(), visible_.end(), compareSong);
     endResetModel(); emit changed();
 }
 void ChartLibraryModel::setQuery(const QString& value) {if(query_!=value){query_=value;rebuildFilter();}}
@@ -253,31 +361,60 @@ void ChartLibraryModel::chooseNewLibrary()
     });
 }
 
-void ChartLibraryModel::chooseImportFolders(const QString& targetPack, bool archives, bool manualSong)
+QString ChartLibraryModel::collectionName() const
 {
-    if (busy_ || root_.isEmpty()) return;
+    if (root_.isEmpty()) return {};
+    const QFileInfo manifest(library::bundleFile(root_));
+    return manifest.isFile() ? manifest.completeBaseName() : QDir(root_).dirName();
+}
+
+void ChartLibraryModel::pickImportSources(bool archives)
+{
+    if (busy_ || root_.isEmpty() || pickingImportSources_) return;
     FileRequest request;
     request.selectFolder = !archives;
     if (archives) request.nameFilters = {QStringLiteral("ZIP (*.zip)")};
-    request.title = archives ? qtTrId("library.choose_zip") : targetPack.isEmpty() ? qtTrId("library.choose_import") : qtTrId("library.import_to").arg(targetPack);
+    request.title = archives ? qtTrId("library.choose_zip") : qtTrId("library.choose_folders");
     const QString root = root_;
+    const auto generation = ++importPickerGeneration_;
+    pickingImportSources_ = true;
+    emit changed();
     QPointer<ChartLibraryModel> guard(this);
-    requests_->requestFiles(request, [guard, root, targetPack, manualSong](const QStringList& folders) {
-        if (guard && root == guard->root_) guard->importFolders(folders, targetPack, manualSong);
+    requests_->requestFiles(request, [guard, root, generation](const QStringList& paths) {
+        if (!guard || guard->root_ != root || guard->importPickerGeneration_ != generation) return;
+        guard->pickingImportSources_ = false;
+        for (const auto& path : paths)
+            if (!guard->importPaths_.contains(path))
+                guard->importPaths_.append(path);
+        emit guard->changed();
     });
 }
 
-void ChartLibraryModel::importFolders(const QStringList& folders, const QString& targetPack, bool manualSong)
+void ChartLibraryModel::clearImportSources()
 {
-    runImport(folders, targetPack, manualSong, false);
+    ++importPickerGeneration_;
+    importPaths_.clear();
+    pickingImportSources_ = false;
+    emit changed();
+}
+
+void ChartLibraryModel::startBatchImport()
+{
+    if (busy_ || pickingImportSources_ || importPaths_.isEmpty()) return;
+    importFolders(std::exchange(importPaths_, QStringList{}), pack_);
+}
+
+void ChartLibraryModel::importFolders(const QStringList& folders, const QString& targetPack)
+{
+    runImport(folders, targetPack, false);
 }
 
 void ChartLibraryModel::consolidateSongs()
 {
-    runImport({}, {}, false, true);
+    runImport({}, {}, true);
 }
 
-void ChartLibraryModel::runImport(const QStringList& folders, const QString& targetPack, bool manualSong, bool consolidate)
+void ChartLibraryModel::runImport(const QStringList& folders, const QString& targetPack, bool consolidate)
 {
     if (busy_ || (!consolidate && folders.isEmpty()) || !library::isManagedLibrary(root_)) return;
     busy_ = true;
@@ -290,13 +427,15 @@ void ChartLibraryModel::runImport(const QStringList& folders, const QString& tar
     QSet<QString> protectedPaths;
     for (const auto* session : sessions_) protectedPaths.insert(session->path());
     if (document_) for (const auto& path : document_->openSongPaths()) protectedPaths.insert(QFileInfo(path).canonicalFilePath());
-    worker_ = QThread::create([this, root = root_, folders, targetPack, manualSong, consolidate, protectedPaths, canceled = cancel_] {
-        const auto result = library::importChartFolders(root, folders, *canceled, targetPack, protectedPaths, consolidate, manualSong, [this](int percent){ reportProgress(percent); });
+    worker_ = QThread::create([this, root = root_, folders, targetPack, consolidate, protectedPaths, canceled = cancel_] {
+        const auto result = library::importChartFolders(root, folders, *canceled, targetPack, protectedPaths, consolidate,
+            [this](int percent) { reportProgress(percent); });
         QMetaObject::invokeMethod(this, [this, result, canceled] {
             importInProgress_ = false;
             finishThread();
             refreshTimer_.stop();
-            importStatus_ = qtTrId("library.import_summary").arg(result.imported).arg(result.merged).arg(result.existing).arg(result.missingMedia).arg(result.conflicts).arg(result.failed);
+            importStatus_ = qtTrId("library.batch_import_summary")
+                .arg(result.imported).arg(result.merged).arg(result.existing).arg(result.conflicts).arg(result.failed);
             if (canceled->load()) importStatus_.prepend(qtTrId("library.import_stopped") + " ");
             if (!result.firstError.isEmpty()) importStatus_ += " (" + result.firstError + ")";
             refresh();
@@ -323,13 +462,24 @@ bool ChartLibraryModel::setRoot(const QString& path)
         unavailableRecovery_={}; deferredRoot_.clear();
         requests_->postNotice(NoticeSeverity::Information,qtTrId("library.title"),qtTrId("library.recovery_archived").arg(archive));
     }
-    if (root_ != canonical) { pack_.clear(); genre_.clear(); versionCategory_.clear(); importStatus_.clear(); }
-    root_=canonical;selected_.clear();prepared_.clear();undo_.clear();QVector<Entry> restored;
+    if (root_ != canonical) {
+        pack_.clear(); genre_.clear(); versionCategory_.clear(); importStatus_.clear();
+        indexedPacks_.clear(); pendingSavedCharts_.clear(); clearImportSources();
+    }
+    root_=canonical;selected_.clear();selectionAnchor_.clear();prepared_.clear();undo_.clear();QVector<Entry> restored;
     rebuildFilter(&restored); refresh(); return true;
 }
 void ChartLibraryModel::finishThread()
 { if(worker_){worker_->wait();delete worker_;worker_=nullptr;}progress_.end();busy_=false;emit changed(); }
 void ChartLibraryModel::cancel(){if(cancel_)cancel_->store(true);}
+
+void ChartLibraryModel::queueSavedChart(const QString& path)
+{
+    if (root_.isEmpty() || !library::withinRoot(root_, path)) return;
+    pendingSavedCharts_.insert(QFileInfo(path).canonicalFilePath());
+    refreshTimer_.start();
+}
+
 void ChartLibraryModel::refresh()
 {
     if(busy_||root_.isEmpty())return;
@@ -338,11 +488,17 @@ void ChartLibraryModel::refresh()
     const auto root=root_; const auto generation=++generation_;cancel_=std::make_shared<std::atomic_bool>(false);
     progress_.begin(localizedText("library.title"),localizedText("library.scanning"),true);
     progress_.report(0,localizedText("library.scanning"));
-    const auto canceled=cancel_; QHash<QString,Entry> cached;for(const auto& e:entries_)cached.insert(e.path,e);
-    worker_=QThread::create([this,root,generation,canceled,cached]{
+    const auto canceled=cancel_;
+    const auto savedCharts = std::exchange(pendingSavedCharts_, QSet<QString>{});
+    QHash<QString,Entry> cached;
+    for (const auto& e : entries_) if (!savedCharts.contains(e.path)) cached.insert(e.path, e);
+    worker_=QThread::create([this,root,generation,canceled,cached,savedCharts]{
+        const bool savedRegistered = savedCharts.isEmpty() || library::registerSavedCharts(root, savedCharts);
         QVector<Entry> found;QHash<QString,int> hashes;int skipped=0;qint64 indexBytes=0;
         QStringList watchedDirectories{root};
-        const auto rows=library::bundleSongs(root,&skipped,false,canceled.get(),[this](int percent){reportProgress(percent);});
+        QSet<QString> packs;
+        const auto rows = library::bundleSongs(root, &skipped, false, canceled.get(),
+            [this](int percent) { reportProgress(percent); }, &packs);
         for (const auto& row:rows) {
             if (canceled->load()) break;
             const auto path=row.path;
@@ -353,7 +509,8 @@ void ChartLibraryModel::refresh()
             Entry e=cached.value(path);
             if(e.path.isEmpty()||e.size!=info.size()||e.modified!=info.lastModified().toMSecsSinceEpoch()){
                 QByteArray bytes;QString text,error;
-                if(!library::read(path,&bytes,&error)||!library::decode(bytes,&text,&error)){++skipped;continue;}
+                if (!library::read(path, &bytes, &error) || !library::decode(bytes, &text, &error)
+                    || !library::isLibraryChartText(text)) { ++skipped; continue; }
                 const auto doc=SimaiDocument::fromText(text);QStringList levels;
                 for(int id:doc.difficultyIds())if(const auto* d=doc.difficulty(id))levels.append(SimaiDocument::difficultyShortName(id)+" "+d->level);
                 const QString version = metadata::fieldValue(doc, "version").trimmed();
@@ -361,6 +518,22 @@ void ChartLibraryModel::refresh()
                 e.pack = row.pack;
                 e.versionCategory = metadata::fieldValue(doc, "miacode_version_category").trimmed().left(256);
                 e.genre = metadata::fieldValue(doc, "genre").trimmed().left(256);
+                if (const auto knownVersion = chart_version::namedVersion(version))
+                    e.officialVersion = knownVersion->officialSortKey();
+                e.bpm = chart_clock::wholeBpmFromFields(doc.extraFields);
+                int highestSlot = 0;
+                for (const int slot : doc.difficultyIds()) {
+                    const auto& difficulty = *doc.difficulty(slot);
+                    if (difficulty.chart.trimmed().isEmpty()) continue;
+                    if (e.bpm == 0.0) e.bpm = chart_clock::firstBpmFromChart(difficulty.chart);
+                    const double constant = positiveNumber(metadata::fieldValue(doc, "level_constant_" + QString::number(slot)));
+                    const double rating = constant > 0.0 ? constant : sortConstant(difficulty.level);
+                    if (rating >= e.highestConstant) {
+                        highestSlot = slot;
+                        e.highestConstant = rating;
+                    }
+                }
+                e.highestDesigner = doc.effectiveDesignerForSlot(highestSlot).trimmed().left(512);
                 e.songId = metadata::fieldValue(doc, "shortid").trimmed();
                 {
                     const QString original=row.origin;
@@ -407,17 +580,20 @@ void ChartLibraryModel::refresh()
             if (a.title != b.title) return a.title < b.title;
             return a.path < b.path;
         });
-        QMetaObject::invokeMethod(this,[this,generation,canceled,found=std::move(found),watchedDirectories,skipped]()mutable{
+        QMetaObject::invokeMethod(this,[this,generation,canceled,found=std::move(found),watchedDirectories,
+            packs=std::move(packs),skipped,savedRegistered]()mutable{
             if(generation!=generation_)return;
             finishThread();
             if(canceled->load()){status_=qtTrId("library.canceled");emit changed();return;}
             QSet<QString> existing;for(const auto& e:found)existing.insert(e.path);
+            indexedPacks_ = std::move(packs);
             selected_.intersect(existing);rebuildFilter(&found);persistIndex();
             watcher_.removePaths(watcher_.directories());watcher_.removePaths(watcher_.files());
             watcher_.addPaths(watchedDirectories);
             QStringList watchedFiles{library::bundleFile(root_)};for(const auto& e:entries_){if(watchedFiles.size()>=2048)break;watchedFiles.append(e.path);}
             if(!watchedFiles.isEmpty())watcher_.addPaths(watchedFiles);
             status_=importStatus_.isEmpty() ? qtTrId("library.indexed").arg(entries_.size()).arg(skipped) : importStatus_;
+            if (!savedRegistered) status_ += " · " + qtTrId("library.saved_registration_failed");
             importStatus_.clear();emit changed();
         },Qt::QueuedConnection);
     });worker_->start();
@@ -429,12 +605,50 @@ void ChartLibraryModel::persistIndex()
 }
 void ChartLibraryModel::selectPath(const QString& path,bool value)
 {
-    if(busy_)return;
-    if(value)selected_.insert(path);else selected_.remove(path);
-    prepared_.clear();if(rowCount())emit dataChanged(index(0),index(rowCount()-1),{SelectedRole});emit changed();
+    if (busy_ || rowForPath(path) < 0) return;
+    selectionAnchor_ = path;
+    if (value) selected_.insert(path);
+    else selected_.remove(path);
+    selectionChanged();
 }
+
+bool ChartLibraryModel::shiftSelectionHeld() const
+{
+    return QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier);
+}
+
+void ChartLibraryModel::toggleBatchRow(const QString& path, bool extend)
+{
+    if (busy_) return;
+    const int row = rowForPath(path);
+    if (row < 0) return;
+    const int anchor = extend ? rowForPath(selectionAnchor_) : -1;
+    if (anchor < 0) {
+        selectPath(path, !selected_.contains(path));
+        return;
+    }
+    for (int i = qMin(anchor, row); i <= qMax(anchor, row); ++i)
+        selected_.insert(pathAt(i));
+    selectionChanged();
+}
+
+void ChartLibraryModel::selectionChanged()
+{
+    prepared_.clear();
+    if (rowCount()) emit dataChanged(index(0), index(rowCount() - 1), {SelectedRole});
+    emit changed();
+}
+
 void ChartLibraryModel::selectVisible(bool value)
-{if(busy_)return;for(int i:visible_){if(value)selected_.insert(entries_[i].path);else selected_.remove(entries_[i].path);}prepared_.clear();if(rowCount())emit dataChanged(index(0),index(rowCount()-1),{SelectedRole});emit changed();}
+{
+    if (busy_) return;
+    for (int i : visible_) {
+        if (value) selected_.insert(entries_[i].path);
+        else selected_.remove(entries_[i].path);
+    }
+    selectionAnchor_.clear();
+    selectionChanged();
+}
 QString ChartLibraryModel::chartCaption(const QString& path) const
 {
     for (const auto& entry : entries_) {
@@ -538,39 +752,6 @@ QVariantList ChartLibraryModel::proposals()const
         list.append(QVariantMap{{"path",c.path},{"before",before.mid(start,2000)},{"after",after.mid(start,2000)}});
     }
     return list;
-}
-void ChartLibraryModel::prepareNormalization()
-{
-    if(busy_||selected_.isEmpty())return;
-    if(selected_.size()>100){status_=qtTrId("library.batch_limit");emit changed();return;}
-    busy_=true;prepared_.clear();status_=qtTrId("library.preparing");emit changed();
-    const QStringList paths=selected_.values();const auto root=root_;const auto generation=++generation_;
-    const auto stored=PreferenceDocument::loadPreferencesObject().value("app").toObject().value("preview").toObject();
-    const auto options=app_preferences::chartNormalizationOptionsFromPreferences(stored, chart_transform::ChartNormalizationOptions{true,false,true});
-    cancel_=std::make_shared<std::atomic_bool>(false);const auto canceled=cancel_;
-    progress_.begin(localizedText("library.title"),localizedText("library.preparing"),true);
-    progress_.reportIndeterminate(localizedText("library.preparing"));
-    worker_=QThread::create([this,paths,root,generation,canceled,options]{
-        QVector<library::Change> changes;QString error;qint64 total=0;
-        for(const auto&path:paths){
-            if(canceled->load())break;
-            QByteArray bytes,normalized;
-            if(!library::withinRoot(QFileInfo(path).absolutePath(),path)||!library::read(path,&bytes,&error)){if(error.isEmpty())error="Unsafe path";break;}
-            total+=bytes.size();if(total>16*1024*1024){error=QStringLiteral("Batch exceeds 16 MiB; select fewer charts.");break;}
-            if(!library::normalize(bytes,&normalized,&error,options))break;
-            if(normalized!=bytes)changes.append({path,bytes,normalized,{}});
-        }
-        QMetaObject::invokeMethod(this,[this,generation,canceled,changes=std::move(changes),error]()mutable{
-            if(generation!=generation_)return;finishThread();
-            if(canceled->load())status_=qtTrId("library.canceled");
-            else if(!error.isEmpty()) {
-                status_ = error;
-                requests_->postNotice(NoticeSeverity::Warning, localizedText("library.normalize_warning"), error);
-            }
-            else{prepared_=std::move(changes);status_=qtTrId("library.prepared").arg(prepared_.size());}
-            emit changed();
-        },Qt::QueuedConnection);
-    });worker_->start();
 }
 void ChartLibraryModel::applyPrepared()
 {

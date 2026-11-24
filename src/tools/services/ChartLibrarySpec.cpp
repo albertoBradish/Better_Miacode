@@ -533,7 +533,7 @@ void smartImport(const QString& base)
     const std::atomic_bool cancel{false};
     putSong("Pack A", master);
     QList<int> percent;
-    const auto first = files::importChartFolders(root, {inputs.filePath("Pack A")}, cancel, {}, {}, false, false,
+    const auto first = files::importChartFolders(root, {inputs.filePath("Pack A")}, cancel, {}, {}, false,
         [&](int value){percent.append(value);});
     check(!percent.isEmpty() && percent.first()==0 && percent.last()==100 && std::is_sorted(percent.begin(),percent.end()),
         "import reports monotone percentages through completion");
@@ -575,9 +575,17 @@ void smartImport(const QString& base)
     check(files::importChartFolders(root, {inputs.filePath("Metadata")}, cancel).conflicts == 1, "disagreeing global metadata blocks a merge");
     putSong("Other author", QByteArray(master).replace("Test Author", "Other Author"));
     check(files::importChartFolders(root, {inputs.filePath("Other author")}, cancel).imported == 1, "different chart credits remain independent");
-    put(inputs.filePath("Missing/maidata.txt"), chart("No media"));
-    check(files::importChartFolders(root, {inputs.filePath("Missing")}, cancel).missingMedia == 1, "pack import skips missing media");
-    check(files::importChartFolders(root, {inputs.filePath("Missing")}, cancel, {}, {}, false, true).imported == 1, "manual song import accepts missing media");
+    put(inputs.filePath("Missing/alternate.simai"), "&title=No media\n&inote_5=(120){4}1,E\n");
+    put(inputs.filePath("Missing/no-fields.txt"), "ordinary text accepted by the standalone editor");
+    put(inputs.filePath("Missing/no-title.txt"), "&inote_5=(120){4}1,E\n");
+    put(inputs.filePath("Missing/metadata-only.txt"), "&title=No chart\n&lv_5=13\n&inote_5= \n&artist=QA\n");
+    const QString secondZip = inputs.filePath("Mixed.zip");
+    check(makeZip(secondZip, {{"normal/alternate.txt", "&title=ZIP without media\n&inote_4=(120){4}1,E\n"},
+                              {"normal/readme.txt", "&title=No chart\n&inote_5= \n&artist=QA\n"}}),
+        "content-validation ZIP fixture created");
+    const auto mixed = files::importChartFolders(root, {inputs.filePath("Missing"), secondZip}, cancel);
+    check(mixed.imported == 2 && mixed.failed == 0,
+        "mixed batch imports valid alternate filenames without requiring a designer or media");
     const auto extra = QDir(root).filePath("packs/legacy/copy/maidata.txt");
     put(extra,master);
     check(files::registerSong(root,extra,"legacy"),"register legacy edition");
@@ -598,6 +606,61 @@ void smartImport(const QString& base)
     const auto unsafeZip = inputs.filePath("unsafe.zip");
     check(makeZip(unsafeZip, {{"../escape.txt","blocked"}})
         && files::importChartFolders(root, {unsafeZip}, cancel).failed == 1, "archive path outside extraction folder is rejected");
+
+    for (const auto& song : files::bundleSongs(root)) {
+        if (song.pack != "Pack A") continue;
+        const auto editing = files::editableChartPath(root, song.path, song.record);
+        const auto unrelated = QFileInfo(editing).dir().filePath("notes.md");
+        check(!editing.isEmpty() && put(unrelated, "keep me"), "packed chart has a private working copy");
+        check(files::removeCollection(root, "Pack A", {editing}) == files::CollectionRemoval::InUse,
+            "open working copies protect packs against deletion");
+        check(files::removeCollection(root, "Pack A", {}) == files::CollectionRemoval::Removed
+                && !QFileInfo::exists(editing) && get(unrelated) == "keep me"
+                && get(inputs.filePath("Pack A/maidata.txt")) == master && QFileInfo::exists(zip),
+            "pack deletion removes private copies and preserves external originals and unrelated files");
+        break;
+    }
+}
+
+void collectionLifecycle(const QString& base)
+{
+    clearRecovery();
+    QString error;
+    const QString root = files::createLibrary(base, &error);
+    const QDir library(root);
+    const auto native = library.filePath("local-project/alternate.simai");
+    const auto original = QDir(base).filePath("native-original/maidata.txt");
+    const auto invalid = library.filePath("registered-before-upgrade/maidata.txt");
+    const auto privateDirectory = library.filePath("packs/Legacy/0123456789abcdef-fedcba9876543210");
+    const auto legacy = QDir(privateDirectory).filePath("maidata.txt");
+    const auto relatedTrack = QDir(privateDirectory).filePath("track.wav");
+    const auto unrelated = QDir(privateDirectory).filePath("notes.md");
+    check(put(original, chart("Native save")) && put(library.filePath("local-project/notes.md"), "project notes")
+            && put(invalid, "not a Simai chart") && files::registerSong(root, invalid, "Old")
+            && put(legacy, chart("Legacy copy")) && put(relatedTrack, "owned track")
+            && put(unrelated, "private folder note") && put(library.filePath("packs/Legacy/.source"),
+                QFileInfo(original).absolutePath().toUtf8())
+            && put(QDir(privateDirectory).filePath("source.json"),
+                QJsonDocument(QJsonObject{{"path", original}}).toJson())
+            && files::registerSong(root, legacy, "Legacy"),
+        "legacy and modern library lifecycle fixtures created");
+    Host host;
+    auto& model = *host.library;
+    check(model.setRoot(root) && settled(model) && model.totalCount() == 1 && !model.hasSong(invalid),
+        "refresh hides invalid existing registrations");
+    check(host.document.openFile(QUrl::fromLocalFile(original)) && host.document.saveAs(QUrl::fromLocalFile(native)),
+        "native editor saves a chart under the open library");
+    check(QTest::qWaitFor([&] { return model.hasSong(native) && !model.busy(); }, 6000),
+        "successful native Save As registers an eligible chart automatically");
+    check(!model.deleteCollection("Legacy", "wrong") && QFileInfo::exists(legacy),
+        "pack deletion requires its exact typed name");
+    check(model.deleteCollection("Legacy", "Legacy") && settled(model) && !model.packs().contains("Legacy")
+            && !QFileInfo::exists(legacy) && !QFileInfo::exists(relatedTrack) && get(unrelated) == "private folder note",
+        "legacy pack deletion removes verified managed copies and preserves unrelated siblings");
+    check(model.deleteCollection({}, model.collectionName()) && model.rootPath().isEmpty()
+            && !files::isManagedLibrary(root) && QFileInfo::exists(native) && QFileInfo::exists(original)
+            && QFileInfo::exists(invalid) && get(unrelated) == "private folder note",
+        "library deletion unregisters the collection and keeps native and external files");
 }
 
 void songManager(const QString& base)
@@ -747,6 +810,115 @@ void recovery(const QString& base)
     clearRecovery();
 }
 
+void batchLibraryActions(const QString& base)
+{
+    clearRecovery();
+    QString error;
+    const QString root = files::createLibrary(base, &error);
+    QDir library(root);
+    const QString two = library.filePath("tracks/two/alternate.simai");
+    const QString three = library.filePath("tracks/three/maidata.txt");
+    const QString ten = library.filePath("tracks/ten/maidata.txt");
+    const QString twenty = library.filePath("tracks/twenty/maidata.txt");
+    check(put(two, "&title=Song 2\n&artist=Beta\n&version=GreeN PLUS\n&genre=maimai\n"
+        "&lv_5=13+\n&des_5=Beta\n&inote_5=(160){4}1,E\n")
+        && put(three, "&title=Song 3\n&artist=Alpha\n&version=Custom\n&wholebpm=190\n"
+            "&lv_4=13+\n&level_constant_4=14.1\n&des_4=Alpha\n&inote_4=(90){4}2,E\n"
+            "&lv_5=13\n&des_5=Wrong designer\n&inote_5=(90){4}3,E\n")
+        && put(ten, "&title=Song 10\n&artist=Gamma\n&version=maimai DX PRiSM\n&genre=maimai\n"
+            "&lv_4=13?\n&des_4=Gamma\n&inote_4=(140){4}4,E\n")
+        && put(twenty, "&title=Song 20\n&des=Default designer\n&lv_4=13.6\n&inote_4=(172){4}1,E\n"
+            "&lv_5=14\n&level_constant_5=13.9\n&inote_5=(172){4}A1,E\n")
+        && put(QFileInfo(two).dir().filePath("track.mp3"), "audio")
+        && put(QFileInfo(ten).dir().filePath("track.mp3"), "audio"), "batch action fixtures created");
+    for (const auto& path : {two, three, ten, twenty})
+        check(files::registerSong(root, path, "Batch"), "batch fixture registered");
+
+    Host host;
+    auto& model = *host.library;
+    check(model.setRoot(root) && settled(model) && model.rowCount() == 4, "batch action fixtures indexed");
+    const auto order = [&model] {
+        QStringList paths;
+        for (int i = 0; i < model.rowCount(); ++i) paths.append(model.pathAt(i));
+        return paths;
+    };
+    check(order() == QStringList{two, three, ten, twenty}, "title sort uses natural digit order");
+    model.setSortColumn(ChartLibraryModel::SortVersion);
+    check(order() == QStringList{two, ten, three, twenty}, "ascending version order puts custom releases after official versions");
+    model.setSortDescending(true);
+    check(order() == QStringList{three, ten, two, twenty}, "descending treats custom versions as newest and keeps missing versions last");
+    model.setSortDescending(false);
+    model.setSortColumn(ChartLibraryModel::SortConstant);
+    check(order() == QStringList{ten, two, twenty, three},
+        "highest constant uses 13? as 13.0 and 13+ as 13.6 when explicit constants are missing");
+    model.setSortColumn(ChartLibraryModel::SortDesigner);
+    check(order().value(0) == three, "designer is selected using the highest chart constant, including lower slots");
+    model.setSortColumn(ChartLibraryModel::SortBpm);
+    check(order() == QStringList{ten, two, twenty, three}, "BPM sort prefers explicit track BPM and falls back to chart BPM");
+    model.setGenre(model.uncategorized());
+    check(order() == QStringList{twenty, three}, "uncategorized filter selects songs without a genre");
+    model.setGenre({});
+    check(model.genreSuggestions().contains("maimai") && model.versionSuggestions().contains("PRiSM")
+        && model.versionCategorySuggestions().contains("CiRCLE PLUS"), "empty catalog fields offer official suggestions");
+
+    model.setSortColumn(ChartLibraryModel::SortTitle);
+    model.toggleBatchRow(two, false);
+    model.toggleBatchRow(ten, true);
+    check(model.selectedCount() == 3, "Shift selection includes the anchor and intervening visible rows");
+    QVariantMap queued;
+    QObject::connect(&model, &ChartLibraryModel::renderQueuePrepared, &model,
+        [&](const QVariantMap& charts) { queued = charts; });
+    model.queueSelectedForRender({4, 5});
+    check(settled(model) && queued.size() == 2 && queued.value(two).toList() == QVariantList{5}
+        && queued.value(ten).toList() == QVariantList{4}, "render queue uses exact chart paths and skips missing audio and difficulties");
+    model.selectVisible(false);
+    model.selectPath(twenty, true);
+    QString requestId;
+    QObject::connect(&host.requests, &miacode::UiRequestService::noticeRequested, &host.requests,
+        [&](const QString& id, const QVariantMap&) { requestId = id; });
+    const auto beforeCleanup = get(twenty);
+    model.prepareMetadataCleanup();
+    check(settled(model) && model.proposals().size() == 1 && get(twenty) == beforeCleanup,
+        "metadata cleanup stages every correction in one proposal without modifying the chart");
+    model.applyPrepared();
+    check(!requestId.isEmpty(), "applying metadata cleanup requests confirmation once");
+    host.requests.submitNoticeResult(requestId, true);
+    check(settled(model), "applied metadata cleanup refreshes the library");
+    const auto cleaned = get(twenty);
+    check(cleaned.contains("&wholebpm=172"), "batch BPM comes from the first chart tempo");
+    check(cleaned.contains("&version=FESTiVAL"), "batch version detects the newest required chart syntax");
+    check(cleaned.contains("&level_constant_4=13.6") && cleaned.contains("&lv_4=13+"),
+        "batch decimal migration moves the value and derives a display level");
+    check(cleaned.contains("&lv_5=13+") && cleaned.contains("&inote_5=(172){4}A1,E"),
+        "batch level derivation preserves chart bodies");
+    model.undoBatch();
+    check(settled(model) && get(twenty) == beforeCleanup, "one undo restores every automatic metadata correction");
+
+    const QDir output(library.filePath("exported"));
+    check(put(output.filePath("Song 20.zip"), "previous ZIP"), "ZIP naming collision fixture created");
+    QString picker;
+    QObject::connect(&host.requests, &miacode::UiRequestService::fileRequested, &host.requests,
+        [&](const QString& id, const QVariantMap&) { picker = id; });
+    model.chooseSelectedZipOutput({{"withoutPvCopy", true}});
+    host.requests.submitFileResult(picker, QUrl::fromLocalFile(output.path()));
+    const bool zipped = settled(model);
+    const auto archive = output.filePath("Song 20 (2).zip");
+    mz_zip_archive zip{};
+    const bool opened = zipped && mz_zip_reader_init_file(&zip, archive.toUtf8().constData(), 0);
+    QByteArray contents;
+    if (opened) {
+        size_t size = 0;
+        void* data = mz_zip_reader_extract_file_to_heap(&zip, "maidata.txt", &size, 0);
+        contents = QByteArray(static_cast<const char*>(data), qsizetype(size));
+        mz_free(data);
+        mz_zip_reader_end(&zip);
+    }
+    check(opened && contents.contains("&inote_4=") && contents.contains("&inote_5=")
+        && get(output.filePath("Song 20.zip")) == "previous ZIP"
+        && QFile::exists(output.filePath("Song 20 (2)_noPV.zip")),
+        "batch ZIP includes every difficulty and preserves existing archives");
+}
+
 void benchmark(const QString& base)
 {
     for (const int count : {1000, 10000}) {
@@ -810,6 +982,7 @@ int main(int argc, char** argv)
     collectionLifecycle(fixtures.path());
     songManager(fixtures.path());
     indexAndBuffers(fixtures.path());
+    batchLibraryActions(fixtures.path());
     recovery(fixtures.path());
     if (app.arguments().contains(QStringLiteral("--performance"))) benchmark(fixtures.path());
     QTextStream(stdout) << (failures ? "FAILED" : "ALL PASS") << " chart library specs: " << failures << " failures" << Qt::endl;

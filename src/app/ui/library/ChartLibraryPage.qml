@@ -7,6 +7,7 @@ import MiaCode.UI
 Item {
     id: root
     required property var library
+    property bool normalizeZipDefault: false
     property var editingSession: null
     property bool synchronizing: false
     property bool pendingEdit: false
@@ -14,6 +15,7 @@ Item {
     readonly property bool editing: viewingSource && !!editingSession
     readonly property Item cornerSourceItem: songs.cornerSourceItem
     signal editorRequested()
+    signal renderRequested(var charts)
     clip: true
     function flush() { return flushRaw() && songs.stage() }
     function flushRaw() {
@@ -44,6 +46,7 @@ Item {
         target: root.library
         function onChanged() { root.syncSession() }
         function onEditorOpened() { root.editorRequested() }
+        function onRenderQueuePrepared(charts) { root.renderRequested(charts) }
     }
     Connections { target: root.editingSession; function onChanged() { if (!editTimer.running) root.syncSession() } }
     Item {
@@ -131,11 +134,21 @@ Item {
                 Layout.fillWidth: true
                 spacing: 8
                 visible: !root.editing && songs.batchMode && (root.library.selectedCount > 0 || root.library.canUndoBatch)
-                AppButton {
+                AppDropDownButton {
+                    id: selectedActions
                     visible: root.library.selectedCount > 0
-                    text: qsTrId("library.prepare")
+                    text: qsTrId("library.selected_actions").arg(root.library.selectedCount)
                     enabled: !root.library.busy
-                    onClicked: if (root.flush()) root.library.prepareNormalization()
+                    expanded: batchMenu.active
+                    onClicked: batchMenu.active ? batchMenu.close() : batchMenu.openAt(selectedActions)
+                    AppMenu {
+                        id: batchMenu
+                        AppMenuItem { text: qsTrId("library.batch_normalize"); onTriggered: if (root.flush()) root.library.prepareNormalization() }
+                        AppMenuItem { text: qsTrId("library.batch_cleanup_metadata"); onTriggered: if (root.flush()) root.library.prepareMetadataCleanup() }
+                        AppMenuItem { text: qsTrId("library.batch_zip"); onTriggered: if (root.flush()) zipOptions.open() }
+                        AppMenuItem { text: qsTrId("library.batch_queue"); onTriggered: if (root.flush()) render.open() }
+                        AppMenuItem { text: qsTrId("library.batch_unlink"); onTriggered: if (root.flush()) unlink.open() }
+                    }
                 }
                 AppButton {
                     visible: root.library.proposals.length > 0
@@ -170,6 +183,72 @@ Item {
                 wrapMode: Text.Wrap
                 color: Theme.colors.text.secondary
             }
+        }
+    }
+    ChartZipOptionsDialog {
+        id: zipOptions
+        parent: Overlay.overlay
+        normalizeDefault: root.normalizeZipDefault
+        title: qsTrId("library.batch_zip")
+        onExportRequested: options => root.library.chooseSelectedZipOutput(options)
+    }
+    AppDialog {
+        id: render
+        parent: Overlay.overlay
+        title: qsTrId("library.batch_queue")
+        preferredWidth: 430
+        preferredHeight: implicitHeight
+        property var difficulties: []
+        onAboutToShow: difficulties = []
+        function select(slot, checked) {
+            difficulties = checked ? difficulties.concat([slot]) : difficulties.filter(id => id !== slot)
+        }
+        body: ColumnLayout {
+            Label {
+                Layout.fillWidth: true
+                text: qsTrId("library.batch_queue_help")
+                color: Theme.colors.text.secondary
+                wrapMode: Text.Wrap
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: 8
+                Repeater {
+                    model: ["Easy", "Basic", "Advanced", "Expert", "Master", "Re:Master", "UTAGE"]
+                    delegate: AppCheckBox {
+                        required property int index
+                        required property string modelData
+                        text: modelData
+                        checked: render.difficulties.includes(index + 1)
+                        onToggled: render.select(index + 1, checked)
+                    }
+                }
+            }
+        }
+        footer: DialogFooter {
+            cancelText: qsTrId("action.cancel")
+            acceptText: qsTrId("library.batch_queue")
+            acceptEnabled: render.difficulties.length > 0 && !root.library.busy
+            onRejected: render.close()
+            onAccepted: { render.close(); root.library.queueSelectedForRender(render.difficulties) }
+        }
+    }
+    AppDialog {
+        id: unlink
+        parent: Overlay.overlay
+        title: qsTrId("library.batch_unlink")
+        preferredHeight: implicitHeight
+        body: Label {
+            text: qsTrId("library.batch_unlink_prompt").arg(root.library.selectedCount)
+            color: Theme.colors.text.primary
+            wrapMode: Text.Wrap
+        }
+        footer: DialogFooter {
+            cancelText: qsTrId("action.cancel")
+            acceptText: qsTrId("library.batch_unlink")
+            acceptEnabled: root.library.selectedCount > 0 && !root.library.busy
+            onRejected: unlink.close()
+            onAccepted: { unlink.close(); root.library.removeSelectedSongs() }
         }
     }
     AppDialog {

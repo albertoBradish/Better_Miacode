@@ -10,6 +10,7 @@
 #include <QTextDocument>
 #include <QThread>
 #include <QTimer>
+#include <QVariantMap>
 #include <atomic>
 #include <memory>
 
@@ -54,10 +55,19 @@ class ChartLibraryModel final : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(QObject* progress READ progress CONSTANT)
     Q_PROPERTY(QString rootPath READ rootPath NOTIFY changed)
+    Q_PROPERTY(QString collectionName READ collectionName NOTIFY changed)
+    Q_PROPERTY(QStringList importPaths READ importPaths NOTIFY changed)
+    Q_PROPERTY(bool pickingImportSources READ pickingImportSources NOTIFY changed)
     Q_PROPERTY(QString query READ query WRITE setQuery NOTIFY changed)
     Q_PROPERTY(QStringList packs READ packs NOTIFY changed)
     Q_PROPERTY(QStringList versions READ versions NOTIFY changed)
     Q_PROPERTY(QStringList genres READ genres NOTIFY changed)
+    Q_PROPERTY(QStringList genreSuggestions READ genreSuggestions NOTIFY changed)
+    Q_PROPERTY(QStringList versionSuggestions READ versionSuggestions NOTIFY changed)
+    Q_PROPERTY(QStringList versionCategorySuggestions READ versionCategorySuggestions NOTIFY changed)
+    Q_PROPERTY(QString uncategorized READ uncategorized CONSTANT)
+    Q_PROPERTY(int sortColumn READ sortColumn WRITE setSortColumn NOTIFY changed)
+    Q_PROPERTY(bool sortDescending READ sortDescending WRITE setSortDescending NOTIFY changed)
     Q_PROPERTY(QString pack READ pack WRITE setPack NOTIFY changed)
     Q_PROPERTY(QString versionCategory READ versionCategory WRITE setVersionCategory NOTIFY changed)
     Q_PROPERTY(QString genre READ genre WRITE setGenre NOTIFY changed)
@@ -71,6 +81,8 @@ class ChartLibraryModel final : public QAbstractListModel {
     Q_PROPERTY(QObject* activeSession READ activeSession NOTIFY changed)
     Q_PROPERTY(bool canUndoBatch READ canUndoBatch NOTIFY changed)
 public:
+    enum SortColumn { SortTitle, SortArtist, SortBpm, SortVersion, SortGenre, SortConstant, SortDesigner };
+    Q_ENUM(SortColumn)
     enum Role { PathRole=Qt::UserRole+1, TitleRole, ArtistRole, LevelsRole, VersionRole, DigestRole, DuplicateRole, SelectedRole, PackRole, GenreRole, SongIdRole, KindRole, JacketRole, BadgesRole };
     ChartLibraryModel(miacode::UiRequestService& requests, DocumentModel& document, QObject* parent=nullptr);
     ~ChartLibraryModel() override;
@@ -79,6 +91,9 @@ public:
     QHash<int,QByteArray> roleNames() const override;
     QObject* progress() { return &progress_; }
     QString rootPath() const { return root_; }
+    QString collectionName() const;
+    QStringList importPaths() const { return importPaths_; }
+    bool pickingImportSources() const { return pickingImportSources_; }
     QString query() const { return query_; }
     void setQuery(const QString& text);
     bool duplicatesOnly() const { return duplicatesOnly_; }
@@ -94,6 +109,14 @@ public:
     QStringList packs() const { return packs_; }
     QStringList versions() const { return versions_; }
     QStringList genres() const { return genres_; }
+    QStringList genreSuggestions() const;
+    QStringList versionSuggestions() const;
+    QStringList versionCategorySuggestions() const;
+    QString uncategorized() const { return QString(QChar(0x1f)); }
+    int sortColumn() const { return sortColumn_; }
+    void setSortColumn(int column);
+    bool sortDescending() const { return sortDescending_; }
+    void setSortDescending(bool descending);
     QString pack() const { return pack_; }
     QString genre() const { return genre_; }
     void setPack(const QString& value);
@@ -105,13 +128,16 @@ public:
     void reportProgress(int percent);
     bool writeChartChanges(QVector<library::Change>* changes, QString* error);
     Q_INVOKABLE void chooseNewLibrary();
-    Q_INVOKABLE void chooseImportFolders(const QString& targetPack = {}, bool archives = false, bool manualSong = false);
+    Q_INVOKABLE void pickImportSources(bool archives);
+    Q_INVOKABLE void clearImportSources();
+    Q_INVOKABLE void startBatchImport();
     Q_INVOKABLE void consolidateSongs();
-    void importFolders(const QStringList& folders, const QString& targetPack = {}, bool manualSong = false);
-    void runImport(const QStringList& folders, const QString& targetPack, bool manualSong, bool consolidate);
+    void importFolders(const QStringList& folders, const QString& targetPack = {});
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void cancel();
     Q_INVOKABLE void selectPath(const QString& path, bool selected);
+    Q_INVOKABLE void toggleBatchRow(const QString& path, bool extend);
+    Q_INVOKABLE bool shiftSelectionHeld() const;
     Q_INVOKABLE void selectVisible(bool selected);
     Q_INVOKABLE QString chartCaption(const QString& path) const;
     Q_INVOKABLE bool hasSong(const QString& path) const { return entryFor(path) != nullptr; }
@@ -122,12 +148,14 @@ public:
     Q_INVOKABLE void discardSongEdits(const QString& path);
     Q_INVOKABLE bool saveSong(const QString& path);
     Q_INVOKABLE void requestNoteCount(const QString& path, int difficulty);
-    Q_INVOKABLE QString createSong(const QString& pack, const QString& title, int difficulty);
-    Q_INVOKABLE void changeCategory(const QString& key, const QString& from, const QString& to);
-    Q_INVOKABLE int categoryUsage(const QString& key, const QString& name) const;
+    QString createSong(const QString& pack, const QString& title, int difficulty);
+    void changeCategory(const QString& key, const QString& from, const QString& to);
+    int categoryUsage(const QString& key, const QString& name) const;
     Q_INVOKABLE void chooseSongAudio(const QString& path);
     void replaceSongAudio(const QString& path, const QString& source);
     Q_INVOKABLE void removeSong(const QString& path);
+    Q_INVOKABLE void removeSelectedSongs();
+    Q_INVOKABLE bool deleteCollection(const QString& pack, const QString& typedName);
     Q_INVOKABLE void openBuffer(const QString& path);
     Q_INVOKABLE void activateBuffer(int index);
     Q_INVOKABLE void closeActive();
@@ -137,6 +165,9 @@ public:
     Q_INVOKABLE void openFromList(const QString& path);
     Q_INVOKABLE void openInEditor(const QString& path, int difficulty = 0);
     Q_INVOKABLE void prepareNormalization();
+    Q_INVOKABLE void prepareMetadataCleanup();
+    Q_INVOKABLE void chooseSelectedZipOutput(const QVariantMap& options);
+    Q_INVOKABLE void queueSelectedForRender(const QVariantList& difficulties);
     Q_INVOKABLE void applyPrepared();
     Q_INVOKABLE void undoBatch();
     // Explicit API for deterministic non-GUI tests; choosing a root never writes it.
@@ -144,15 +175,26 @@ public:
 signals:
     void changed();
     void editorOpened();
+    void renderQueuePrepared(const QVariantMap& charts);
     void songAudioReady(const QString& path);
     void noteCountReady(const QString& path, int difficulty, int notes);
 private:
     LibraryDocument* bufferFor(const QString& path) const;
     struct Entry { QString path,title,artist,levels,version,hash,search; qint64 size=0,modified=0; int copies=1; QString pack,genre,songId,kind,versionCategory; QJsonObject record;
+        QString highestDesigner;
+        double bpm=0, highestConstant=0;
+        int officialVersion=0;
         void updateSearch(); };
     const Entry* entryFor(const QString& path) const;
+    void runImport(const QStringList& folders, const QString& targetPack, bool consolidate);
+    void queueSavedChart(const QString& path);
     QStringList catalogNames(const QString& key) const;
     QString songText(const QString& path, QString* error) const;
+    static bool patchFields(QString& text, const QVariantMap& changes, QString& error);
+    void prepareBatchChanges(bool metadataOnly);
+    void selectionChanged();
+    struct BatchSong { QString path, title; QJsonObject record; };
+    QList<BatchSong> selectedSongs() const;
     void rebuildFilter(QVector<Entry>* replacement = nullptr);
     void finishThread();
     void saveRecovery();
@@ -168,6 +210,12 @@ private:
     QPointer<DocumentModel> document_;
     QString root_,query_,status_,pack_,genre_,versionCategory_,importStatus_,deferredRoot_;
     QStringList packs_,genres_,versions_;
+    QStringList importPaths_;
+    quint64 importPickerGeneration_ = 0;
+    bool pickingImportSources_ = false;
+    int sortColumn_ = SortTitle;
+    bool sortDescending_ = false;
+    QString selectionAnchor_;
     quint64 countRequest_ = 0;
     bool duplicatesOnly_=false,busy_=false,recoveryFailed_=false;
     bool importInProgress_ = false;
@@ -175,6 +223,7 @@ private:
     QVector<Entry> entries_;
     QVector<int> visible_;
     QSet<QString> selected_, recoveryPaths_;
+    QSet<QString> indexedPacks_, pendingSavedCharts_;
     QVector<library::Change> prepared_,undo_;
     QList<LibraryDocument*> sessions_;
     QSet<LibraryDocument*> formDrafts_;

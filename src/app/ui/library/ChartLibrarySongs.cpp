@@ -45,10 +45,11 @@ bool packNameAllowed(const QString& name)
     static const QRegularExpression invalid(QStringLiteral(R"([<>:"/\\|?*\x00-\x1f])"));
     return !name.isEmpty() && !name.startsWith('.') && !name.endsWith('.') && !name.contains(invalid);
 }
+}
 
 // Replace only the touched metadata lines. Keeping the original chart body and
 // unknown fields verbatim also preserves hand annotations and author comments.
-bool patchFields(QString& text, const QVariantMap& changes, QString& error)
+bool ChartLibraryModel::patchFields(QString& text, const QVariantMap& changes, QString& error)
 {
     static const QRegularExpression allowed(QStringLiteral("^(title|artist|wholebpm|version|miacode_version_category|genre|shortid|(?:lv|des|level_constant)_[1-7])$"));
     static const QRegularExpression field(QStringLiteral("^[ \\t]*&([^=\\r\\n]+)=([^\\r\\n]*)"), QRegularExpression::MultilineOption);
@@ -88,7 +89,6 @@ bool patchFields(QString& text, const QVariantMap& changes, QString& error)
             prefix += "&" + it.key() + "=" + it.value().toString() + "\n";
     text.prepend(prefix);
     return true;
-}
 }
 
 LibraryDocument* ChartLibraryModel::bufferFor(const QString& path) const
@@ -248,7 +248,7 @@ QString ChartLibraryModel::createSong(const QString& pack, const QString& title,
         target.rmdir(folder);
         status_ = qtTrId("library.create_failed").arg(path); emit changed(); return {};
     }
-    if (!library::registerSong(root_,path,name)) { QFile::remove(path); target.rmdir(folder); status_=qtTrId("library.conflict");emit changed();return {}; }
+    if (!library::registerSong(root_, path, name, true)) { QFile::remove(path); target.rmdir(folder); status_=qtTrId("library.conflict");emit changed();return {}; }
     pack_ = name; genre_.clear(); versionCategory_.clear(); query_.clear(); duplicatesOnly_ = false;
     refresh();
     return path;
@@ -262,10 +262,78 @@ void ChartLibraryModel::removeSong(const QString& path)
     requests_->requestConfirmation(qtTrId("library.remove_song"),qtTrId("library.unlink_prompt").arg(chartCaption(path)),
         qtTrId("library.remove_song"),[guard,root=root_,path](bool yes){
             if (!guard || !yes || guard->busy_ || guard->root_!=root || guard->pathOpen(path)) return;
-            if (library::unlinkSong(root,path)) guard->refresh();
+            if (library::unlinkSongs(root, {path})) guard->refresh();
             else { guard->status_=qtTrId("library.remove_failed");emit guard->changed(); }
         });
 }
+
+void ChartLibraryModel::removeSelectedSongs()
+{
+    if (busy_ || selected_.isEmpty()) return;
+    for (const auto& path : selected_) {
+        if (pathOpen(path)) {
+            status_ = qtTrId("library.close_editor_first");
+            emit changed();
+            return;
+        }
+    }
+    if (library::unlinkSongs(root_, selected_)) refresh();
+    else { status_ = qtTrId("library.remove_failed"); emit changed(); }
+}
+
+bool ChartLibraryModel::deleteCollection(const QString& pack, const QString& typedName)
+{
+    const bool wholeLibrary = pack.isEmpty();
+    if (busy_ || root_.isEmpty() || typedName.isEmpty() || typedName != (wholeLibrary ? collectionName() : pack)
+        || (!wholeLibrary && !packs_.contains(pack)))
+        return false;
+    const auto reject = [&](const QString& status) {
+        status_ = status;
+        emit changed();
+        return false;
+    };
+    if (wholeLibrary && (!sessions_.isEmpty() || !unavailableRecovery_.isEmpty()))
+        return reject(qtTrId("library.close_sessions_first"));
+    if (!wholeLibrary) {
+        for (const auto& entry : entries_)
+            if (entry.pack == pack && pathOpen(entry.path))
+                return reject(qtTrId("library.close_editor_first"));
+    }
+    QSet<QString> protectedPaths;
+    if (document_)
+        for (const auto& open : document_->openSongPaths())
+            protectedPaths.insert(QFileInfo(open).canonicalFilePath());
+    for (const auto* session : sessions_)
+        protectedPaths.insert(QFileInfo(session->path()).canonicalFilePath());
+    const auto result = library::removeCollection(root_, pack, protectedPaths);
+    if (result != library::CollectionRemoval::Removed)
+        return reject(result == library::CollectionRemoval::InUse
+                ? qtTrId("library.close_editor_first") : qtTrId("library.remove_failed"));
+
+    if (wholeLibrary) {
+        refreshTimer_.stop();
+        if (!watcher_.directories().isEmpty()) watcher_.removePaths(watcher_.directories());
+        if (!watcher_.files().isEmpty()) watcher_.removePaths(watcher_.files());
+        QFile::remove(cachePath());
+        QDir().rmdir(root_);
+        root_.clear();
+        indexedPacks_.clear();
+        pendingSavedCharts_.clear();
+        clearImportSources();
+        selected_.clear();
+        prepared_.clear();
+        undo_.clear();
+        QVector<Entry> empty;
+        status_ = qtTrId("library.collection_deleted").arg(typedName);
+        rebuildFilter(&empty);
+        saveRecovery();
+    } else {
+        importStatus_ = qtTrId("library.collection_deleted").arg(pack);
+        refresh();
+    }
+    return true;
+}
+
 QStringList ChartLibraryModel::catalogNames(const QString& key) const
 {
     const QString path = QDir(root_).filePath("categories.json");

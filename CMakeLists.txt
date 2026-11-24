@@ -540,6 +540,7 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/ui/library/ChartLibraryModel.h
     src/app/ui/library/ChartLibraryModel.cpp
     src/app/ui/library/ChartLibrarySongs.cpp
+    src/app/ui/library/ChartLibraryBatch.cpp
     src/app/ui/tools/ChartToolsModel.h
     src/app/ui/tools/ChartToolsModel.cpp
     src/app/ui/preferences/LocaleService.h
@@ -1045,6 +1046,7 @@ if (WIN32)
     target_link_libraries(MiaCode PRIVATE
         Advapi32     # Windows Credential Manager
         Shell32      # Unicode command-line arguments
+        shlwapi      # Explorer-compatible song title ordering
         Crypt32      # Current-user DPAPI encryption
         Advapi32     # Windows Credential Manager
         Shell32      # Unicode command-line arguments

@@ -19,6 +19,7 @@
 #include <QSaveFile>
 #include <QSet>
 #include <QTemporaryDir>
+#include <algorithm>
 
 namespace miacode::library {
 namespace {
@@ -81,12 +82,13 @@ namespace {
             return jsonFile(bundleFile(root)).value("songs").toArray();
         QJsonArray songs;
         const QDir packs(QDir(root).filePath("packs"));
-        QDirIterator it(packs.path(), { "maidata*.txt" }, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+        QDirIterator it(packs.path(), QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
         while (it.hasNext()) {
             const auto path = it.next();
-            if (withinRoot(root, path))
+            const auto relative = packs.relativeFilePath(path);
+            if (relative.contains('/') && chart_assets::isChartDocumentPath(path) && withinRoot(root, path))
                 songs.append(QJsonObject { { "sources", QJsonArray { relativeSource(root, path) } },
-                    { "pack", packs.relativeFilePath(path).section('/', 0, 0) } });
+                    { "pack", relative.section('/', 0, 0) } });
         }
         return songs;
     }
@@ -170,12 +172,13 @@ namespace {
             return paths.first();
         QByteArray first;
         QString combined;
-        if (!read(paths.first(), &first, nullptr) || !decode(first, &combined, nullptr))
+        if (!read(paths.first(), &first, nullptr) || !decode(first, &combined, nullptr)
+            || !isLibraryChartText(combined))
             return {};
         for (int i = 1; i < paths.size(); ++i) {
             QByteArray bytes;
             QString text, next, detail;
-            if (!read(paths[i], &bytes, nullptr) || !decode(bytes, &text, nullptr))
+            if (!read(paths[i], &bytes, nullptr) || !decode(bytes, &text, nullptr) || !isLibraryChartText(text))
                 return {};
             const auto result = compareCharts(combined, text, next, detail);
             if (result != ImportMatch::Existing && result != ImportMatch::Merged)
@@ -222,11 +225,70 @@ namespace {
             id += 10000;
         return QString::number(id);
     }
-    bool newRecord(const QString& root, const QString& path, const QString& pack, QJsonArray& rows)
+    QJsonObject songRecord(const QString& source, const QString& pack, bool owned = false)
     {
-        rows.append(QJsonObject { { "pack", pack }, { "sources", QJsonArray { relativeSource(root, path) } } });
-        return saveBundle(root, rows);
+        QJsonObject row { { "pack", pack }, { "sources", QJsonArray { source } } };
+        if (owned)
+            row.insert("ownedChart", source);
+        return row;
     }
+
+    QString legacyCopyDirectory(const QString& root, const QString& source, const QString& pack)
+    {
+        const QDir library(root);
+        const auto relative = library.relativeFilePath(source).split('/');
+        if (relative.size() != 4 || relative[0] != "packs" || relative[1] != pack || relative[3] != "maidata.txt")
+            return {};
+        static const QRegularExpression copyKey(QStringLiteral("^[0-9a-f]{16}-[0-9a-f]{16}(?:-[0-9a-f]{32})?$"));
+        if (!copyKey.match(relative[2]).hasMatch())
+            return {};
+        const QDir directory(QFileInfo(source).absolutePath());
+        const auto marker = directory.filePath("source.json");
+        if (!withinRoot(root, marker))
+            return {};
+        const auto origin = jsonFile(marker).value("path").toString();
+        const auto relativeOrigin = library.relativeFilePath(origin);
+        if (!QDir::isAbsolutePath(origin)
+            || (!relativeOrigin.startsWith("../") && !QDir::isAbsolutePath(relativeOrigin)))
+            return {};
+        const auto packMarker = library.filePath("packs/" + pack + "/.source");
+        QFile file(packMarker);
+        if (!withinRoot(root, packMarker) || !file.open(QIODevice::ReadOnly)
+            || !QDir::isAbsolutePath(QString::fromUtf8(file.read(32768))))
+            return {};
+        return directory.path();
+    }
+
+    void appendOwnedSongFiles(const QString& root, const QString& path, QSet<QString>& files)
+    {
+        if (!withinRoot(root, path))
+            return;
+        files.insert(path);
+        const QDir directory(QFileInfo(path).absolutePath());
+        const auto candidates = chart_assets::trackCandidateFileNames() + chart_assets::backgroundMediaCandidateFileNames();
+        for (const auto& media : directory.entryInfoList(candidates, QDir::Files | QDir::NoSymLinks))
+            if (withinRoot(root, media.absoluteFilePath()))
+                files.insert(media.absoluteFilePath());
+    }
+}
+
+bool isLibraryChartText(const QString& text)
+{
+    bool hasTitle = false;
+    QSet<QString> playableSlots;
+    static const QRegularExpression chartField(QStringLiteral("^inote_[1-7]$"));
+    for (const auto& field : SimaiDocument::parseRawFields(text)) {
+        const bool nonblank = !field.value.trimmed().isEmpty();
+        if (field.key == "title")
+            hasTitle = nonblank;
+        else if (chartField.match(field.key).hasMatch()) {
+            if (nonblank)
+                playableSlots.insert(field.key);
+            else
+                playableSlots.remove(field.key);
+        }
+    }
+    return hasTitle && !playableSlots.isEmpty();
 }
 
 QString bundleFile(const QString& root)
@@ -271,12 +333,13 @@ QString createLibrary(const QString& parent, QString* error)
     *error = qtTrId("library.create_failed").arg(parent);
     return {};
 }
-QString playbackChartPath(const QString& root, const QJsonObject& record)
+QString playbackChartPath(const QString& root, const QJsonObject& record, const std::atomic_bool* canceled)
 {
-    return workingChart(root, record, false, true);
+    const std::atomic_bool neverCancel{false};
+    return workingChart(root, record, canceled ? *canceled : neverCancel, true);
 }
 QList<BundleSong> bundleSongs(const QString& root, int* skipped, bool fullMedia, const std::atomic_bool* cancel,
-    const std::function<void(int)>& progress)
+    const std::function<void(int)>& progress, QSet<QString>* packs)
 {
     QList<BundleSong> result;
     const std::atomic_bool canceled { false };
@@ -291,6 +354,9 @@ QList<BundleSong> bundleSongs(const QString& root, int* skipped, bool fullMedia,
             last = percent;
         }
         auto row = v.toObject();
+        const auto pack = row["pack"].toString();
+        if (packs && !pack.isEmpty())
+            packs->insert(pack);
         const auto path = workingChart(root, row, cancel ? *cancel : canceled, fullMedia);
         if (path.isEmpty()) {
             if (skipped)
@@ -298,33 +364,193 @@ QList<BundleSong> bundleSongs(const QString& root, int* skipped, bool fullMedia,
             continue;
         }
         auto origin = row.value("sources").toArray().first().toString();
-        result.append({ path, row["pack"].toString(), QDir(root).absoluteFilePath(origin), row["id"].toString(), row });
+        result.append({ path, pack, QDir(root).absoluteFilePath(origin), row["id"].toString(), row });
     }
     return result;
 }
-bool registerSong(const QString& root, const QString& path, const QString& pack)
+bool registerSong(const QString& root, const QString& path, const QString& pack, bool owned)
 {
     QLockFile lock(QDir(root).filePath(".import.lock"));
     if (!lock.tryLock() || !isManagedLibrary(root) || !withinRoot(root, path))
         return false;
     auto rows = records(root);
-    for (const auto& v : rows)
-        if (v.toObject()["sources"].toArray().contains(relativeSource(root, path)))
+    const auto source = relativeSource(root, path);
+    for (qsizetype i = 0; i < rows.size(); ++i) {
+        auto row = rows[i].toObject();
+        if (!row["sources"].toArray().contains(source))
+            continue;
+        if (owned && row["ownedChart"].toString() != source) {
+            row["ownedChart"] = source;
+            rows[i] = row;
             return saveBundle(root, rows);
-    return newRecord(root, path, pack, rows);
+        }
+        return QFileInfo::exists(bundleFile(root)) || saveBundle(root, rows);
+    }
+    rows.append(songRecord(source, pack, owned));
+    return saveBundle(root, rows);
 }
-bool unlinkSong(const QString& root, const QString& path)
+
+bool registerSavedCharts(const QString& root, const QSet<QString>& paths)
 {
     QLockFile lock(QDir(root).filePath(".import.lock"));
     if (!lock.tryLock() || !isManagedLibrary(root))
         return false;
     auto rows = records(root);
-    for (int i = 0; i < rows.size(); ++i)
-        if (workingChart(root, rows[i].toObject(), false) == path) {
-            rows.removeAt(i);
-            return saveBundle(root, rows);
+    const auto initialCount = rows.size();
+    const QDir library(root);
+    QSet<QString> registered;
+    for (const auto& value : rows)
+        for (const auto& source : value.toObject()["sources"].toArray())
+            registered.insert(QDir::cleanPath(library.absoluteFilePath(source.toString())));
+    for (const auto& path : paths) {
+        const auto absolute = QFileInfo(path).canonicalFilePath();
+        if (!withinRoot(root, path) || registered.contains(absolute) || !chart_assets::isChartDocumentPath(path))
+            continue;
+        const auto parts = library.relativeFilePath(absolute).split('/');
+        if (std::any_of(parts.cbegin(), parts.cend(), [](const QString& part) { return part.startsWith('.'); }))
+            continue;
+        QDir parent = QFileInfo(absolute).dir();
+        bool nested = false;
+        while (parent.path() != library.path()) {
+            if (isManagedLibrary(parent.path())) { nested = true; break; }
+            if (!parent.cdUp()) { nested = true; break; }
         }
-    return false;
+        if (nested)
+            continue;
+        QByteArray bytes;
+        QString text;
+        if (!read(absolute, &bytes, nullptr) || !decode(bytes, &text, nullptr) || !isLibraryChartText(text))
+            continue;
+        const auto pack = parts.size() >= 3 && parts.first() == "packs" ? parts[1]
+            : parts.size() >= 3                                        ? parts.first()
+                                                                       : qtTrId("library.custom_pack");
+        rows.append(songRecord(library.relativeFilePath(absolute), pack));
+        registered.insert(absolute);
+    }
+    return rows.size() == initialCount || saveBundle(root, rows);
+}
+
+bool unlinkSongs(const QString& root, const QSet<QString>& paths)
+{
+    QLockFile lock(QDir(root).filePath(".import.lock"));
+    if (!lock.tryLock() || !isManagedLibrary(root))
+        return false;
+    const auto rows = records(root);
+    QSet<QString> pending = paths;
+    QJsonArray retained;
+    for (const auto& value : rows) {
+        const auto path = workingChart(root, value.toObject(), false);
+        if (!paths.contains(path))
+            retained.append(value);
+        else
+            pending.remove(path);
+    }
+    return !paths.isEmpty() && pending.isEmpty() && saveBundle(root, retained);
+}
+
+CollectionRemoval removeCollection(const QString& root, const QString& pack, const QSet<QString>& protectedPaths)
+{
+    const QDir library(root);
+    QLockFile lock(library.filePath(".import.lock"));
+    if (!lock.tryLock() || !isManagedLibrary(root))
+        return CollectionRemoval::Failed;
+    const bool wholeLibrary = pack.isEmpty();
+    QList<QJsonObject> removed;
+    QJsonArray retained;
+    QSet<QString> retainedSources, retainedEdits;
+    for (const auto& value : records(root)) {
+        const auto row = value.toObject();
+        if (wholeLibrary || row["pack"].toString() == pack) {
+            removed.append(row);
+        } else {
+            retained.append(value);
+            if (!row["sources"].toArray().isEmpty())
+                retainedEdits.insert(editDir(root, row));
+            for (const auto& source : row["sources"].toArray())
+                retainedSources.insert(QFileInfo(library.absoluteFilePath(source.toString().section("!/", 0, 0)))
+                                           .canonicalFilePath());
+        }
+    }
+    if (!wholeLibrary && removed.isEmpty())
+        return CollectionRemoval::Failed;
+
+    QSet<QString> files;
+    const auto addFile = [&](const QString& path) {
+        if (withinRoot(root, path))
+            files.insert(path);
+    };
+    if (wholeLibrary) {
+        addFile(bundleFile(root));
+        const auto oldMarker = jsonFile(library.filePath(marker));
+        if (oldMarker.value("format") == formatName && oldMarker.value("version").toInt() == 1)
+            addFile(library.filePath(marker));
+    }
+    for (const auto& row : removed) {
+        const auto sources = row["sources"].toArray();
+        if (sources.isEmpty())
+            continue;
+        const QDir edits(editDir(root, row));
+        if (!retainedEdits.contains(edits.path())) {
+            const auto chart = edits.filePath("maidata.txt");
+            if (!retainedSources.contains(QFileInfo(chart).canonicalFilePath())) {
+                appendOwnedSongFiles(root, chart, files);
+                addFile(edits.filePath(".miamedia"));
+            }
+        }
+        for (const auto& reference : sources) {
+            const auto source = reference.toString();
+            if (source.contains("!/"))
+                continue;
+            const auto path = QDir::cleanPath(library.absoluteFilePath(source));
+            if (retainedSources.contains(QFileInfo(path).canonicalFilePath()))
+                continue;
+            const auto packName = row["pack"].toString();
+            const auto legacy = legacyCopyDirectory(root, path, packName);
+            if (!legacy.isEmpty()) {
+                appendOwnedSongFiles(root, path, files);
+                addFile(QDir(legacy).filePath("source.json"));
+                addFile(library.filePath("packs/" + packName + "/.source"));
+            } else if (row["ownedChart"].toString() == source) {
+                // This metadata is set only for charts created by the old library action.
+                const auto parts = library.relativeFilePath(path).split('/');
+                if (parts.size() == 4 && parts[0] == "packs" && parts[1] == packName && parts[3] == "maidata.txt")
+                    addFile(path);
+            }
+        }
+    }
+    for (const auto& file : files)
+        if (protectedPaths.contains(QFileInfo(file).canonicalFilePath()))
+            return CollectionRemoval::InUse;
+
+    if (files.isEmpty())
+        return saveBundle(root, retained) ? CollectionRemoval::Removed : CollectionRemoval::Failed;
+    // Stage owned files so a failed move or manifest update can restore the collection.
+    QTemporaryDir staging(library.filePath(".remove-XXXXXX"));
+    if (!staging.isValid())
+        return CollectionRemoval::Failed;
+    const QDir staged(staging.path());
+    QStringList moved;
+    const auto rollback = [&] {
+        for (const auto& relative : moved)
+            if (!QFile::rename(staged.filePath(relative), library.filePath(relative)))
+                staging.setAutoRemove(false);
+        return CollectionRemoval::Failed;
+    };
+    for (const auto& path : files) {
+        const auto relative = library.relativeFilePath(path);
+        if (!withinRoot(root, path) || !staged.mkpath(QFileInfo(relative).path())
+            || !QFile::rename(path, staged.filePath(relative)))
+            return rollback();
+        moved.append(relative);
+    }
+    if (!wholeLibrary && !saveBundle(root, retained))
+        return rollback();
+    for (const auto& path : moved) {
+        QDir parent = QFileInfo(library.filePath(path)).dir();
+        while (parent.path() != library.path() && realDirectory(parent.path()) && QDir().rmdir(parent.path()))
+            parent.cdUp();
+    }
+    return CollectionRemoval::Removed;
 }
 QString editableChartPath(const QString& root, const QString& path, const QJsonObject& record)
 {
@@ -351,7 +577,7 @@ QString editableChartPath(const QString& root, const QString& path, const QJsonO
 }
 
 ImportResult importChartFolders(const QString& root, const QStringList& folders, const std::atomic_bool& canceled,
-    const QString& targetPack, const QSet<QString>& protectedPaths, bool consolidate, bool manualSong,
+    const QString& targetPack, const QSet<QString>& protectedPaths, bool consolidate,
     const std::function<void(int)>& progress)
 {
     ImportResult result;
@@ -377,7 +603,6 @@ ImportResult importChartFolders(const QString& root, const QStringList& folders,
         QString path, origin, pack;
         QJsonObject previous;
         QByteArray zipBytes;
-        bool zipHasMedia = false;
     };
     QList<Candidate> candidates;
     for (const auto& value : initial) {
@@ -402,8 +627,10 @@ ImportResult importChartFolders(const QString& root, const QStringList& folders,
             progress(30 * folderNumber / qMax(1, int(folders.size())));
         const QFileInfo info(selected);
         const QString base = info.canonicalFilePath();
-        if (base.isEmpty() || info.isSymLink() || insideLibrary(info.isDir() ? base : info.absolutePath())) {
+        if (base.isEmpty() || info.isSymLink() || info.isJunction()
+            || insideLibrary(info.isDir() ? base : info.absolutePath())) {
             fail(selected);
+            ++folderNumber;
             continue;
         }
         const QString pack
@@ -436,6 +663,7 @@ ImportResult importChartFolders(const QString& root, const QStringList& folders,
             archives << base;
         else {
             fail(base);
+            ++folderNumber;
             continue;
         }
         for (int archiveIndex = 0; archiveIndex < archives.size(); ++archiveIndex) {
@@ -453,7 +681,7 @@ ImportResult importChartFolders(const QString& root, const QStringList& folders,
             }
             for (auto& chart : charts)
                 candidates.append({ {}, relativeSource(root, archive + "!/" + chart.member), pack, {},
-                    std::move(chart.bytes), chart.hasMedia });
+                    std::move(chart.bytes) });
         }
         ++folderNumber;
     }
@@ -475,26 +703,24 @@ ImportResult importChartFolders(const QString& root, const QStringList& folders,
             continue;
         }
         if ((!zipped && (c.path.isEmpty() || !read(c.path, &bytes, nullptr))) || !decode(bytes, &text, nullptr)) {
-            if (prior)
+            if (prior) {
                 rows.append(c.previous);
+                for (const auto& ref : c.previous["sources"].toArray())
+                    references.insert(ref.toString());
+            }
             if (prior || QFileInfo(c.path).fileName().startsWith("maidata"))
                 fail(c.origin);
             continue;
         }
-        const auto doc = SimaiDocument::fromText(text);
-        bool playable = false;
-        for (int slot : doc.difficultyIds())
-            if (!doc.difficulty(slot)->chart.trimmed().isEmpty())
-                playable = true;
-        if (!prior && !playable)
-            continue;
-        if (!prior && !manualSong && targetPack.isEmpty()
-            && (zipped ? !c.zipHasMedia
-                       : (chart_assets::resolveTrackPath(c.path).isEmpty()
-                             || chart_assets::resolveBackgroundMediaPath(c.path, false).isEmpty()))) {
-            ++result.missingMedia;
+        if (!isLibraryChartText(text)) {
+            if (prior) {
+                rows.append(c.previous);
+                for (const auto& ref : c.previous["sources"].toArray())
+                    references.insert(ref.toString());
+            }
             continue;
         }
+        const auto doc = SimaiDocument::fromText(text);
         const auto key = songSignature(text);
         bool matched = false;
         bool blockedMerge = false;
@@ -521,8 +747,10 @@ ImportResult importChartFolders(const QString& root, const QStringList& folders,
                     auto refs = row.value("sources").toArray();
                     auto additions = prior ? c.previous["sources"].toArray() : QJsonArray { c.origin };
                     for (const auto& ref : additions)
-                        if (!refs.contains(ref))
+                        if (!refs.contains(ref)) {
                             refs.append(ref);
+                            references.insert(ref.toString());
+                        }
                     row["sources"] = refs;
                     rows[idx] = row;
                     texts[idx] = combined;
@@ -542,7 +770,7 @@ ImportResult importChartFolders(const QString& root, const QStringList& folders,
             if (!prior || (consolidate && !blockedMerge && !protectedPaths.contains(c.path)))
                 continue;
         }
-        auto row = prior ? c.previous : QJsonObject { { "pack", c.pack }, { "sources", QJsonArray { c.origin } } };
+        auto row = prior ? c.previous : songRecord(c.origin, c.pack);
         auto id = row["id"].toString();
         if (id.isEmpty())
             id = numericId(doc, c.origin);
@@ -625,6 +853,8 @@ QString exportLibrary(const QString& root, const QString& parent, const std::ato
         QString text;
         if (!read(song.path, &bytes, nullptr) || !decode(bytes, &text, nullptr))
             return fail(song.origin);
+        if (!isLibraryChartText(text))
+            continue;
         const auto doc = SimaiDocument::fromText(text);
         auto id = song.id;
         static const QRegularExpression digits("^[0-9]{1,6}$");

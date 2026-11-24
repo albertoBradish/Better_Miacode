@@ -111,7 +111,6 @@ static bool visitZip(const QString& archive, const std::atomic_bool& canceled,
 bool inspectChartZip(const QString& archive, const std::atomic_bool& canceled, QList<ZipChart>* charts,
     const std::function<void(int)>& progress)
 {
-    QSet<QString> files;
     QList<ZipChart> found;
     int last = -1;
     const bool ok
@@ -121,30 +120,19 @@ bool inspectChartZip(const QString& archive, const std::atomic_bool& canceled, Q
                   progress(pct);
                   last = pct;
               }
-              files.insert(name.toCaseFolded());
               if (size > kMaximumFileBytes
                   || !chart_assets::supportedChartFileExtensions().contains(QFileInfo(name).suffix().toLower()))
                   return true;
               QByteArray bytes(qsizetype(size), Qt::Uninitialized);
               if (size && !mz_zip_reader_extract_to_mem(&zip, i, bytes.data(), size_t(size), 0))
                   return false;
-              if (bytes.contains("&inote_"))
-                  found.append({ name, bytes, false });
+              QString text;
+              if (bytes.contains("&inote_") && decode(bytes, &text, nullptr) && isLibraryChartText(text))
+                  found.append({ name, std::move(bytes) });
               return true;
           });
     if (!ok)
         return false;
-    for (auto& chart : found) {
-        const auto prefix = chart.member.left(chart.member.lastIndexOf('/') + 1).toCaseFolded();
-        const auto has = [&](const QStringList& names) {
-            for (const auto& n : names)
-                if (files.contains(prefix + n))
-                    return true;
-            return false;
-        };
-        chart.hasMedia = has(chart_assets::trackCandidateFileNames())
-            && has(chart_assets::backgroundMediaCandidateFileNames(false));
-    }
     *charts = std::move(found);
     return true;
 }

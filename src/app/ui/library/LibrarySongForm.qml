@@ -174,10 +174,10 @@ ColumnLayout {
                 FormField { caption: "BPM"; fieldKey: "wholebpm" }
                 FormField { caption: qsTrId("library.source_id"); fieldKey: "shortid" }
             }
-            FormField { caption: qsTrId("metadata.advanced.version"); fieldKey: "version" }
+            FormField { caption: qsTrId("metadata.advanced.version"); fieldKey: "version"; options: root.library.versionSuggestions }
             RowLayout {
-                FormField { caption: qsTrId("library.genre"); fieldKey: "genre"; options: root.library.genres }
-                FormField { caption: qsTrId("library.version_category"); fieldKey: "miacode_version_category"; options: root.library.versions }
+                FormField { caption: qsTrId("library.genre"); fieldKey: "genre"; options: root.library.genreSuggestions }
+                FormField { caption: qsTrId("library.version_category"); fieldKey: "miacode_version_category"; options: root.library.versionCategorySuggestions }
             }
             RowLayout {
                 Layout.fillWidth: true

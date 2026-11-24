@@ -461,12 +461,16 @@ miacode_add_dev_tool(chart_library_spec TEST
         src/app/services/ChartLibraryFiles.h
         src/app/ui/library/ChartLibraryModel.cpp
         src/app/ui/library/ChartLibrarySongs.cpp
+        src/app/ui/library/ChartLibraryBatch.cpp
         src/app/ui/library/ChartLibraryModel.h
     LIBS miacode_analysis miacode_audio miacode_editor_core miacode_media_tools Qt6::Core Qt6::Gui Qt6::Qml Qt6::Concurrent Qt6::Test miniz
     INCLUDES src)
 target_compile_definitions(chart_library_spec PRIVATE
     "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\"")
 set_tests_properties(chart_library_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+if(WIN32)
+    target_link_libraries(chart_library_spec PRIVATE shlwapi)
+endif()
 if(APPLE)
     target_sources(chart_library_spec PRIVATE src/app/ui/preferences/ApplicationMenuTranslationMac.mm)
     target_link_libraries(chart_library_spec PRIVATE "-framework AppKit")
