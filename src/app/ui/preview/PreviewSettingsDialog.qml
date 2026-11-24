@@ -9,6 +9,7 @@ AppDialog {
 
     property var comparisons: null
     property var structure: null
+    required property var workbenchSettings
     required property var previewSettings
 
     property int currentPageIndex: 0
@@ -172,6 +173,7 @@ AppDialog {
                     width: pageViewport.availableWidth
                     previewSettings: root.previewSettings
                     structure: root.structure
+                    workbenchSettings: root.workbenchSettings
                     currentIndex: root.currentPageIndex
                 }
             }

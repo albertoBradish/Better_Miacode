@@ -3389,6 +3389,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Free Aspect</source>
         <translation>フリーアスペクト</translation>
     </message>
+    <message id="preview.show_note_statistics">
+        <source>Show note counts</source>
+        <translation>ノーツ数を表示</translation>
+    </message>
     <message id="preview.canvas.hide_pv">
         <source>Hide PV</source>
         <translation>PVを非表示</translation>

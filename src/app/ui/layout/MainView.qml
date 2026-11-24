@@ -923,6 +923,7 @@ Item {
         objectName: "shellPreviewSettingsDialog"
         comparisons: root.previewSession.comparisons
         structure: root.previewSession.structure
+        workbenchSettings: root.preferences
         parent: splitView.settingsDialogParent
         previewSettings: root.applicationContext.previewSettings
     }

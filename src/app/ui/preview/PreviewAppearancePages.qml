@@ -10,6 +10,7 @@ AppTabPages {
 
     required property var previewSettings
     property var structure: null
+    property var workbenchSettings: null
 
     readonly property var values: root.previewSettings ? root.previewSettings.values : ({})
     readonly property var labels: root.previewSettings ? root.previewSettings.labels : ({})
@@ -51,6 +52,13 @@ AppTabPages {
             ]
             currentValue: root.structure?.heatmapStyle ?? "off"
             onPicked: value => root.structure.heatmapStyle = value
+        }
+        AppSwitch {
+            objectName: "previewNoteStatisticsSwitch"
+            visible: !!root.workbenchSettings
+            text: qsTrId("preview.show_note_statistics")
+            checked: root.workbenchSettings?.previewNoteStatisticsVisible !== false
+            onToggled: root.workbenchSettings.previewNoteStatisticsVisible = checked
         }
         LabeledSlider {
             objectName: "previewBrightnessOuterSlider"

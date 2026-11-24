@@ -37,6 +37,7 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(double previewMinimumWidthRatio READ previewMinimumWidthRatio CONSTANT)
     Q_PROPERTY(double previewMaximumWidthRatio READ previewMaximumWidthRatio CONSTANT)
     Q_PROPERTY(bool previewCanvasFreeAspect READ previewCanvasFreeAspect WRITE setPreviewCanvasFreeAspect NOTIFY previewCanvasFreeAspectChanged)
+    Q_PROPERTY(bool previewNoteStatisticsVisible READ previewNoteStatisticsVisible WRITE setPreviewNoteStatisticsVisible NOTIFY previewNoteStatisticsVisibleChanged)
     Q_PROPERTY(bool previewHidePv READ previewHidePv WRITE setPreviewHidePv NOTIFY previewHidePvChanged)
     Q_PROPERTY(QString uiFontFamily READ uiFontFamily CONSTANT)
     Q_PROPERTY(int uiScalePercent READ uiScalePercent WRITE setUiScalePercent NOTIFY uiScalePercentChanged)
@@ -104,6 +105,7 @@ public:
     double previewMinimumWidthRatio() const;
     double previewMaximumWidthRatio() const;
     bool previewCanvasFreeAspect() const;
+    bool previewNoteStatisticsVisible() const { return previewNoteStatisticsVisible_; }
     bool previewHidePv() const;
     QString uiFontFamily() const;
     int uiScalePercent() const;
@@ -139,6 +141,7 @@ public:
     void setPreviewWidthRatio(double value);
     void setPreviewDetached(bool value);
     void setPreviewCanvasFreeAspect(bool value);
+    void setPreviewNoteStatisticsVisible(bool value);
     void setPreviewHidePv(bool value);
     void setFontSize(int value);
     void reloadEditorSettings();
@@ -207,6 +210,7 @@ signals:
     void previewWidthRatioChanged();
     void previewDetachedChanged();
     void previewCanvasFreeAspectChanged();
+    void previewNoteStatisticsVisibleChanged();
     void previewHidePvChanged();
     void fontSizeChanged();
     void editorSettingsChanged();
@@ -255,6 +259,7 @@ private:
     double previewWidthRatio_ = kPreviewDefaultWidthRatio;
     bool previewDetached_ = false;
     bool previewCanvasFreeAspect_ = false;
+    bool previewNoteStatisticsVisible_ = true;
     bool previewHidePv_ = false;
     QString uiFontFamily_;
     int uiScalePercent_ = kUiScaleDefaultPercent;

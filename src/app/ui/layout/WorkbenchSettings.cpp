@@ -40,6 +40,7 @@ constexpr auto kBottomPanelVisible = "bottom_panel_visible";
 constexpr auto kBottomPanelHeightRatio = "bottom_panel_height_ratio";
 constexpr auto kPreviewWidthRatio = "preview_width_ratio";
 constexpr auto kPreviewDetached = "preview_detached";
+constexpr auto kPreviewNoteStatisticsVisible = "preview_note_statistics_visible";
 constexpr auto kPreviewCanvasFreeAspect = "preview_canvas_free_aspect";
 constexpr auto kPreviewHidePv = "preview_hide_pv";
 constexpr auto kFontSize = "ui_font_size";
@@ -162,6 +163,7 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     previewWidthRatio_ = qBound(kPreviewMinimumWidthRatio,
                                 ui.value(QLatin1String(kPreviewWidthRatio)).toDouble(kPreviewDefaultWidthRatio),
                                 kPreviewMaximumWidthRatio);
+    previewNoteStatisticsVisible_ = ui.value(QLatin1String(kPreviewNoteStatisticsVisible)).toBool(true);
     previewCanvasFreeAspect_ = ui.value(QLatin1String(kPreviewCanvasFreeAspect)).toBool(false);
     previewHidePv_ = ui.value(QLatin1String(kPreviewHidePv)).toBool(false);
     fontSize_ = qBound(12, ui.value(QLatin1String(kFontSize)).toInt(13), 14);
@@ -528,6 +530,14 @@ void WorkbenchSettings::setPreviewCanvasFreeAspect(bool value)
     previewCanvasFreeAspect_ = value;
     storeUiValue(kPreviewCanvasFreeAspect, value);
     emit previewCanvasFreeAspectChanged();
+}
+
+void WorkbenchSettings::setPreviewNoteStatisticsVisible(bool value)
+{
+    if (previewNoteStatisticsVisible_ == value) return;
+    previewNoteStatisticsVisible_ = value;
+    storeUiValue(kPreviewNoteStatisticsVisible, value);
+    emit previewNoteStatisticsVisibleChanged();
 }
 
 void WorkbenchSettings::setPreviewHidePv(bool value)

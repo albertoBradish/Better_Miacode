@@ -48,6 +48,15 @@ AppStickyPopup {
             }
         }
 
+        AppMenuItem {
+            objectName: "previewNoteStatisticsMenuItem"
+            width: parent.width
+            text: qsTrId("preview.show_note_statistics")
+            checkable: true
+            checked: root.preferences.previewNoteStatisticsVisible !== false
+            onToggled: root.preferences.previewNoteStatisticsVisible = checked
+        }
+
         AppMenuSeparator { width: parent.width }
         AppMenuItem {
             objectName: "previewShowMeasureLinesItem"

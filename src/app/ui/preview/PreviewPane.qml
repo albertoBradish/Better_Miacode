@@ -22,7 +22,7 @@ Rectangle {
     // window always renders the default order.
     property bool transportMirrored: false
     readonly property real minimumHeight: heading.implicitHeight + transport.implicitHeight
-                                          + statistics.implicitHeight + 64
+                                          + statistics.height + 64
     readonly property real minimumWidth: transport.minimumWidth
     signal detachRequested()
     signal dockRequested()
@@ -280,14 +280,19 @@ Rectangle {
         onDockRequested: root.dockRequested()
     }
 
-    NoteStatistics {
+    Loader {
         id: statistics
+        objectName: "previewNoteStatisticsPanel"
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        efficientMode: root.preferences.efficientSidebarEnabled
-        statistics: root.previewSession.statistics
-        dataAvailable: !root.latencyActive && root.previewSession.statisticsAvailable
-        enabled: root.documentAvailable
+        active: root.preferences.previewNoteStatisticsVisible !== false
+        height: item ? item.implicitHeight : 0
+        sourceComponent: NoteStatistics {
+            efficientMode: root.preferences.efficientSidebarEnabled
+            statistics: root.previewSession.statistics
+            dataAvailable: !root.latencyActive && root.previewSession.statisticsAvailable
+            enabled: root.documentAvailable
+        }
     }
 }
