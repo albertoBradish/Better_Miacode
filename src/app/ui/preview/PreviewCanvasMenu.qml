@@ -115,5 +115,16 @@ AppStickyPopup {
                 checked = Qt.binding(() => root.aidSettings.showSlideJudgementTiming === true)
             }
         }
+        AppMenuItem {
+            visible: root.aidSettings.showSlideJudgementTiming === true
+            width: parent.width
+            text: qsTrId("preview.canvas.slide_timing_from_launch_beat")
+            checkable: true
+            checked: root.aidSettings.slideTimingFromLaunchBeat === true
+            onTriggered: {
+                root.putAid("slideTimingFromLaunchBeat", !root.aidSettings.slideTimingFromLaunchBeat)
+                checked = Qt.binding(() => root.aidSettings.slideTimingFromLaunchBeat === true)
+            }
+        }
     }
 }

@@ -9,6 +9,7 @@ AppTabPages {
     id: root
 
     required property var previewSettings
+    property var structure: null
 
     readonly property var values: root.previewSettings ? root.previewSettings.values : ({})
     readonly property var labels: root.previewSettings ? root.previewSettings.labels : ({})
@@ -40,6 +41,17 @@ AppTabPages {
         Layout.alignment: Qt.AlignTop
         spacing: Theme.settingsRowSpacing
 
+        LabeledCombo {
+            visible: !!root.structure
+            label: qsTrId("preview.heatmap")
+            options: [
+                { value: "overlay", label: qsTrId("preview.heatmap_overlay") },
+                { value: "youtube", label: qsTrId("preview.heatmap_youtube") },
+                { value: "off", label: qsTrId("preview.heatmap_off") }
+            ]
+            currentValue: root.structure?.heatmapStyle ?? "off"
+            onPicked: value => root.structure.heatmapStyle = value
+        }
         LabeledSlider {
             objectName: "previewBrightnessOuterSlider"
             label: root.labels.brightnessOuter || ""

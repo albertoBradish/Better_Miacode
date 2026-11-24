@@ -15,7 +15,6 @@ AppDialog {
     property var updateService: null
     property var cliIntegration: null
     property var previewSession: null
-    readonly property var canvasSettings: root.previewSession ? root.previewSession.canvasSettings : ({})
 
     signal updateRequested()
     signal completionSettingsClosed()
@@ -476,98 +475,6 @@ AppDialog {
                             }
                         }
 
-                    }
-                    PreferenceGroup {
-                        title: qsTrId("dialog.render_settings.preview_group")
-                        enabled: !!root.previewSession
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label {
-                                Layout.preferredWidth: root.settingsLabelWidth
-                                text: qsTrId("preview.heatmap")
-                                color: Theme.colors.text.secondary
-                            }
-                            Flow {
-                                Layout.fillWidth: true
-                                spacing: 6
-                                enabled: !!root.previewSession?.structure
-                                Repeater {
-                                    model: [
-                                        { style: "overlay", label: qsTrId("preview.heatmap_overlay") },
-                                        { style: "youtube", label: qsTrId("preview.heatmap_youtube") },
-                                        { style: "off", label: qsTrId("preview.heatmap_off") }
-                                    ]
-                                    delegate: AppButton {
-                                        id: styleButton
-                                        required property var modelData
-                                        text: modelData.label
-                                        Accessible.name: qsTrId("preview.heatmap") + " " + text
-                                        Accessible.selected: selected
-                                        selected: root.previewSession?.structure?.heatmapStyle === modelData.style
-                                        onClicked: root.previewSession.structure.heatmapStyle = modelData.style
-                                        contentItem: RowLayout {
-                                            spacing: 5
-                                            PressureShape {
-                                                visible: styleButton.modelData.style !== "off"
-                                                Layout.preferredWidth: 42
-                                                Layout.preferredHeight: 15
-                                                smooth: styleButton.modelData.style === "youtube"
-                                                endSecond: 8
-                                                fillColor: Theme.colors.text.secondary
-                                                spansForPaint: () => [0,1,0.2,1,2,0.7,2,3,1,3,4,0.4,4,5,0.2,5,6,0.8,6,7,0.5,7,8,0.1]
-                                            }
-                                            Label {
-                                                text: styleButton.text
-                                                color: Theme.colors.text.primary
-                                                horizontalAlignment: Text.AlignHCenter
-                                                Layout.fillWidth: true
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        PreferenceSwitch {
-                            text: qsTrId("preview.canvas.slide_timing_from_launch_beat")
-                            checked: root.canvasSettings.slideTimingFromLaunchBeat === true
-                            onToggled: root.previewSession.setCanvasSetting("slideTimingFromLaunchBeat", checked)
-                        }
-                        PreferenceCombo {
-                            objectName: "preferencesMeasureLineModeCombo"
-                            label: qsTrId("preview.canvas.measure_mode")
-                            options: [
-                                { value: 0, label: qsTrId("preview.canvas.measure_chart_clock") },
-                                { value: 1, label: qsTrId("preview.canvas.measure_custom_beats") },
-                                { value: 2, label: qsTrId("preview.canvas.measure_text_lines") }
-                            ]
-                            currentValue: root.canvasSettings.measureLineMode || 0
-                            onPicked: function(value) { root.previewSession.setCanvasSetting("measureLineMode", value) }
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            visible: root.canvasSettings.measureLineMode === 1
-                            Text {
-                                Layout.preferredWidth: root.settingsLabelWidth
-                                text: qsTrId("preview.canvas.measure_custom_beats")
-                                color: Theme.colors.text.secondary
-                                font.family: Theme.uiFont
-                                font.pixelSize: Theme.uiFontSize
-                                wrapMode: Text.WordWrap
-                            }
-                            AppTextField {
-                                objectName: "preferencesMeasureLineCustomBeatsField"
-                                Layout.fillWidth: true
-                                text: String(root.canvasSettings.measureLineCustomBeats || 4)
-                                validator: IntValidator { bottom: 1; top: 2147483647 }
-                                inputMethodHints: Qt.ImhDigitsOnly
-                                Accessible.name: qsTrId("preview.canvas.measure_custom_beats")
-                                onEditingFinished: {
-                                    if (acceptableInput && root.previewSession)
-                                        root.previewSession.setCanvasSetting("measureLineCustomBeats", Number(text))
-                                    text = Qt.binding(() => String(root.canvasSettings.measureLineCustomBeats || 4))
-                                }
-                            }
-                        }
                     }
                 }
 

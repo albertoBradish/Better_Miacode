@@ -8,6 +8,7 @@ AppDialog {
     id: root
 
     property var comparisons: null
+    property var structure: null
     required property var previewSettings
 
     property int currentPageIndex: 0
@@ -170,6 +171,7 @@ AppDialog {
                 PreviewAppearancePages {
                     width: pageViewport.availableWidth
                     previewSettings: root.previewSettings
+                    structure: root.structure
                     currentIndex: root.currentPageIndex
                 }
             }

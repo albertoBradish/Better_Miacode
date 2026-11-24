@@ -922,6 +922,7 @@ Item {
         id: previewSettingsDialog
         objectName: "shellPreviewSettingsDialog"
         comparisons: root.previewSession.comparisons
+        structure: root.previewSession.structure
         parent: splitView.settingsDialogParent
         previewSettings: root.applicationContext.previewSettings
     }
