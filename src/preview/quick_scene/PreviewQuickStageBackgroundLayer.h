@@ -19,7 +19,8 @@ public:
         const QSize& renderSize,
         QQuickWindow* window,
         PreviewTextureRepository* textures,
-        const QColor& backgroundColor = QColor(QStringLiteral("#191A1B"))
+        const QColor& backgroundColor = QColor(QStringLiteral("#191A1B")),
+        bool innerBrightnessOnly = false
     ) const;
 
 private:

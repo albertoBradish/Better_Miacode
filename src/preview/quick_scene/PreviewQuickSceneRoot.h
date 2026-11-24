@@ -50,6 +50,7 @@ class PreviewQuickSceneRoot : public QQuickItem
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(QObject* runtime READ runtimeObject WRITE setRuntimeObject NOTIFY runtimeChanged)
+    Q_PROPERTY(bool innerBrightnessOnly READ innerBrightnessOnly WRITE setInnerBrightnessOnly NOTIFY innerBrightnessOnlyChanged)
     Q_PROPERTY(bool backgroundOnly READ backgroundOnly WRITE setBackgroundOnly FINAL)
     Q_PROPERTY(bool stageBackgroundEnabled READ stageBackgroundEnabled WRITE setStageBackgroundEnabled NOTIFY stageBackgroundEnabledChanged)
     Q_PROPERTY(QColor backgroundColor READ backgroundColor WRITE setBackgroundColor NOTIFY backgroundColorChanged)
@@ -68,6 +69,8 @@ public:
         setLayerFlags(only ? miacode::preview::scene::StageBackgroundLayer
                            : miacode::preview::scene::kPreviewAllRenderLayers);
     }
+    bool innerBrightnessOnly() const { return innerBrightnessOnly_; }
+    void setInnerBrightnessOnly(bool enabled);
     bool stageBackgroundEnabled() const { return stageBackgroundEnabled_; }
     void setStageBackgroundEnabled(bool enabled);
     QColor backgroundColor() const { return backgroundColor_; }
@@ -80,6 +83,7 @@ signals:
     void runtimeChanged();
     void backgroundColorChanged();
     void stageBackgroundEnabledChanged();
+    void innerBrightnessOnlyChanged();
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* updatePaintNodeData) override;
@@ -106,6 +110,7 @@ private:
 
     QPointer<PreviewRuntime> runtime_;
     bool stageBackgroundEnabled_ = true;
+    bool innerBrightnessOnly_ = false;
     QColor backgroundColor_{QStringLiteral("#191A1B")};
     Qt::MouseButton touchPadAuthoringPressedButton_ = Qt::NoButton;
     bool selectionDragActive_ = false;

@@ -376,7 +376,8 @@ QSGNode* PreviewQuickStageBackgroundLayer::updateNode(
     const QSize& renderSize,
     QQuickWindow* window,
     PreviewTextureRepository* textures,
-    const QColor& backgroundColor
+    const QColor& backgroundColor,
+    bool innerBrightnessOnly
 ) const
 {
     Q_UNUSED(window);
@@ -388,7 +389,7 @@ QSGNode* PreviewQuickStageBackgroundLayer::updateNode(
     auto* root = ensureStageBackgroundRoot(oldNode);
     const QRectF stageRect = miacode::preview::scene::stageRectForSize(renderSize);
     const BackgroundPolicy policy = state.render.backgroundPolicy;
-    const bool showMedia = usesBackgroundMedia(policy);
+    const bool showMedia = !innerBrightnessOnly && usesBackgroundMedia(policy);
     const StageMediaFrameResult media = showMedia ? stageMediaImage(state) : StageMediaFrameResult();
     const bool usesExternalMedia = showMedia &&
         state.media.presentationMode == miacode::preview::scene::PreviewStageMediaPresentationMode::ExternalQuickMediaItem;
@@ -397,13 +398,13 @@ QSGNode* PreviewQuickStageBackgroundLayer::updateNode(
     const bool hasVisibleStageMedia = hasMedia || (usesExternalMedia && state.media.stageMediaAvailable);
     // 媒体显示状态决定内圈亮度，涵盖暂停设置、Alt 切换和导出。
     // 缺少可见媒体时使用不透明黑色圆盘，隔离主题与窗口背景。
-    const double innerBrightness = hasVisibleStageMedia
+    const double innerBrightness = (innerBrightnessOnly || hasVisibleStageMedia)
         ? state.render.backgroundBrightnessInner
         : miacode::preview_video::kInactiveBackgroundBrightnessInner;
     const double outerDarkAlpha = hasVisibleStageMedia
         ? qBound(0.0, 1.0 - state.render.backgroundBrightnessOuter, 1.0)
         : 0.0;
-    const double innerDarkAlpha = showMedia ? qBound(0.0, 1.0 - innerBrightness, 1.0) : 0.0;
+    const double innerDarkAlpha = (innerBrightnessOnly || showMedia) ? qBound(0.0, 1.0 - innerBrightness, 1.0) : 0.0;
     if (!usesExternalMedia
         && media.sourceKind == StageMediaSourceKind::ResolvedFrame
         && state.media.stageMediaSerial > 0
@@ -419,7 +420,9 @@ QSGNode* PreviewQuickStageBackgroundLayer::updateNode(
         !usesExternalMedia && media.sourceKind == StageMediaSourceKind::StaticImage ? 1 : 0;
 
     root->baseNode->setRect(stageRect);
-    if (policy == BackgroundPolicy::OpaqueBlack) {
+    if (innerBrightnessOnly) {
+        root->baseNode->setColor(Qt::transparent);
+    } else if (policy == BackgroundPolicy::OpaqueBlack) {
         root->baseNode->setColor(Qt::black);
     } else if (policy == BackgroundPolicy::Transparent
                || (usesExternalMedia && state.media.stageMediaAvailable)) {

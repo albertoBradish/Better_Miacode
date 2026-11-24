@@ -37,7 +37,7 @@ Rectangle {
     }
 
     PreviewQuickSceneRoot {
-        stageBackgroundEnabled: !root.chartPreviewSplit
+        innerBrightnessOnly: root.chartPreviewSplit
         id: previewQuickSceneRoot
         objectName: "previewQuickSceneRoot"
         x: root.chartPreviewSplit ? parent.width * 0.5 : 0

@@ -1346,6 +1346,7 @@ void PreviewQuickExportSession::applyChartGeometry()
     sceneRoot_->setPosition(QPointF(x, 0.0));
     sceneRoot_->setSize(size);
     sceneRoot_->setClip(introChartPreviewSplit_);
+    sceneRoot_->setInnerBrightnessOnly(introChartPreviewSplit_);
     sceneRoot_->update();
     hudLayer_->setPosition(QPointF(x, 0.0));
     hudLayer_->setSize(size);

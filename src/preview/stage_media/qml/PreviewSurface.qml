@@ -197,7 +197,7 @@ Item {
     }
 
     PreviewQuickSceneRoot {
-        stageBackgroundEnabled: !root.chartPreviewSplit
+        innerBrightnessOnly: root.chartPreviewSplit
         x: root.chartPreviewSplit ? parent.width * 0.5 : 0
         width: parent.width - x
         height: parent.height

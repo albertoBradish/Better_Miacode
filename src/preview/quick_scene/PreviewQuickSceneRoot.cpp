@@ -635,6 +635,14 @@ void PreviewQuickSceneRoot::setLayerFlags(miacode::preview::scene::PreviewRender
     update();
 }
 
+void PreviewQuickSceneRoot::setInnerBrightnessOnly(bool enabled)
+{
+    if (innerBrightnessOnly_ == enabled) return;
+    innerBrightnessOnly_ = enabled;
+    emit innerBrightnessOnlyChanged();
+    update();
+}
+
 void PreviewQuickSceneRoot::setStageBackgroundEnabled(bool enabled)
 {
     if (stageBackgroundEnabled_ == enabled) return;
@@ -1101,12 +1109,12 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     int slotIndex = 0;
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        stageBackgroundEnabled_ && miacode::preview::scene::previewRenderLayerEnabled(
-            layerFlags_, miacode::preview::scene::StageBackgroundLayer),
+        innerBrightnessOnly_ || (stageBackgroundEnabled_ && miacode::preview::scene::previewRenderLayerEnabled(
+            layerFlags_, miacode::preview::scene::StageBackgroundLayer)),
         "stage_background",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
-            return stageBackgroundLayer_.updateNode(oldChild, *state, renderSize, window(), textures, backgroundColor_);
+            return stageBackgroundLayer_.updateNode(oldChild, *state, renderSize, window(), textures, backgroundColor_, innerBrightnessOnly_);
         });
     updateCenterDisplaySlot(
         layerSlotAt(root, slotIndex++),
