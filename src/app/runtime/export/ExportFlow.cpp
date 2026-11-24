@@ -599,7 +599,7 @@ bool miacode::runtime::VideoExportHost::runBatchExport(
         }
         return false;
     }
-    if (selectedDifficultyIds.isEmpty()) {
+    if (selectedDifficultyIds.isEmpty() && callbacks.chartDifficulties.isEmpty()) {
         if (errorMessage != nullptr) {
             *errorMessage = qtTrId("dialog.batch_export.error.no_difficulties");
         }
@@ -626,19 +626,23 @@ bool miacode::runtime::VideoExportHost::runBatchExport(
         QString displayName;
     };
     QVector<BatchExportJob> jobs;
-    jobs.reserve(chartDirectories.size() * selectedDifficultyIds.size());
+    jobs.reserve(chartDirectories.size() * qMax<qsizetype>(1, selectedDifficultyIds.size()));
+    QSet<QPair<QString, int>> queued;
     for (const QString& chartDirectory : chartDirectories) {
-        const QFileInfo directoryInfo(QDir::cleanPath(chartDirectory));
-        const QString folderName = directoryInfo.fileName();
-        const QString trackPath = miacode::chart_assets::resolveTrackPathForDirectory(directoryInfo.absoluteFilePath());
-        const QString chartPath = resolveChartPathFromCliInput(directoryInfo.absoluteFilePath());
+        const bool fromLibrary = callbacks.chartDifficulties.contains(chartDirectory);
+        const auto difficulties = callbacks.chartDifficulties.value(chartDirectory, selectedDifficultyIds);
+        if (difficulties.isEmpty()) continue;
+        const QString chartPath = resolveChartPathFromCliInput(chartDirectory);
+        const QString folderName = QFileInfo(chartPath).dir().dirName();
+        const QString trackPath = miacode::chart_assets::resolveTrackPath(chartPath);
         if (trackPath.isEmpty() || chartPath.isEmpty()) {
             result->failedCharts.append(QDir::toNativeSeparators(chartDirectory) + QStringLiteral(" - ")
-                + qtTrId(trackPath.isEmpty() ? "dialog.batch_export.error.missing_track_file" : "dialog.batch_export.error.missing_chart_file"));
+                + qtTrId(chartPath.isEmpty() ? "dialog.batch_export.error.missing_chart_file" : "dialog.batch_export.error.missing_track_file"));
             continue;
         }
+        const QString canonical = QFileInfo(chartPath).canonicalFilePath();
         const QString currentPath = QFileInfo(session_.currentFilePath_).canonicalFilePath();
-        const bool isCurrentChart = !currentPath.isEmpty() && currentPath == QFileInfo(chartPath).canonicalFilePath();
+        const bool isCurrentChart = !currentPath.isEmpty() && currentPath == canonical;
         bool usedSystemEncoding = false;
         const QString chartText = isCurrentChart ? session_.applicationServices_.workspace().document().toText()
             : readTextFileWithFallbackEncoding(chartPath, &usedSystemEncoding);
@@ -650,19 +654,21 @@ bool miacode::runtime::VideoExportHost::runBatchExport(
         }
         const SimaiDocument document = SimaiDocument::fromText(chartText);
         int matchedDifficulties = 0;
-        for (int difficultyId : selectedDifficultyIds) {
-            if (document.difficulty(difficultyId) == nullptr) {
-                continue;
-            }
+        for (int difficultyId : difficulties) {
+            const auto* difficulty = document.difficulty(difficultyId);
+            if (!difficulty || (fromLibrary && difficulty->chart.trimmed().isEmpty())) continue;
             ++matchedDifficulties;
+            const auto key = qMakePair(canonical, difficultyId);
+            if (queued.contains(key)) continue;
+            queued.insert(key);
             const QString token = SimaiDocument::difficultyShortName(difficultyId);
             jobs.append({chartDirectory, difficultyId, token,
                          QStringLiteral("%1 [%2]").arg(
                              document.title.trimmed().isEmpty() ? folderName : document.title.trimmed(), token)});
         }
-        if (matchedDifficulties == 0) {
+        if (matchedDifficulties == 0 && !fromLibrary) {
             QStringList requested;
-            for (int difficultyId : selectedDifficultyIds) {
+            for (int difficultyId : difficulties) {
                 requested.append(SimaiDocument::difficultyShortName(difficultyId));
             }
             result->failedCharts.append(QDir::toNativeSeparators(chartDirectory) + QStringLiteral(" - ")

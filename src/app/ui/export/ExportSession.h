@@ -138,6 +138,8 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(QString batchCoverPreset READ batchCoverPreset WRITE setBatchCoverPreset NOTIFY batchChanged)
     Q_PROPERTY(QVariantList batchCoverPresetOptions READ batchCoverPresetOptions NOTIFY batchChanged)
     Q_PROPERTY(QStringList chartDirectories READ chartDirectories NOTIFY batchChanged)
+    Q_PROPERTY(QVariantMap libraryBatchLabels READ libraryBatchLabels NOTIFY batchChanged)
+    Q_PROPERTY(bool hasLibraryBatch READ hasLibraryBatch NOTIFY batchChanged)
     Q_PROPERTY(QVariantList batchDifficultyChecks READ batchDifficultyChecks NOTIFY batchChanged)
     Q_PROPERTY(QString batchOutputDirectory READ batchOutputDirectory WRITE setBatchOutputDirectory NOTIFY batchChanged)
 
@@ -281,6 +283,8 @@ public:
     bool fullRangeExport() const { return task_.fullRangeExport; }
 
     QStringList chartDirectories() const { return chartDirectories_; }
+    QVariantMap libraryBatchLabels() const;
+    bool hasLibraryBatch() const { return !libraryBatchDifficulties_.isEmpty(); }
     QVariantList batchDifficultyChecks() const;
     QString batchCoverPreset() const { return batchCoverPreset_; }
     QVariantList batchCoverPresetOptions() const;
@@ -301,6 +305,7 @@ public:
     Q_INVOKABLE void resetIntroFonts();
     Q_INVOKABLE void browseBatchOutputDirectory();
     Q_INVOKABLE void addChartDirectories();
+    Q_INVOKABLE void appendLibraryBatch(const QVariantMap& charts);
     Q_INVOKABLE void removeChartDirectory(int index);
     Q_INVOKABLE void clearChartDirectories();
     Q_INVOKABLE void setBatchDifficultyChecked(int difficultyId, bool checked);
@@ -479,6 +484,7 @@ private:
     int resolutionIndex_ = 3;
     QStringList chartDirectories_;
     QList<int> batchSelectedDifficultyIds_;
+    QHash<QString, QList<int>> libraryBatchDifficulties_;
     QString batchOutputDirectory_;
     QString batchOutputChartPath_;
     ChartPreviewContextProvider chartPreviewContextProvider_;

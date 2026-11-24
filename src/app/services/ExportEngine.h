@@ -3,6 +3,7 @@
 #include "export/video_export/VideoExportController.h"
 
 #include <QList>
+#include <QHash>
 #include <QString>
 #include <QStringList>
 
@@ -32,6 +33,9 @@ public:
         std::function<bool()> cancellationRequested;
         std::function<void()> retrying;
         std::function<QStringList(const VideoExportTask&, const QString&, QString*, QStringList*)> exportCover;
+        // Library entries select exact difficulties per chart path. Ordinary
+        // directories continue to use the page's common difficulty selection.
+        QHash<QString, QList<int>> chartDifficulties;
     };
 
     virtual ~ExportEngine() = default;

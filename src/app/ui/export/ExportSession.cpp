@@ -999,6 +999,7 @@ void ExportSession::startExport()
         emit exportRunningChanged();
         miacode::ExportEngine::BatchResult result;
         miacode::ExportEngine::BatchCallbacks callbacks;
+        callbacks.chartDifficulties = libraryBatchDifficulties_;
         // Batch runs synchronously on the UI thread, so it reports onto the same
         // shell overlay every other job uses. Before this the callback pumped
         // events and threw the percentage away, leaving batch with no progress
@@ -1355,12 +1356,43 @@ void ExportSession::addChartDirectory(const QString& path)
     emit batchChanged();
 }
 
+void ExportSession::appendLibraryBatch(const QVariantMap& charts)
+{
+    bool changed = false;
+    for (auto it = charts.cbegin(); it != charts.cend(); ++it) {
+        const QString path = QFileInfo(it.key()).canonicalFilePath();
+        if (path.isEmpty() || !QFileInfo(path).isFile()) continue;
+        auto difficulties = libraryBatchDifficulties_.value(path);
+        for (const auto& value : it.value().toList()) {
+            const int id = value.toInt();
+            if (SimaiDocument::isDifficultyId(id) && !difficulties.contains(id)) difficulties.append(id);
+        }
+        if (difficulties.isEmpty() || difficulties == libraryBatchDifficulties_.value(path)) continue;
+        std::sort(difficulties.begin(), difficulties.end());
+        libraryBatchDifficulties_.insert(path, difficulties);
+        if (!chartDirectories_.contains(path)) chartDirectories_.append(path);
+        changed = true;
+    }
+    if (changed) emit batchChanged();
+}
+
+QVariantMap ExportSession::libraryBatchLabels() const
+{
+    QVariantMap labels;
+    for (auto it = libraryBatchDifficulties_.cbegin(); it != libraryBatchDifficulties_.cend(); ++it) {
+        QStringList names;
+        for (int id : it.value()) names.append(SimaiDocument::difficultyShortName(id));
+        labels.insert(it.key(), names.join(", "));
+    }
+    return labels;
+}
+
 void ExportSession::removeChartDirectory(int index)
 {
     if (index < 0 || index >= chartDirectories_.size()) {
         return;
     }
-    chartDirectories_.removeAt(index);
+    libraryBatchDifficulties_.remove(chartDirectories_.takeAt(index));
     emit batchChanged();
 }
 
@@ -1370,6 +1402,7 @@ void ExportSession::clearChartDirectories()
         return;
     }
     chartDirectories_.clear();
+    libraryBatchDifficulties_.clear();
     emit batchChanged();
 }
 

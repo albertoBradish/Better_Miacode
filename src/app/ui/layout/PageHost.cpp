@@ -199,8 +199,10 @@ bool PageHost::requestPageSwitch(std::function<bool()> action)
 bool PageHost::openVideoExportPage(const QString& tab)
 {
     miacode::EditorPageRouter* const pages = router();
-    if (document_ == nullptr || !document_->hasDocument()
-        || pages == nullptr || exportSessionObject() == nullptr) {
+    ExportSession* const session = exportSessionObject();
+    const bool libraryBatch = tab == QLatin1String("batch") && session && session->hasLibraryBatch();
+    if (document_ == nullptr || (!document_->hasDocument() && !libraryBatch)
+        || pages == nullptr || session == nullptr) {
         return false;
     }
     const QString requestedTab = tab == QLatin1String("batch")
@@ -209,7 +211,7 @@ bool PageHost::openVideoExportPage(const QString& tab)
         // The export page is a resident QML surface. Re-clicking its sidebar
         // entry only changes the single/batch tab; tearing down and rebuilding
         // the audition here made an otherwise harmless navigation expensive.
-        exportSessionObject()->setActiveTab(requestedTab);
+        session->setActiveTab(requestedTab);
         return true;
     }
     rememberResumeDifficulty();

@@ -606,15 +606,15 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         errorMessage->clear();
     }
 
-    const QFileInfo directoryInfo(QDir::cleanPath(chartDirectory));
-    if (!directoryInfo.exists() || !directoryInfo.isDir()) {
+    const QFileInfo sourceInfo(QDir::cleanPath(chartDirectory));
+    if (!sourceInfo.exists()) {
         if (errorMessage != nullptr) {
             *errorMessage = qtTrId("dialog.batch_export.error.invalid_folder");
         }
         return false;
     }
 
-    const QString chartPath = resolveChartPathFromCliInput(directoryInfo.absoluteFilePath());
+    const QString chartPath = resolveChartPathFromCliInput(sourceInfo.absoluteFilePath());
     if (chartPath.isEmpty()) {
         if (errorMessage != nullptr) {
             *errorMessage = qtTrId("dialog.batch_export.error.missing_chart_file");
@@ -622,7 +622,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         return false;
     }
 
-    const QString trackPath = miacode::chart_assets::resolveTrackPathForDirectory(directoryInfo.absoluteFilePath());
+    const QString trackPath = miacode::chart_assets::resolveTrackPath(chartPath);
     if (trackPath.isEmpty()) {
         if (errorMessage != nullptr) {
             *errorMessage = qtTrId("dialog.batch_export.error.missing_track_file");

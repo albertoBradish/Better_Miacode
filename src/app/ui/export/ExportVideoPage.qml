@@ -13,7 +13,9 @@ Rectangle {
     required property var previewSession
     required property var previewSettings
     readonly property var session: pages && pages.exportSession ? pages.exportSession : null
-    readonly property bool settingsAvailable: !!root.session && root.session.unavailableReason.length === 0
+    readonly property bool settingsAvailable: !!root.session && (root.session.unavailableReason.length === 0
+        || (root.session.activeTab === "batch" && root.session.hasLibraryBatch))
+    readonly property var libraryBatchLabels: root.session ? root.session.libraryBatchLabels : ({})
     readonly property alias cornerSourceItem: heading
     readonly property bool introSettingsEnabled: !!root.session
                                                   && root.session.introEnabled
@@ -372,6 +374,15 @@ Rectangle {
                                                             visible: chartDirectoryPathHover.hovered
                                                             text: chartDirectoryDelegate.modelData
                                                         }
+                                                    }
+
+                                                    Label {
+                                                        readonly property string difficulties: root.libraryBatchLabels[chartDirectoryDelegate.modelData] ?? ""
+                                                        visible: difficulties.length > 0
+                                                        Layout.maximumWidth: chartDirectoryRow.width * 0.45
+                                                        text: difficulties
+                                                        color: Theme.colors.text.secondary
+                                                        elide: Text.ElideRight
                                                     }
 
                                                     IconButton {
