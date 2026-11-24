@@ -7435,5 +7435,8 @@ Movement L %3 / R %4 · Alternation %5</translation>
 <message id="preview.auto_detect"><source>Auto detect</source><translation>Auto detect</translation></message>
 <message id="preview.completion_display"><source>Achievement display</source><translation>Achievement display</translation></message>
 <message id="preview.completion_default"><source>Default</source><translation>Default</translation></message>
+<message id="export.zip.without_pv"><source>Also export a copy without PV</source><translation>Also export a copy without PV</translation></message>
+<message id="export.zip.basic_metadata"><source>Export basic metadata only</source><translation>Export basic metadata only</translation></message>
+<message id="export.zip.normalize"><source>Normalize exported charts</source><translation>Normalize exported charts</translation></message>
 </context>
 </TS>

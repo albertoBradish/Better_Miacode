@@ -413,13 +413,13 @@ bool PageHost::openCoverExport(int difficultyId)
     return true;
 }
 
-void PageHost::packAsZip()
+void PageHost::packAsZip(const QVariantMap& options)
 {
     if (document_ == nullptr || !document_->hasDocument()) {
         return;
     }
     if (miacode::EditorPageRouter* const pages = router(); pages != nullptr) {
-        pages->packChartAsZip();
+        pages->packChartAsZip(options);
     }
 }
 

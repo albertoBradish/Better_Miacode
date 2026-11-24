@@ -454,6 +454,7 @@ miacode_add_dev_tool(chart_library_spec TEST
         src/app/services/JobProgressService.h
         src/tools/services/ChartLibrarySpec.cpp
         src/app/services/ChartLibraryFiles.cpp
+        src/app/services/ChartZipExport.cpp
         src/app/services/ManagedChartLibrary.cpp
         src/app/services/LibraryImportIndex.cpp
         src/app/services/LibraryImportZip.cpp
@@ -461,7 +462,7 @@ miacode_add_dev_tool(chart_library_spec TEST
         src/app/ui/library/ChartLibraryModel.cpp
         src/app/ui/library/ChartLibrarySongs.cpp
         src/app/ui/library/ChartLibraryModel.h
-    LIBS miacode_analysis miacode_audio miacode_editor_core Qt6::Core Qt6::Gui Qt6::Qml Qt6::Concurrent Qt6::Test miniz
+    LIBS miacode_analysis miacode_audio miacode_editor_core miacode_media_tools Qt6::Core Qt6::Gui Qt6::Qml Qt6::Concurrent Qt6::Test miniz
     INCLUDES src)
 target_compile_definitions(chart_library_spec PRIVATE
     "MIACODE_TEST_OUTPUT_ROOT=\"${CMAKE_CURRENT_BINARY_DIR}\"")

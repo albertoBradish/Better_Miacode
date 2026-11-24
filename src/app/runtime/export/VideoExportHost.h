@@ -53,13 +53,13 @@ public:
     // Batch export is inherently multi-difficulty; the explicit id only
     // seeds the dialog's default difficulty token.
     void onBatchExportPreviewVideo(int difficultyId = 0);
-    void onPackAsZip();
+    void onPackAsZip(const QVariantMap& options = {});
     // Continuation of onPackAsZip once the shell has answered the save picker.
     // An empty path means the pick was cancelled.
     void packChartToZipAtPath(const QString& chartText,
                               const QString& chartPath,
                               const miacode::LocalizedText& dialogTitle,
-                              const QString& pickedPath);
+                              const QString& pickedPath, const QVariantMap& options);
     // ---- QML export shell (v2) ----
     VideoExportTask buildVideoExportSeedTaskPublic(int difficultyId = 0);
     bool startQmlExportAudition(int difficultyId, const VideoExportTask& visualTask);

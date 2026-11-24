@@ -1,4 +1,4 @@
-#include "app/services/AutomaticChartPreparation.h"
+#include "app/services/ChartZipExport.h"
 #include "app/services/PreferenceDocument.h"
 #include "common/LocalizedText.h"
 
@@ -22,7 +22,7 @@
 
 using namespace miacode::runtime::shared;
 
-void miacode::runtime::VideoExportHost::onPackAsZip()
+void miacode::runtime::VideoExportHost::onPackAsZip(const QVariantMap& options)
 {
     MC_OP("miacode::runtime::VideoExportHost::onPackAsZip");
 
@@ -41,7 +41,7 @@ void miacode::runtime::VideoExportHost::onPackAsZip()
         const auto current = session_.applicationServices_.workspace().snapshot();
         return current.documentOpenGeneration == before.documentOpenGeneration && current.revision == before.revision;
     };
-    const auto choosePath = [this, requests, dialogTitle, before, unchanged] {
+    const auto choosePath = [this, requests, dialogTitle, before, unchanged, options] {
         if (!unchanged()) {
             requests->postNotice(miacode::NoticeSeverity::Warning, dialogTitle, miacode::localizedText("export.document_changed_retry"));
             return;
@@ -53,19 +53,15 @@ void miacode::runtime::VideoExportHost::onPackAsZip()
         request.startPath = before.filePath.isEmpty() ? defaultName : QFileInfo(before.filePath).absoluteDir().filePath(defaultName);
         request.nameFilters = {miacode::localizedText("file_filter.zip")};
         request.saveMode = true;
-        requests->requestFile(request, [this, requests, dialogTitle, before, unchanged](const QString& picked) {
+        requests->requestFile(request, [this, requests, dialogTitle, before, unchanged, options](const QString& picked) {
             if (picked.isEmpty()) return;
             if (!unchanged()) {
                 requests->postNotice(miacode::NoticeSeverity::Warning, dialogTitle, miacode::localizedText("export.document_changed_retry"));
                 return;
             }
             auto& services = session_.applicationServices_;
-            const auto prepared = miacode::automatic_chart::prepare(services.workspace(), services.files(), miacode::automatic_chart::Trigger::Zip);
-            if (!prepared.accepted) {
-                requests->postNotice(miacode::NoticeSeverity::Warning, miacode::localizedText("library.normalize_warning"), prepared.error);
-            }
             const QString chartText = services.workspace().document().toText();
-            packChartToZipAtPath(chartText, before.filePath, dialogTitle, picked);
+            packChartToZipAtPath(chartText, before.filePath, dialogTitle, picked, options);
         });
     };
     bool hasEmptyDifficulty = false;
@@ -96,7 +92,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     const QString& chartText,
     const QString& chartPath,
     const miacode::LocalizedText& dialogTitle,
-    const QString& pickedPath)
+    const QString& pickedPath, const QVariantMap& options)
 {
     MC_OP("miacode::runtime::VideoExportHost::packChartToZipAtPath");
     miacode::UiRequestService* const requests = session_.uiRequestService();
@@ -139,7 +135,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     };
 
     const miacode::zip_export::ChartZipResult result =
-        miacode::zip_export::packChartToZip(input, onProgress);
+        miacode::library::exportChartZip(input, options, onProgress);
     jobProgress->end();
 
     if (result.canceled) {
@@ -161,6 +157,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     }
 
     QString details = result.includedEntries.join(QLatin1Char('\n'));
+    if (!result.companionPath.isEmpty()) details += QLatin1Char('\n') + QDir::toNativeSeparators(result.companionPath);
     if (details.size() > 3000) {
         details = details.left(3000) + QStringLiteral("\n...");
     }

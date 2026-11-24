@@ -6,11 +6,18 @@ Rectangle {
     id: root
 
     required property var pages
+    property bool normalizeDefault: false
     property bool documentAvailable: true
     readonly property alias cornerSourceItem: heading
 
     color: Theme.surfaceColor(Theme.colors.background.panel)
     clip: true
+
+    ChartZipOptionsDialog {
+        id: zipOptions
+        normalizeDefault: root.normalizeDefault
+        onExportRequested: options => root.pages.packAsZip(options)
+    }
 
     PanelHeader {
         id: heading
@@ -61,7 +68,7 @@ Rectangle {
                 text: qsTrId("export_page.pack_as_zip")
                 iconSource: Qt.resolvedUrl("icons/folder-zip.svg")
                 filledIconSource: Qt.resolvedUrl("icons/folder-zip-fill.svg")
-                onClicked: root.pages.packAsZip()
+                onClicked: zipOptions.open()
             }
         }
 

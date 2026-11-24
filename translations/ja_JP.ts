@@ -7453,5 +7453,8 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="preview.auto_detect"><source>Auto detect</source><translation>自動検出</translation></message>
 <message id="preview.completion_display"><source>Achievement display</source><translation>達成率表示</translation></message>
 <message id="preview.completion_default"><source>Default</source><translation>デフォルト</translation></message>
+<message id="export.zip.without_pv"><source>Also export a copy without PV</source><translation>PV なしの ZIP も出力</translation></message>
+<message id="export.zip.basic_metadata"><source>Export basic metadata only</source><translation>基本メタデータのみ出力</translation></message>
+<message id="export.zip.normalize"><source>Normalize exported charts</source><translation>出力する譜面を整形</translation></message>
 </context>
 </TS>

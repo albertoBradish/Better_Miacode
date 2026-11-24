@@ -156,7 +156,7 @@ public:
     bool enterExportPage() override;
     bool enterApplicationPage() override;
     bool clearEditorPresentation() override;
-    void packChartAsZip() override;
+    void packChartAsZip(const QVariantMap& options) override;
     void openPreferences() override;
     void requestShellClose(std::function<void(bool)> onDecided) override;
 

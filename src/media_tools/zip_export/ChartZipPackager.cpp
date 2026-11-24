@@ -104,7 +104,7 @@ ChartZipResult packChartToZip(const ChartZipInput& input, const ChartZipProgress
         // actual video that lives next to the chart. A &video= target
         // outside the chart folder is intentionally skipped.
         const QString videoPath = resolveChartVideoPath(input.chartPath, input.videoFieldValue);
-        if (isVideoBackgroundPath(videoPath)) {
+        if (input.includeVideo && isVideoBackgroundPath(videoPath)) {
             const QString videoDir = QFileInfo(videoPath).absolutePath();
             if (QDir(videoDir) == QDir(chartDir)) {
                 appendSiblingAsset(jobs, videoPath);

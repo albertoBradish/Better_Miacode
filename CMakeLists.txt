@@ -533,6 +533,7 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/cli_tasks.cpp
     src/app/services/ChartLibraryFiles.h
     src/app/services/ChartLibraryFiles.cpp
+    src/app/services/ChartZipExport.cpp
     src/app/services/ManagedChartLibrary.cpp
     src/app/services/LibraryImportIndex.cpp
     src/app/services/LibraryImportZip.cpp
@@ -755,6 +756,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/editor/SourceEditor.qml
     src/app/ui/editor/CompletionPopup.qml
     src/app/ui/editor/NormalizeOptionsDialog.qml
+    src/app/ui/export/ChartZipOptionsDialog.qml
     src/app/ui/editor/DesignerSlotsDialog.qml
     src/app/ui/media/AudioProcessingMenu.qml
     src/app/ui/media/VideoProcessingMenu.qml

@@ -53,7 +53,7 @@ public:
     Q_INVOKABLE void openNormalizeWholeChart();
     Q_INVOKABLE void openBatchExport();
     Q_INVOKABLE bool openCoverExport(int difficultyId = 0);
-    Q_INVOKABLE void packAsZip();
+    Q_INVOKABLE void packAsZip(const QVariantMap& options = {});
 
 signals:
     void normalizeWholeChartRequested();

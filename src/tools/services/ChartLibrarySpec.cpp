@@ -1,4 +1,5 @@
 #include "app/services/ChartLibraryFiles.h"
+#include "app/services/ChartZipExport.h"
 #include <miniz.h>
 #include <QDirIterator>
 #include "app/services/ManagedChartLibrary.h"
@@ -64,6 +65,47 @@ QByteArray chart(const QString& title)
 {
     return (QStringLiteral("&title=") + title
         + QStringLiteral("\n&artist=Generated artist\n&version=QA\n&lv_5=12\n&inote_5=(120){4}1,2h[4:1],3-5[4:1],A1,E\n")).toUtf8();
+}
+
+void zipExportOptions(const QString& base)
+{
+    QDir folder(QDir(base).filePath("zip-options"));
+    QDir().mkpath(folder.path());
+    const QString path = folder.filePath("maidata.txt");
+    const QByteArray bytes = "&title=Test\n&artist=Artist\n&des=Designer\n&first=0.25\n&clock_count=4\n"
+        "&wholebpm=120\n&video=pv.mp4\n&version=Custom\n&level_constant_5=14.8\n&lv_5=14+\n"
+        "&inote_5=(120){4}1,2,3,4,E\n&lv_4=13\n&inote_4=(120){4}4,3,2,1,E\n";
+    put(path, bytes);
+    put(folder.filePath("pv.mp4"), "video");
+    put(folder.filePath("bg.jpg"), "image");
+    put(folder.filePath("track.mp3"), "audio");
+    const QString archive = folder.filePath("song.zip");
+    const miacode::zip_export::ChartZipInput input{QString::fromUtf8(bytes), path, "pv.mp4", archive};
+    const QVariantMap options{{"basicMetadata", true}, {"normalize", true}, {"withoutPvCopy", true}};
+    const auto result = files::exportChartZip(input, options);
+    check(result.ok && QFile::exists(result.companionPath) && get(path) == bytes,
+        "paired normalized ZIP keeps the original chart byte-for-byte");
+    for (const auto& zipPath : {archive, result.companionPath}) {
+        mz_zip_archive zip{};
+        const bool open = mz_zip_reader_init_file(&zip, zipPath.toUtf8().constData(), 0);
+        if (!open) { check(false, "exported ZIP opens"); continue; }
+        size_t size = 0;
+        void* data = mz_zip_reader_extract_file_to_heap(&zip, "maidata.txt", &size, 0);
+        const QByteArray text(static_cast<const char*>(data), qsizetype(size));
+        mz_free(data);
+        const bool hasVideo = zipPath == archive;
+        check(text.contains("&inote_4=") && text.contains("&inote_5=") && text.contains("&first=0.25")
+            && text.contains("&wholebpm=120") && text.contains("&lv_5=14+") && text.contains("&des=Designer")
+            && !text.contains("&level_constant") && !text.contains("&version="), "basic ZIP retains timing and both charts");
+        check((mz_zip_reader_locate_file(&zip, "pv.mp4", nullptr, 0) >= 0) == hasVideo
+            && text.contains("&video=pv.mp4") == hasVideo && mz_zip_reader_locate_file(&zip, "bg.jpg", nullptr, 0) >= 0
+            && mz_zip_reader_locate_file(&zip, "track.mp3", nullptr, 0) >= 0, "companion only omits video and its reference");
+        mz_zip_reader_end(&zip);
+    }
+    const auto before = get(archive);
+    const auto canceled = files::exportChartZip(input, options, [](int, int, const QString&) { return false; });
+    check(canceled.canceled && get(archive) == before && folder.entryList({"*.zip"}, QDir::Files).size() == 2,
+        "canceling paired ZIP preserves previous archives");
 }
 
 void clearRecovery()
@@ -761,9 +803,11 @@ int main(int argc, char** argv)
     PreferenceDocument::savePreferencesObject(preferences);
     independentSongTabs(fixtures.path());
     encodingAndNormalization(fixtures.path());
+    zipExportOptions(fixtures.path());
     fileTransactions(fixtures.path());
     importPacks(fixtures.path());
     smartImport(fixtures.path());
+    collectionLifecycle(fixtures.path());
     songManager(fixtures.path());
     indexAndBuffers(fixtures.path());
     recovery(fixtures.path());

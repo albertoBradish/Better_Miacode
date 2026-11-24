@@ -41,7 +41,7 @@ public:
     bool enterLatencyPage() override { return enterOverlay(QStringLiteral("latency")); }
     bool enterExportPage() override { return enterOverlay(QStringLiteral("export")); }
 
-    void packChartAsZip() override { ++packCount; }
+    void packChartAsZip(const QVariantMap& = {}) override { ++packCount; }
     void openPreferences() override { ++preferencesCount; }
 
     void requestShellClose(std::function<void(bool)> onDecided) override

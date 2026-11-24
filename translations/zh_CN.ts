@@ -7454,5 +7454,8 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="preview.auto_detect"><source>Auto detect</source><translation>自动检测</translation></message>
 <message id="preview.completion_display"><source>Achievement display</source><translation>完成度显示</translation></message>
 <message id="preview.completion_default"><source>Default</source><translation>默认</translation></message>
+<message id="export.zip.without_pv"><source>Also export a copy without PV</source><translation>同步导出不含 PV 的版本</translation></message>
+<message id="export.zip.basic_metadata"><source>Export basic metadata only</source><translation>只导出基础元数据</translation></message>
+<message id="export.zip.normalize"><source>Normalize exported charts</source><translation>自动整理导出谱面</translation></message>
 </context>
 </TS>

@@ -299,9 +299,9 @@ bool miacode::runtime::DocumentSessionHost::enterExportPage()
     return switchToExportField();
 }
 
-void miacode::runtime::DocumentSessionHost::packChartAsZip()
+void miacode::runtime::DocumentSessionHost::packChartAsZip(const QVariantMap& options)
 {
-    session_.videoExport_->onPackAsZip();
+    session_.videoExport_->onPackAsZip(options);
 }
 
 void miacode::runtime::DocumentSessionHost::openPreferences()

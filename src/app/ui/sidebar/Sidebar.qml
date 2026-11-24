@@ -140,6 +140,7 @@ Item {
 
         ExportSidebarPage {
             id: exportSidebar
+            normalizeDefault: root.preferences.autoNormalizeEnabled === true
             color: root.compact ? "transparent" : Theme.surfaceColor(Theme.colors.background.panel)
             anchors.fill: parent
             visible: root.viewState.activeSidebarView === "export"

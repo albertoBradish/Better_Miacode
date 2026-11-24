@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <QVariantMap>
 
 namespace miacode {
 
@@ -31,7 +32,7 @@ public:
 
     // 打包为 ZIP. Routed here rather than through a command bus because it is
     // reached from the page host's own menu entry.
-    virtual void packChartAsZip() = 0;
+    virtual void packChartAsZip(const QVariantMap& options = {}) = 0;
 
     virtual void openPreferences() = 0;
 

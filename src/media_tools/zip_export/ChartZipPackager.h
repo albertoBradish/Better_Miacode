@@ -31,6 +31,7 @@ struct ChartZipInput {
     QString videoFieldValue;
     // Destination .zip path (already chosen by the caller's save dialog).
     QString outputZipPath;
+    bool includeVideo = true;
 };
 
 struct ChartZipResult {
@@ -40,6 +41,7 @@ struct ChartZipResult {
     // Archive-relative names of everything that made it into the zip,
     // for the success popup.
     QStringList includedEntries;
+    QString companionPath;
 };
 
 // Progress callback: (oneBasedIndex, total, archiveEntryName). Return
