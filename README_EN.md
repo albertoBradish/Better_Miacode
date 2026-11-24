@@ -2,9 +2,9 @@
 
 An independent enhancement fork of [MiaCode](https://github.com/Team-MiaCode/MiaCode). The list below covers only Better Miacode additions and improvements.
 
-Latest release: [2.0.1-better.14](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.14).
+Latest release: [2.0.1-better.15](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.15).
 
-[Download](https://github.com/albertoBradish/Better_Miacode/releases) · [Release source](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.14) · [中文](README.md) · [Issues](https://github.com/albertoBradish/Better_Miacode/issues)
+[Download](https://github.com/albertoBradish/Better_Miacode/releases) · [Release source](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.15) · [中文](README.md) · [Issues](https://github.com/albertoBradish/Better_Miacode/issues)
 
 ## Selection & editing
 
@@ -91,7 +91,7 @@ Enable command-line integration in Preferences → About before using `better-mi
 
 Preview supports arbitrary aspect ratios. Video presets remain 1:1, 4:3, and 16:9; command-line video width must be at least its height. Pressure is an estimate, not an official level constant.
 
-Better Miacode contains no hand-order annotation or automatic hand-order inference features.
+Hand-order tools are off by default. Enter the offline password under Preferences → Advanced to enable manual annotation, automatic analysis, and rendering.
 
 ## License
 

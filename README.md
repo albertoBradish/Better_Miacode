@@ -2,9 +2,9 @@
 
 基于 [MiaCode](https://github.com/Team-MiaCode/MiaCode) 的谱面编辑器，以下仅列出 Better 的新增与改进。
 
-最新发布：[2.0.1-better.14](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.14)。
+最新发布：[2.0.1-better.15](https://github.com/albertoBradish/Better_Miacode/releases/tag/v2.0.1-better.15)。
 
-[下载](https://github.com/albertoBradish/Better_Miacode/releases) · [对应源码](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.14) · [English](README_EN.md) · [问题反馈](https://github.com/albertoBradish/Better_Miacode/issues)
+[下载](https://github.com/albertoBradish/Better_Miacode/releases) · [对应源码](https://github.com/albertoBradish/Better_Miacode/tree/v2.0.1-better.15) · [English](README_EN.md) · [问题反馈](https://github.com/albertoBradish/Better_Miacode/issues)
 
 功能快速查阅：
 基于 MiaCode 的独立改进版本，保留原版的谱面编辑、实时预览、语法与无理检测、音视频工具、Net 谱面服务和封面制作等功能，并提供以下改进：
@@ -311,7 +311,7 @@ Windows 包完整解压到可写目录后，从根目录 `MiaCode.exe` 启动。
 
 预览支持自由比例；视频预设为 1:1、4:3、16:9，命令行导出的视频宽度不能小于高度。压力估算供编排参考，不等同于官方定数。
 
-Better Miacode 不包含手序标注或自动手序拆解功能。
+手序拆解默认关闭。在「首选项 → 高级」输入离线密码启用后，可使用手序标注、自动拆解和渲染。
 
 ## 来源与许可
 
