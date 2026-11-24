@@ -45,10 +45,11 @@ public:
         double fallbackSecond = 0.0;
     };
 
-    explicit QtPreviewSfxRuntime(QObject* parent = nullptr);
+    explicit QtPreviewSfxRuntime(QObject* parent = nullptr, bool bufferedOutput = false);
     explicit QtPreviewSfxRuntime(
         miacode::preview_audio::PreviewAudioBackendFactory factory,
-        QObject* parent = nullptr);
+        QObject* parent = nullptr,
+        bool bufferedOutput = false);
     ~QtPreviewSfxRuntime() override;
 
     AssetSubmission setWarmupResolvedPaths(const QString& chartPath, const QString& trackPath, const QString& sfxDir);
@@ -71,6 +72,7 @@ public:
     void setBackgroundTrackPlaybackRate(double rate);
     void applyPlaybackRateAtChartSecond(double rate, double chartSecond);
     void setOutputRoute(double gain, double pan) { outputRoute_->set(gain, pan); }
+    const std::shared_ptr<PreviewOutputRoute>& outputRoute() const { return outputRoute_; }
     void applyLevels(const PreviewAudioSettings& settings);
     void configureTimeline(
         const QVector<TimelineNoteMarker>& noteMarkers,
@@ -94,7 +96,8 @@ public:
         double pauseSecond,
         double playbackRate,
         const PreviewTimingSettings& timingSettings);
-    double startPreviewPlaybackTransaction(double startSecond, bool resumeFromPause, double playbackRate);
+    double startPreviewPlaybackTransaction(
+        double startSecond, bool resumeFromPause, double playbackRate, quint64 outputFade = 0);
     PausePreviewResult capturePausedPreviewTransaction();
     PausePreviewResult pausePreviewPlaybackTransaction();
     PauseSubmission requestManualPause(quint64 transactionId, double wallSecond);
@@ -164,7 +167,7 @@ signals:
     void auditionCompleted(const QtPreviewSfxRuntime::Completion& completion);
 
 private:
-    std::shared_ptr<PreviewOutputRoute> outputRoute_ = std::make_shared<PreviewOutputRoute>();
+    const std::shared_ptr<PreviewOutputRoute> outputRoute_;
     struct CallbackState {
         std::atomic_bool deliveryEnabled{true};
     };

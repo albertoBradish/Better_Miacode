@@ -20,6 +20,7 @@ Q_IMPORT_QML_PLUGIN(MiaCode_PreviewPlugin)
 #include <QThreadPool>
 #include <QFile>
 #include <QTextStream>
+#include <algorithm>
 
 using namespace miacode;
 using namespace miacode::ui;
@@ -149,6 +150,49 @@ int main(int argc, char** argv)
     left.process(peaks, 2); right.process(otherPeaks, 2);
     check(peaks[0] + otherPeaks[0] <= 0.901f && peaks[1] + otherPeaks[1] >= -0.901f,
         "correlated over-range signals stay within the shared headroom");
+    PreviewOutputRoute handoff(true);
+    handoff.attach(1000, 0.004);
+    handoff.set(0, 0);
+    float preload[8] = {};
+    handoff.process(preload, 8);
+    check(handoff.drained(), "a muted mixer acknowledges its buffered tail");
+    const auto superseded = handoff.fadeIn(1, 0);
+    handoff.set(0, 0);
+    const auto fresh = handoff.fadeIn(1, 0);
+    handoff.releaseFade(superseded);
+    float oldFrames[]{0.5f, 0.5f, 0.5f, 0.5f};
+    handoff.process(oldFrames, 4);
+    check(oldFrames[0] == 0 && oldFrames[2] == 0, "a superseded start cannot pass old audio");
+    handoff.releaseFade(fresh);
+    float leadingSilence[64] = {};
+    handoff.process(leadingSilence, 64);
+    float newFrames[48];
+    std::ranges::fill(newFrames, 0.5f);
+    handoff.process(newFrames, 48);
+    check(newFrames[0] > 0 && newFrames[0] < 0.03f && std::abs(newFrames[46] - 0.5f) < 0.001f,
+        "fresh PCM fades in over 24 ms after the decoder starts producing signal");
+    handoff.set(0, 0);
+    float outgoing[48];
+    std::ranges::fill(outgoing, 0.5f);
+    handoff.process(outgoing, 48);
+    check(outgoing[0] > 0.47f && outgoing[0] < 0.5f && outgoing[46] == 0 && !handoff.drained(),
+        "the outgoing mix reaches silence before the playback queue has drained");
+    float queuedTail[6];
+    std::ranges::fill(queuedTail, 0.5f);
+    handoff.process(queuedTail, 6);
+    check(handoff.drained() && queuedTail[0] == 0 && queuedTail[4] == 0,
+        "the next source can open after the rendered buffer tail drains");
+    handoff.set(1, 0);
+    float refocused[]{0.5f, 0.5f};
+    handoff.process(refocused, 2);
+    handoff.set(0, 0);
+    float retiring[]{0.5f, 0.5f};
+    handoff.process(retiring, 2);
+    handoff.set(1, 0);
+    float reversed[]{0.5f, 0.5f};
+    handoff.process(reversed, 2);
+    check(retiring[0] < refocused[0] && reversed[0] > retiring[0] && reversed[0] < 0.06f,
+        "rapid refocus reverses the current envelope without replaying an old ramp");
     double masterGain = -1, masterPan = 0;
     QObject::connect(&notifications, &ShellNotifications::previewOutputRouteChanged, &main,
         [&](double gain, double pan) { masterGain = gain; masterPan = pan; });

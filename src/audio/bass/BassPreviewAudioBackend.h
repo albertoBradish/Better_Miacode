@@ -62,6 +62,7 @@ public:
         double playbackRate,
         const PreviewTimingSettings& timingSettings) override;
     double startPreviewPlaybackTransaction(double startSecond, bool resumeFromPause, double playbackRate) override;
+    double startFocusedPreviewPlaybackTransaction(double startSecond, double playbackRate, quint64 outputFade) override;
     PausePreviewResult capturePausedPreviewTransaction() override;
     PausePreviewResult pausePreviewPlaybackTransaction() override;
     double resumeRetainedPreviewPlaybackTransaction() override;
@@ -91,6 +92,8 @@ public:
     miacode::preview_audio::PreviewAudioHealthSample sampleHealth() override;
 
 private:
+    double startPlayback(double startSecond, bool resumeFromPause, double playbackRate, quint64 outputFade);
+
     struct Sample;
 
     enum class ScheduledMixerAction {

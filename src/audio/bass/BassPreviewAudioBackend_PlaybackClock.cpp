@@ -713,9 +713,29 @@ void BassPreviewAudioBackend::applyPausedPreviewState(
 
 double BassPreviewAudioBackend::startPreviewPlaybackTransaction(double startSecond, bool resumeFromPause, double playbackRate)
 {
+    return startPlayback(startSecond, resumeFromPause, playbackRate, 0);
+}
+
+double BassPreviewAudioBackend::startFocusedPreviewPlaybackTransaction(
+    double startSecond, double playbackRate, quint64 outputFade)
+{
+    return startPlayback(startSecond, false, playbackRate, outputFade);
+}
+
+double BassPreviewAudioBackend::startPlayback(
+    double startSecond, bool resumeFromPause, double playbackRate, quint64 outputFade)
+{
     MC_OP("BassPreviewAudioBackend::startPreviewPlaybackTransaction");
     const double preparedSecond = preparePreviewPlaybackTransaction(startSecond, resumeFromPause, playbackRate);
+    if (preparedPlayback_.pending && outputRoute_ && outputFade) outputRoute_->releaseFade(outputFade);
     commitPreparedPreviewPlayback();
+    if (masterMixer_ && outputRoute_ && outputRoute_->buffered() && masterMixerOutputBufferSeconds_ > 0) {
+        // Render the new session's PCM into BASS's playback buffer on the worker.
+        // If the BASS update thread already owns the mixer, it will fill the buffer.
+        const auto primeMs = static_cast<DWORD>(
+            qMin(masterMixerOutputBufferSeconds_ * 1000.0, double(PreviewOutputRoute::kBufferMs)) + 0.5);
+        if (primeMs > 0) BASS_ChannelUpdate(masterMixer_, primeMs);
+    }
     return preparedSecond;
 }
 

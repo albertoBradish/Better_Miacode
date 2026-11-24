@@ -44,6 +44,8 @@ ComparisonPreviews::ComparisonPreviews(ChartWorkspace& workspace, PreviewModel& 
     tick_.setInterval(16);
     tick_.setTimerType(Qt::PreciseTimer);
     connect(&tick_, &QTimer::timeout, this, [this] { updateClocks(); });
+    audioRoutePoll_.setInterval(8);
+    connect(&audioRoutePoll_, &QTimer::timeout, this, &ComparisonPreviews::updateAudioRoutes);
     connect(&workspace_, &ChartWorkspace::changed, this, [this] { if (!items_.isEmpty()) refreshDocument(); });
     connect(&main_, &PreviewModel::canvasSettingsChanged, this, [this] { if (!items_.isEmpty()) refreshMediaPreference(); });
     const auto follow = [this] { if (!items_.isEmpty()) updateClocks(); };
@@ -125,6 +127,7 @@ void ComparisonPreviews::focusPanelAudio(const QString& panelId)
     }
     if (focused_ == preview) return;
     focused_ = preview;
+    if (preview && preview->playing_ && preview->audioFailed_) preview->warmAudio(true);
     if (!mixAudio_) updateAudioRoutes();
 }
 
@@ -132,27 +135,85 @@ void ComparisonPreviews::setMainPan(double pan)
 {
     if (!std::isfinite(pan) || mainPan_ == pan) return;
     mainPan_ = pan;
-    if (mixAudio_ && presentationActive_ && !items_.isEmpty()) main_.routeAudio(0.90 / (count() + 1), pan);
+    if (mixAudio_ && presentationActive_ && !items_.isEmpty()) updateAudioRoutes();
 }
 
 void ComparisonPreviews::updateAudioRoutes()
 {
+    if (presentationActive_ && !items_.isEmpty() && mainScene_) updateClocks();
+    else applyAudioRoutes(false);
+}
+
+void ComparisonPreviews::setMainOutputRoute(double gain, double pan)
+{
+    if (mainOutputGain_ == gain && mainOutputPan_ == pan) return;
+    mainOutputGain_ = gain;
+    mainOutputPan_ = pan;
+    main_.routeAudio(gain, pan);
+}
+
+void ComparisonPreviews::applyAudioRoutes(bool focusedPlaying)
+{
     const bool multi = presentationActive_ && !items_.isEmpty();
     const bool mix = multi && mixAudio_;
-    const double gain = mix ? 0.90 / (items_.size() + 1) : 1.0;
-    // Set all output gains before allowing a newly audible renderer to start.
-    for (auto* item : items_) {
-        if (item->audio_) item->audio_->setOutputRoute(multi && (mix || focused_ == item) ? gain : 0, mix ? item->pan_ : 0);
+    auto* selected = multi ? focused_.data() : nullptr;
+    if (!mix && selected && focusedPlaying) {
+        selected->warmAudio();
+        // Keep the former renderer audible while the selected pane loads.
+        if (!selected->audioReady_ && !selected->audioFailed_) {
+            audioRoutePoll_.stop();
+            return;
+        }
     }
-    main_.routeAudio(!multi || mix || !focused_ ? gain : 0, mix ? mainPan_ : 0);
-    updateClocks();
+
+    closingAudioRoutes_.removeIf([](const auto& route) { return route->drained(); });
+    bool waiting = !closingAudioRoutes_.isEmpty();
+    if (!mix && selected) {
+        setMainOutputRoute(0, 0);
+        const auto route = main_.audioOutputRoute();
+        waiting |= route && !route->drained();
+    }
+    for (auto* item : items_) {
+        if (mix || selected == item) continue;
+        if (item->audio_) {
+            item->audio_->setOutputRoute(0, 0);
+            if (!item->audio_->outputRoute()->drained()) {
+                item->audioRetiring_ = true;
+                waiting = true;
+                continue;
+            }
+        }
+        item->audioAllowed_ = false;
+        item->audioRetiring_ = false;
+        if (item->sounding_) {
+            item->audio_->pausePreviewPlaybackTransaction();
+            item->sounding_ = false;
+            item->outputFade_ = 0;
+        }
+    }
+    if (mix || !waiting) {
+        const double gain = mix ? 0.90 / (count() + 1) : 1.0;
+        if (mix || !selected) setMainOutputRoute(gain, mix ? mainPan_ : 0);
+        for (auto* item : items_) {
+            if (!mix && selected != item) continue;
+            item->audioAllowed_ = true;
+            item->audioMixed_ = mix;
+            item->audioRetiring_ = false;
+            if (item->sounding_) item->audio_->setOutputRoute(gain, mix ? item->pan_ : 0);
+        }
+    }
+    if (waiting && !mix) {
+        if (!audioRoutePoll_.isActive()) audioRoutePoll_.start();
+    } else {
+        audioRoutePoll_.stop();
+    }
 }
 
 void ComparisonPreview::setScreenPan(double pan)
 {
     if (!std::isfinite(pan) || pan_ == pan) return;
     pan_ = pan;
-    if (audio_ && owner_.mixAudio_ && owner_.presentationActive_) audio_->setOutputRoute(0.90 / (owner_.count() + 1), pan_);
+    if (owner_.mixAudio_ && owner_.presentationActive_) owner_.updateAudioRoutes();
 }
 
 void ComparisonPreview::setSyncEnabled(bool value)
@@ -371,7 +432,9 @@ void ComparisonPreviews::refreshDocument()
         item->song_ = current_;
         if (trackChanged) {
             item->audioReady_ = false;
+            item->audioFailed_ = false;
             item->audioRevision_ = 0;
+            item->outputFade_ = 0;
             item->audio_.reset();
             item->sounding_ = false;
             item->trackDuration_ = 0;
@@ -457,6 +520,11 @@ void ComparisonPreviews::updateClocks(ComparisonPreview* seekLeader, bool seek)
         needTimer |= frame.playing;
     }
     for (auto* item : items_) {
+        if (item->audioFailed_ && !item->playing_ && frames.value(item->leader_).playing
+            && (mixAudio_ || item == focused_)) item->warmAudio(true);
+    }
+    applyAudioRoutes(focused_ && frames.value(focused_->leader_).playing);
+    for (auto* item : items_) {
         const auto frame = frames.value(item->leader_);
         const bool linked = synchronize_ && (!item->leader_ || frame.members > 1);
         if (item->linked_ != linked || item->lowerBound_ != frame.lowerBound) {
@@ -481,6 +549,11 @@ void ComparisonPreviews::remove(ComparisonPreview* item)
         }
     }
     const double resumeAt = item->localPosition();
+    if (item->audio_) {
+        const auto route = item->audio_->outputRoute();
+        route->set(0, 0);
+        closingAudioRoutes_.append(route);
+    }
     if (focused_ == item) focused_ = nullptr;
     beginRemoveRows({}, row, row);
     items_.removeAt(row);
@@ -690,6 +763,37 @@ void ComparisonPreview::setLocalClock(double second, bool running)
     if (running) clock_.start(); else clock_.invalidate();
 }
 
+void ComparisonPreview::warmAudio(bool retry)
+{
+    if (audio_ && !(retry && audioFailed_)) return;
+    if (!audio_) {
+        audio_ = std::make_unique<QtPreviewSfxRuntime>(nullptr, true);
+        audio_->setOutputRoute(0, 0);
+        connect(audio_.get(), &QtPreviewSfxRuntime::commandCompleted, this,
+            [this](const QtPreviewSfxRuntime::Completion& done) {
+                if (!audio_ || done.identity.assetGeneration != audio_->assetGeneration()) return;
+                if (done.kind == preview_audio::CommandKind::ReloadAssets) {
+                    audioReady_ = done.success;
+                } else if (done.kind == preview_audio::CommandKind::Start
+                           && done.identity.generation == audio_->playbackGeneration()) {
+                    outputFade_ = 0;
+                    if (done.success) return;
+                    audio_->setOutputRoute(0, 0);
+                    audioReady_ = false;
+                    sounding_ = false;
+                } else {
+                    return;
+                }
+                audioFailed_ = !audioReady_;
+                QMetaObject::invokeMethod(&owner_, &ComparisonPreviews::updateAudioRoutes, Qt::QueuedConnection);
+            });
+    }
+    audioFailed_ = false;
+    appliedSettings_ = owner_.main_.audioSettings();
+    audio_->reloadAssetsForChartWithWarmupPaths(
+        song_.chartPath, song_.trackPath, preview_sfx::resolveSfxDirectory(), appliedSettings_);
+}
+
 void ComparisonPreview::present(double second, double duration, bool playing, double rate, bool jump)
 {
     const bool moved = second != position_;
@@ -702,8 +806,8 @@ void ComparisonPreview::present(double second, double duration, bool playing, do
     }
     const bool changed = duration != displayedDuration_ || playing != playing_;
     updateMediaPlayback(second, playing, rate, moved, jump);
-    const bool audioWanted = playing && (owner_.mixAudio_ || owner_.focused_ == this);
-    if (rate != rate_) {
+    const bool audioWanted = playing && audioAllowed_;
+    if (rate != rate_ && !audioRetiring_) {
         if (audio_) audio_->applyPlaybackRateAtChartSecond(rate, second);
     }
     if (moved) scene_.setPlayheadSeconds(second);
@@ -713,21 +817,12 @@ void ComparisonPreview::present(double second, double duration, bool playing, do
     playing_ = playing;
     rate_ = rate;
     if (playbackChanged) inheritAppearance();
-    if (audioWanted) {
+    const bool finishingFade = playing && audioRetiring_;
+    if (!finishingFade && audioWanted) {
         auto settings = owner_.main_.audioSettings();
         // Synchronized copies of one backing track otherwise interfere at device latency offsets.
-        if (owner_.mixAudio_ && linked_ && leader_ != this) settings.trackVolume = 0;
-        if (!audio_) {
-            audio_ = std::make_unique<QtPreviewSfxRuntime>();
-            audio_->setOutputRoute(owner_.mixAudio_ ? 0.90 / (owner_.count() + 1) : 1.0, owner_.mixAudio_ ? pan_ : 0.0);
-            connect(audio_.get(), &QtPreviewSfxRuntime::commandCompleted, this, [this](const QtPreviewSfxRuntime::Completion& done) {
-                if (done.kind != preview_audio::CommandKind::ReloadAssets) return;
-                audioReady_ = done.success;
-                if (audioReady_) owner_.updateClocks();
-            });
-            appliedSettings_ = settings;
-            audio_->reloadAssetsForChartWithWarmupPaths(song_.chartPath, song_.trackPath, preview_sfx::resolveSfxDirectory(), settings);
-        }
+        if (audioMixed_ && linked_ && leader_ != this) settings.trackVolume = 0;
+        warmAudio();
         if (!(appliedSettings_ == settings)) { appliedSettings_ = settings; audio_->applyLevels(settings); }
         if (audioReady_) {
             const auto timing = owner_.main_.audioTiming();
@@ -738,16 +833,23 @@ void ComparisonPreview::present(double second, double duration, bool playing, do
                 jump = true;
             }
             if (!sounding_ || jump) {
-                audio_->setOutputRoute(owner_.mixAudio_ ? 0.90 / (owner_.count() + 1) : 1.0, owner_.mixAudio_ ? pan_ : 0.0);
-                audio_->startPreviewPlaybackTransaction(second, false, rate);
+                if (!sounding_) {
+                    if (audioMixed_) audio_->setOutputRoute(0.90 / (owner_.count() + 1), pan_);
+                    else outputFade_ = audio_->outputRoute()->fadeIn(1, 0);
+                } else if (outputFade_ && !audioMixed_) {
+                    // A newer seek can supersede the still-queued focus start.
+                    outputFade_ = audio_->outputRoute()->fadeIn(1, 0);
+                }
+                audio_->startPreviewPlaybackTransaction(second, false, rate, audioMixed_ ? 0 : outputFade_);
             }
             if (moved) audio_->drainEvents(second);
         }
-    } else if (sounding_ && audio_) {
+    } else if (!finishingFade && sounding_ && audio_) {
         audio_->setOutputRoute(0, 0);
         audio_->pausePreviewPlaybackTransaction();
+        outputFade_ = 0;
     }
-    sounding_ = audioWanted && audioReady_;
+    if (!finishingFade) sounding_ = audioWanted && audioReady_;
     if (changed) emit transportChanged();
     if (moved) emit positionChanged();
 }

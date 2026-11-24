@@ -72,6 +72,7 @@ private:
     void releaseOwnedMedia();
     void updateMediaPlayback(double second, bool playing, double rate, bool moved, bool jump);
     void present(double position, double duration, bool playing, double rate, bool jump);
+    void warmAudio(bool retry = false);
     void setLocalClock(double second, bool running);
     double localPosition() const;
 
@@ -111,8 +112,10 @@ private:
     bool surfaceVisible_ = false;
     std::unique_ptr<QtPreviewSfxRuntime> audio_;
     double pan_ = 0;
-    bool syncEnabled_ = true, audioReady_ = false;
+    bool syncEnabled_ = true, audioReady_ = false, audioFailed_ = false;
+    bool audioAllowed_ = false, audioMixed_ = false, audioRetiring_ = false;
     quint64 audioRevision_ = 0, builtRevision_ = 0;
+    quint64 outputFade_ = 0;
     PreviewAudioSettings appliedSettings_;
     PreviewTimingSettings appliedTiming_;
     ComparisonPreview* leader_ = nullptr; // null follows the main transport
@@ -174,9 +177,14 @@ private:
     QHash<QString,QByteArray> digests_;
     QTimer tick_;
     void updateAudioRoutes();
+    void applyAudioRoutes(bool focusedPlaying);
+    void setMainOutputRoute(double gain, double pan);
+    QTimer audioRoutePoll_;
+    QList<std::shared_ptr<PreviewOutputRoute>> closingAudioRoutes_;
     QPointer<ComparisonPreview> focused_;
     bool mixAudio_ = false;
     double mainPan_ = 0;
+    double mainOutputGain_ = -1, mainOutputPan_ = 0;
     bool synchronize_ = true;
     bool presentationActive_ = true;
     bool mainAvailable_ = false;

@@ -243,6 +243,7 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
     logStartupStage("preview_skin_async_dispatched");
 
     previewSfxRuntime_ = new QtPreviewSfxRuntime(this);
+    applicationServices_.shellNotifications().setPreviewOutputRoute(previewSfxRuntime_->outputRoute());
     connect(&applicationServices_.shellNotifications(), &miacode::ShellNotifications::previewOutputRouteChanged,
             previewSfxRuntime_, &QtPreviewSfxRuntime::setOutputRoute);
     connect(previewSfxRuntime_,

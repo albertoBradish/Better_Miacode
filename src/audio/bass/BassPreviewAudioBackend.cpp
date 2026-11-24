@@ -54,6 +54,7 @@ BassPreviewAudioBackend::~BassPreviewAudioBackend()
         masterMixerOutputBufferSeconds_ = 0.0;
         masterMixerBytesPerSecond_ = 0.0;
     }
+    if (outputRoute_) outputRoute_->detach();
     unloadBassFx();
     bassDeviceLease_.release();
     engineInitialized_ = false;

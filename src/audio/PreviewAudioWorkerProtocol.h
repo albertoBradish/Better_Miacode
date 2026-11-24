@@ -108,6 +108,7 @@ struct PreviewAudioCommand {
     // keeps BGM/SFX path state and its dependent reload together.
     bool applyWarmupPathsBeforeReload = false;
     bool applyChartPathBeforeReload = false;
+    quint64 outputFade = 0;
     double value = 0.0;
     double second = 0.0;
     double rate = 1.0;

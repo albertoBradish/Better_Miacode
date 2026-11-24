@@ -72,6 +72,7 @@ public:
     QObject* comparisons() const { return comparisons_; }
     void setComparisons(QObject* model) { comparisons_ = model; }
     void routeAudio(double gain, double pan) { emit notifications_->previewOutputRouteChanged(gain, pan); }
+    std::shared_ptr<PreviewOutputRoute> audioOutputRoute() const { return notifications_->previewOutputRoute(); }
     PreviewTimingSettings audioTiming() const { return surface() ? surface()->audioTiming() : PreviewTimingSettings{}; }
     PreviewAudioSettings audioSettings() const { return surface() ? surface()->audioSettings() : PreviewAudioSettings{}; }
     QObject* structure() const { return structure_; }

@@ -588,7 +588,10 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
         miacode::preview_audio::bass::masterMixerPolicyFromOverrides(
             qEnvironmentVariable("MIACODE_BASS_MASTER_BUFFER_MS"),
             qEnvironmentVariable("MIACODE_BASS_MIXER_THREADS"));
-    const float requestedBufferSeconds = static_cast<float>(mixerPolicy.bufferMs / 1000.0);
+    const bool comparisonBuffer = outputRoute_ && outputRoute_->buffered()
+        && !(mixerPolicy.bufferOverrideSet && mixerPolicy.bufferOverrideValid);
+    const double bufferMs = comparisonBuffer ? PreviewOutputRoute::kBufferMs : mixerPolicy.bufferMs;
+    const float requestedBufferSeconds = static_cast<float>(bufferMs / 1000.0);
     const bool bufferSet = BASS_ChannelSetAttribute(
         masterMixer_, BASS_ATTRIB_BUFFER, requestedBufferSeconds) != FALSE;
     noteBassErr("engine_init/master_buffer_attr");
@@ -607,6 +610,11 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
             && qIsFinite(effectiveBufferSeconds) && effectiveBufferSeconds >= 0.0f
         ? static_cast<double>(effectiveBufferSeconds)
         : (bufferSet ? static_cast<double>(requestedBufferSeconds) : 0.0);
+    if (outputRoute_) {
+        const double primeSeconds = outputRoute_->buffered()
+            ? qMin(masterMixerOutputBufferSeconds_, PreviewOutputRoute::kBufferMs / 1000.0) : 0.0;
+        outputRoute_->attach(deviceSampleRate_, masterMixerOutputBufferSeconds_ + primeSeconds);
+    }
     // G1 Commit 6: master mixer stays ACTIVE_PLAYING for the lifetime of the engine.
     // Pre-G1 we cycled it via BASS_ChannelPause / BASS_ChannelPlay / BASS_ChannelStop
     // at every session-state change; each cold-start churned BASS_FX SoundTouch
@@ -618,6 +626,7 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
         lastNativeErrorCode_ = errorCode;
         noteBassErrCode("engine_init/master_play_once", errorCode);
         BASS_StreamFree(masterMixer_);
+        if (outputRoute_) outputRoute_->detach();
         masterMixer_ = 0;
         masterMixerOutputBufferSeconds_ = 0.0;
         masterMixerBytesPerSecond_ = 0.0;
@@ -699,6 +708,7 @@ void BassPreviewAudioBackend::invalidateOutputDevice()
         masterMixerOutputBufferSeconds_ = 0.0;
         masterMixerBytesPerSecond_ = 0.0;
     }
+    if (outputRoute_) outputRoute_->detach();
     unloadOptionalPlugins();
     bassDeviceLease_.release();
     engineInitialized_ = false;

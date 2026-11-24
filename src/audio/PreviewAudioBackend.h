@@ -100,6 +100,10 @@ public:
         double playbackRate,
         const PreviewTimingSettings& timingSettings) = 0;
     virtual double startPreviewPlaybackTransaction(double startSecond, bool resumeFromPause, double playbackRate) = 0;
+    virtual double startFocusedPreviewPlaybackTransaction(double startSecond, double playbackRate, quint64)
+    {
+        return startPreviewPlaybackTransaction(startSecond, false, playbackRate);
+    }
     virtual PausePreviewResult capturePausedPreviewTransaction() = 0;
     virtual PausePreviewResult pausePreviewPlaybackTransaction() = 0;
     virtual double resumeRetainedPreviewPlaybackTransaction() = 0;

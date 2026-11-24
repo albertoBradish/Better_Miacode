@@ -1,6 +1,9 @@
 #pragma once
 
 #include <QObject>
+#include <memory>
+
+class PreviewOutputRoute;
 
 namespace miacode {
 
@@ -10,6 +13,8 @@ class ShellNotifications final : public QObject
 
 public:
     explicit ShellNotifications(QObject* parent = nullptr);
+    void setPreviewOutputRoute(const std::shared_ptr<PreviewOutputRoute>& route) { previewOutputRoute_ = route; }
+    std::shared_ptr<PreviewOutputRoute> previewOutputRoute() const { return previewOutputRoute_.lock(); }
 
 signals:
     // Discrete shell state (tab visibility, playback flags, geometry) changed
@@ -48,6 +53,9 @@ signals:
     // page should now become the visible surface. ExportSession already
     // holds the pending range by the time this fires.
     void selectionRangeExportPageRequested();
+
+private:
+    std::weak_ptr<PreviewOutputRoute> previewOutputRoute_;
 };
 
 }  // namespace miacode

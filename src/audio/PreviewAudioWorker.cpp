@@ -639,10 +639,9 @@ void PreviewAudioWorker::execute(
             backend->cancelPreparedPreviewPlayback();
             break;
         case CommandKind::Start:
-            completion.value = backend->startPreviewPlaybackTransaction(
-                command.second,
-                command.option,
-                command.rate);
+            completion.value = command.outputFade
+                ? backend->startFocusedPreviewPlaybackTransaction(command.second, command.rate, command.outputFade)
+                : backend->startPreviewPlaybackTransaction(command.second, command.option, command.rate);
             if (!backend->audioEngineInitialized()) {
                 completion.success = false;
                 completion.error = CommandError::BackendFailure;

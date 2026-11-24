@@ -6,13 +6,15 @@
 
 using namespace miacode::preview_audio;
 
-QtPreviewSfxRuntime::QtPreviewSfxRuntime(QObject* parent)
-    : QtPreviewSfxRuntime(productionPreviewAudioBackendFactory(), parent)
+QtPreviewSfxRuntime::QtPreviewSfxRuntime(QObject* parent, bool bufferedOutput)
+    : QtPreviewSfxRuntime(productionPreviewAudioBackendFactory(), parent, bufferedOutput)
 {
 }
 
-QtPreviewSfxRuntime::QtPreviewSfxRuntime(PreviewAudioBackendFactory factory, QObject* parent)
+QtPreviewSfxRuntime::QtPreviewSfxRuntime(
+    PreviewAudioBackendFactory factory, QObject* parent, bool bufferedOutput)
     : QObject(parent)
+    , outputRoute_(std::make_shared<PreviewOutputRoute>(bufferedOutput))
     , callbackState_(std::make_shared<CallbackState>())
 {
     const std::shared_ptr<CallbackState> callbackState = callbackState_;
@@ -249,13 +251,15 @@ void QtPreviewSfxRuntime::applyPausedPreviewState(
 double QtPreviewSfxRuntime::startPreviewPlaybackTransaction(
     double startSecond,
     bool resumeFromPause,
-    double playbackRate)
+    double playbackRate,
+    quint64 outputFade)
 {
     PreviewAudioCommand command = makeCommand(CommandKind::Start);
     command.identity.generation = advancePlaybackGeneration();
     command.second = startSecond;
     command.option = resumeFromPause;
     command.rate = playbackRate;
+    command.outputFade = outputFade;
     post(std::move(command));
     return startSecond;
 }
