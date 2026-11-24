@@ -1,3 +1,4 @@
+#include "core/chart/IntroConfig.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
 #include "preview/runtime/PreviewRuntime.h"
 
@@ -86,6 +87,32 @@ bool verifySetPlayheadIgnoresNonFiniteSeconds(QTextStream& err)
     return ok;
 }
 
+bool verifyChartIntroInnerBrightness(QTextStream& err)
+{
+    PreviewRuntime runtime;
+    runtime.setBackgroundBrightnessOuter(0.4);
+    runtime.setIntroOverlayData({}, {}, {}, {}, {{QStringLiteral("chartPreviewMode"), true}});
+    runtime.setIntroOverlayFrame(miacode::intro::kPvPreviewHoldFrames - 1, true);
+
+    bool ok = true;
+    for (double inner : {0.0, 1.0, 0.2}) {
+        runtime.setBackgroundBrightnessInner(inner);
+        ok &= require(runtime.frameStateSnapshot()->render.backgroundBrightnessInner == inner,
+                      QStringLiteral("chart intro hold applies live inner brightness %1").arg(inner), err);
+    }
+    runtime.setIntroOverlayFrame(miacode::intro::kPvPreviewHoldFrames, true);
+    const auto cycleTwo = runtime.frameStateSnapshot();
+    ok &= require(cycleTwo->render.backgroundBrightnessInner == 0.2
+                  && cycleTwo->render.backgroundBrightnessOuter == 0.4,
+                  QStringLiteral("chart intro transition uses the configured brightness"), err);
+    runtime.clearIntroOverlay();
+    const auto body = runtime.frameStateSnapshot();
+    ok &= require(body->render.backgroundBrightnessInner == 0.2
+                  && body->render.backgroundBrightnessOuter == 0.4,
+                  QStringLiteral("leaving the intro preserves the gameplay brightness"), err);
+    return ok;
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -94,6 +121,7 @@ int main(int argc, char** argv)
     QTextStream err(stderr);
     bool ok = verifyResetNeverReplaysACachedRevision(err);
     ok &= verifySetPlayheadIgnoresNonFiniteSeconds(err);
+    ok &= verifyChartIntroInnerBrightness(err);
     if (!ok) {
         return 1;
     }

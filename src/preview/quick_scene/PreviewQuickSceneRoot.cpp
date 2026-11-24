@@ -643,6 +643,13 @@ void PreviewQuickSceneRoot::setInnerBrightnessOnly(bool enabled)
     update();
 }
 
+void PreviewQuickSceneRoot::setStageBrightnessEnabled(bool enabled)
+{
+    if (stageBrightnessEnabled_ == enabled) return;
+    stageBrightnessEnabled_ = enabled;
+    update();
+}
+
 void PreviewQuickSceneRoot::setStageBackgroundEnabled(bool enabled)
 {
     if (stageBackgroundEnabled_ == enabled) return;
@@ -1114,7 +1121,8 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         "stage_background",
         layerStatsForFrame,
         [&](QSGNode* oldChild) {
-            return stageBackgroundLayer_.updateNode(oldChild, *state, renderSize, window(), textures, backgroundColor_, innerBrightnessOnly_);
+            return stageBackgroundLayer_.updateNode(oldChild, *state, renderSize, window(), textures,
+                                                    backgroundColor_, innerBrightnessOnly_, stageBrightnessEnabled_);
         });
     updateCenterDisplaySlot(
         layerSlotAt(root, slotIndex++),

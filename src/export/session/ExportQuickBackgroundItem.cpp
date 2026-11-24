@@ -18,9 +18,8 @@ void ExportQuickBackgroundItem::setFrameState(
     state_.render.centerDisplayMode = miacode::preview_gameplay::CenterDisplayMode::Off;
     state_.assets = state.assets;
     state_.media = state.media;
+    stage_->setStageBrightnessEnabled(!fullFrame);
     if (fullFrame) {
-        state_.render.backgroundBrightnessInner = 1.0;
-        state_.render.backgroundBrightnessOuter = 1.0;
         state_.render.backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
     }
     stage_->setBackgroundColor(fullFrame || state.media.stageMediaAvailable ? QColor(Qt::black)

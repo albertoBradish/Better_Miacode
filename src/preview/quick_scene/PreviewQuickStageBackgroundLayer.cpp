@@ -377,7 +377,8 @@ QSGNode* PreviewQuickStageBackgroundLayer::updateNode(
     QQuickWindow* window,
     PreviewTextureRepository* textures,
     const QColor& backgroundColor,
-    bool innerBrightnessOnly
+    bool innerBrightnessOnly,
+    bool stageBrightnessEnabled
 ) const
 {
     Q_UNUSED(window);
@@ -504,7 +505,7 @@ QSGNode* PreviewQuickStageBackgroundLayer::updateNode(
         removeInnerCircleMediaNode(root);
     }
 
-    if (outerDarkAlpha > 1e-6 || innerDarkAlpha > 1e-6) {
+    if (stageBrightnessEnabled && (outerDarkAlpha > 1e-6 || innerDarkAlpha > 1e-6)) {
         QElapsedTimer dimUpdateTimer;
         dimUpdateTimer.start();
         auto* dimNode = ensureDimNode(root);

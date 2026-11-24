@@ -21,6 +21,7 @@ Rectangle {
         sourceComponent: Component {
             PreviewQuickSceneRoot {
                 backgroundOnly: true
+                stageBrightnessEnabled: false
                 backgroundColor: "black"
                 runtime: root.runtime
             }

@@ -255,8 +255,7 @@ void PreviewRuntime::publishFrameStateSnapshot()
         if (introOverlayFrame_ >= miacode::intro::kPvPreviewHoldFrames) {
             snapshot->render.backgroundPolicy = frameState_.render.backgroundPolicy;
         } else {
-            snapshot->render.backgroundBrightnessInner = 1.0;
-            snapshot->render.backgroundBrightnessOuter = 1.0;
+            // The underlay owns the intro brightness. The chart keeps its inner mask.
             snapshot->render.backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
         }
     }

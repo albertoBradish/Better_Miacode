@@ -20,7 +20,8 @@ public:
         QQuickWindow* window,
         PreviewTextureRepository* textures,
         const QColor& backgroundColor = QColor(QStringLiteral("#191A1B")),
-        bool innerBrightnessOnly = false
+        bool innerBrightnessOnly = false,
+        bool stageBrightnessEnabled = true
     ) const;
 
 private:
