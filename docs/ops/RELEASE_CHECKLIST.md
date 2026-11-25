@@ -53,32 +53,29 @@ shasum -a 256 dist/*.zip
 pushes and manual runs build Nightly packages. It also exposes the shared build used
 by [release.yml](../../.github/workflows/release.yml).
 
-Pushing a `release/<version>` branch or manually dispatching the **Release** workflow
-builds the same three platforms with `channel: release` and stores the `.7z` packages as
-Actions artifacts for 14 days. Before packaging, CI checks the version in
-`CMakeLists.txt` against the release branch name, the selected tag, or the
-`expected_version` input when manually building from another branch. Website
-publication uses the OSS procedure below.
+Push the public source to `better_miacode`, then push its `v<version>-better.<number>`
+tag to start the **Release** workflow. CI verifies the tag against `CMakeLists.txt`
+and builds Windows x64, Windows ARM64 and macOS ARM64 packages. A manual dispatch
+from `better_miacode` accepts the full version in `expected_version` for a build rehearsal.
+The tag workflow publishes a GitHub Release after all three package reports pass.
 
 Both channels use Release compiler optimization. The About dialog displays the
 embedded distribution channel, independently of the compiler configuration and version
 prerelease suffix.
 
-Local CMake configurations default to `MIACODE_RELEASE_CHANNEL=nightly`. For a Release
+Fresh local CMake configurations default to `MIACODE_RELEASE_CHANNEL=release`. For a Release
 package, configure with `-DMIACODE_RELEASE_CHANNEL=release` and build with
 `--config Release`. The packaging entry scripts accept the environment variable
 `MIACODE_RELEASE_CHANNEL=release`; Windows standalone packaging reads the channel from
 `generated/AppVersion.h`. Nightly package names contain `_nightly`; Release names use
-`MiaCode_<version>_<os>_<arch>.7z`.
+`Better_Miacode_<version>_<os>_<arch>.7z`.
 
 - [ ] Confirm the selected ref carries the intended version in `CMakeLists.txt`.
-- [ ] Add the `## <version>` section to `CHANGELOG.md` for the manifest's `zh_CN` notes.
-- [ ] Build release packages and download the three platform artifacts.
-- [ ] Check out the exact commit that built the release artifacts. Before tagging it,
-      run `python scripts/release/update-manifest.py verify --tag <version>`.
-- [ ] Publish the packages and update manifest through the OSS procedure below.
+- [ ] Add the version to `CHANGELOG.md` and write `docs/releases/better_<number>.md` for the published release notes.
+- [ ] Run `python scripts/release/update-manifest.py verify --tag <tag>` from the public source before tagging.
+- [ ] Download the three archives, their SHA-256 files and verification reports. Confirm they match the release commit.
 
-## Update Manifest
+## Upstream MiaCode OSS update manifest reference
 
 The in-app update check reads one fixed URL per major version:
 
