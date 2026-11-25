@@ -18,7 +18,8 @@ bool JobProgressService::chartExport() const
 quint64 JobProgressService::begin(const LocalizedText& title,
                                   const LocalizedText& label,
                                   bool cancellable,
-                                  TaskType taskType)
+                                  TaskType taskType,
+                                  Presentation presentation)
 {
     active_ = true;
     ++token_;
@@ -26,6 +27,7 @@ quint64 JobProgressService::begin(const LocalizedText& title,
     pausable_ = paused_ = false;
     cancellable_ = cancellable;
     taskType_ = taskType;
+    presentation_ = presentation;
     // A new job always starts uncancelled: a stale flag from the previous job
     // would abort this one at its first checkpoint.
     cancelRequested_ = false;
@@ -113,11 +115,13 @@ void JobProgressService::requestPauseToggle()
     if (active_ && token_ == owner) emit pauseRequested(owner, paused);
 }
 
-void JobProgressService::end()
+void JobProgressService::end(const LocalizedText& completionMessage)
 {
     if (!active_) {
         return;
     }
+    const quint64 finishedToken = token_;
+    const QString message = completionMessage.text();
     active_ = false;
     cancellable_ = false;
     cancelRequested_ = false;
@@ -127,9 +131,11 @@ void JobProgressService::end()
     remainingSeconds_ = -1;
     taskType_ = TaskType::Generic;
     pausable_ = paused_ = false;
+    presentation_ = Presentation::Dialog;
     title_.clear();
     label_.clear();
     emit changed();
+    emit finished(finishedToken, message);
 }
 
 void JobProgressService::requestCancel()

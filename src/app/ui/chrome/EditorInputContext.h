@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QKeySequence>
 #include <QPointer>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -20,6 +21,7 @@ class EditorInputContext : public QObject
     // and typing left unclaimed in neutral workbench areas returns to it.
     Q_PROPERTY(QQuickWindow* activeWindow READ activeWindow NOTIFY contextChanged)
     Q_PROPERTY(QQuickItem* typingTarget READ typingTarget WRITE setTypingTarget NOTIFY typingTargetChanged)
+    Q_PROPERTY(QString normalizationShortcut READ normalizationShortcut WRITE setNormalizationShortcut)
     Q_PROPERTY(bool workbenchCommandsAllowed READ workbenchCommandsAllowed NOTIFY contextChanged)
     Q_PROPERTY(QObject* textInput READ textInput NOTIFY contextChanged)
     Q_PROPERTY(bool modalBlocked READ modalBlocked NOTIFY contextChanged)
@@ -39,6 +41,10 @@ public:
     void setWindow(QQuickWindow* window);
     QQuickItem* typingTarget() const { return typingTarget_; }
     void setTypingTarget(QQuickItem* target);
+    QString normalizationShortcut() const { return normalizationShortcut_.toString(QKeySequence::PortableText); }
+    void setNormalizationShortcut(const QString& sequence) {
+        normalizationShortcut_ = QKeySequence::fromString(sequence, QKeySequence::PortableText);
+    }
     Q_INVOKABLE void commitPendingEdits(QQuickItem* editorPane);
     bool workbenchCommandsAllowed() const;
     QObject* textInput() const { return textInput_; }
@@ -68,6 +74,7 @@ private:
                QVector<QMetaObject::Connection>& connections);
     QPointer<QQuickWindow> window_;
     QPointer<QQuickItem> typingTarget_;
+    QKeySequence normalizationShortcut_;
     QPointer<QObject> textInput_;
     QPointer<QObject> focusedItem_;
     QMetaObject::Connection windowFocusConnection_;

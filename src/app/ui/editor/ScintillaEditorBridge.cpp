@@ -69,8 +69,10 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
                      quint32(scintillaquick::rgb_from_color(fill)) | (quint32(fill.alpha()) << 24));
             } else send(SCI_RESETELEMENTCOLOUR, SC_ELEMENT_CARET_LINE_BACK);
         }
+        // Playback indicators also emit CONTENT. Text edits, diagnostics and
+        // display-layout changes own the overview marker projection.
         if (flags & SC_UPDATE_CONTENT)
-            scheduleOverviewProjectionRefresh(OverviewMarkersDirty | OverviewCurrentLineDirty);
+            scheduleOverviewProjectionRefresh(OverviewCurrentLineDirty);
         else if (flags & SC_UPDATE_V_SCROLL)
             scheduleOverviewProjectionRefresh(OverviewCurrentLineDirty);
     });
@@ -819,7 +821,9 @@ void ScintillaEditorBridge::revealPosition(int utf16, bool center)
     if (!center && rect.top() >= 0 && rect.bottom() <= height()) return;
     const int first = send(SCI_GETFIRSTVISIBLELINE);
     const qreal displacement = rect.center().y() - height() / 2;
-    scrollVertical(first + qRound(displacement / qMax(1.0, rect.height())));
+    const int target = qBound(0, first + qRound(displacement / qMax(1.0, rect.height())), vertical_scroll_max());
+    // ScintillaQuick rebuilds its render snapshot for an explicit scroll request.
+    if (target != first) scrollVertical(target);
 }
 void ScintillaEditorBridge::applyFollow(bool reveal)
 {
@@ -1100,6 +1104,11 @@ void ScintillaEditorBridge::exportSelectionRange()
     const auto ranges = selectionRanges();
     if (!ranges.isEmpty()) syncController_->requestSelectionRangeExport(documentSession_->currentDifficultyId(),
         documentSession_->documentRevision(), ranges.first().start, ranges.last().end);
+}
+void ScintillaEditorBridge::exportSelectionGif()
+{
+    if (syncController_ && documentSession_ && selectionStart() != selectionEnd())
+        syncController_->requestSelectionRangeExport(documentSession_->currentDifficultyId(), documentSession_->documentRevision(), selectionStart(), selectionEnd(), true);
 }
 bool ScintillaEditorBridge::applyNormalization(const QVariantMap& options)
 {

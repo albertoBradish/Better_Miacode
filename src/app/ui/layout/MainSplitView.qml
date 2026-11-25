@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
 import MiaCode.UI
-import "WorkbenchLayouts.js" as Layouts
 
 Item {
     id: root
@@ -33,6 +32,12 @@ Item {
     function showLibrary() {
         workspaceDock.setPanelShown("library", true)
         workspaceDock.activate("library")
+        const window = workspaceDock.windowFor("library")
+        if (window) {
+            if (window.visibility === Window.Minimized) window.showNormal()
+            window.raise()
+            window.requestActivate()
+        }
     }
     function flushLibrary() { return !libraryBrowser.item || libraryBrowser.item.flush() }
     property bool compact: false
@@ -41,6 +46,7 @@ Item {
     property string documentTitle: ""
     readonly property alias workspace: workspaceDock
     readonly property Item dockSidebar: sidebar
+    readonly property WorkbenchPreviewPane preview: previewDetached ? detachedPreview : workspacePreview
     readonly property Item previewPaneItem: preview
     readonly property Item dockEditorPane: editorPane
     readonly property Item dockExportPage: exportVideoPage
@@ -92,6 +98,8 @@ Item {
     readonly property bool previewOnLeft: preferencesModel.previewOnLeft
     readonly property bool previewPanelShown: workspaceDock.panelShown("preview")
     readonly property bool exportVideoActive: root.pages.activePageId === "export"
+    property bool peekDismissOnPress: false
+    signal workspacePressed()
     signal openRequested()
     signal settingsRequested()
     signal completionSettingsRequested(string group)
@@ -107,32 +115,6 @@ Item {
     function showMediaToolsMenu() {
         sidebar.showMediaToolsMenu()
         workspaceDock.activate("sidebar")
-    }
-
-    function defaultDockTree(preset) {
-        const library = Layouts.group(["sidebar", "library"], preset === "preview" ? "library" : "sidebar")
-        const editor = Layouts.group(["editor"])
-        const preview = Layouts.group(["preview"])
-        const diagnostics = ["validation", "muri", "patterns"]
-        if (root.previewSession.simulatedPlay) diagnostics.push("play_checks")
-        if (preset === "default") {
-            const center = Layouts.split("vertical", 0.75, editor,
-                Layouts.group(["timeline"].concat(diagnostics), "timeline"))
-            const work = root.previewOnLeft ? Layouts.split("horizontal", 0.5, preview, center)
-                                            : Layouts.split("horizontal", 0.5, center, preview)
-            return Layouts.split("horizontal", 0.105, library, work)
-        }
-        const timeline = Layouts.group(["timeline"])
-        const center = Layouts.split("vertical", preset === "editing" ? 0.72 : 0.81,
-            editor, Layouts.group(diagnostics, "muri"))
-        if (preset === "editing") {
-            const main = Layouts.split("horizontal", 0.63, center, preview)
-            return Layouts.split("horizontal", 0.15, timeline,
-                Layouts.split("horizontal", 0.12, library, main))
-        }
-        const work = Layouts.split("horizontal", 0.29, center, preview)
-        return Layouts.split("horizontal", 0.215, library,
-            Layouts.split("horizontal", 0.13, timeline, work))
     }
 
     function undo() {
@@ -187,13 +169,17 @@ Item {
         return editorPane.applyChartTransform(opId)
     }
 
+    function showDetachedPreview() {
+        if (detachedPreviewWindow.visibility === Window.Minimized)
+            detachedPreviewWindow.windowChrome.showRestored()
+        detachedPreviewWindow.raise()
+        detachedPreviewWindow.requestActivate()
+    }
+
     function toggleRenderModeMenu() {
         if (!preview.renderModeMenuAvailable)
             return
-        if (root.previewDetached) {
-            detachedPreviewWindow.raise()
-            detachedPreviewWindow.requestActivate()
-        }
+        if (root.previewDetached) root.showDetachedPreview()
         preview.toggleRenderModeMenu()
     }
 
@@ -210,8 +196,7 @@ Item {
             detachedPreviewWindow.x = position.x - 48
             detachedPreviewWindow.y = position.y - 16
         }
-        detachedPreviewWindow.raise()
-        detachedPreviewWindow.requestActivate()
+        root.showDetachedPreview()
         Qt.callLater(root.finishPreviewMove)
     }
 
@@ -273,15 +258,12 @@ Item {
         freeAspect: preview.freeAspectActive
         comparisonsVisible: !root.exportVideoActive && !preview.latencyActive
     }
-    PreviewPane {
-        id: preview
-        parent: root.previewDetached ? detachedPreviewContent : workspaceDock.hostFor("preview")
+    component WorkbenchPreviewPane: PreviewPane {
         anchors.fill: parent
         documentAvailable: root.documentSession.hasDocument
-        surfaceActive: root.previewPanelShown && !root.previewSurfaceMoving
-        visible: root.previewPanelShown
-        detached: root.previewDetached
-        transportMirrored: root.previewOnLeft && !root.previewDetached
+        surfaceActive: visible && !root.previewSurfaceMoving
+        visible: root.previewPanelShown && detached === root.previewDetached
+        transportMirrored: root.previewOnLeft
         previewSession: root.previewSession
         preferences: root.preferences
         exportSession: root.pages.exportSession
@@ -295,6 +277,18 @@ Item {
             workspaceDock.setPanelShown("play_checks", true)
             workspaceDock.activate("play_checks")
         }
+    }
+
+    WorkbenchPreviewPane {
+        id: workspacePreview
+        objectName: "workspacePreviewPane"
+        parent: workspaceDock.hostFor("preview")
+    }
+    WorkbenchPreviewPane {
+        id: detachedPreview
+        objectName: "detachedPreviewPane"
+        parent: detachedPreviewContent
+        detached: true
     }
 
     ApplicationWindow {
@@ -525,7 +519,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        visible: !workspaceDock.useNativeFrame
+        visible: !workspaceDock.useNativeFrame && !Theme.backgroundActive
         color: Theme.surfaceColor(Theme.colors.background.panel)
         z: -1
     }
@@ -535,10 +529,14 @@ Item {
         objectName: "workbenchActivityBar"
         width: implicitWidth
         height: parent.height
-        activeView: root.viewState.activeSidebarView
+        activeView: workspaceDock.activePanel === "library" ? "library" : root.viewState.activeSidebarView
         documentAvailable: root.documentSession.hasDocument
         color: Theme.chromeSurfaceColor(Theme.colors.background.activityBar)
         onViewRequested: viewId => {
+            if (viewId === "library") {
+                root.showLibrary()
+                return
+            }
             sidebar.activateView(viewId, sidebar.visible && root.viewState.sidebarVisible)
             if (root.viewState.sidebarVisible)
                 workspaceDock.activate("sidebar")
@@ -577,8 +575,8 @@ Item {
             play_checks: { errors: 0, warnings: root.analysisSession.playIssueCount },
             patterns: { errors: 0, warnings: root.handOrderService?.patternCount ?? 0 }
         })
-        defaultTree: root.defaultDockTree("default")
-        builtinTree: root.defaultDockTree
+        simulatedPlay: root.previewSession.simulatedPlay
+        defaultTree: builtinTree("default")
         libraryAvailable: !!root.libraryModel
         exportVideoActive: root.exportVideoActive
         handOrderFeaturesEnabled: root.previewSession.handOrderFeaturesEnabled === true
@@ -610,6 +608,16 @@ Item {
         onPanelVisibilityChanged: (panelId, shown) => {
             if (panelId === "sidebar" && root.compact && !isFloating("sidebar"))
                 root.viewState.compactPanel = shown ? "sidebar" : ""
+        }
+    }
+
+    Item {
+        anchors.fill: workspaceDock
+        z: 10
+        visible: root.peekDismissOnPress
+        PointHandler {
+            acceptedButtons: Qt.AllButtons
+            onActiveChanged: if (active) root.workspacePressed()
         }
     }
 

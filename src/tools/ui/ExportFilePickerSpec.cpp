@@ -58,6 +58,7 @@ public:
     }
     void clearAudition() override {}
     void stopAudition() override {}
+    void setAuditionClockCountEnabled(int, bool) override {}
     bool launchVideoExport(const VideoExportTask& requested, int, QString*) override
     {
         launchedTask = requested;

@@ -4,6 +4,7 @@
 #include <QGuiApplication>
 #include <QInputMethod>
 #include <QKeyEvent>
+#include <QMouseEvent>
 #include <QMetaMethod>
 #include <QEvent>
 #include <QTimer>
@@ -50,6 +51,23 @@ bool insidePopup(QQuickItem* item)
 {
     for (; item; item = item->parentItem()) {
         if (item->inherits("QQuickPopupItem")) return true;
+    }
+    return false;
+}
+
+bool hitsPreservedTarget(QQuickItem* item, const QPointF& scenePos)
+{
+    if (!item || !item->isVisible() || item->opacity() <= 0.0)
+        return false;
+    if (item->contains(item->mapFromScene(scenePos))
+        && (item->property("preservesEditTarget").toBool()
+            || (item->parent() && item->parent()->property("preservesEditTarget").toBool()))) {
+        return true;
+    }
+    const QList<QQuickItem*> children = item->childItems();
+    for (QQuickItem* child : children) {
+        if (hitsPreservedTarget(child, scenePos))
+            return true;
     }
     return false;
 }
@@ -183,6 +201,22 @@ bool EditorInputContext::redirectTyping(QKeyEvent* event)
 bool EditorInputContext::eventFilter(QObject* object, QEvent* event)
 {
     switch (event->type()) {
+    case QEvent::MouseButtonPress: {
+        // Clicking outside a focused text input releases its focus so buttons,
+        // list rows, and empty areas behave like native forms instead of leaving
+        // the caret stuck and blocking workbench shortcuts.
+        auto* targetWindow = qobject_cast<QQuickWindow*>(object);
+        QQuickItem* focused = targetWindow ? targetWindow->activeFocusItem() : nullptr;
+        if (isTextInput(focused)) {
+            const QPointF scenePos = static_cast<QMouseEvent*>(event)->scenePosition();
+            if (!focused->contains(focused->mapFromScene(scenePos))
+                && !hitsPreservedTarget(targetWindow->contentItem(), scenePos)) {
+                QGuiApplication::inputMethod()->commit();
+                focused->setFocus(false);
+            }
+        }
+        break;
+    }
     case QEvent::InputMethod:
         QTimer::singleShot(0, this, &EditorInputContext::refresh);
         break;
@@ -196,9 +230,10 @@ bool EditorInputContext::eventFilter(QObject* object, QEvent* event)
                 return true;
             }
         }
-        // Like other text controls, the focused chart editor types before matching shortcuts.
-        if (object == typingTarget_ && typingTargetWritable()
-            && isTypingKey(static_cast<QKeyEvent*>(event))) {
+        if (object == typingTarget_ && typingTargetWritable() && isTypingKey(static_cast<QKeyEvent*>(event))) {
+            const auto* key = static_cast<QKeyEvent*>(event);
+            if (workbenchCommandsAllowed() && normalizationShortcut_.count() == 1
+                && normalizationShortcut_[0] == key->keyCombination()) break;
             event->accept();
             return true;
         }

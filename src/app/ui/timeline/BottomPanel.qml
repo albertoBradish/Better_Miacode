@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import MiaCode.UI
 
 Item {
@@ -34,6 +35,7 @@ Item {
         required property var modelData
         required property string leadingText
         required property string bodyText
+        property string locationText: ""
 
         readonly property color leadingColor: modelData.severity === "error"
             ? Theme.colors.syntax.error
@@ -53,13 +55,29 @@ Item {
                 y: (parent.height - implicitHeight) / 2
                 spacing: 2
 
-                Label {
+                RowLayout {
                     width: parent.width
-                    text: issueRow.leadingText
-                    color: issueRow.leadingColor
-                    wrapMode: Text.Wrap
-                    font.family: Theme.codeFont.family
-                    font.pixelSize: Theme.uiFontSize
+                    spacing: 8
+
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.alignment: Qt.AlignTop
+                        text: issueRow.leadingText
+                        color: issueRow.leadingColor
+                        wrapMode: Text.Wrap
+                        font.family: Theme.uiFont
+                        font.pixelSize: Theme.uiFontSize
+                    }
+
+                    Label {
+                        Layout.alignment: Qt.AlignTop
+                        visible: text.length > 0
+                        text: issueRow.locationText
+                        color: Theme.colors.text.secondary
+                        font.family: Theme.codeFont.family
+                        font.pixelSize: Theme.uiFontSize
+                    }
                 }
 
                 Label {
@@ -105,18 +123,14 @@ Item {
         model: root.rows
 
         delegate: AnalysisIssueRow {
-            leadingText: {
-                if (root.muri || root.playChecks) {
-                    return "%1 · %2 · L%3:C%4".arg(modelData.alert === "warning"
-                        ? qsTrId("validation.muri.alert.warning") : qsTrId("validation.muri.alert.muri"))
-                        .arg(modelData.title).arg(modelData.line).arg(modelData.column)
-                }
-                if (modelData.code === "missing_difficulty_level")
-                    return qsTrId("validation.difficulty_header")
-                return "%1 · L%2:C%3".arg(modelData.severity === "error"
-                    ? qsTrId("qml.errors") : qsTrId("validation.muri.alert.warning"))
-                    .arg(modelData.line).arg(modelData.column)
-            }
+            leadingText: root.muri || root.playChecks
+                ? qsTrId("validation.muri.issue_heading").arg(modelData.title)
+                    .arg(modelData.alert === "warning" ? qsTrId("validation.muri.alert.warning")
+                        : qsTrId("validation.muri.alert.muri"))
+                : modelData.code === "missing_difficulty_level" ? qsTrId("validation.difficulty_header")
+                : modelData.severity === "error" ? qsTrId("qml.errors") : qsTrId("validation.muri.alert.warning")
+            locationText: !root.muri && !root.playChecks && modelData.code === "missing_difficulty_level" ? ""
+                : "L%1:C%2".arg(modelData.line).arg(modelData.column)
             bodyText: modelData.detail
         }
 

@@ -6,6 +6,7 @@
 #include "app/ui/preview/NoteImageProvider.h"
 #include "app/ui/export/CoverExportWindow.h"
 #include "app/ui/export/ExportSession.h"
+#include "app/ui/export/AnimatedImageClipboardService.h"
 #include "app/ui/chrome/WindowChrome.h"
 #include "app/ui/chrome/ShortcutModel.h"
 #include "app/platform/PlatformDiagnostics.h"
@@ -122,6 +123,8 @@ bool Bootstrap::start(const QString& startupOpenTarget)
                 });
             return session;
         });
+    applicationServices_->setAnimatedImageClipboard(
+        new AnimatedImageClipboardService(applicationServices_.get()));
     backend_ = std::make_unique<Session>(*applicationServices_);
     backend_->setBackendActive(true);
     appendUiRuntimeLog(QStringLiteral("backend_ready"));

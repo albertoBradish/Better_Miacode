@@ -5,6 +5,10 @@ on:
   push:
     tags: ['v*-better.*']
   workflow_dispatch:
+    inputs:
+      expected_version:
+        description: Release version for branches outside release/<version>.
+        type: string
 
 permissions:
   contents: read
@@ -19,6 +23,7 @@ jobs:
     uses: ./.github/workflows/package.yml
     with:
       channel: release
+      expected_version: ${{ inputs.expected_version }}
   publish:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')

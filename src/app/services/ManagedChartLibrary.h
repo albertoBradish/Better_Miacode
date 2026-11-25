@@ -21,6 +21,7 @@ QList<BundleSong> bundleSongs(const QString& root, int* skipped = nullptr, bool 
     QSet<QString>* packs = nullptr);
 bool isLibraryChartText(const QString& text);
 QString playbackChartPath(const QString& root, const QJsonObject& record, const std::atomic_bool* canceled = nullptr);
+QString existingChartPath(const QString& root, const QString& indexedPath, const QJsonObject& record);
 QString editableChartPath(const QString& root, const QString& path, const QJsonObject& record);
 bool registerSong(const QString& root, const QString& path, const QString& pack, bool owned = false);
 bool registerSavedCharts(const QString& root, const QSet<QString>& paths);

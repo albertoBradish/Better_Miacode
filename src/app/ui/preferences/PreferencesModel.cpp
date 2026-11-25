@@ -251,11 +251,7 @@ void PreferencesModel::setEditorFontFamily(const QString& family)
 
 QVariantList PreferencesModel::editorFontOptions(const QString& filter) const
 {
-    const QString defaultFamily = miacode::editor_typography::resolveFont(QString()).family();
-    QVariantMap defaultRow = option(QString(), defaultFamily + QStringLiteral(" · ")
-                                    + qtTrId("dialog.preferences.font.default_suffix"));
-    defaultRow.insert(QStringLiteral("family"), defaultFamily);
-    QVariantList rows{defaultRow};
+    QVariantList rows{option(QString(), qtTrId("dialog.preferences.font.default"))};
     QStringList families = QFontDatabase::families();
     std::sort(families.begin(), families.end(), [](const QString& left, const QString& right) {
         return QString::localeAwareCompare(left, right) < 0;

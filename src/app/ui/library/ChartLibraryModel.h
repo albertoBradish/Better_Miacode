@@ -70,6 +70,7 @@ class ChartLibraryModel final : public QAbstractListModel {
     Q_PROPERTY(bool sortDescending READ sortDescending WRITE setSortDescending NOTIFY changed)
     Q_PROPERTY(QString pack READ pack WRITE setPack NOTIFY changed)
     Q_PROPERTY(QString versionCategory READ versionCategory WRITE setVersionCategory NOTIFY changed)
+    Q_PROPERTY(int difficultyMask READ difficultyMask WRITE setDifficultyMask NOTIFY changed)
     Q_PROPERTY(QString genre READ genre WRITE setGenre NOTIFY changed)
     Q_PROPERTY(bool duplicatesOnly READ duplicatesOnly WRITE setDuplicatesOnly NOTIFY changed)
     Q_PROPERTY(bool busy READ busy NOTIFY changed)
@@ -118,6 +119,8 @@ public:
     bool sortDescending() const { return sortDescending_; }
     void setSortDescending(bool descending);
     QString pack() const { return pack_; }
+    int difficultyMask() const { return difficultyMask_; }
+    void setDifficultyMask(int mask);
     QString genre() const { return genre_; }
     void setPack(const QString& value);
     void setGenre(const QString& value);
@@ -184,8 +187,10 @@ private:
         QString highestDesigner;
         double bpm=0, highestConstant=0;
         int officialVersion=0;
+        int difficultyMask=0;
         void updateSearch(); };
     const Entry* entryFor(const QString& path) const;
+    void openSong(const QString& path, int difficulty, bool additional);
     void runImport(const QStringList& folders, const QString& targetPack, bool consolidate);
     void queueSavedChart(const QString& path);
     QStringList catalogNames(const QString& key) const;
@@ -213,6 +218,8 @@ private:
     QStringList importPaths_;
     quint64 importPickerGeneration_ = 0;
     bool pickingImportSources_ = false;
+    int firstMatchingDifficulty(const Entry& entry) const;
+    int difficultyMask_ = 0;
     int sortColumn_ = SortTitle;
     bool sortDescending_ = false;
     QString selectionAnchor_;

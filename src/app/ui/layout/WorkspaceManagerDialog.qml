@@ -21,7 +21,7 @@ AppDialog {
     readonly property bool validEntry: workspace.layoutKeys.includes(selectedKey)
         && (!custom || workspace.validSavedLayout(selectedName))
     readonly property var selectedLayout: custom ? workspace.preferences.savedWorkspaceLayouts[selectedName]
-        : { tree: workspace.builtinTree(selectedKey, true) }
+        : { tree: workspace.builtinTree(selectedKey) }
 
     objectName: "workspaceManagerDialog"
     title: qsTrId("workspace.manage")

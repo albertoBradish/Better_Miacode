@@ -945,17 +945,14 @@ void CoverExportSession::requestFont(bool displayFont, bool textLayerFont)
                         miacode::localizedText(result.failure == miacode::video_export::FontImportFailure::CopyFailed ? "card_font.copy_failed" : "card_font.invalid_font"));
             return;
         }
+        emit fontLibraryChanged();
         if (textLayerFont) {
-            if (auto* layer = activeCoverLayer(); layer != nullptr && layer->kind() == QStringLiteral("text")) {
-                layer->setFontPath(result.path);
-                persistComposition();
-            }
+            setActiveLayerFontPath(result.path);
         } else if (displayFont) {
             setCardFontDisplayPath(result.path);
         } else {
             setCardFontBodyPath(result.path);
         }
-        emit fontLibraryChanged();
     });
 }
 
@@ -1021,6 +1018,13 @@ void CoverExportSession::setActiveLayerText(const QString& text)
 {
     if (auto* layer = activeCoverLayer(); layer != nullptr && layer->kind() == QStringLiteral("text")) {
         layer->setText(text); persistComposition();
+    }
+}
+void CoverExportSession::setActiveLayerFontPath(const QString& path)
+{
+    if (auto* layer = activeCoverLayer(); layer != nullptr && layer->kind() == QStringLiteral("text")) {
+        layer->setFontPath(path);
+        persistComposition();
     }
 }
 void CoverExportSession::setActiveLayerTextColor(const QString& color)

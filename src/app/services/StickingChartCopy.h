@@ -15,7 +15,7 @@ inline constexpr auto chartFileName = "maidata_sticking.txt";
 
 // Local project opens always edit a byte-for-byte copy of maidata.txt.
 // An existing Sticking chart is authoritative and is never replaced here.
-inline QString editableChartPath(const QString& requestedPath)
+inline QString editableChartPath(const QString& requestedPath, bool createCopy = true)
 {
     if (requestedPath.isEmpty()) return {};
     const QFileInfo requested(requestedPath);
@@ -33,7 +33,7 @@ inline QString editableChartPath(const QString& requestedPath)
         return sourcePath;
     const QString copyPath = source.dir().filePath(QLatin1String(chartFileName));
     if (QFileInfo::exists(copyPath)) return QFileInfo(copyPath).isFile() ? copyPath : QString();
-    if (!source.isFile()) return {};
+    if (!createCopy || !source.isFile()) return {};
     if (!QFile::copy(sourcePath, copyPath))
         return QFileInfo(copyPath).isFile() ? copyPath : QString();
     QFile copy(copyPath);

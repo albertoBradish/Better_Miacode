@@ -8,6 +8,7 @@ Rectangle {
     required property var pages
     property bool normalizeDefault: false
     property bool documentAvailable: true
+    property var rowStateColors: Theme.colors.listState
     readonly property alias cornerSourceItem: heading
 
     color: Theme.surfaceColor(Theme.colors.background.panel)
@@ -47,6 +48,7 @@ Rectangle {
 
             NavRow {
                 width: parent.width
+                stateColors: root.rowStateColors
                 enabled: root.documentAvailable
                 text: qsTrId("export_page.export_video")
                 iconSource: Qt.resolvedUrl("icons/video.svg")
@@ -56,6 +58,7 @@ Rectangle {
             }
             NavRow {
                 width: parent.width
+                stateColors: root.rowStateColors
                 enabled: root.documentAvailable
                 text: qsTrId("export_page.export_cover")
                 iconSource: Qt.resolvedUrl("icons/image.svg")
@@ -64,6 +67,7 @@ Rectangle {
             }
             NavRow {
                 width: parent.width
+                stateColors: root.rowStateColors
                 enabled: root.documentAvailable
                 text: qsTrId("export_page.pack_as_zip")
                 iconSource: Qt.resolvedUrl("icons/folder-zip.svg")

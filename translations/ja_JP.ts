@@ -3,6 +3,38 @@
 <TS version="2.1" language="ja_JP">
 <context>
     <name></name>
+    <message id="job_progress.busy">
+        <source>Please wait for the current task to finish.</source>
+        <translation>現在の処理が完了するまでお待ちください。</translation>
+    </message>
+    <message id="export.gif.action">
+        <source>Export selected range as GIF</source>
+        <translation>選択範囲をGIFとして出力</translation>
+    </message>
+    <message id="export.gif.title">
+        <source>Export GIF</source>
+        <translation>GIF を出力</translation>
+    </message>
+    <message id="export.gif.exporting">
+        <source>Exporting GIF...</source>
+        <translation>GIFを出力中…</translation>
+    </message>
+    <message id="export.gif.completed">
+        <source>GIF generated and copied to the clipboard.</source>
+        <translation>GIFを生成してクリップボードにコピーしました。</translation>
+    </message>
+    <message id="export.gif.clipboard_unavailable">
+        <source>The GIF clipboard cache is unavailable.</source>
+        <translation>GIF用クリップボードキャッシュを使用できません。</translation>
+    </message>
+    <message id="export.gif.clipboard_failed">
+        <source>Could not copy the GIF to the clipboard.</source>
+        <translation>GIFをクリップボードにコピーできませんでした。</translation>
+    </message>
+    <message id="export.gif.failed">
+        <source>GIF export failed: %1</source>
+        <translation>GIF出力に失敗しました：%1</translation>
+    </message>
     <message id="toast.operation_failed">
         <source>%1 failed: %2.</source>
         <translation>%1に失敗しました。%2。</translation>
@@ -212,6 +244,10 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
     <message id="action.later">
         <source>Later</source>
         <translation>後で</translation>
+    </message>
+    <message id="action.filter">
+        <source>Filter</source>
+        <translation>絞り込み</translation>
     </message>
     <message id="action.new">
         <source>New</source>
@@ -1634,12 +1670,12 @@ Failed: %2</source>
         <translation>試聴</translation>
     </message>
     <message id="dialog.render_settings.music.default_intro_sound">
-        <source>Default intro sound</source>
-        <translation>既定の開始音</translation>
+        <source>Default</source>
+        <translation>既定</translation>
     </message>
     <message id="dialog.render_settings.music.intro_sound">
-        <source>Intro sound</source>
-        <translation>開始音</translation>
+        <source>Intro music</source>
+        <translation>開始音楽</translation>
     </message>
     <message id="dialog.render_settings.preview.canvas_frame_rate">
         <source>Preview Refresh Rate</source>
@@ -2545,6 +2581,34 @@ File: </source>
         <source>%1 was not found next to the current chart.</source>
         <translation>現在の譜面フォルダーに %1 がありません。</translation>
     </message>
+    <message id="media_tools.volume_balance">
+        <source>Volume Balance</source>
+        <translation>音量バランス</translation>
+    </message>
+    <message id="media_tools.volume_balance_analyze_failed">
+        <source>Could not measure the audio loudness.</source>
+        <translation>音声のラウドネスを測定できませんでした。</translation>
+    </message>
+    <message id="media_tools.volume_balance_confirm">
+        <source>Replace %1 with the processed audio?</source>
+        <translation>処理後の音声で %1 を置き換えますか？</translation>
+    </message>
+    <message id="media_tools.volume_balance_missing_track">
+        <source>No chart audio found.</source>
+        <translation>譜面の音声が見つかりません。</translation>
+    </message>
+    <message id="media_tools.volume_balance_track_changed">
+        <source>The audio file changed during processing.</source>
+        <translation>処理中に音声ファイルが変更されました。</translation>
+    </message>
+    <message id="media_tools.volume_balance_unchanged">
+        <source>No adjustment needed.</source>
+        <translation>調整は不要です。</translation>
+    </message>
+    <message id="media_tools.volume_balance_saved">
+        <source>Processing complete.</source>
+        <translation>処理が完了しました。</translation>
+    </message>
     <message id="media_tools.audio_processing_track">
         <source>Audio Processing track.mp3</source>
         <translation>音声処理</translation>
@@ -3413,6 +3477,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Return to Main Window</source>
         <translation>メインウィンドウに戻す</translation>
     </message>
+    <message id="preview.window.show">
+        <source>Show Preview Window</source>
+        <translation>プレビューウィンドウを表示</translation>
+    </message>
     <message id="preview.window.title">
         <source>Preview</source>
         <translation>プレビュー</translation>
@@ -3542,8 +3610,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>譜面</translation>
     </message>
     <message id="qml.chart_designer_1">
-        <source> · Chart Designer: %1</source>
-        <translation> ・譜面制作者：%1</translation>
+        <source>Chart Designer: %1</source>
+        <translation>譜面制作者：%1</translation>
     </message>
     <message id="qml.choose_a_folder_to_scan">
         <source>Choose a folder to scan</source>
@@ -4305,6 +4373,10 @@ Error: %1</source>
         <source>Muri</source>
         <translation>無理</translation>
     </message>
+    <message id="validation.muri.issue_heading">
+        <source>%1 (%2)</source>
+        <translation>%1（%2）</translation>
+    </message>
     <message id="validation.muri.alert.warning">
         <source>Warning</source>
         <translation>警告</translation>
@@ -4392,6 +4464,14 @@ Error: %1</source>
     <message id="video_export.intro_audition_stop">
         <source>Stop</source>
         <translation>停止</translation>
+    </message>
+    <message id="video_export.intro_music_copy_failed">
+        <source>Could not copy the audio into the intro music folder.</source>
+        <translation>音声を開始音楽フォルダーにコピーできませんでした。</translation>
+    </message>
+    <message id="video_export.intro_music_import">
+        <source>Import audio…</source>
+        <translation>音声を読み込む…</translation>
     </message>
     <message id="video_export.intro_music_segment">
         <source>Music segment</source>
@@ -4483,8 +4563,8 @@ Error: %1</source>
     </message>
 
     <message id="net.ui.query_options">
-        <source>Search options</source>
-        <translation>検索オプション</translation>
+        <source>Filters</source>
+        <translation>絞り込み</translation>
     </message>
     <message id="net.ui.queue_hint">
         <source>Choose a chart folder and add it to the queue.</source>
@@ -4506,22 +4586,6 @@ Error: %1</source>
         <source>Tag</source>
         <translation>タグ</translation>
     </message>
-    <message id="net.ui.start_date">
-        <source>Start date (YYYY-MM-DD)</source>
-        <translation>開始日 (YYYY-MM-DD)</translation>
-    </message>
-    <message id="net.ui.end_date">
-        <source>End date (YYYY-MM-DD)</source>
-        <translation>終了日 (YYYY-MM-DD)</translation>
-    </message>
-    <message id="net.ui.sort_uploaded_desc">
-        <source>Newest first</source>
-        <translation>新しい順</translation>
-    </message>
-    <message id="net.ui.sort_uploaded_asc">
-        <source>Oldest first</source>
-        <translation>古い順</translation>
-    </message>
     <message id="net.ui.sort_level_desc">
         <source>Highest level first</source>
         <translation>レベル降順</translation>
@@ -4540,7 +4604,7 @@ Error: %1</source>
     </message>
     <message id="net.ui.case_sensitive">
         <source>Case sensitive</source>
-        <translation>大文字・小文字を区別</translation>
+        <translation>大文字と小文字を区別</translation>
     </message>
     <message id="net.ui.force_refresh">
         <source>Refresh from server</source>
@@ -4554,6 +4618,10 @@ Error: %1</source>
         <source>Check connection</source>
         <translation>接続を確認</translation>
     </message>
+    <message id="net.ui.probing">
+        <source>Checking connection…</source>
+        <translation>接続を確認しています…</translation>
+    </message>
     <message id="net.ui.clear_selection">
         <source>Clear selection</source>
         <translation>選択を解除</translation>
@@ -4562,13 +4630,21 @@ Error: %1</source>
         <source>%1 results, %2 selected</source>
         <translation>%1 件、%2 件選択中</translation>
     </message>
+    <message id="net.ui.results">
+        <source>%1 results</source>
+        <translation>%1 件の結果</translation>
+    </message>
+    <message id="net.ui.searching">
+        <source>Searching…</source>
+        <translation>検索中…</translation>
+    </message>
     <message id="net.ui.connection_normal">
-        <source>Connection normal (%1 ms)</source>
-        <translation>接続正常 (%1 ms)</translation>
+        <source>Connection normal</source>
+        <translation>接続は正常です</translation>
     </message>
     <message id="net.ui.connection_slow">
-        <source>Connection slow (%1 ms)</source>
-        <translation>接続が遅い (%1 ms)</translation>
+        <source>Connection slow</source>
+        <translation>接続が遅くなっています</translation>
     </message>
     <message id="net.ui.error">
         <source>Net: %1</source>
@@ -4635,10 +4711,6 @@ Error: %1</source>
         <translation>アーティスト</translation>
     </message>
 
-    <message id="net.ui.uploaded_at">
-        <source>Uploaded at</source>
-        <translation>アップロード日時</translation>
-    </message>
 
     <message id="net.ui.state">
         <source>Status</source>
@@ -4650,9 +4722,29 @@ Error: %1</source>
         <translation>オンラインプレビュー</translation>
     </message>
 
+    <message id="net.ui.search_placeholder">
+        <source>Search songs, artists or chart designers…</source>
+        <translation>曲名・作曲者・譜面作者を検索…</translation>
+    </message>
+    <message id="net.ui.search_suggestions">
+        <source>Search suggestions</source>
+        <translation>検索候補</translation>
+    </message>
+    <message id="net.ui.clear_search">
+        <source>Clear search</source>
+        <translation>検索をクリア</translation>
+    </message>
+    <message id="net.ui.search_by_id">
+        <source>Chart ID</source>
+        <translation>譜面 ID</translation>
+    </message>
+    <message id="net.ui.search_by_hash">
+        <source>Chart hash</source>
+        <translation>譜面のハッシュ</translation>
+    </message>
     <message id="net.ui.query_hint">
-        <source>Enter a user ID, Tag or song title and select a date range.</source>
-        <translation>ユーザー ID、Tag または曲名と期間を指定してください。</translation>
+        <source>Search by keyword or enter a filter.</source>
+        <translation>キーワードを入力するか、絞り込み条件を指定してください。</translation>
     </message>
 
     <message id="net.ui.view_log">
@@ -4663,6 +4755,26 @@ Error: %1</source>
     <message id="net.download_selected">
         <source>Download selected</source>
         <translation>選択した譜面をダウンロード</translation>
+    </message>
+    <message id="net.ui.download_selection_count">
+        <source>Download %1 Items</source>
+        <translation>%1 件をダウンロード</translation>
+    </message>
+    <message id="net.ui.file_progress">
+        <source>Current file progress</source>
+        <translation>現在のファイルの進捗</translation>
+    </message>
+    <message id="net.ui.preview_column">
+        <source>Preview</source>
+        <translation>プレビュー</translation>
+    </message>
+    <message id="net.ui.download_one">
+        <source>Download</source>
+        <translation>ダウンロード</translation>
+    </message>
+    <message id="net.ui.download_folder_unavailable">
+        <source>The download folder could not be opened.</source>
+        <translation>ダウンロード先のフォルダーを開けませんでした。</translation>
     </message>
 
     <message id="net.ui.cancel_task">
@@ -4856,8 +4968,8 @@ Error: %1</source>
         <translation>状態：降順</translation>
     </message>
     <message id="guide.page_one">
-        <source>Getting started · Page 1</source>
-        <translation>初心者ガイド · 1 ページ</translation>
+        <source>Getting started, page 1</source>
+        <translation>初心者ガイドの 1 ページ目</translation>
     </message>
     <message id="guide.exit">
         <source>Exit guide</source>
@@ -4951,9 +5063,9 @@ Error: %1</source>
         <source>Follow code: choose whether the timeline follows the current chart-source position in settings.</source>
         <translation>コード追従：設定で、譜面コードの現在位置にタイムラインを追従させるか切り替えます。</translation>
     </message>
-    <message id="guide.editor.metadata_save">
-        <source>Changes to the level, offset and designer above are saved immediately.</source>
-        <translation>上部のレベル、オフセット、譜面作者の変更は即時保存されます。</translation>
+    <message id="guide.editor.normalize">
+        <source>Select a passage and use Normalize Chart to tidy its layout.</source>
+        <translation>譜面の一部を選択し、「譜面整理」で書式を整えます。</translation>
     </message>
     <message id="guide.editor.measure">
         <source>Start a new measure here and switch to 3/4 time.</source>
@@ -5001,7 +5113,7 @@ Error: %1</source>
     </message>
     <message id="guide.navigation.tools">
         <source>Toolbox: chart normalization, audio and video processing, and more.</source>
-        <translation>ツールボックス：譜面の整理、音声・動画処理ツールなど。</translation>
+        <translation>ツールボックス：譜面の整理、音声や動画の処理ツールなど。</translation>
     </message>
     <message id="guide.navigation.preferences">
         <source>Preferences: configure interface appearance and styling, the editor and shortcuts.</source>
@@ -5191,8 +5303,8 @@ Error: %1</source>
         <translation>ミッドナイト</translation>
     </message>
     <message id="dialog.preferences.theme.forest">
-        <source>Forest</source>
-        <translation>フォレスト</translation>
+        <source>Si-callion</source>
+        <translation>スーねぎ</translation>
     </message>
     <message id="dialog.preferences.theme.paper">
         <source>Warm Paper</source>
@@ -6845,6 +6957,78 @@ Held %8 · Slides %9 · Overlap %10</source>
         <source>Clear Drop</source>
         <translation>Drop を解除</translation>
     </message>
+    <message id="library.choose_folder">
+        <source>Choose folder</source>
+        <translation>フォルダーを選択</translation>
+    </message>
+    <message id="library.no_directory">
+        <source>No library folder selected</source>
+        <translation>譜面ライブラリのフォルダーが未選択です</translation>
+    </message>
+    <message id="library.current_editing">
+        <source>Currently editing</source>
+        <translation>編集中</translation>
+    </message>
+    <message id="library.all_difficulties">
+        <source>All difficulties</source>
+        <translation>すべての難易度</translation>
+    </message>
+    <message id="library.version">
+        <source>Version</source>
+        <translation>バージョン</translation>
+    </message>
+    <message id="library.missing_folder">
+        <source>Library folder unavailable</source>
+        <translation>ライブラリフォルダーが見つかりません</translation>
+    </message>
+    <message id="library.open_chart_folder_failed">
+        <source>Could not open the chart folder.</source>
+        <translation>この曲のフォルダーを開けませんでした。</translation>
+    </message>
+    <message id="library.empty">
+        <source>No charts found</source>
+        <translation>譜面が見つかりません</translation>
+    </message>
+    <message id="library.pause">
+        <source>Pause</source>
+        <translation>一時停止</translation>
+    </message>
+    <message id="library.difficulty.1">
+        <source>Easy</source>
+        <translation>Easy</translation>
+    </message>
+    <message id="library.difficulty.2">
+        <source>Basic</source>
+        <translation>Basic</translation>
+    </message>
+    <message id="library.difficulty.3">
+        <source>Advanced</source>
+        <translation>Advanced</translation>
+    </message>
+    <message id="library.difficulty.4">
+        <source>Expert</source>
+        <translation>Expert</translation>
+    </message>
+    <message id="library.difficulty.5">
+        <source>Master</source>
+        <translation>Master</translation>
+    </message>
+    <message id="library.difficulty.6">
+        <source>Re:Master</source>
+        <translation>Re:Master</translation>
+    </message>
+    <message id="library.difficulty.7">
+        <source>Utage</source>
+        <translation>Utage</translation>
+    </message>
+    <message id="library.result_count">
+        <source>%1 / %2 songs</source>
+        <translation>%1 / %2 曲</translation>
+    </message>
+    <message id="library.select_song">
+        <source>Select a song to see its details</source>
+        <translation>曲を選択すると詳細が表示されます</translation>
+        </message>
 </context>
 <context>
     <!-- Qt loads qtbase texts for the system locale; this context keeps the

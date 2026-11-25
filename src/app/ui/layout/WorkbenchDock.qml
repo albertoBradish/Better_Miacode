@@ -12,7 +12,10 @@ Item {
     required property var preferences
     required property var availablePanels
     required property var defaultTree
-    required property var builtinTree
+    property bool simulatedPlay: false
+    function builtinTree(preset) {
+        return Layouts.builtinTree(preset, preferencesModel?.previewOnLeft ?? false, simulatedPlay)
+    }
     required property var floatPreview
     required property var dockPreview
     required property var previewGeometry
@@ -294,14 +297,10 @@ Item {
         activePanel = id
         if (maximizedPanel && maximizedPanel !== id) maximizedPanel = ""
         panelActivated(id)
-        if (useNativeFrame)
-            return
-        for (const group of groups) {
-            if (group?.tabs.includes(id) && group.selected !== id) {
-                commit(Layouts.activate(tree, id), floating)
-                return
-            }
-        }
+        if (useNativeFrame || isFloating(id)) return
+        // Dock hosts can still be incubating when a hidden panel is reopened.
+        const nextTree = Layouts.activate(tree, id)
+        if (nextTree !== tree) commit(nextTree, floating)
     }
 
     function resize(path, ratio) {
@@ -406,7 +405,6 @@ Item {
             dockPreview()
         preferences.timelineLayoutMode = id === "default" ? "horizontal" : "vertical"
         preferences.timelineVerticalDirection = "falling"
-        if (preferencesModel) preferencesModel.previewOnLeft = false
         preferences.sidebarVisible = id !== "editing"
         preferences.timelinePanelVisible = true
         preferences.bottomPanelVisible = true
@@ -419,7 +417,7 @@ Item {
             preferences.bottomPanelHeightRatio = preferences.bottomPanelDefaultHeightRatio
         }
         sessionLayout = null
-        preferences.workspaceLayout = id === "default" ? {} : { version: 1, tree: builtinTree(id, true), floating: {} }
+        preferences.workspaceLayout = id === "default" ? {} : { version: 1, tree: builtinTree(id), floating: {} }
     }
 
     function applySaved(name) {

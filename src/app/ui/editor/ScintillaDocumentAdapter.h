@@ -2,6 +2,7 @@
 
 #include <scintillaquick/scintillaquick_item.h>
 #include <QHash>
+#include <QVector>
 #include <optional>
 
 namespace miacode::ui {
@@ -44,6 +45,13 @@ private:
         QHash<int, Selection> undoSelections;
     };
     void saveViewport();
+    void preparePositionIndex() const;
+    struct PositionCheckpoint {
+        int utf16 = 0;
+        int byte = 0;
+    };
+    mutable QVector<PositionCheckpoint> positionIndex_;
+    mutable bool positionIndexValid_ = false;
     ScintillaQuick_item& editor_;
     QHash<QString, Document> documents_;
     QString scope_;

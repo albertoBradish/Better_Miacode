@@ -217,6 +217,22 @@ void ChartLibraryModel::setPack(const QString& value)
     if (pack_ != value) { pack_ = value; rebuildFilter(); }
 }
 
+void ChartLibraryModel::setDifficultyMask(int mask)
+{
+    mask &= 0xfe; // Simai difficulty IDs range from 1 (Easy) to 7 (Utage).
+    if (mask == difficultyMask_) return;
+    difficultyMask_ = mask;
+    rebuildFilter();
+}
+
+int ChartLibraryModel::firstMatchingDifficulty(const Entry& entry) const
+{
+    const int matching = entry.difficultyMask & difficultyMask_;
+    for (int slot = 1; slot <= 7; ++slot)
+        if (matching & (1 << slot)) return slot;
+    return 0;
+}
+
 void ChartLibraryModel::setGenre(const QString& value)
 {
     if (genre_ != value) { genre_ = value; rebuildFilter(); }
@@ -256,7 +272,8 @@ void ChartLibraryModel::rebuildFilter(QVector<Entry>* replacement)
     for(int i=0;i<entries_.size();++i) {
         const auto& e=entries_[i]; bool keep=!duplicatesOnly_ || e.copies>1;
         keep = keep && (pack_.isEmpty() || e.pack == pack_) && matches(genre_, e.genre)
-            && matches(versionCategory_, e.versionCategory);
+            && matches(versionCategory_, e.versionCategory)
+            && (!difficultyMask_ || (e.difficultyMask & difficultyMask_));
         for(const auto& word:words) keep=keep&&e.search.contains(word);
         if(keep)visible_.append(i);
     }
@@ -463,6 +480,7 @@ bool ChartLibraryModel::setRoot(const QString& path)
         requests_->postNotice(NoticeSeverity::Information,qtTrId("library.title"),qtTrId("library.recovery_archived").arg(archive));
     }
     if (root_ != canonical) {
+        difficultyMask_ = 0;
         pack_.clear(); genre_.clear(); versionCategory_.clear(); importStatus_.clear();
         indexedPacks_.clear(); pendingSavedCharts_.clear(); clearImportSources();
     }
@@ -524,6 +542,7 @@ void ChartLibraryModel::refresh()
                 int highestSlot = 0;
                 for (const int slot : doc.difficultyIds()) {
                     const auto& difficulty = *doc.difficulty(slot);
+                    e.difficultyMask |= 1 << slot;
                     if (difficulty.chart.trimmed().isEmpty()) continue;
                     if (e.bpm == 0.0) e.bpm = chart_clock::firstBpmFromChart(difficulty.chart);
                     const double constant = positiveNumber(metadata::fieldValue(doc, "level_constant_" + QString::number(slot)));
@@ -717,30 +736,50 @@ bool ChartLibraryModel::additionalOpenModifierHeld() const
 }
 void ChartLibraryModel::openFromList(const QString& path)
 {
-    if (!additionalOpenModifierHeld()) { openInEditor(path); return; }
-    const auto* entry = entryFor(path);
-    if (busy_ || !document_ || !entry) return;
-    if (auto* draft = bufferFor(path); draft && draft->dirty()) {
-        status_ = qtTrId("library.save_buffer_first"); emit changed(); return;
-    }
-    const auto editable = library::editableChartPath(root_, path, entry->record);
-    if (document_->openAdditionalSong(editable)) emit editorOpened();
-    else if (editable.isEmpty()) { status_ = qtTrId("library.open_failed").arg(path); emit changed(); }
-
+    openSong(path, 0, additionalOpenModifierHeld());
 }
+
 void ChartLibraryModel::openInEditor(const QString& path, int difficulty)
 {
-    if(importInProgress_||!document_||!entryFor(path))return;
-    for(auto*s:sessions_)if(s->path()==path&&s->dirty()){status_=qtTrId("library.save_buffer_first");emit changed();return;}
+    openSong(path, difficulty, false);
+}
+
+void ChartLibraryModel::openSong(const QString& path, int difficulty, bool additional)
+{
+    const auto* entry = entryFor(path);
+    if (!document_ || !entry || (additional ? busy_ : importInProgress_)) return;
+    if (auto* draft = bufferFor(path); draft && draft->dirty()) {
+        status_ = qtTrId("library.save_buffer_first");
+        emit changed();
+        return;
+    }
+    if (!difficulty) difficulty = firstMatchingDifficulty(*entry);
+    const auto existing = library::existingChartPath(root_, path, entry->record);
+    const int openTab = document_->songTabForChart(existing);
+    if (openTab >= 0) {
+        if (document_->activateSongTab(openTab, difficulty)) emit editorOpened();
+        return;
+    }
+
     QPointer<ChartLibraryModel> guard(this);
-    document_->requestLeaveDocument([guard,path,difficulty](bool yes) {
-        if (!guard || !yes || !guard->document_ || !guard->entryFor(path)) return;
-        const auto editable=library::editableChartPath(guard->root_,path,guard->entryFor(path)->record);
-        if (!editable.isEmpty() && guard->document_->openFile(QUrl::fromLocalFile(editable))) {
-            if (SimaiDocument::isDifficultyId(difficulty)) guard->document_->selectDifficulty(difficulty);
-            emit guard->editorOpened();
+    const auto open = [guard, path, difficulty, additional](bool accepted) {
+        if (!accepted || !guard || !guard->document_) return;
+        const auto* entry = guard->entryFor(path);
+        if (!entry) return;
+        const auto existing = library::existingChartPath(guard->root_, path, entry->record);
+        const auto editable = library::editableChartPath(guard->root_, existing, entry->record);
+        if (editable.isEmpty()) {
+            guard->status_ = qtTrId("library.open_failed").arg(path);
+            emit guard->changed();
+            return;
         }
-    });
+        const bool opened = additional
+            ? guard->document_->openAdditionalSong(editable, difficulty)
+            : guard->document_->openChartFile(QUrl::fromLocalFile(editable), difficulty);
+        if (opened) emit guard->editorOpened();
+    };
+    if (additional) open(true);
+    else document_->requestLeaveDocument(open);
 }
 QVariantList ChartLibraryModel::proposals()const
 {

@@ -13,12 +13,13 @@ namespace miacode::net {
 
 struct NetQueryRequest {
     QString providerId = QStringLiteral("majdata");
+    QString search;
     QString uploader;
     QString tag;
     QString title;
     QDate startDate;
     QDate endDate;
-    QTimeZone timeZone = QTimeZone::systemTimeZone();
+    QTimeZone timeZone{QTimeZone::LocalTime};
     bool caseSensitive = false;
     bool forceRefresh = false;
     QString sort = QStringLiteral("uploaded_desc");

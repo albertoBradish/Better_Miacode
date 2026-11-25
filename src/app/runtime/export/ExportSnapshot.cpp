@@ -375,14 +375,9 @@ void miacode::runtime::VideoExportHost::installExportPreviewAuditionScene(int di
             session_.previewPlaybackRate_ > 0.0 ? session_.previewPlaybackRate_ : 1.0,
             session_.previewTimingSettings_);
     }
-    // clock_count count-in is opt-in via the export dialog's "Enable clock_count"
-    // checkbox (default OFF), so the audition starts WITHOUT the count-in to match
-    // what will actually be exported (所见即所导). Toggling the checkbox re-seeds
-    // this live — see the clockCountEnabledChanged connection in
-    // createEmbeddedVideoExportPanel. The VALUE / BPM still come from the chart.
-    session_.setExportAuditionClockSchedule(
-        0,
-        miacode::chart_clock::clockBpmForChart(session_.applicationServices_.workspace().document(), difficulty->chart));
+    // The count-in follows the page's clock_count checkbox so the audition matches
+    // the export; the value and BPM come from the chart.
+    applyExportAuditionClockSchedule(difficultyId);
 
     // Set up the negative-time intro region (slider range + default playhead at
     // the intro head) when 添加片头 is on for this difficulty.
@@ -462,11 +457,6 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
             *errorMessage = qtTrId("dialog.video_export.error.no_difficulty");
         }
         return false;
-    }
-
-    session_.refreshTimelineMetadata();
-    if (!liveTimelineCoversDifficulty(resolvedDifficultyId)) {
-        parseAndPublishTimelineForDifficulty(resolvedDifficultyId);
     }
 
     VideoExportSnapshot built;
@@ -559,20 +549,17 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     // keeps CLI / batch emitting it). The clock_count VALUE is re-derived worker-side.
     built.clockCountEnabled = requestedTask.clockCountEnabled;
     built.introSoundFileName = requestedTask.introSoundFileName;
-    built.intro = buildIntroBannerSpec(
-        session_.applicationServices_.workspace().document(),
-        resolvedDifficultyId,
-        session_.currentFilePath_,
-        requestedTask.intro.enabled,
-        built.fullRangeExport);
-    // The payload above is rebuilt from the live document; the "片头" tab
-    // styling (DX/SD, backdrop, blur, shadow, lv text) only exists on the
-    // dialog task — carry it over or the export silently reverts to defaults.
-    copyIntroStyling(requestedTask.intro, &built.intro);
-    if (hasChartPreviewIntro(built.intro, built.fullRangeExport)) {
-        built.intro.chartOutline = chartIntroOutline();
-    }
-    if (built.intro.enabled && built.intro.pvPreview) {
+    built.intro = requestedTask.intro;
+    built.intro.enabled = requestedTask.intro.enabled && built.fullRangeExport;
+    if (built.intro.enabled) {
+        built.intro = buildIntroBannerSpec(
+            session_.applicationServices_.workspace().document(),
+            resolvedDifficultyId, session_.currentFilePath_, true, true);
+        // Keep the dialog's styling when refreshing chart-derived banner data.
+        copyIntroStyling(requestedTask.intro, &built.intro);
+        if (hasChartPreviewIntro(built.intro, built.fullRangeExport)) {
+            built.intro.chartOutline = chartIntroOutline();
+        }
         resolveFileIntroWindow(built.intro, session_.applicationServices_.workspace().document(),
             resolvedDifficultyId, built.trackPath, session_.previewTrackDurationSeconds_, true);
     }

@@ -31,6 +31,11 @@ void miacode::runtime::VideoExportHost::onPackAsZip(const QVariantMap& options)
         _mc_op_.fail(QStringLiteral("ui request service unavailable"));
         return;
     }
+    if (session_.applicationServices_.jobProgress().active()) {
+        requests->postToast(miacode::NoticeSeverity::Information,
+            miacode::localizedText("job_progress.busy"));
+        return;
+    }
 
     const miacode::LocalizedText dialogTitle = miacode::localizedText("export.export_as_zip");
 
@@ -100,6 +105,11 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     if (requests == nullptr || jobProgress == nullptr || pickedPath.isEmpty()) {
         return;
     }
+    if (jobProgress->active()) {
+        requests->postToast(miacode::NoticeSeverity::Information,
+            miacode::localizedText("job_progress.busy"));
+        return;
+    }
 
     QString outputPath = pickedPath;
     if (!outputPath.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive)) {
@@ -113,7 +123,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     input.videoFieldValue = SimaiDocument::fromText(chartText).videoPath;
     input.outputZipPath = outputPath;
 
-    jobProgress->begin(
+    const quint64 jobToken = jobProgress->begin(
         dialogTitle,
         miacode::localizedText("export.preparing_package"),
         /*cancellable=*/true);
@@ -122,7 +132,8 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     // event loop at each entry: that is what repaints the overlay and delivers
     // the cancel click. Cancellation stays cooperative — we return false and the
     // packager unwinds itself.
-    const auto onProgress = [jobProgress](int current, int total, const QString& entryName) -> bool {
+    const auto onProgress = [jobProgress, jobToken](int current, int total, const QString& entryName) -> bool {
+        if (!jobProgress->active() || jobProgress->token() != jobToken) return false;
         const int safeTotal = qMax(1, total);
         jobProgress->report(
             qRound(static_cast<double>(current - 1) * 100.0 / safeTotal),
@@ -131,12 +142,13 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
                 .arg(total)
                 .arg(entryName));
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-        return !jobProgress->cancelRequested();
+        return jobProgress->active() && jobProgress->token() == jobToken
+            && !jobProgress->cancelRequested();
     };
 
     const miacode::zip_export::ChartZipResult result =
         miacode::library::exportChartZip(input, options, onProgress);
-    jobProgress->end();
+    if (jobProgress->token() == jobToken) jobProgress->end();
 
     if (result.canceled) {
         _mc_op_.note(QStringLiteral("canceled"));

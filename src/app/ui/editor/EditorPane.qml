@@ -28,6 +28,8 @@ Item {
         id: editorInput
         window: root.Window.window
         typingTarget: sourceEditor.inputItem
+        normalizationShortcut: root.normalizationAvailable && root.shortcuts && !root.shortcuts.captureActive
+                               && root.shortcuts.revision >= 0 ? root.shortcuts.sequence("editor.normalize_chart") : ""
     }
     readonly property Item difficultyFieldsItem: difficultyHeader
     readonly property bool sourceVisible: viewState.difficultyEditorActive
@@ -50,6 +52,11 @@ Item {
     signal openRequested()
     signal completionSettingsRequested(string group)
     readonly property Item cornerSourceItem: tabs.visible ? tabs : null
+    readonly property color cornerBackingColor: tabs.visible
+        ? "transparent"
+        : (root.documentSession.hasDocument || root.viewState.netEditorActive
+            ? Theme.surfaceColor(Theme.colors.background.surface)
+            : Theme.surfaceColor(Theme.colors.background.panel))
 
     function undo() {
         if (sourceVisible)
@@ -274,15 +281,23 @@ Item {
 
     EditorTabBar {
         id: tabs
+        objectName: "workspaceTabBar"
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: songs.bottom
-        visible: root.viewState.openEditorTabs.length > 0
-        height: visible ? implicitHeight : 0
+        clip: true
+        readonly property bool stripOpen: root.viewState.openEditorTabs.length > 0
+        height: stripOpen ? implicitHeight : 0
+        visible: height > 0.5
         viewState: root.viewState
         documentSession: root.documentSession
         commands: root.commands
         pages: root.pages
+
+        Behavior on height {
+            enabled: tabs.animationsReady
+            NumberAnimation { duration: 170; easing.type: Easing.OutCubic }
+        }
     }
 
     LatencyPage {

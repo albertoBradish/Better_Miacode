@@ -73,7 +73,7 @@ bool validateValue(const QJsonObject& rules, QJsonValue& value, const QString& p
         if (rules.value(QStringLiteral("x-normalize")) == QLatin1String("tag")
             && text.startsWith(QStringLiteral("tag:"), Qt::CaseInsensitive)) text = text.mid(4).trimmed();
         if (rules.value(QStringLiteral("x-format")) == QLatin1String("time-zone")
-            && text == QLatin1String("system")) text = QString::fromUtf8(QTimeZone::systemTimeZoneId());
+            && text == QLatin1String("system")) text = ApiCatalog::systemTimeZoneName();
         value = text;
     }
     const auto type = rules.value(QStringLiteral("type"));
@@ -143,7 +143,7 @@ bool validateValue(const QJsonObject& rules, QJsonValue& value, const QString& p
             if (!valid) return fail();
         }
         if (rules.value(QStringLiteral("x-format")) == QLatin1String("time-zone")
-            && !QTimeZone(text.toUtf8()).isValid()) return fail();
+            && text != QLatin1String("system") && !QTimeZone(text.toUtf8()).isValid()) return fail();
         const QString format = rules.value(QStringLiteral("format")).toString();
         if (format == QLatin1String("date")) {
             const auto date = QDate::fromString(text, Qt::ISODate);
@@ -178,6 +178,14 @@ QJsonObject ApiCatalog::schema(const QString& name)
     return data().value(QStringLiteral("schemas")).toObject().value(QStringLiteral("$defs")).toObject().value(name).toObject();
 }
 
+QString ApiCatalog::systemTimeZoneName()
+{
+    const QByteArray id = QTimeZone::systemTimeZoneId();
+    // Windows can add a time zone before Qt's bundled IANA mapping includes it.
+    return !id.isEmpty() && id != "Etc/Unknown" && QTimeZone(id).isValid()
+        ? QString::fromUtf8(id) : QStringLiteral("system");
+}
+
 bool ApiCatalog::validRequestKey(const QString& value)
 {
     static const QRegularExpression safe(QStringLiteral("^[A-Za-z0-9_.:-]{1,128}$"));
@@ -196,7 +204,8 @@ Validation ApiCatalog::validate(const QString& operationId, const QJsonObject& p
                        QStringLiteral("$"), true, field)) return {{}, invalid(field)};
     auto values = normalized.toObject();
     if (operationId == QLatin1String("net.queries.create")) {
-        if (values.value(QStringLiteral("uploader")).toString().isEmpty()
+        if (values.value(QStringLiteral("search")).toString().isEmpty()
+            && values.value(QStringLiteral("uploader")).toString().isEmpty()
             && values.value(QStringLiteral("tag")).toString().isEmpty()
             && values.value(QStringLiteral("title")).toString().isEmpty()) return {{}, invalid(QStringLiteral("$.title"))};
         if (values.contains(QStringLiteral("startDate")) != values.contains(QStringLiteral("endDate"))) return {{}, invalid(QStringLiteral("$.endDate"))};

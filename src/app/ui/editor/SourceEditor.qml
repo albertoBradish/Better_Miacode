@@ -181,6 +181,7 @@ Rectangle {
         return applied
     }
     function applyBpmImport(original, replacement, difficulty, revision) { return sourceArea.applyBpmImport(original, replacement, difficulty, revision) }
+    function exportSelectionGif() { sourceArea.exportSelectionGif() }
     function applyNormalization(options) { return sourceArea.applyNormalization(options) }
     function selectionDescription() {
         if (sourceArea.selectionStart === sourceArea.selectionEnd)
@@ -353,6 +354,7 @@ Rectangle {
                 action("qml.export_selection", "export")
                 action("editor.set_selection_as_drop", "set_drop")
                 action("editor.clear_drop", "clear_drop")
+                action("export.gif.action", "export_gif")
             }
             if (transform) {
                 separator()
@@ -405,6 +407,7 @@ Rectangle {
                 if (!sourceArea.readonly && root.chartStructure?.dropAvailable)
                     root.chartStructure.clearDrop()
                 break
+            case "export_gif": root.exportSelectionGif(); break
             case "normalize": root.normalizeChartRequested(); break
             default: root.applyChartTransform(operation); break
             }

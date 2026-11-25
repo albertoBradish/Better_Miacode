@@ -17,6 +17,8 @@ Item {
     property bool saveEnabled: false
     property bool documentAvailable: false
     property bool chartEditorActive: false
+    property bool chartNormalizationEnabled: false
+    signal chartNormalizationRequested()
     property bool editorCommandsEnabled: false
     readonly property bool sourceEditorFocused: root.Window.window?.sourceEditorFocused === true
     readonly property bool handOrderCommandsEnabled: root.previewSession?.handOrderFeaturesEnabled === true && root.sourceEditorFocused && root.menuCommands.canTransform
@@ -60,6 +62,8 @@ Item {
         commands: root.commandService
         previewSession: root.previewSession
         chartCommandsEnabled: root.chartEditorActive && root.menuCommands.commandsEnabled
+        chartNormalizationEnabled: root.chartNormalizationEnabled
+        onChartNormalizationRequested: root.chartNormalizationRequested()
         playbackCommandsEnabled: false
         handOrderCommandsEnabled: root.handOrderCommandsEnabled
         handOrderAnalyzeEnabled: root.previewSession?.handOrderFeaturesEnabled === true && root.chartEditorActive && root.sourceEditorFocused

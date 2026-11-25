@@ -9,6 +9,7 @@ Rectangle {
     property string activeView: "chart"
     property bool documentAvailable: true
     property bool toolsAvailable: true
+    property var buttonStateColors: Theme.chromeStateColors
     signal viewRequested(string viewId)
     signal settingsRequested()
 
@@ -21,12 +22,22 @@ Rectangle {
         anchors.top: parent.top
 
         ActivityButton {
+            objectName: "chartActivityButton"
             height: 2 * Theme.workspaceHeaderContentCenterY
             iconSource: Qt.resolvedUrl("icons/file.svg")
             filledIconSource: Qt.resolvedUrl("icons/file-fill.svg")
             tooltip: qsTrId("qml.chart")
             selected: root.activeView === "chart"
             onClicked: root.viewRequested("chart")
+        }
+        ActivityButton {
+            objectName: "chartLibraryActivityButton"
+            iconSource: Qt.resolvedUrl("icons/chart-library.svg")
+            filledIconSource: Qt.resolvedUrl("icons/chart-library-fill.svg")
+            tooltip: qsTrId("library.title")
+            selected: root.activeView === "library"
+            activeFocusOnTab: true
+            onClicked: root.viewRequested("library")
         }
         ActivityButton {
             iconSource: Qt.resolvedUrl("icons/export.svg")
@@ -40,6 +51,7 @@ Rectangle {
             id: majnetButton
             objectName: "majnetActivityButton"
             iconSource: Qt.resolvedUrl("icons/globe.svg")
+            filledIconSource: Qt.resolvedUrl("icons/globe-fill.svg")
             tooltip: qsTrId("net.ui.majnet")
             selected: root.activeView === "network"
             onClicked: root.viewRequested("network")
@@ -104,7 +116,7 @@ Rectangle {
                 anchors.fill: parent
                 contentWidth: Theme.activityIconSize + 1
                 contentHeight: Theme.activityIconSize
-                stateColors: Theme.chromeStateColors
+                stateColors: root.buttonStateColors
                 hovered: button.hovered
                 pressed: button.down
                 selected: button.selected

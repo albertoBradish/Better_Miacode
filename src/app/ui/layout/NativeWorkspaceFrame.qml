@@ -113,6 +113,7 @@ Item {
         y: workspaceSplit.y
         width: workspaceSplit.width
         height: workspaceSplit.height
+        visible: !Theme.backgroundActive
         color: Theme.surfaceColor(Theme.colors.background.panel)
     }
 
@@ -280,8 +281,9 @@ Item {
                 : owner.exportVideoActive ? exportVideoPage.cornerSourceItem
                     : editorPane.cornerSourceItem
         panelOffset: Qt.point(0, 0)
-        panelBackingColor: panelItem === editorPane.cornerSourceItem
-            ? "transparent" : Theme.surfaceColor(Theme.colors.background.panel)
+        panelBackingColor: (owner.compact || !owner.viewState.sidebarVisible)
+            && !(owner.previewOnLeft && nativePreview.visible) && !owner.exportVideoActive
+            ? editorPane.cornerBackingColor : Theme.surfaceColor(Theme.colors.background.panel)
     }
 
     Rectangle {

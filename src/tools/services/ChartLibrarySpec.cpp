@@ -205,6 +205,26 @@ void independentSongTabs(const QString& base)
     check(document.currentFilePath()==pathB && document.songTabs().size()==2 && pending.isEmpty(),
         "additive open retains the outgoing dirty song in the same document model");
     document.setChartText(editB);
+    host.library->setDifficultyMask(1 << 5);
+    host.library->openInEditor(pathA);
+    check(document.currentFilePath()==pathA && document.currentDifficultyId()==5
+        && document.dirty() && pending.isEmpty() && document.songTabs().size()==2,
+        "ordinary library open activates a parked dirty song at the matching difficulty without prompting");
+    host.library->openInEditor(pathB);
+    host.library->setDifficultyMask(1 << 6);
+    QTest::keyPress(&window, Qt::Key_Control, Qt::ControlModifier);
+    host.library->openFromList(pathA);
+    QTest::keyRelease(&window, Qt::Key_Control);
+    check(document.currentFilePath()==pathA && document.currentDifficultyId()==6 && document.chartText()==editA
+        && document.dirty() && get(pathA)==a && pending.isEmpty() && document.songTabs().size()==2,
+        "Ctrl-open switches to the requested difficulty without reloading the dirty parked song");
+    host.library->setDifficultyMask(0);
+    host.library->openInEditor(pathB);
+    const auto openGeneration = document.documentOpenGeneration();
+    host.library->openInEditor(pathB);
+    check(document.currentFilePath()==pathB && document.chartText()==editB && document.dirty()
+        && document.documentOpenGeneration()==openGeneration && pending.isEmpty(),
+        "reopening the active library song keeps its unsaved text and open generation");
     check(!document.openAdditionalSong(QDir(base).filePath("missing/maidata.txt"))
         && document.songTabs().size()==2 && document.currentFilePath()==pathB && document.chartText()==editB,
         "failed additive open leaves both tabs intact");
@@ -610,7 +630,14 @@ void smartImport(const QString& base)
 
     for (const auto& song : files::bundleSongs(root)) {
         if (song.pack != "Pack A") continue;
+        const QDir edits(QDir(root).filePath(".edits"));
+        const auto beforeLookup = edits.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        check(files::existingChartPath(root, song.path, song.record) == song.path
+            && edits.entryList(QDir::Dirs | QDir::NoDotAndDotDot) == beforeLookup,
+            "checking an indexed song for an open tab leaves its archive and edit directory untouched");
         const auto editing = files::editableChartPath(root, song.path, song.record);
+        check(files::existingChartPath(root, song.path, song.record) == editing,
+            "a cached bundle row resolves an existing working chart before the next reindex");
         const auto unrelated = QFileInfo(editing).dir().filePath("notes.md");
         check(!editing.isEmpty() && put(unrelated, "keep me"), "packed chart has a private working copy");
         check(files::removeCollection(root, "Pack A", {editing}) == files::CollectionRemoval::InUse,
@@ -848,6 +875,19 @@ void batchLibraryActions(const QString& base)
         return paths;
     };
     check(order() == QStringList{two, three, ten, twenty}, "title sort uses natural digit order");
+    model.setDifficultyMask((1 << 3) | (1 << 5));
+    check(order() == QStringList{two, three, twenty}, "multiple difficulty filters match any selected slot");
+    model.setQuery("Beta");
+    check(order() == QStringList{two}, "difficulty filter combines with metadata search");
+    model.setQuery({});
+    model.openInEditor(twenty);
+    check(host.document.currentDifficultyId() == 3, "filtered library opens the first matching difficulty");
+    host.document.closeDocument();
+    model.setQuery({});
+    model.setDifficultyMask(1 << 2);
+    check(model.rowCount() == 0, "unmatched difficulty hides all songs");
+    model.setDifficultyMask(0);
+    check(order() == QStringList{two, three, ten, twenty}, "clearing difficulty restores every song");
     model.setSortColumn(ChartLibraryModel::SortVersion);
     check(order() == QStringList{two, ten, three, twenty}, "ascending version order puts custom releases after official versions");
     model.setSortDescending(true);

@@ -23,8 +23,7 @@ ColumnLayout {
         else reconcile()
     }
     function reconcile() {
-        if (form.path && root.library.hasSong(form.path)
-                   && (!root.library.pack || form.song.pack === root.library.pack)) {
+        if (form.path && root.library.rowForPath(form.path) >= 0) {
             if (!form.dirty && !root.library.busy) form.load(form.path, true)
         } else {
             form.load(root.library.pathAt(0), false)
@@ -183,13 +182,50 @@ ColumnLayout {
                               : root.library.versionCategory ? 2 + root.library.versions.indexOf(root.library.versionCategory) : 0
                 onActivated: i => root.library.versionCategory = i > 1 ? model[i] : (i === 1 ? root.library.uncategorized : "")
             }
-            AppTextField {
+            RowLayout {
                 Layout.minimumWidth: 0
                 Layout.fillWidth: true
-                Accessible.name: qsTrId("library.search")
-                placeholderText: qsTrId("library.search")
-                text: root.library.query
-                onTextEdited: root.library.query = text
+                AppTextField {
+                    Layout.minimumWidth: 0
+                    Layout.fillWidth: true
+                    Accessible.name: qsTrId("library.search")
+                    placeholderText: qsTrId("library.search")
+                    text: root.library.query
+                    onTextEdited: root.library.query = text
+                    onAccepted: songs.openCurrent()
+                }
+                IconButton {
+                    id: difficultyButton
+                    objectName: "chartLibraryDifficultyFilter"
+                    active: difficultyMenu.active || root.library.difficultyMask !== 0
+                    iconSource: Qt.resolvedUrl("icons/filter.svg")
+                    filledIconSource: Qt.resolvedUrl("icons/filter-fill.svg")
+                    tooltip: qsTrId("action.filter")
+                    onClicked: difficultyMenu.active ? difficultyMenu.close() : difficultyMenu.openAt(difficultyButton)
+                    AppStickyPopup {
+                        id: difficultyMenu
+                        minimumWidth: 180
+                        contentItem: Column {
+                            id: difficultyOptions
+                            objectName: "chartLibraryDifficultyOptions"
+                            Repeater {
+                                model: 7
+                                delegate: AppMenuItem {
+                                    required property int index
+                                    objectName: "chartLibraryDifficultyOption"
+                                    width: difficultyOptions.width
+                                    difficultyId: index + 1
+                                    text: qsTrId("library.difficulty." + difficultyId)
+                                    checkable: true
+                                    checked: !!(root.library.difficultyMask & (1 << difficultyId))
+                                    onToggled: root.library.difficultyMask = checked
+                                        ? root.library.difficultyMask | (1 << difficultyId)
+                                        : root.library.difficultyMask & ~(1 << difficultyId)
+                                }
+                            }
+                        }
+                    }
+                }
             }
             RowLayout {
                 Layout.minimumWidth: 0
@@ -227,6 +263,10 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true; spacing: 3
+                function openCurrent() {
+                    if (!root.batchMode && count && form.stage())
+                        root.library.openInEditor(root.library.pathAt(Math.max(0, currentIndex)))
+                }
                 function step(direction) {
                     if (!count) return
                     const next = Math.max(0, Math.min(count - 1, currentIndex + direction))
@@ -268,6 +308,8 @@ ColumnLayout {
                         openDetails.stop()
                         if (!root.batchMode && !root.library.additionalOpenModifierHeld() && form.stage()) root.library.openInEditor(chartPath)
                     }
+                    Keys.onReturnPressed: songs.openCurrent()
+                    Keys.onEnterPressed: songs.openCurrent()
                     Keys.onDownPressed: songs.step(1)
                     Keys.onUpPressed: songs.step(-1)
                     contentItem: RowLayout {

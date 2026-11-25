@@ -53,6 +53,7 @@ Item {
         && !pages.overlayActive && !beginnerGuideActive
     readonly property bool chartEditorActive: documentSession.hasDocument
         && documentSession.currentDifficultyId > 0 && !pages.overlayActive && !beginnerGuideActive
+    readonly property bool chartNormalizationAvailable: chartEditorActive && splitView.canNormalizeChart()
     readonly property alias mainMenuCommands: menuCommands
     readonly property string windowTitle: titleBar.titleText
     readonly property real minimumWidth: Math.max(splitView.minimumWorkspaceWidth,
@@ -209,6 +210,9 @@ Item {
         if (!root.documentSession.hasDocument)
             return
         switch (toolId) {
+        case "balanceVolume":
+            root.mediaTools.balanceAudioVolume()
+            break
         case "convertTrack":
             root.mediaTools.convertTrackTo44100Hz()
             break
@@ -242,7 +246,7 @@ Item {
             state.activeSidebarView = "export"
         else if (page.startsWith("net-"))
             state.activeSidebarView = "network"
-        else if (state.activeSidebarView !== "tools")
+        else if (state.activeSidebarView !== "tools" && state.activeSidebarView !== "library")
             state.activeSidebarView = "chart"
     }
 
@@ -267,6 +271,11 @@ Item {
         if (!root.chartEditorActive)
             return false
         return splitView.applyChartTransform(opId)
+    }
+
+    function normalizeChartWithPreferences() {
+        return root.chartNormalizationAvailable
+            && splitView.applyNormalization(root.documentSession.normalizeOptions())
     }
 
     function showUnavailableFeature(featureName) {
@@ -436,6 +445,7 @@ Item {
                 onSaveWholeDocumentRequested: root.saveWholeDocument()
                 onAudioSettingsRequested: audioSettingsDialog.open()
                 onPreviewSettingsRequested: previewSettingsDialog.open()
+                onShowDetachedPreviewRequested: splitView.showDetachedPreview()
                 onUnavailableFeatureRequested: featureName => root.showUnavailableFeature(featureName)
             }
         }
@@ -450,6 +460,7 @@ Item {
                 anchors.fill: parent
                 backgroundSource: root.backgroundSource
                 backgroundOffset: root.mapToItem(root.backgroundSource, mainViewHost.x, mainViewHost.y)
+                peekDismissOnPress: compactPanelLayer.peekOpen && !compactPanelLayer.hasBlockingPopup
                 timelineGuideActive: beginnerGuide.visible
                     && beginnerGuide.selectedSection.id === "timeline-options"
                 workspaceShortcutsEnabled: !root.beginnerGuideActive && !root.shortcutModel.captureActive
@@ -482,6 +493,8 @@ Item {
                         saveEnabled: root.currentEditorSaveEnabled
                         documentAvailable: root.documentSession.hasDocument
                         chartEditorActive: root.chartEditorActive
+                        chartNormalizationEnabled: root.chartNormalizationAvailable
+                        onChartNormalizationRequested: root.normalizeChartWithPreferences()
                         editorCommandsEnabled: root.editorCommandsAvailable
                         onCloseEditorRequested: splitView.requestCloseActiveEditor()
                         onWorkspaceMenuRequested: anchor => {
@@ -500,6 +513,7 @@ Item {
                 onAudioSettingsRequested: audioSettingsDialog.open()
                 onPreviewSettingsRequested: previewSettingsDialog.open()
                 onMediaToolRequested: toolId => root.runMediaTool(toolId)
+                onWorkspacePressed: compactPanelLayer.handleWorkspacePress()
             }
 
             CompactPanelLayer {
@@ -511,7 +525,13 @@ Item {
                 commands: root.commands
                 pages: root.pages
                 compact: root.compact && !splitView.workspace.isFloating("sidebar")
+                peekEnabled: !splitView.workspace.isFloating("sidebar") && !root.beginnerGuideActive
+                    && (root.compact || (root.preferences.efficientSidebarEnabled && !state.sidebarVisible))
+                canDock: !root.compact && root.preferences.efficientSidebarEnabled && !state.sidebarVisible
+                onSettingsRequested: preferencesDialog.open()
+                onLibraryRequested: splitView.showLibrary()
                 onMediaToolRequested: toolId => root.runMediaTool(toolId)
+                onDockRequested: splitView.workspace.setPanelShown("sidebar", true)
             }
         }
 
@@ -627,7 +647,7 @@ Item {
         target: root.documentSession
 
         function onDocumentReplaced() {
-            if (!root.documentSession.hasDocument)
+            if (!root.documentSession.hasDocument && state.activeSidebarView !== "library")
                 state.activeSidebarView = "chart"
             state.resetEditorTabs(root.documentSession.currentDifficultyId)
             // The projection is queued, so this can run while the incoming
@@ -678,7 +698,8 @@ Item {
             }
             root.commands.selectDifficulty(difficultyId)
             root.pages.ensureDifficultyPageActive(difficultyId)
-            state.activeSidebarView = "chart"
+            if (state.activeSidebarView !== "library")
+                state.activeSidebarView = "chart"
         }
 
         function onEditorPresentationCleared() {
@@ -711,7 +732,8 @@ Item {
             root.pendingDifficultyActivation = 0
             root.commands.selectDifficulty(difficultyId)
             root.pages.ensureDifficultyPageActive(difficultyId)
-            state.activeSidebarView = "chart"
+            if (state.activeSidebarView !== "library")
+                state.activeSidebarView = "chart"
         }
 
         function onNavigationRejected() {
@@ -839,7 +861,7 @@ Item {
                 title: qsTrId("guide.editor.title"),
                 columns: 1,
                 features: [
-                    { icon: Qt.resolvedUrl("icons/metadata.svg"), label: qsTrId("guide.editor.metadata_save") },
+                    { icon: Qt.resolvedUrl("icons/wand.svg"), label: qsTrId("guide.editor.normalize") },
                     { kind: "code", sample: "|| 3/4", label: qsTrId("guide.editor.measure") },
                     { kind: "code", sample: "|||", label: qsTrId("guide.editor.comment") },
                     { kind: "code", sample: "|| [A]", label: qsTrId("guide.editor.bookmark") }

@@ -119,10 +119,18 @@ bool verifyRenderCadenceRateGate(QTextStream& err)
                      "first render cadence tick must flush", err);
     ok &= expect(!renderCadenceShouldFlush(1'008'333'333, interval, &lastFlushNs),
                  "half-interval render cadence tick must be rate-limited", err);
-    ok &= expect(renderCadenceShouldFlush(1'016'100'000, interval, &lastFlushNs),
+    constexpr qint64 earlyTick = 1'016'100'000;
+    ok &= expect(renderCadenceShouldFlush(earlyTick, interval, &lastFlushNs),
                  "one-interval tick within slop must flush", err);
-    ok &= expect(lastFlushNs == 1'016'666'667,
-                 "accepted cadence tick must advance on the phase-locked schedule", err);
+    ok &= expect(lastFlushNs == earlyTick,
+                 "an early tick must leave the marker at its actual sample time", err);
+    ok &= expect(!renderCadenceShouldFlush(earlyTick + 1, interval, &lastFlushNs),
+                 "a second callback immediately after an early tick must be rate-limited", err);
+    constexpr qint64 nextScheduled = earlyTick + interval;
+    ok &= expect(renderCadenceShouldFlush(nextScheduled + 500'000, interval, &lastFlushNs),
+                 "a slightly late tick must flush", err);
+    ok &= expect(lastFlushNs == nextScheduled,
+                 "a slightly late tick must retain the scheduled phase", err);
     ok &= expect(renderCadenceShouldFlush(2'000'000'000, interval, &lastFlushNs),
                  "large cadence gap must flush", err);
     ok &= expect(lastFlushNs == 2'000'000'000,

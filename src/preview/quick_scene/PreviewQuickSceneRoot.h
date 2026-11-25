@@ -2,6 +2,7 @@
 
 #include "preview/quick_scene/PreviewQuickHudLayer.h"
 #include <optional>
+#include <limits>
 
 #include <QElapsedTimer>
 #include <QColor>
@@ -37,6 +38,7 @@
 #include "preview/quick_scene/PreviewQuickTouchLayer.h"
 #include "preview/quick_scene/PreviewTextureRepository.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
+#include "core/scene/PreviewNoteLayerAnomaly.h"
 #include "core/scene/PreviewLayerOrder.h"
 #include "preview/quick_scene/PreviewNoteHitTest.h"
 
@@ -125,11 +127,10 @@ private:
     QMetaObject::Connection runtimeUpdateConnection_;
     QMetaObject::Connection selectionInvalidatedConnection_;
     QMetaObject::Connection frameSwapConnection_;
-#ifdef Q_OS_MACOS
     QMetaObject::Connection framePresentedCaptureConnection_;
+#ifdef Q_OS_MACOS
     QMetaObject::Connection guiFrameConnection_;
 #endif
-    QMetaObject::Connection fireworkPresentConnection_;
     QMetaObject::Connection windowVisibilityConnection_;
     QMetaObject::Connection renderBeforeSyncConnection_;
     QMetaObject::Connection renderAfterSyncConnection_;
@@ -150,9 +151,15 @@ private:
     // and read from updatePaintNode), never cleared: "first draw in this scene-graph
     // lifetime" is exactly the event of interest.
     QSet<QString> layersFirstDrawn_;
-    // Set in updatePaintNode when the firework layer emitted a node, consumed by the
-    // direct frameSwapped hook. Render-thread only in both directions, so no atomic.
-    bool fireworkNodeInPendingFrame_ = false;
+    struct PresentationBinding {
+        // Written during scene synchronization and consumed by the same render thread.
+        bool fireworkInFrame = false;
+        std::atomic<bool> fireworkPresented{false};
+#ifdef Q_OS_MACOS
+        std::atomic<int> pendingPresentCount{0};
+#endif
+    };
+    std::shared_ptr<PresentationBinding> presentationBinding_;
     std::atomic<bool> textureResetRequested_{false};
     PreviewQuickStageBackgroundLayer stageBackgroundLayer_;
     PreviewQuickBackdropLayer backdropLayer_;
@@ -179,6 +186,7 @@ private:
     PreviewQuickChartReviewLayer chartReviewShapeLayer_;
     PreviewQuickMaimuriDxJudgeLayer maimuriDxJudgeShapeLayer_;
     miacode::preview::scene::PreviewPreparedSceneCache preparedCache_;
+    std::optional<miacode::preview::scene::PreviewNoteMarkerSpan> cachedNoteMarkerSpan_;
     miacode::preview::scene::PreviewLayerWindowCursor muriPadCursor_;
     miacode::preview::scene::PreviewLayerWindowCursor muriActionCursor_;
     QVector<int> muriPadIndices_;
@@ -226,6 +234,10 @@ private:
     qint64 renderPhasePassEndNs_ = -1;
     qint64 renderPhaseRenderEndNs_ = -1;
     qint64 renderPhaseLastLogMs_ = -1;
+    qint64 renderPhaseLastSwapNs_ = -1;
+    double renderPhasePlayheadSeconds_ = 0.0;
+    qint64 renderPhaseLastContentSwapNs_ = -1;
+    double renderPhaseLastContentPlayheadSeconds_ = std::numeric_limits<double>::quiet_NaN();
     // One-shot: the first frame whose render_submit crosses the stall threshold emits a
     // GPU/driver context line (adapter, UMD version, VRAM budget) next to the profile so
     // the field report carries the variables §5.6 asks for. Render-thread only.

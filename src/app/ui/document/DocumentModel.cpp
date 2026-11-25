@@ -1420,9 +1420,9 @@ QStringList DocumentModel::openFileNameFilters() const
     return {qtTrId("qml.simai_files_txt_simai")};
 }
 
-bool DocumentModel::openChartFile(const QUrl& fileUrl)
+bool DocumentModel::openChartFile(const QUrl& fileUrl, int preferredDifficultyId)
 {
-    return openFileWithOrigin(fileUrl, ChartDocumentOrigin::Local);
+    return openFileWithOrigin(fileUrl, ChartDocumentOrigin::Local, preferredDifficultyId);
 }
 
 QVariantMap DocumentModel::plainSimaiExportLocation() const
@@ -1489,7 +1489,7 @@ net::NetEnginePort::Cancel DocumentModel::openNetPreview(const QString& path, co
     return [finish, failure] { finish({{}, failure("job.cancelled")}); };
 }
 
-bool DocumentModel::openFileWithOrigin(const QUrl& fileUrl, ChartDocumentOrigin origin)
+bool DocumentModel::openFileWithOrigin(const QUrl& fileUrl, ChartDocumentOrigin origin, int preferredDifficultyId)
 {
     const QString requestedPath = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
     const QString path = origin == ChartDocumentOrigin::Local
@@ -1497,10 +1497,10 @@ bool DocumentModel::openFileWithOrigin(const QUrl& fileUrl, ChartDocumentOrigin 
     if (fileService_ == nullptr) return false;
     const int parked = parkedIndexForPath(path);
     if (parked >= 0 && origin == ChartDocumentOrigin::Local)
-        return activateSongTab(parked < activeSongIndex_ ? parked : parked + 1);
+        return activateSongTab(parked < activeSongIndex_ ? parked : parked + 1, preferredDifficultyId);
     miacode::ChartWorkspaceFileResult result;
     if (!runWorkspaceMutation([&] {
-            result = fileService_->open(path, origin);
+            result = fileService_->open(path, origin, preferredDifficultyId);
             return result.accepted;
         })) {
         uiRequests_->postNotice(miacode::NoticeSeverity::Error,
@@ -1588,31 +1588,46 @@ void DocumentModel::resumeSong(const ChartWorkspace::SongState& song)
     publishWorkspaceCommit(WorkspaceCommitKind::SourceReplacement, true);
 }
 
-bool DocumentModel::activateSongTab(int index)
+int DocumentModel::songTabForChart(const QString& path) const
+{
+    if (path.isEmpty() || !hasDocument()) return -1;
+    const auto actual = miacode::sticking::editableChartPath(path, false);
+    if (actual.isEmpty()) return -1;
+    if (!workspace_->isNetPreview() && songPathKey(actual) == songPathKey(currentFilePath())) return activeSongIndex_;
+    const int parked = parkedIndexForPath(actual);
+    if (parked < 0 || parkedSongs_[parked].snapshot.origin != ChartDocumentOrigin::Local) return -1;
+    return parked < activeSongIndex_ ? parked : parked + 1;
+}
+
+bool DocumentModel::activateSongTab(int index, int preferredDifficultyId)
 {
     if (index < 0 || index > parkedSongs_.size() || !hasDocument() || closeDecisionPending_) return false;
-    if (index == activeSongIndex_) return true;
+    const bool hasPreference = SimaiDocument::isDifficultyId(preferredDifficultyId);
+    if (index == activeSongIndex_ && (!hasPreference || preferredDifficultyId == currentDifficultyId()))
+        return true;
     if (!finishPendingEdits()) return false;
-    parkedSongs_.insert(activeSongIndex_, workspace_->captureSong());
-    activeSongIndex_ = index;
-    resumeSong(parkedSongs_.takeAt(index));
+    if (index != activeSongIndex_) {
+        parkedSongs_.insert(activeSongIndex_, workspace_->captureSong());
+        activeSongIndex_ = index;
+        resumeSong(parkedSongs_.takeAt(index));
+    }
+    if (hasPreference && preferredDifficultyId != currentDifficultyId())
+        selectDifficulty(preferredDifficultyId);
     return true;
 }
 
-bool DocumentModel::openAdditionalSong(const QString& path)
+bool DocumentModel::openAdditionalSong(const QString& path, int preferredDifficultyId)
 {
     if (path.isEmpty() || !workspace_ || closeDecisionPending_ || !finishPendingEdits()) return false;
-    const auto actual = miacode::sticking::editableChartPath(path);
-    if (hasDocument() && songPathKey(actual) == songPathKey(currentFilePath())) return true;
-    const auto parked = parkedIndexForPath(actual);
-    if (parked >= 0) return activateSongTab(parked < activeSongIndex_ ? parked : parked + 1);
-    if (!hasDocument()) return openFile(QUrl::fromLocalFile(path));
+    const int tab = songTabForChart(path);
+    if (tab >= 0) return activateSongTab(tab, preferredDifficultyId);
+    if (!hasDocument()) return openChartFile(QUrl::fromLocalFile(path), preferredDifficultyId);
     const int previous = activeSongIndex_;
     parkedSongs_.insert(previous, workspace_->captureSong());
     activeSongIndex_ = previous + 1;
     const bool metadataSavePending = metadataSaveTimer_.isActive();
     metadataSaveTimer_.stop();
-    if (openFile(QUrl::fromLocalFile(path))) return true;
+    if (openChartFile(QUrl::fromLocalFile(path), preferredDifficultyId)) return true;
     activeSongIndex_ = previous;
     parkedSongs_.removeAt(previous);
     if (metadataSavePending) metadataSaveTimer_.start();

@@ -552,6 +552,13 @@ CollectionRemoval removeCollection(const QString& root, const QString& pack, con
     }
     return CollectionRemoval::Removed;
 }
+QString existingChartPath(const QString& root, const QString& indexedPath, const QJsonObject& record)
+{
+    if (record.value("sources").toArray().isEmpty()) return {};
+    const auto overridePath = QDir(editDir(root, record)).filePath("maidata.txt");
+    return withinRoot(root, overridePath) ? overridePath : indexedPath;
+}
+
 QString editableChartPath(const QString& root, const QString& path, const QJsonObject& record)
 {
     // Loose files are edited at their original location. ZIP members and generated

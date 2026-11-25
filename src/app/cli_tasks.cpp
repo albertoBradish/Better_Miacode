@@ -323,6 +323,7 @@ public:
     VideoExportTask buildSeedTask(int) override { return task; }
     void applySharedTaskSettings(const VideoExportTask&) override {}
     bool startAudition(int, const VideoExportTask&) override { return false; }
+    void setAuditionClockCountEnabled(int, bool) override {}
     void clearAudition() override {}
     void stopAudition() override {}
     bool launchVideoExport(const VideoExportTask&, int, QString*) override { return false; }

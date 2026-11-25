@@ -24,8 +24,10 @@
 #include "preview/stage_media/PreviewStageMediaHost.h"
 #include "app/services/ExportPagePort.h"
 #include "app/services/AutomaticChartPreparation.h"
+#include "app/services/AnimatedImageClipboard.h"
 #include "core/analysis/MuriAnalyzer.h"
 #include "export/video_export/VideoExportController.h"
+#include "export/video_export/VideoExportGif.h"
 
 #include <QtCore>
 #include <QtGui>
@@ -309,6 +311,50 @@ ChartIntroOutline miacode::runtime::VideoExportHost::chartIntroOutlineForChart(
         miacode::assets::customOutlinePathForFileName(regular.value(QStringLiteral("outlineCustomFile")).toString())};
 }
 
+VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportRenderTask() const
+{
+    VideoExportTask task;
+    task.muriRenderOptions = session_.muriRenderOptions_;
+    task.staticTapOnSlideThresholdSeconds = static_cast<double>(session_.staticTapOnSlideThresholdMs_) / 1000.0;
+    task.backgroundBrightnessOuter = session_.previewBackgroundBrightnessOuter_;
+    task.backgroundBrightnessInner = session_.previewBackgroundBrightnessInner_;
+    task.layoutSquareScale = session_.previewLayoutSquareScale_;
+    task.fireworkBrightness = session_.previewFireworkBrightness_;
+    task.fireworkStyle = session_.previewFireworkStyle_;
+    task.smoothBrightness = session_.previewSmoothBrightness_;
+    task.completionDisplay = session_.state_.completionDisplay_;
+    task.outlineAutomatic = session_.previewOutlineVariantUsesAutoSelection_;
+    task.outlineVariant = session_.previewOutlineVariant_;
+    // Pair the variant with its custom-outline path (same resolver the real export
+    // snapshot uses) so the cover's chart-frame ring matches the video export.
+    task.outlineImagePath = session_.resolvePreviewCustomOutlinePath();
+    task.backgroundScaleMode = session_.previewBackgroundScaleMode_;
+    task.tapFlowSpeed = session_.previewTapFlowSpeed_;
+    task.touchFlowSpeed = session_.previewTouchFlowSpeed_;
+    task.starFadeTiming = session_.previewStarFadeTiming_;
+    task.slideEarlierSecondAndTextOnTop = session_.previewSlideEarlierSecondAndTextOnTop_;
+    task.tapJudgeTextDistance = session_.previewTapJudgeTextDistance_;
+    task.judgeEffectStyle = session_.previewJudgeEffectStyle_;
+    task.showTimestamp = session_.previewShowTimestamp_;
+    task.showHandOrderAnnotations = session_.previewShowHandOrderAnnotations_;
+    task.showHandOrderWatermark = miacode::hand_order_features::enabled() && miacode::hand_order_features::watermark();
+    task.showMeasureLines = session_.state_.previewShowMeasureLines_;
+    task.showJudgementSkeleton = session_.state_.previewShowJudgementSkeleton_;
+    task.showSlideJudgementTiming = session_.state_.previewShowSlideJudgementTiming_;
+    task.slideTimingFromLaunchBeat = session_.state_.previewSlideTimingFromLaunchBeat_;
+    task.slideTimingEarlyPerfectFromHead = session_.state_.previewSlideTimingEarlyPerfectFromHead_;
+    task.measureLineMode = session_.state_.previewMeasureLineMode_;
+    task.measureLineCustomBeats = session_.state_.previewMeasureLineCustomBeats_;
+    task.showObjectStatsHud = session_.exportShowObjectStatsHud_;
+    task.showChartInfoHud = session_.exportShowChartInfoHud_;
+    task.showBpmHud = session_.exportShowBpmHud_;
+    task.showCpsHud = session_.exportShowCpsHud_;
+    task.showMeterHud = session_.exportShowMeterHud_;
+    task.showModsHud = session_.exportShowModsHud_;
+    task.centerDisplayMode = session_.previewCenterDisplayMode_;
+    return task;
+}
+
 // Build the seed VideoExportTask shared by the export dialog AND the direct
 // cover export: parsed note markers + muri + render settings + skin /
 // outline assets + chart metadata + the banner-card payload. Callers must
@@ -359,7 +405,7 @@ VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTask(int 
     const double unifiedExportEndSecond = miacode::content_duration::totalContentDurationSeconds(
         lastMarkerEndSecond, session_.previewTrackDurationSeconds_);
 
-    VideoExportTask task;
+    VideoExportTask task = buildVideoExportRenderTask();
     task.chartPath = session_.currentFilePath_;
     task.trackPath = session_.resolveDefaultTrackPath();
     // The export page reads it to offer the PV-preview intro, the cover editor
@@ -371,46 +417,16 @@ VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTask(int 
     task.skinDirectory = session_.resolvePreviewSkinDir();
     task.noteMarkers = seedMarkers;
     task.muriAnalysisReport = seedMuriReport;
-    task.muriRenderOptions = session_.muriRenderOptions_;
-    task.staticTapOnSlideThresholdSeconds = static_cast<double>(session_.staticTapOnSlideThresholdMs_) / 1000.0;
     task.audioSettings = session_.previewAudioSettings_;
     task.timingSettings = session_.previewTimingSettings_;
     task.introSoundFileName = session_.previewIntroSoundFileName_;
-    task.backgroundBrightnessOuter = session_.previewBackgroundBrightnessOuter_;
-    task.backgroundBrightnessInner = session_.previewBackgroundBrightnessInner_;
-    task.layoutSquareScale = session_.previewLayoutSquareScale_;
     task.fireworkBrightness = 0.5;
-    task.fireworkStyle = session_.previewFireworkStyle_;
-    task.smoothBrightness = session_.previewSmoothBrightness_;
-    task.completionDisplay = session_.state_.completionDisplay_;
-    task.outlineAutomatic = session_.previewOutlineVariantUsesAutoSelection_;
-    task.outlineVariant = session_.previewOutlineVariant_;
-    // Pair the variant with its custom-outline path (same resolver the real export
-    // snapshot uses) so the cover's chart-frame ring matches the video export.
-    task.outlineImagePath = session_.resolvePreviewCustomOutlinePath();
-    task.backgroundScaleMode = session_.previewBackgroundScaleMode_;
-    task.tapFlowSpeed = session_.previewTapFlowSpeed_;
-    task.touchFlowSpeed = session_.previewTouchFlowSpeed_;
-    task.starFadeTiming = session_.previewStarFadeTiming_;
-    task.slideEarlierSecondAndTextOnTop = session_.previewSlideEarlierSecondAndTextOnTop_;
-    task.tapJudgeTextDistance = session_.previewTapJudgeTextDistance_;
-    task.judgeEffectStyle = session_.previewJudgeEffectStyle_;
     task.exportStartSeconds = 0.0;
     task.contentDurationSeconds = unifiedExportEndSecond;
     task.fullRangeExport = true;
     task.outputWidth = 1080;
     task.outputHeight = 1080;
     task.fps = 60;
-    task.showTimestamp = session_.previewShowTimestamp_;
-    task.showHandOrderAnnotations = session_.previewShowHandOrderAnnotations_;
-    task.showHandOrderWatermark = miacode::hand_order_features::enabled() && miacode::hand_order_features::watermark();
-    task.showMeasureLines = session_.state_.previewShowMeasureLines_;
-    task.showJudgementSkeleton = session_.state_.previewShowJudgementSkeleton_;
-    task.showSlideJudgementTiming = session_.state_.previewShowSlideJudgementTiming_;
-    task.slideTimingFromLaunchBeat = session_.state_.previewSlideTimingFromLaunchBeat_;
-    task.slideTimingEarlyPerfectFromHead = session_.state_.previewSlideTimingEarlyPerfectFromHead_;
-    task.measureLineMode = session_.state_.previewMeasureLineMode_;
-    task.measureLineCustomBeats = session_.state_.previewMeasureLineCustomBeats_;
     task.measureLineSeconds = miacode::preview::scene::buildPreviewMeasureLineSeconds(
         session_.state_.timeline_.lastTimelineParseResult_,
         miacode::chart_clock::clockCountFromDocument(session_.applicationServices_.workspace().document()),
@@ -418,13 +434,6 @@ VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTask(int 
         session_.parsedFirstSeconds());
     task.timingPoints = session_.state_.timeline_.lastTimelineParseResult_.timingPoints;
     for (auto& point : task.timingPoints) point.second += session_.parsedFirstSeconds();
-    task.showObjectStatsHud = session_.exportShowObjectStatsHud_;
-    task.showChartInfoHud = session_.exportShowChartInfoHud_;
-    task.showBpmHud = session_.exportShowBpmHud_;
-    task.showCpsHud = session_.exportShowCpsHud_;
-    task.showMeterHud = session_.exportShowMeterHud_;
-    task.showModsHud = session_.exportShowModsHud_;
-    task.centerDisplayMode = session_.previewCenterDisplayMode_;
 
     const QFileInfo chartInfo(session_.currentFilePath_);
     QString chartTitle = session_.applicationServices_.workspace().document().title;
@@ -824,6 +833,7 @@ bool miacode::runtime::VideoExportHost::startQmlExportAudition(int difficultyId,
                / static_cast<double>(visualTask.outputHeight))
             : 1.0;
     session_.setPreviewCanvasAspectRatio(aspectRatio, false);
+    auditionClockCountEnabled_ = visualTask.clockCountEnabled;
     installExportPreviewAuditionScene(difficultyId);
     if (session_.scene_ != nullptr) {
         session_.scene_->setBackgroundBrightnessOuter(visualTask.backgroundBrightnessOuter);
@@ -851,14 +861,6 @@ bool miacode::runtime::VideoExportHost::startQmlExportAudition(int difficultyId,
         session_.scene_->setShowMeterHud(visualTask.showMeterHud);
         session_.scene_->setShowModsHud(visualTask.showModsHud);
     }
-    if (const SimaiDifficultyData* difficulty = session_.applicationServices_.workspace().document().difficulty(difficultyId);
-        difficulty != nullptr) {
-        session_.setExportAuditionClockSchedule(
-            visualTask.clockCountEnabled
-                ? miacode::chart_clock::clockCountFromDocument(session_.applicationServices_.workspace().document())
-                : 0,
-            miacode::chart_clock::clockBpmForChart(session_.applicationServices_.workspace().document(), difficulty->chart));
-    }
     session_.refreshExportIntroState();
     return true;
 }
@@ -868,11 +870,80 @@ void miacode::runtime::VideoExportHost::stopQmlExportAudition()
     endExportPreviewSession();
 }
 
+void miacode::runtime::VideoExportHost::applyExportAuditionClockSchedule(int difficultyId)
+{
+    const SimaiDocument& document = session_.applicationServices_.workspace().document();
+    const SimaiDifficultyData* difficulty = document.difficulty(difficultyId);
+    if (difficulty == nullptr) {
+        session_.clearExportAuditionClockSchedule();
+        return;
+    }
+    session_.setExportAuditionClockSchedule(
+        auditionClockCountEnabled_ ? miacode::chart_clock::clockCountFromDocument(document) : 0,
+        miacode::chart_clock::clockBpmForChart(document, difficulty->chart));
+}
+
+void miacode::runtime::VideoExportHost::setAuditionClockCountEnabled(int difficultyId, bool enabled)
+{
+    auditionClockCountEnabled_ = enabled;
+    if (!session_.exportPreviewAuditionActive_) {
+        return;
+    }
+    applyExportAuditionClockSchedule(difficultyId);
+    // Skip ticks already behind the playhead so a toggle mid-playback does not replay them.
+    session_.playback_->resetExportAuditionClockCursor(currentAudioClockSecond());
+}
+
+void miacode::runtime::VideoExportHost::launchSelectionGifExport(
+    int difficultyId, double startSecond, double endSecond)
+{
+    auto& requests = session_.applicationServices_.uiRequests();
+    auto* clipboard = session_.applicationServices_.animatedImageClipboard();
+    if (session_.applicationServices_.jobProgress().active()) {
+        requests.postToast(miacode::NoticeSeverity::Information,
+            miacode::localizedText("job_progress.busy"));
+        return;
+    }
+    if (clipboard == nullptr || !qIsFinite(startSecond) || !qIsFinite(endSecond)
+        || endSecond <= startSecond) {
+        requests.postToast(miacode::NoticeSeverity::Error,
+            miacode::localizedText("export.gif.clipboard_unavailable"));
+        return;
+    }
+    QString error;
+    const QString outputPath = clipboard->reserveGifPath(&error);
+    if (outputPath.isEmpty()) {
+        requests.postToast(miacode::NoticeSeverity::Error, miacode::LocalizedText(error));
+        return;
+    }
+    session_.playback_->pausePlayback();
+    VideoExportTask task = buildVideoExportRenderTask();
+    task.showObjectStatsHud = session_.previewShowObjectStatsHud_;
+    task.showChartInfoHud = session_.previewShowChartInfoHud_;
+    task.showBpmHud = session_.previewShowBpmHud_;
+    task.showCpsHud = session_.previewShowCpsHud_;
+    task.showMeterHud = session_.previewShowMeterHud_;
+    task.showModsHud = session_.previewShowModsHud_;
+    miacode::video_export::applyGifExportSettings(task);
+    task.outputPath = outputPath;
+    task.exportStartSeconds = startSecond;
+    task.contentDurationSeconds = endSecond - startSecond;
+    VideoExportSnapshot snapshot;
+    if (!buildVideoExportSnapshot(task, &snapshot, &error, difficultyId)
+        || !launchVideoExportWorker(snapshot, &error)) {
+        finishSelectionGifExport(outputPath, false, miacode::LocalizedText(error));
+    }
+}
+
 bool miacode::runtime::VideoExportHost::launchQmlVideoExport(
     const VideoExportTask& requestedTask,
     int difficultyId,
     QString* errorMessage)
 {
+    if (session_.applicationServices_.jobProgress().active()) {
+        if (errorMessage != nullptr) *errorMessage = qtTrId("job_progress.busy");
+        return false;
+    }
     session_.playback_->pausePlayback();
     auto& services = session_.applicationServices_;
     using miacode::automatic_chart::Trigger;

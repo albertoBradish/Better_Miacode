@@ -15,6 +15,7 @@ Rectangle {
     property bool nativeMaterialActive: Theme.nativeMaterialActive
     readonly property var navigationStateColors: nativeMaterialActive
         ? Theme.compensatedStateColorsFor(Theme.colors.listState) : Theme.colors.listState
+    readonly property bool popupActive: difficulties.popupActive
     readonly property Item cornerSourceItem: heading
     readonly property Item navigationContentItem: difficulties
     color: Theme.chromeSurfaceColor(Theme.colors.background.panel, root.nativeMaterialActive)

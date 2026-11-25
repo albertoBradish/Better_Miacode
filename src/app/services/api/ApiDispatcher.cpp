@@ -3,7 +3,6 @@
 
 #include <QJsonDocument>
 #include <QSysInfo>
-#include <QTimeZone>
 #include <QUuid>
 
 namespace miacode::api {
@@ -70,7 +69,7 @@ QJsonObject ApiDispatcher::capabilities(const ApiContext& context) const
     }
     return {{QStringLiteral("apiVersion"), QStringLiteral("1.0")}, {QStringLiteral("hostInstanceId"), hostInstanceId_},
         {QStringLiteral("applicationVersion"), applicationVersion_}, {QStringLiteral("platform"), QSysInfo::productType()},
-        {QStringLiteral("timeZone"), QString::fromUtf8(QTimeZone::systemTimeZoneId())}, {QStringLiteral("operations"), operations},
+        {QStringLiteral("timeZone"), ApiCatalog::systemTimeZoneName()}, {QStringLiteral("operations"), operations},
         {QStringLiteral("limits"), QJsonObject{{QStringLiteral("controlRequestBytes"), 1048576},
             {QStringLiteral("batchItems"), 500}, {QStringLiteral("pageItems"), 200},
             {QStringLiteral("jobRecordRetention"), QStringLiteral("process_lifetime")}}}};

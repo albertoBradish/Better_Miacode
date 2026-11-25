@@ -193,14 +193,15 @@ public:
     Q_INVOKABLE QStringList openFileNameFilters() const;
     Q_INVOKABLE QVariantMap plainSimaiExportLocation() const;
     Q_INVOKABLE bool openFile(const QUrl& fileUrl);
-    bool openAdditionalSong(const QString& path);
+    bool openAdditionalSong(const QString& path, int preferredDifficultyId = 0);
     QVariantList songTabs() const { return songTabs_; }
     int currentSongTab() const { return activeSongIndex_; }
-    Q_INVOKABLE bool activateSongTab(int index);
+    int songTabForChart(const QString& path) const;
+    Q_INVOKABLE bool activateSongTab(int index, int preferredDifficultyId = 0);
     Q_INVOKABLE void requestCloseSongTab(int index);
     void requestLeaveAllSongs(std::function<void(bool)> decided);
     QStringList openSongPaths() const;
-    bool openChartFile(const QUrl& fileUrl);
+    bool openChartFile(const QUrl& fileUrl, int preferredDifficultyId = 0);
     QJsonObject documentIdentity() const;
     net::NetEnginePort::Cancel openNetPreview(const QString& path, const QJsonObject& expected,
                                              net::NetEnginePort::Done done);
@@ -305,7 +306,7 @@ private:
     bool canSaveToSongPath(const QString& path);
     int parkedIndexForPath(const QString& path) const;
     bool handOrderFeaturesEnabled_ = false;
-    bool openFileWithOrigin(const QUrl& fileUrl, ChartDocumentOrigin origin);
+    bool openFileWithOrigin(const QUrl& fileUrl, ChartDocumentOrigin origin, int preferredDifficultyId = 0);
     mutable QString workspaceId_;
     enum class WorkspaceCommitKind {
         Incremental,

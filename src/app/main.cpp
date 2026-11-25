@@ -504,13 +504,8 @@ int main(int argc, char* argv[])
 #endif
 
     QSurfaceFormat format = QSurfaceFormat::defaultFormat();
-    // Triple-buffer + vsync. With DoubleBuffer the swap chain caps the GPU at 1 frame in
-    // flight, so a fast Render submit (~5 ms) immediately stalls on the next Present until
-    // the previous frame swaps — surfacing as a bimodal render_submit_ms (median ~5 ms,
-    // p90 ~24 ms ≈ one vsync of forced wait). TripleBuffer keeps two frames in flight,
-    // letting the CPU stay one frame ahead of the GPU and removing the back-pressure stall.
-    // Cost: one extra frame (~16.7 ms) of latency from input to display, which is
-    // imperceptible for a chart preview where the playhead is audio-authoritative anyway.
+    // Triple-buffer + vsync keeps two windows at full display refresh without
+    // swapchain stalls; TimelineFramePresentationClock measures real scanout latency.
     format.setSwapBehavior(QSurfaceFormat::TripleBuffer);
     format.setSwapInterval(1);
     QSurfaceFormat::setDefaultFormat(format);

@@ -20,7 +20,7 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
     , comparisons_(services.workspace(), preview_, this)
     , chartStructure_(services.workspace(), services.files(), this)
     , timeline_(services.shellNotifications(), services.timelineSurfaceSlot(), this)
-    , commands_(document_, services.documentBridgeSlot(), this)
+    , commands_(document_, services.documentBridgeSlot(), services.uiRequests(), this)
     , pages_(services.shellNotifications(), document_, services.editorPageRouterSlot(),
              services.exportPageSessionSlot(), this)
     , editor_(this)

@@ -91,7 +91,8 @@ public:
     Q_INVOKABLE bool seekPreviewToEditorLocation(int difficultyId, qulonglong revision,
                                                   int line, int column);
     Q_INVOKABLE bool requestSelectionRangeExport(int difficultyId, qulonglong revision,
-                                                  int selectionStart, int selectionEnd);
+                                                  int selectionStart, int selectionEnd,
+                                                  bool asGif = false);
 
 signals:
     void followChanged();
@@ -109,6 +110,7 @@ signals:
     void touchPadPreviewAnchorPublished(int difficultyId, int line, int column);
     void previewSeekPublished(int difficultyId, int line, int column);
     void selectionRangeExportRequested(int difficultyId, int selectionStart, int selectionEnd);
+    void selectionRangeGifExportRequested(int difficultyId, int selectionStart, int selectionEnd);
     void editorContextChanged();
     void noteSelectionRequested(int difficultyId, qulonglong revision, const miacode::chart_selection::NoteObjects& objects);
 
@@ -135,6 +137,7 @@ private:
         quint64 revision = 0;
         int selectionStart = 0;
         int selectionEnd = 0;
+        bool asGif = false;
     };
 
     struct TouchPadRequest {

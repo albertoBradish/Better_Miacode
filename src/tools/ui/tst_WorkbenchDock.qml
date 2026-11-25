@@ -12,7 +12,8 @@ Item {
     readonly property alias preferencesModel: preferencesModel
     readonly property alias viewState: viewState
     readonly property alias testCommands: commands
-    property bool previewOnLeft: false
+    readonly property bool previewOnLeft: preferencesModel.previewOnLeft
+    property bool useBuiltinTree: false
     property bool compact: false
     property bool previewDetached: false
     property bool previewSurfaceMoving: false
@@ -108,7 +109,8 @@ Item {
         preferences: root.preferences
         libraryAvailable: true
         availablePanels: root.enabledPanels.filter(id => dock.panelShown(id)).concat(comparisonPanels.map(p => p.panelId))
-        defaultTree: ({ axis: "horizontal", ratio: 0.21,
+        preferencesModel: root.preferencesModel
+        defaultTree: root.useBuiltinTree ? builtinTree("default") : ({ axis: "horizontal", ratio: 0.21,
                         first: { tabs: ["sidebar"], selected: "sidebar" },
                         second: { axis: "horizontal", ratio: 0.55,
                             first: { axis: "vertical", ratio: 0.75,
@@ -129,7 +131,6 @@ Item {
             if (panelId === "timeline" || panelId === "validation" || panelId === "muri" || panelId === "patterns")
                 root.selectedBottom = panelId
         }
-        builtinTree: function() { return defaultTree }
         floatPreview: function() { preferences.previewDetached = true }
         dockPreview: function() { preferences.previewDetached = false }
         editorShortcuts: Component {
@@ -153,6 +154,7 @@ Item {
         parent: dock.hostFor("editor")
         anchors.fill: parent
         text: "(120){4}1,2,E"
+        readonly property color cornerBackingColor: "transparent"
         readonly property Item cornerSourceItem: editor
 
         Popup {
@@ -178,6 +180,7 @@ Item {
 
     ListModel {
         id: sharedLibrary
+        property int difficultyMask: 0
         property var packs: ["Test"]
         property var versions: []
         property string versionCategory: ""
@@ -301,6 +304,9 @@ Item {
             preferences.savedWorkspaceLayouts = {}
             preferences.savedWorkspaceLayoutOrder = []
             preferences.workspaceListOrder = ["default", "editing", "preview"]
+            root.useBuiltinTree = false
+            root.preferencesModel.previewOnLeft = false
+            sharedLibrary.difficultyMask = 0
             sharedLibrary.query = ""
             sharedLibrary.controlHeld = false
             preferences.sidebarVisible = true
@@ -311,6 +317,60 @@ Item {
             root.leftHandCalls = 0
             root.workspaceMenuCalls = 0
             commands.canTransform = false
+        }
+
+        function test_libraryDifficultyFilterMenuKeepsMultipleChecks() {
+            dock.setPanelShown("library", true)
+            dock.activate("library")
+            const button = findChild(libraryPane, "chartLibraryDifficultyFilter")
+            tryVerify(() => button && button.visible && button.width > 0)
+            verify(waitForRendering(button))
+            mouseClick(button, button.width / 2, button.height / 2)
+            tryCompare(button, "active", true)
+            const options = findChild(root.Overlay.overlay, "chartLibraryDifficultyOptions")
+            tryVerify(() => options && options.visible)
+            const expert = Array.from(options.children).find(option => option.difficultyId === 4)
+            const master = Array.from(options.children).find(option => option.difficultyId === 5)
+            mouseClick(expert)
+            mouseClick(master)
+            compare(sharedLibrary.difficultyMask, (1 << 4) | (1 << 5))
+            verify(expert.checked && master.checked)
+            mouseClick(expert)
+            compare(sharedLibrary.difficultyMask, 1 << 5)
+            mouseClick(master)
+            compare(sharedLibrary.difficultyMask, 0)
+            keyClick(Qt.Key_Escape)
+            tryCompare(options, "visible", false)
+        }
+
+        function test_openLibraryRetainsPreviewSideAndCustomPanels() {
+            root.useBuiltinTree = true
+            root.preferencesModel.previewOnLeft = true
+            for (const preset of ["default", "editing", "preview"]) {
+                dock.applyBuiltin(preset)
+                verify(root.preferencesModel.previewOnLeft)
+                dock.setPanelShown("library", true)
+                dock.activate("library")
+                tryVerify(() => dock.hostFor("preview").mapToItem(root, 0, 0).x
+                    < dock.hostFor("editor").mapToItem(root, 0, 0).x)
+            }
+            // Move the library into its own pane to the right of the editor.
+            const editorGroup = dock.groups.find(group => group.tabs.includes("editor"))
+            dock.dragging = "library"
+            dock.drop = { group: editorGroup, edge: "right", beforeTab: "" }
+            dock.finishDrag("library")
+            const saved = dock.captureLayout()
+            preferences.savedWorkspaceLayouts = { custom: saved }
+            dock.applyBuiltin("default")
+            dock.applySaved("custom")
+            tryVerify(() => dock.customTree !== null)
+            dock.setPanelShown("library", false)
+            dock.setPanelShown("library", true)
+            dock.activate("library")
+            compare(JSON.stringify(dock.tree), JSON.stringify(saved.tree))
+            verify(root.preferencesModel.previewOnLeft)
+            tryVerify(() => dock.hostFor("preview").mapToItem(root, 0, 0).x
+                < dock.hostFor("editor").mapToItem(root, 0, 0).x)
         }
 
         function test_comparisonsUseDockLayout() {

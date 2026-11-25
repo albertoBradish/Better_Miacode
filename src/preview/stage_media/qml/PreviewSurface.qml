@@ -75,6 +75,8 @@ Item {
                 attachedMediaHost.detachVideoOutputObjects(attachedVideoOutputObject, attachedInnerVideoOutputObject)
             else
                 attachedMediaHost.detachVideoOutputObject(attachedVideoOutputObject)
+            attachedVideoOutputObject?.clearOutput()
+            attachedInnerVideoOutputObject?.clearOutput()
             logSurface(
                 "preview_surface_video_output_detach",
                 "has_video_output=" + (attachedVideoOutputObject ? 1 : 0)

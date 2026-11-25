@@ -62,6 +62,7 @@ struct PreviewAudioWorker::BackendSnapshot {
     double preparedSecond = 0.0;
     double authoritativeSecond = 0.0;
     double backgroundSecond = 0.0;
+    qint64 backgroundSampledAtNs = 0;
     RetainedPlaybackMode retainedMode = RetainedPlaybackMode::None;
     RetainedBgmState retainedBgmState = RetainedBgmState::NoneLoaded;
 };
@@ -835,6 +836,7 @@ PreviewAudioWorker::BackendSnapshot PreviewAudioWorker::captureBackendSnapshot(
     state.preparedSecond = backend.preparedStartSecond();
     state.authoritativeSecond = backend.authoritativePlaybackSecond();
     state.backgroundSecond = backend.backgroundPlaybackSecond();
+    state.backgroundSampledAtNs = steadyNowNs();
     state.retainedMode = backend.retainedPlaybackMode();
     state.retainedBgmState = backend.retainedBgmState();
     return state;
@@ -1012,6 +1014,7 @@ void PreviewAudioWorker::publishBackendLifecycle(
         snapshot_.preparedSecond = backendState.preparedSecond;
         snapshot_.authoritativeSecond = backendState.authoritativeSecond;
         snapshot_.backgroundPlaybackSecond = backendState.backgroundSecond;
+        snapshot_.backgroundSampledAtNs = backendState.backgroundSampledAtNs;
         snapshot_.retainedPlaybackMode = backendState.retainedMode;
         snapshot_.retainedBgmState = backendState.retainedBgmState;
         snapshot_.backendId = backendState.backendId;
@@ -1045,6 +1048,7 @@ bool PreviewAudioWorker::publishCompletion(
             && completion.success
             && !lifecycle.has_value()
             && backendState == nullptr;
+        const CommandIdentity previousIdentity = snapshot_.identity;
         snapshot_.sequence = nextSnapshotSequence(snapshot_.sequence);
         snapshot_.identity = completion.identity;
         if (lifecycle) {
@@ -1066,6 +1070,18 @@ bool PreviewAudioWorker::publishCompletion(
         snapshot_.lastValue = completion.value;
         snapshot_.workerThreadId = completion.workerThreadId;
         if (backendState != nullptr) {
+            // Preserve the anchor timestamp while BASS reports the same mixer block
+            // so high-frequency tick completions do not reset extrapolation back to zero.
+            const bool keepBackgroundSampleTimestamp =
+                snapshot_.backgroundTrackRunning
+                && backendState->backgroundTrackRunning
+                && previousIdentity.generation == completion.identity.generation
+                && previousIdentity.assetGeneration == completion.identity.assetGeneration
+                && previousIdentity.transactionId == completion.identity.transactionId
+                && snapshot_.backgroundSampledAtNs > 0
+                && std::isfinite(snapshot_.backgroundPlaybackSecond)
+                && std::isfinite(backendState->backgroundSecond)
+                && std::abs(snapshot_.backgroundPlaybackSecond - backendState->backgroundSecond) <= 1e-6;
             snapshot_.backendId = backendState->backendId;
             snapshot_.backendReady = snapshot_.lifecycle == WorkerLifecycle::Ready
                 && backendState->ready;
@@ -1074,6 +1090,9 @@ bool PreviewAudioWorker::publishCompletion(
             snapshot_.preparedSecond = backendState->preparedSecond;
             snapshot_.authoritativeSecond = backendState->authoritativeSecond;
             snapshot_.backgroundPlaybackSecond = backendState->backgroundSecond;
+            if (!keepBackgroundSampleTimestamp) {
+                snapshot_.backgroundSampledAtNs = backendState->backgroundSampledAtNs;
+            }
             snapshot_.retainedPlaybackMode = backendState->retainedMode;
             snapshot_.retainedBgmState = backendState->retainedBgmState;
         }

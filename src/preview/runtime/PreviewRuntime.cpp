@@ -19,6 +19,7 @@
 #include <QFileInfo>
 #include <QPointF>
 #include <QQuickWindow>
+#include <QScreen>
 #include <QTextStream>
 
 #include <algorithm>
@@ -245,7 +246,12 @@ std::shared_ptr<const miacode::preview::scene::PreviewFrameState> PreviewRuntime
     return std::atomic_load_explicit(&publishedFrameState_, std::memory_order_acquire);
 }
 
-void PreviewRuntime::publishFrameStateSnapshot()
+std::shared_ptr<const miacode::preview::scene::PreviewFrameState> PreviewRuntime::sceneFrameStateSnapshot() const
+{
+    return std::atomic_load_explicit(&publishedSceneFrameState_, std::memory_order_acquire);
+}
+
+void PreviewRuntime::publishFrameStateSnapshot(bool sceneFrameChanged)
 {
     auto snapshot =
         std::make_shared<miacode::preview::scene::PreviewFrameState>(frameState_);
@@ -262,6 +268,9 @@ void PreviewRuntime::publishFrameStateSnapshot()
     miacode::preview::scene::refreshPreviewFrameStateHudStatsSnapshot(*snapshot);
     std::shared_ptr<const miacode::preview::scene::PreviewFrameState> publishedSnapshot =
         std::move(snapshot);
+    if (sceneFrameChanged) {
+        std::atomic_store_explicit(&publishedSceneFrameState_, publishedSnapshot, std::memory_order_release);
+    }
     std::atomic_store_explicit(
         &publishedFrameState_,
         std::move(publishedSnapshot),
@@ -305,15 +314,49 @@ void PreviewRuntime::setVisibleHostWindow(QQuickWindow* window)
         return;
     }
     visibleHostWindow_ = window;
-    // A new QQuickWindow brings a fresh QRhi + pipeline cache, so any
-    // firework PSO/texture warmed for the previous window is gone. Re-arm
-    // the warm-up for this window; arming is deferred internally until the
-    // skin assets are ready (it's a no-op when they aren't).
+    disconnect(hostScreenConnection_);
     if (window != nullptr) {
-        fireworkWarmupArmed_ = false;
-        fireworkWarmupDone_ = false;
-        fireworkWarmupArmPresentCount_ = -1;
-        fireworkWarmupElapsed_.invalidate();
+        hostScreenConnection_ = connect(window, &QWindow::screenChanged, this,
+                                        &PreviewRuntime::bindVisibleHostScreen);
+        if (!fireworkWarmupByWindow_.contains(window)) {
+            fireworkWarmupByWindow_.insert(window, false);
+            connect(window, &QObject::destroyed, this, [this, window] {
+                fireworkWarmupByWindow_.remove(window);
+            });
+            connect(window, &QQuickWindow::sceneGraphInvalidated, this,
+                    [this, host = QPointer<QQuickWindow>(window)] {
+                if (host.isNull())
+                    return;
+                fireworkWarmupByWindow_.insert(host.data(), false);
+                if (visibleHostWindow_ == host)
+                    resetFireworkWarmupForVisibleHost();
+            }, Qt::QueuedConnection);
+        }
+    }
+    bindVisibleHostScreen();
+    resetFireworkWarmupForVisibleHost();
+}
+
+void PreviewRuntime::bindVisibleHostScreen()
+{
+    disconnect(hostRefreshRateConnection_);
+    QScreen* screen = visibleHostWindow_ != nullptr ? visibleHostWindow_->screen() : nullptr;
+    if (screen != nullptr) {
+        hostRefreshRateConnection_ = connect(screen, &QScreen::refreshRateChanged, this,
+                                              &PreviewRuntime::visibleHostRefreshRateChanged);
+    }
+    emit visibleHostRefreshRateChanged();
+}
+
+void PreviewRuntime::resetFireworkWarmupForVisibleHost()
+{
+    if (fireworkWarmupArmed_ && !fireworkWarmupDone_) {
+        removeFireworkWarmupMarkers();
+        frameState_.sceneContentRevision += 1;
+    }
+    fireworkWarmupArmed_ = false;
+    fireworkWarmupDone_ = fireworkWarmupByWindow_.value(visibleHostWindow_.data());
+    if (visibleHostWindow_ != nullptr) {
         armFireworkPsoWarmupIfReady();
         update();
     }
@@ -355,6 +398,8 @@ void PreviewRuntime::clearVisibleHostWindow(QQuickWindow* window)
     if (visibleHostWindow_ != window) {
         return;
     }
+    disconnect(hostScreenConnection_);
+    disconnect(hostRefreshRateConnection_);
     visibleHostWindow_.clear();
 }
 
@@ -376,6 +421,16 @@ void PreviewRuntime::requestActivate()
 }
 
 void PreviewRuntime::update()
+{
+    requestFrameUpdate(true);
+}
+
+void PreviewRuntime::requestFramePresentation(bool forceWindowUpdate)
+{
+    requestFrameUpdate(false, forceWindowUpdate);
+}
+
+void PreviewRuntime::requestFrameUpdate(bool sceneFrameChanged, bool forceWindowUpdate)
 {
     updateRequestCountTotal_ += 1;
     frameState_.updateRequestCount = updateRequestCountTotal_;
@@ -405,10 +460,14 @@ void PreviewRuntime::update()
             updateRequestIntervalsMs_, updateRequestIntervalCount_, thresholdMs);
     }
     pendingPresentedStatsRefresh_ = true;
-    publishFrameStateSnapshot();
+    publishFrameStateSnapshot(sceneFrameChanged);
     emit frameStateChanged();
     if (visibleHostWindow_ != nullptr) {
-        visibleHostWindow_->requestUpdate();
+        if (forceWindowUpdate) {
+            visibleHostWindow_->update();
+        } else {
+            visibleHostWindow_->requestUpdate();
+        }
     }
 }
 
@@ -848,6 +907,7 @@ void PreviewRuntime::setFireworkStyle(PreviewFireworkStyle style)
 {
     if (frameState_.render.fireworkStyle == style) return;
     frameState_.render.fireworkStyle = style;
+    for (bool& warmed : fireworkWarmupByWindow_) warmed = false;
     removeFireworkWarmupMarkers();
     fireworkWarmupArmed_ = false;
     fireworkWarmupDone_ = false;
@@ -2190,7 +2250,7 @@ void PreviewRuntime::handlePresentedFrame()
         && fireworkWarmupArmPresentCount_ >= 0) {
         constexpr qint64 kFireworkWarmupMaxPresents = 240;  // backstop ≈ 2-4 s
         const bool fireworkDrawn =
-            fireworkLayerDrawSignal_.load(std::memory_order_acquire) != fireworkWarmupArmDrawSignal_;
+            fireworkLayerDrawSignal_ != fireworkWarmupArmDrawSignal_;
         const bool warmupTimedOut =
             (presentedFrameCountTotal_ - fireworkWarmupArmPresentCount_) >= kFireworkWarmupMaxPresents;
         if (fireworkDrawn || warmupTimedOut) {
@@ -2199,6 +2259,8 @@ void PreviewRuntime::handlePresentedFrame()
             const qint64 warmupPresents =
                 presentedFrameCountTotal_ - fireworkWarmupArmPresentCount_;
             fireworkWarmupDone_ = true;
+            if (visibleHostWindow_ != nullptr)
+                fireworkWarmupByWindow_.insert(visibleHostWindow_.data(), true);
             removeFireworkWarmupMarkers();
             frameState_.sceneContentRevision += 1;
             update();
@@ -2213,7 +2275,7 @@ void PreviewRuntime::handlePresentedFrame()
                     .arg(warmupPresents));
         }
     }
-    publishFrameStateSnapshot();
+    publishFrameStateSnapshot(false);
     emit framePresented();
 }
 
@@ -2231,7 +2293,7 @@ void PreviewRuntime::refreshAssetStateFromRepository()
 
 void PreviewRuntime::armFireworkPsoWarmupIfReady()
 {
-    if (fireworkWarmupDone_ || fireworkWarmupArmed_) {
+    if (visibleHostWindow_ == nullptr || fireworkWarmupDone_ || fireworkWarmupArmed_) {
         return;
     }
     // Warm the selected style after its textures and particle data are available.
@@ -2246,7 +2308,7 @@ void PreviewRuntime::armFireworkPsoWarmupIfReady()
     fireworkWarmupElapsed_.restart();
     // Snapshot the layer draw signal: completion needs it to advance past this,
     // i.e. a firework node emitted AFTER this arm (see handlePresentedFrame).
-    fireworkWarmupArmDrawSignal_ = fireworkLayerDrawSignal_.load(std::memory_order_acquire);
+    fireworkWarmupArmDrawSignal_ = fireworkLayerDrawSignal_;
     removeFireworkWarmupMarkers();  // guarantee exactly one synthetic
     appendFireworkWarmupMarker();
     frameState_.sceneContentRevision += 1;
@@ -2294,13 +2356,7 @@ void PreviewRuntime::removeFireworkWarmupMarkers()
 
 void PreviewRuntime::notifyFireworkLayerPresentedNode()
 {
-    // Called on the QSG render thread (from PreviewQuickSceneRoot's direct
-    // frameSwapped hook) once a SWAPPED frame contained a firework node. The node
-    // means the material pipeline was bound (PSO compiled on first use) and the
-    // colour-ball texture sampled (uploaded on first use); the swap means that work
-    // has actually completed rather than merely been recorded. Bump the signal the
-    // GUI-thread completion check reads. Atomic-only: touch no other member here.
-    fireworkLayerDrawSignal_.fetch_add(1, std::memory_order_release);
+    ++fireworkLayerDrawSignal_;
 }
 
 void PreviewRuntime::refreshFireworkWarmupForPlayheadChange()

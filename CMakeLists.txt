@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.24)
 
 set(MIACODE_VERSION_MAJOR "2")
-set(MIACODE_VERSION_MINOR "0")
-set(MIACODE_VERSION_PATCH "1")
+set(MIACODE_VERSION_MINOR "1")
+set(MIACODE_VERSION_PATCH "0")
 # Single source of truth for the prerelease tag and package version. The
 # About dialog appends its compile date to this version at runtime.
-set(MIACODE_VERSION_PRERELEASE "better.15")
+set(MIACODE_VERSION_PRERELEASE "better.16")
 set(MIACODE_BUILD_LAYOUT_REVISION "2026-04-21-first-unification")
 set(MIACODE_VERSION "${MIACODE_VERSION_MAJOR}.${MIACODE_VERSION_MINOR}.${MIACODE_VERSION_PATCH}")
 set(MIACODE_VERSION_STRING "${MIACODE_VERSION}")
@@ -16,7 +16,7 @@ endif()
 # dialog adds its compile date to the visible version separately.
 set(MIACODE_DISPLAY_VERSION_STRING "${MIACODE_VERSION_STRING}")
 
-set(MIACODE_RELEASE_CHANNEL "nightly" CACHE STRING "Distribution channel: nightly or release")
+set(MIACODE_RELEASE_CHANNEL "release" CACHE STRING "Distribution channel: nightly or release")
 set_property(CACHE MIACODE_RELEASE_CHANNEL PROPERTY STRINGS nightly release)
 if (MIACODE_RELEASE_CHANNEL STREQUAL "nightly")
     set(MIACODE_RELEASE_CHANNEL_DISPLAY "Nightly")
@@ -651,6 +651,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/net/NetPageButton.qml
     src/app/ui/net/NetUploadPage.qml
     src/app/ui/net/NetResultTable.qml
+    src/app/ui/net/NetSearchField.qml
     src/app/ui/components/AppDateField.qml
     src/app/ui/Main.qml
     src/app/ui/ViewState.qml
@@ -664,10 +665,12 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/components/AppTabButton.qml
     src/app/ui/components/AppTabBar.qml
     src/app/ui/components/AppTabPages.qml
+    src/app/ui/components/AppSegmentedControl.qml
     src/app/ui/components/AppChoiceButton.qml
     src/app/ui/components/DifficultySelector.qml
     src/app/ui/components/DifficultySwatch.qml
     src/app/ui/components/PanelHeader.qml
+    src/app/ui/components/SidebarEdgePill.qml
     src/app/ui/components/SplitHandle.qml
     src/app/ui/components/SplitSnapController.qml
     src/app/ui/components/ResizeSnapState.qml
@@ -703,6 +706,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/components/ChoiceDialog.qml
     src/app/ui/components/EditableValue.qml
     src/app/ui/components/LabeledCombo.qml
+    src/app/ui/components/FontSamplePane.qml
     src/app/ui/components/LabeledFocusSlider.qml
     src/app/ui/components/LabeledSlider.qml
     src/app/ui/components/SettingsSection.qml
@@ -832,8 +836,15 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/sliders-horizontal-fill.svg
     src/app/ui/resources/icons/more-fill.svg
     src/app/ui/resources/icons/folder-open.svg
+    src/app/ui/resources/icons/chart-library.svg
+    src/app/ui/resources/icons/chart-library-fill.svg
+    src/app/ui/resources/icons/refresh.svg
+    src/app/ui/resources/icons/filter.svg
+    src/app/ui/resources/icons/filter-fill.svg
+    src/app/ui/resources/icons/search.svg
     src/app/ui/resources/icons/folder-arrow-right.svg
     src/app/ui/resources/icons/globe.svg
+    src/app/ui/resources/icons/globe-fill.svg
     src/app/ui/resources/icons/download.svg
     src/app/ui/resources/icons/download-fill.svg
     src/app/ui/resources/icons/upload.svg
@@ -959,6 +970,8 @@ qt_add_qml_module(MiaCode
         src/app/ui/chrome/EditorInputContext.h
         src/app/ui/export/ExportSession.cpp
         src/app/ui/export/ExportSession.h
+        src/app/ui/export/AnimatedImageClipboardService.cpp
+        src/app/ui/export/AnimatedImageClipboardService.h
         src/app/ui/export/CoverExportSession.cpp
         src/app/ui/export/CoverExportSession.h
         src/app/ui/export/CoverExportWindow.cpp
@@ -1037,6 +1050,7 @@ target_include_directories(MiaCode PRIVATE
     # code includes them by their src-rooted path.
     src/app/ui/chrome
     src/app/ui/editor
+    src/app/ui/layout
     src/app/ui/pet
     src/app/ui/timeline
 )

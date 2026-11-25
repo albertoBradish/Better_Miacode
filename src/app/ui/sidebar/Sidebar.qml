@@ -12,6 +12,7 @@ Item {
     property bool compact: false
     property bool opensDrawer: false
     property string pendingChartEditor: ""
+    readonly property bool popupActive: efficientMode ? efficientSidebar.popupActive : chartSidebar.popupActive
     readonly property bool efficientMode: preferences.efficientSidebarEnabled
     readonly property bool primarySidebarVisible: compact || viewState.sidebarVisible
     readonly property Item chartSidebarItem: efficientMode

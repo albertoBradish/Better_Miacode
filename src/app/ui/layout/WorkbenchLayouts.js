@@ -125,8 +125,10 @@ function renameTab(node, before, after) {
 
 function activate(node, id) {
     if (node.tabs)
-        return node.tabs.includes(id) ? group(node.tabs, id) : node
-    return split(node.axis, node.ratio, activate(node.first, id), activate(node.second, id))
+        return node.tabs.includes(id) && node.selected !== id ? group(node.tabs, id) : node
+    const first = activate(node.first, id)
+    const second = activate(node.second, id)
+    return first === node.first && second === node.second ? node : split(node.axis, node.ratio, first, second)
 }
 
 // Flatten visible branches into normalized rectangles for the two layout miniatures.
@@ -165,4 +167,33 @@ function previewCells(layout, panelIds) {
     }
     place(prune(layout.tree), 0, 0, 1, 1)
     return cells
+}
+
+function builtinTree(preset, previewOnLeft, simulatedPlay) {
+    const library = group(["sidebar", "library"], preset === "preview" ? "library" : "sidebar")
+    const editor = group(["editor"])
+    const preview = group(["preview"])
+    const diagnostics = ["validation", "muri", "patterns"]
+    if (simulatedPlay) diagnostics.push("play_checks")
+    function withPreview(center, centerRatio) {
+        return previewOnLeft ? split("horizontal", 1 - centerRatio, preview, center)
+                             : split("horizontal", centerRatio, center, preview)
+    }
+    if (preset === "default") {
+        const center = split("vertical", 0.75, editor,
+            group(["timeline"].concat(diagnostics), "timeline"))
+        const work = withPreview(center, 0.5)
+        return split("horizontal", 0.105, library, work)
+    }
+    const timeline = group(["timeline"])
+    const center = split("vertical", preset === "editing" ? 0.72 : 0.81,
+        editor, group(diagnostics, "muri"))
+    if (preset === "editing") {
+        const main = withPreview(center, 0.63)
+        return split("horizontal", 0.15, timeline,
+            split("horizontal", 0.12, library, main))
+    }
+    const work = withPreview(center, 0.29)
+    return split("horizontal", 0.215, library,
+        split("horizontal", 0.13, timeline, work))
 }

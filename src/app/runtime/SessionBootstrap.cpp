@@ -91,6 +91,8 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
             this, &Session::seekPreviewToEditorLocation);
     connect(editorSyncController_, &miacode::EditorSyncController::selectionRangeExportRequested,
             this, &Session::requestSelectionRangeExport);
+    connect(editorSyncController_, &miacode::EditorSyncController::selectionRangeGifExportRequested,
+            this, &Session::requestSelectionRangeGifExport);
 
     // The preview appearance values live in the application assembly; this
     // window owns the live surfaces and the settings file, so it is what reacts
@@ -304,6 +306,13 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
                 }
             });
     logStartupStage("preview_audio_device_watcher_created");
+    connect(scene_, &PreviewRuntime::visibleHostRefreshRateChanged, this,
+            &Session::refreshPreviewFrameRateTimers, Qt::QueuedConnection);
+#ifdef Q_OS_MACOS
+    connect(scene_, &PreviewRuntime::framePreparing, this, [this] {
+        playback_->onPreviewCanvasFramePreparing();
+    });
+#endif
     connect(scene_, &PreviewRuntime::framePresented, this, [this]() {
         playback_->handlePreviewStartupCanvasPresented();
         if (!playing_) {
@@ -404,7 +413,7 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
                 );
             }
         }
-        if (!matchedRequest) {
+        if (!matchedRequest || playback_->previewCanvasUsesFramePreparationPacing()) {
             return;
         }
         qtPreviewFixedAwaitingFrame_ = false;
@@ -439,7 +448,6 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
         {miacode::ui::ShortcutRegistry::instance().shortcutText(
             QStringLiteral("timeline.zoom_out"),
             QStringLiteral("Ctrl+WheelDown"))});
-    playback_->refreshTimelineWaveformPhaseCompensation();
     connect(state_.timeline_.timelineQuickStateBridge_,
             &TimelineQuickStateBridge::renderCadenceTick,
             this,

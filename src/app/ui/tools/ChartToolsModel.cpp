@@ -127,8 +127,7 @@ QVariantList ChartToolsModel::objectCounts() const
         rows.append(QVariantMap{{QStringLiteral("name"), names[index]},
             {QStringLiteral("count"), index == 10 ? stats.total : (index == 9 ? stats.mineCount : stats.counts[index])},
             {QStringLiteral("attribute"), index >= 6 && index <= 9},
-            {QStringLiteral("icon"), index == 8 ? QUrl(QStringLiteral("qrc:/preview/judge_effects/judge_effect_firework.png"))
-                : icons[index].isEmpty() ? QUrl() : QUrl::fromLocalFile(
+            {QStringLiteral("icon"), icons[index].isEmpty() ? QUrl() : QUrl::fromLocalFile(
                 miacode::assets::assetPath(QStringLiteral("skin/skinDX/") + icons[index]))}});
     }
     return rows;
