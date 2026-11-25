@@ -1144,8 +1144,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>所选文件夹中缺少当前难度。</translation>
     </message>
     <message id="dialog.batch_export.error.missing_track_file">
-        <source>Missing track.mp3.</source>
-        <translation>缺少 track.mp3。</translation>
+        <source>Could not find the audio track. Check for track.mp3, track.wav, track.flac, or track.ogg.</source>
+        <translation>找不到曲目音轨。请检查 track.mp3、track.wav、track.flac 或 track.ogg。</translation>
     </message>
     <message id="dialog.batch_export.error.no_chart_dirs">
         <source>Please add at least one chart folder.</source>
@@ -7443,7 +7443,9 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.remove_song"><source>Remove from library</source><translation>移出谱库</translation></message>
 <message id="library.remove_prompt"><source>Move the chart for %1 to the library's removed folder? Shared media stays in place.</source><translation>将《%1》的谱面移到谱库的 removed 文件夹吗？共用音轨和曲绘会保留在原位置。</translation></message>
 <message id="library.removed"><source>Chart archived in %1</source><translation>谱面已移至 %1</translation></message>
-<message id="library.remove_failed"><source>Could not move this chart. Check the library folder.</source><translation>移动谱面失败，请检查谱库目录。</translation></message>
+<message id="library.remove_failed"><source>Could not remove the selection from the library.</source><translation>移出谱库失败</translation></message>
+<message id="library.delete_pack_failed"><source>Could not delete the pack.</source><translation>删除曲包失败</translation></message>
+<message id="library.delete_library_failed"><source>Could not delete the library.</source><translation>删除谱库失败</translation></message>
 <message id="library.manage_genres"><source>Manage genres</source><translation>流派管理</translation></message>
 <message id="library.manage_versions"><source>Manage versions</source><translation>版本管理</translation></message>
 <message id="library.category_name"><source>New name</source><translation>新名称</translation></message>
@@ -7516,6 +7518,8 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.apply_prompt"><source>Apply formatting to %1 files? Original bytes will be backed up and every file checked again.</source><translation>将格式化写入 %1 份文件吗？将备份原始字节，并重新核对每份文件。</translation></message>
 <message id="library.invalid_root"><source>Choose the library’s .miabundle file.</source><translation>请选择谱库的 .miabundle 文件。</translation></message>
 <message id="library.close_sessions_first"><source>Close source sessions before switching library folders.</source><translation>切换谱库目录前请先关闭原文会话。</translation></message>
+<message id="library.delete_library_close_sessions"><source>Close the open source editor tabs in this library before deleting it.</source><translation>删除谱库前，请先关闭谱库中打开的原文编辑页。</translation></message>
+<message id="library.delete_library_recovery_pending"><source>The library contains source edits awaiting recovery and cannot be deleted yet.</source><translation>谱库中有待恢复的原文编辑，暂时无法删除。</translation></message>
 <message id="library.scanning"><source>Refreshing charts…</source><translation>正在刷新谱库…</translation></message>
 <message id="library.canceled"><source>Canceled; existing index and source files are unchanged.</source><translation>已取消，原有索引及源文件未改变。</translation></message>
 <message id="library.indexed"><source>%1 charts · %2 skipped</source><translation>共 %1 首，跳过 %2 项</translation></message>
@@ -7524,8 +7528,10 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.conflict"><source>Content or selection changed; review the files and prepare again.</source><translation>内容或选择已变化，请核对文件并重新准备。</translation></message>
 <message id="library.saved"><source>Saved with a verified original backup.</source><translation>已保存，原文备份已校验。</translation></message>
 <message id="library.save_buffer_first"><source>Save or close this source session before opening its disk file.</source><translation>打开磁盘文件前，请先保存或关闭此原文会话。</translation></message>
-<message id="library.batch_limit"><source>Select at most 100 files for one batch.</source><translation>一次批量操作最多选择 100 份文件。</translation></message>
-<message id="library.preparing"><source>Preparing formatting differences without writing source files…</source><translation>正在生成格式化差异，不写入源文件…</translation></message>
+<message id="library.batch_limit"><source>You can format up to 100 charts at a time.</source><translation>每次最多整理 100 份谱面。</translation></message>
+<message id="library.metadata_batch_limit"><source>You can clean up metadata for up to 100 charts at a time.</source><translation>每次最多整理 100 份谱面的元数据。</translation></message>
+<message id="library.preparing"><source>Comparing charts before and after formatting…</source><translation>正在比较整理前后的谱面…</translation></message>
+<message id="library.preparing_metadata"><source>Checking which metadata needs to change…</source><translation>正在检查需要修改的元数据…</translation></message>
 <message id="library.prepared"><source>%1 files would change. Review the differences before applying.</source><translation>预计更改 %1 份文件，请先检查差异再应用。</translation></message>
 <message id="library.recovered"><source>Recovered independent source sessions; disk conflicts are checked on save.</source><translation>已恢复独立原文会话，保存时会检查磁盘冲突。</translation></message>
 <message id="library.file_limit"><source>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</source><translation>草稿超过 4 MiB，请缩小内容后再保存或切换会话。</translation></message>

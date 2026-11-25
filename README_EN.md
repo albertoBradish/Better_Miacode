@@ -38,7 +38,7 @@ Latest release: [2.0.1-better.15](https://github.com/albertoBradish/Better_Miaco
 
 17. **Additional HUD information.** Toggle BPM, CPS, meter, and mods independently, with arbitrary-aspect preview layouts.
 18. **CPS and cleaner previews.** Count simultaneous Touch groups once in CPS and remove duplicated object statistics from the editor canvas.
-19. **Advanced metadata forms.** Edit IDs, version, level constants, demo windows, dates, and creator comments in dedicated fields.
+19. **Advanced metadata forms.** Enable advanced metadata in Preferences → Advanced to edit IDs, version, level constants, demo windows, dates, and creator comments in dedicated fields.
 20. **DX score-loss allowances.** Calculate SSS/SSS+ budgets and Tap Great allowances, including Break details and EX constraints.
 
 ## Drop & pressure analysis
@@ -64,7 +64,7 @@ Latest release: [2.0.1-better.15](https://github.com/albertoBradish/Better_Miaco
 
 ## Editing workflow safeguards
 
-33. **Automatic formatting and backups.** Format on first maidata open, ZIP packaging, and rendering, with original-file backups in .autosave.
+33. **Automatic formatting and backups.** Enable automatic formatting in Preferences → Editor to format charts on first open, when packaging a ZIP, or when rendering. Originals are backed up in `.autosave`.
 34. **Empty-difficulty warning.** Warn before ZIP packaging charts with empty difficulties; default to Cancel, with a preference to disable the warning.
 35. **Spacebar guard.** Use a single press for playback; triple-press to unlock text spaces and relock when focus leaves the editor.
 36. **Low-performance mode.** Prioritize basic 60 Hz preview and reduce effects and automatic timeline updates during playback.
@@ -87,7 +87,7 @@ Latest release: [2.0.1-better.15](https://github.com/albertoBradish/Better_Miaco
 
 Extract the complete Windows package to a writable folder and launch the root `MiaCode.exe`. Keep the isolated `runtime/` directory when updating. Available platform packages are listed with each release.
 
-Enable command-line integration in Preferences → About before using `better-miacode`. The spacebar guard, automatic formatting, and empty-difficulty warning are enabled by default; advanced metadata and low-performance mode are opt-in.
+Enable command-line integration in Preferences → Advanced before using `better-miacode`. Automatic chart formatting, advanced metadata, and low-performance mode are off by default. The spacebar guard and empty-difficulty warning are on by default.
 
 Preview supports arbitrary aspect ratios. Video presets remain 1:1, 4:3, and 16:9; command-line video width must be at least its height. Pressure is an estimate, not an official level constant.
 

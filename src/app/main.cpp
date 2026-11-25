@@ -264,7 +264,7 @@ int main(int argc, char* argv[])
     }
     if (wantsCliVideoExport(earlyArguments) && !wantsCliVideoExportWorker(earlyArguments)
         && !miacode::CliIntegration::tasksEnabled()) {
-        std::fputs("CLI tasks are disabled. Enable command-line integration in Settings > About.\n", stderr);
+        std::fputs("CLI tasks are disabled. Enable command-line integration in Preferences → Advanced.\n", stderr);
         return 77;
     }
     // Every GUI, legacy CLI and worker role has validated the Better Miacode root

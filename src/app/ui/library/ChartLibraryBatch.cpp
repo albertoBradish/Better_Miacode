@@ -103,7 +103,7 @@ void ChartLibraryModel::prepareBatchChanges(bool metadataOnly)
 {
     if (busy_ || selected_.isEmpty()) return;
     if (selected_.size() > 100) {
-        status_ = qtTrId("library.batch_limit");
+        status_ = metadataOnly ? qtTrId("library.metadata_batch_limit") : qtTrId("library.batch_limit");
         emit changed();
         return;
     }
@@ -121,9 +121,10 @@ void ChartLibraryModel::prepareBatchChanges(bool metadataOnly)
     const auto canceled = cancel_ = std::make_shared<std::atomic_bool>(false);
     busy_ = true;
     prepared_.clear();
-    status_ = qtTrId("library.preparing");
-    progress_.begin(localizedText("library.title"), localizedText("library.preparing"), true);
-    progress_.report(0, status_);
+    const auto message = metadataOnly ? localizedText("library.preparing_metadata") : localizedText("library.preparing");
+    status_ = message.text();
+    progress_.begin(localizedText("library.title"), message, true);
+    progress_.report(0, message);
     emit changed();
 
     worker_ = QThread::create([this, songs, generation, canceled, metadataOnly, options] {

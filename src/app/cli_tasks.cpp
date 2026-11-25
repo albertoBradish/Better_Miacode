@@ -448,7 +448,7 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
             || !miacode::runtime_paths::configureProcessEnvironment(&error))
             return result(request, 78, {}, error, QStringLiteral("runtime_isolation"));
         if (!miacode::CliIntegration::tasksEnabled())
-            return result(request, 77, {}, QStringLiteral("CLI tasks are disabled. Enable command-line integration in Better Miacode Settings → About."), QStringLiteral("cli_disabled"));
+            return result(request, 77, {}, QStringLiteral("CLI tasks are disabled. Enable command-line integration in Better Miacode Preferences → Advanced."), QStringLiteral("cli_disabled"));
     }
     std::unique_ptr<QCoreApplication> application;
     if (request.needsGui()) {
@@ -482,7 +482,7 @@ int runPublicCli(int argc, char** argv, const QStringList& arguments)
         "Video: --rate-mode quality|file_size|bitrate, --quality high|standard|small, --size-limit-mb 5..1000, --video-bitrate 0.1..100, --no-pv, --debug-render.\n"
         "Intro: --intro-style classic|pv|chart, --intro-window automatic|drop|default, --intro-pv-start seconds.\n"
         "JSON file paths are relative to the request file; stdin/command flag paths are relative to the current directory.\n"
-        "Tasks require command-line integration enabled in Settings > About and an isolated marked runtime.\n"
+        "Tasks require command-line integration enabled in Preferences → Advanced and an isolated marked runtime.\n"
         "Existing outputs require --overwrite. Completed files replace the exact output atomically.\n"
         "--json/--ndjson: video/cover emit NDJSON progress and a final result; other commands emit one result.\n"
         "Exit codes: 0 success, 1 task failure, 2 invalid request, 3 output conflict, 77 disabled, 78 runtime, 130 canceled.")}});

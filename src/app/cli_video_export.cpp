@@ -75,7 +75,7 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     miacode::runtime::installPreferenceDocumentProvider();
     try {
     if (!miacode::CliIntegration::tasksEnabled()) {
-        if (errorMessage) *errorMessage = QStringLiteral("CLI tasks are disabled. Enable command-line integration in Settings > About.");
+        if (errorMessage) *errorMessage = QStringLiteral("CLI tasks are disabled. Enable command-line integration in Preferences → Advanced.");
         return 77;
     }
     QCommandLineParser parser;

@@ -1144,8 +1144,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>Requested difficulty is missing.</translation>
     </message>
     <message id="dialog.batch_export.error.missing_track_file">
-        <source>Missing track.mp3.</source>
-        <translation>Missing track.mp3.</translation>
+        <source>Could not find the audio track. Check for track.mp3, track.wav, track.flac, or track.ogg.</source>
+        <translation>Could not find the audio track. Check for track.mp3, track.wav, track.flac, or track.ogg.</translation>
     </message>
     <message id="dialog.batch_export.error.no_chart_dirs">
         <source>Please add at least one chart folder.</source>
@@ -7424,7 +7424,9 @@ Movement L %3 / R %4 · Alternation %5</translation>
 <message id="library.remove_song"><source>Remove from library</source><translation>Remove from library</translation></message>
 <message id="library.remove_prompt"><source>Move the chart for %1 to the library's removed folder? Shared media stays in place.</source><translation>Move the chart for %1 to the library's removed folder? Shared media stays in place.</translation></message>
 <message id="library.removed"><source>Chart archived in %1</source><translation>Chart archived in %1</translation></message>
-<message id="library.remove_failed"><source>Could not move this chart. Check the library folder.</source><translation>Could not move this chart. Check the library folder.</translation></message>
+<message id="library.remove_failed"><source>Could not remove the selection from the library.</source><translation>Could not remove the selection from the library.</translation></message>
+<message id="library.delete_pack_failed"><source>Could not delete the pack.</source><translation>Could not delete the pack.</translation></message>
+<message id="library.delete_library_failed"><source>Could not delete the library.</source><translation>Could not delete the library.</translation></message>
 <message id="library.manage_genres"><source>Manage genres</source><translation>Manage genres</translation></message>
 <message id="library.manage_versions"><source>Manage versions</source><translation>Manage versions</translation></message>
 <message id="library.category_name"><source>New name</source><translation>New name</translation></message>
@@ -7497,6 +7499,8 @@ Movement L %3 / R %4 · Alternation %5</translation>
 <message id="library.apply_prompt"><source>Apply formatting to %1 files? Original bytes will be backed up and every file checked again.</source><translation>Apply formatting to %1 files? Original bytes will be backed up and every file checked again.</translation></message>
 <message id="library.invalid_root"><source>Choose the library’s .miabundle file.</source><translation>Choose the library’s .miabundle file.</translation></message>
 <message id="library.close_sessions_first"><source>Close source sessions before switching library folders.</source><translation>Close source sessions before switching library folders.</translation></message>
+<message id="library.delete_library_close_sessions"><source>Close the open source editor tabs in this library before deleting it.</source><translation>Close the open source editor tabs in this library before deleting it.</translation></message>
+<message id="library.delete_library_recovery_pending"><source>The library contains source edits awaiting recovery and cannot be deleted yet.</source><translation>The library contains source edits awaiting recovery and cannot be deleted yet.</translation></message>
 <message id="library.scanning"><source>Refreshing charts…</source><translation>Refreshing charts…</translation></message>
 <message id="library.canceled"><source>Canceled; existing index and source files are unchanged.</source><translation>Canceled; existing index and source files are unchanged.</translation></message>
 <message id="library.indexed"><source>%1 charts · %2 skipped</source><translation>%1 charts · %2 skipped</translation></message>
@@ -7505,8 +7509,10 @@ Movement L %3 / R %4 · Alternation %5</translation>
 <message id="library.conflict"><source>Content or selection changed; review the files and prepare again.</source><translation>Content or selection changed; review the files and prepare again.</translation></message>
 <message id="library.saved"><source>Saved with a verified original backup.</source><translation>Saved with a verified original backup.</translation></message>
 <message id="library.save_buffer_first"><source>Save or close this source session before opening its disk file.</source><translation>Save or close this source session before opening its disk file.</translation></message>
-<message id="library.batch_limit"><source>Select at most 100 files for one batch.</source><translation>Select at most 100 files for one batch.</translation></message>
-<message id="library.preparing"><source>Preparing formatting differences without writing source files…</source><translation>Preparing formatting differences without writing source files…</translation></message>
+<message id="library.batch_limit"><source>You can format up to 100 charts at a time.</source><translation>You can format up to 100 charts at a time.</translation></message>
+<message id="library.metadata_batch_limit"><source>You can clean up metadata for up to 100 charts at a time.</source><translation>You can clean up metadata for up to 100 charts at a time.</translation></message>
+<message id="library.preparing"><source>Comparing charts before and after formatting…</source><translation>Comparing charts before and after formatting…</translation></message>
+<message id="library.preparing_metadata"><source>Checking which metadata needs to change…</source><translation>Checking which metadata needs to change…</translation></message>
 <message id="library.prepared"><source>%1 files would change. Review the differences before applying.</source><translation>%1 files would change. Review the differences before applying.</translation></message>
 <message id="library.recovered"><source>Recovered independent source sessions; disk conflicts are checked on save.</source><translation>Recovered independent source sessions; disk conflicts are checked on save.</translation></message>
 <message id="library.file_limit"><source>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</source><translation>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</translation></message>

@@ -292,8 +292,10 @@ bool ChartLibraryModel::deleteCollection(const QString& pack, const QString& typ
         emit changed();
         return false;
     };
-    if (wholeLibrary && (!sessions_.isEmpty() || !unavailableRecovery_.isEmpty()))
-        return reject(qtTrId("library.close_sessions_first"));
+    if (wholeLibrary && !sessions_.isEmpty())
+        return reject(qtTrId("library.delete_library_close_sessions"));
+    if (wholeLibrary && !unavailableRecovery_.isEmpty())
+        return reject(qtTrId("library.delete_library_recovery_pending"));
     if (!wholeLibrary) {
         for (const auto& entry : entries_)
             if (entry.pack == pack && pathOpen(entry.path))
@@ -306,9 +308,10 @@ bool ChartLibraryModel::deleteCollection(const QString& pack, const QString& typ
     for (const auto* session : sessions_)
         protectedPaths.insert(QFileInfo(session->path()).canonicalFilePath());
     const auto result = library::removeCollection(root_, pack, protectedPaths);
+    if (result == library::CollectionRemoval::InUse)
+        return reject(qtTrId("library.close_editor_first"));
     if (result != library::CollectionRemoval::Removed)
-        return reject(result == library::CollectionRemoval::InUse
-                ? qtTrId("library.close_editor_first") : qtTrId("library.remove_failed"));
+        return reject(wholeLibrary ? qtTrId("library.delete_library_failed") : qtTrId("library.delete_pack_failed"));
 
     if (wholeLibrary) {
         refreshTimer_.stop();

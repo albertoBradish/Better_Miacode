@@ -1144,8 +1144,8 @@ Classic mode: All functions are on one page, similar to the layout in earlier ve
         <translation>選んだフォルダーに現在の難易度がありません。</translation>
     </message>
     <message id="dialog.batch_export.error.missing_track_file">
-        <source>Missing track.mp3.</source>
-        <translation>track.mp3 がありません。</translation>
+        <source>Could not find the audio track. Check for track.mp3, track.wav, track.flac, or track.ogg.</source>
+        <translation>楽曲の音声ファイルが見つかりません。track.mp3、track.wav、track.flac、track.ogg のいずれかがあるか確認してください。</translation>
     </message>
     <message id="dialog.batch_export.error.no_chart_dirs">
         <source>Please add at least one chart folder.</source>
@@ -7442,7 +7442,9 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.remove_song"><source>Remove from library</source><translation>ライブラリから外す</translation></message>
 <message id="library.remove_prompt"><source>Move the chart for %1 to the library's removed folder? Shared media stays in place.</source><translation>%1 の譜面を removed フォルダーへ移動しますか？共有素材は元の場所に残ります。</translation></message>
 <message id="library.removed"><source>Chart archived in %1</source><translation>譜面を %1 に移動しました</translation></message>
-<message id="library.remove_failed"><source>Could not move this chart. Check the library folder.</source><translation>譜面を移動できません。フォルダーを確認してください。</translation></message>
+<message id="library.remove_failed"><source>Could not remove the selection from the library.</source><translation>ライブラリから楽曲を外せませんでした。</translation></message>
+<message id="library.delete_pack_failed"><source>Could not delete the pack.</source><translation>パックを削除できませんでした。</translation></message>
+<message id="library.delete_library_failed"><source>Could not delete the library.</source><translation>ライブラリを削除できませんでした。</translation></message>
 <message id="library.manage_genres"><source>Manage genres</source><translation>ジャンル管理</translation></message>
 <message id="library.manage_versions"><source>Manage versions</source><translation>バージョン管理</translation></message>
 <message id="library.category_name"><source>New name</source><translation>新しい名前</translation></message>
@@ -7515,6 +7517,8 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.apply_prompt"><source>Apply formatting to %1 files? Original bytes will be backed up and every file checked again.</source><translation>Apply formatting to %1 files? Original bytes will be backed up and every file checked again.</translation></message>
 <message id="library.invalid_root"><source>Choose the library’s .miabundle file.</source><translation>ライブラリの .miabundle ファイルを選択してください。</translation></message>
 <message id="library.close_sessions_first"><source>Close source sessions before switching library folders.</source><translation>Close source sessions before switching library folders.</translation></message>
+<message id="library.delete_library_close_sessions"><source>Close the open source editor tabs in this library before deleting it.</source><translation>ライブラリを削除する前に、このライブラリで開いている譜面のソース編集タブを閉じてください。</translation></message>
+<message id="library.delete_library_recovery_pending"><source>The library contains source edits awaiting recovery and cannot be deleted yet.</source><translation>復元待ちの譜面の編集内容があるため、このライブラリはまだ削除できません。</translation></message>
 <message id="library.scanning"><source>Refreshing charts…</source><translation>ライブラリを更新中…</translation></message>
 <message id="library.canceled"><source>Canceled; existing index and source files are unchanged.</source><translation>Canceled; existing index and source files are unchanged.</translation></message>
 <message id="library.indexed"><source>%1 charts · %2 skipped</source><translation>全 %1 件・スキップ %2 件</translation></message>
@@ -7523,8 +7527,10 @@ Movement L %3 / R %4 · Alternation %5</source>
 <message id="library.conflict"><source>Content or selection changed; review the files and prepare again.</source><translation>Content or selection changed; review the files and prepare again.</translation></message>
 <message id="library.saved"><source>Saved with a verified original backup.</source><translation>Saved with a verified original backup.</translation></message>
 <message id="library.save_buffer_first"><source>Save or close this source session before opening its disk file.</source><translation>Save or close this source session before opening its disk file.</translation></message>
-<message id="library.batch_limit"><source>Select at most 100 files for one batch.</source><translation>Select at most 100 files for one batch.</translation></message>
-<message id="library.preparing"><source>Preparing formatting differences without writing source files…</source><translation>Preparing formatting differences without writing source files…</translation></message>
+<message id="library.batch_limit"><source>You can format up to 100 charts at a time.</source><translation>一度に整形できる譜面は100件までです。</translation></message>
+<message id="library.metadata_batch_limit"><source>You can clean up metadata for up to 100 charts at a time.</source><translation>一度にメタデータを整理できる譜面は100件までです。</translation></message>
+<message id="library.preparing"><source>Comparing charts before and after formatting…</source><translation>整形前後の譜面を比較しています…</translation></message>
+<message id="library.preparing_metadata"><source>Checking which metadata needs to change…</source><translation>修正が必要なメタデータを確認しています…</translation></message>
 <message id="library.prepared"><source>%1 files would change. Review the differences before applying.</source><translation>%1 files would change. Review the differences before applying.</translation></message>
 <message id="library.recovered"><source>Recovered independent source sessions; disk conflicts are checked on save.</source><translation>Recovered independent source sessions; disk conflicts are checked on save.</translation></message>
 <message id="library.file_limit"><source>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</source><translation>This draft exceeds 4 MiB. Reduce its size before saving or switching sessions.</translation></message>
